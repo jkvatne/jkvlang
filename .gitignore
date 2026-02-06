@@ -1,0 +1,21 @@
+# tmp files
+/tmp/*
+/.shared/*
+/build/
+/.idea/
+
+# binaries
+/babygo.mac
+
+/babygo*
+/bbg*
+/hello
+
+# pre stuff
+/pre/internal/
+/pre/*.go
+
+# intermediate files
+a.out
+*.o
+*.exe
