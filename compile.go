@@ -5,44 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 )
-
-type state = struct {
-	text        []byte
-	p           int
-	lineNum     int
-	token       int
-	tokenString string
-}
-
-const (
-	TOK_UNDEF = iota
-	TOK_PLUS
-	TOK_PLUS_PLUS
-	TOK_PLUS_ASGN
-	TOK_MINUS
-	TOK_MINUS_MINUS
-	TOK_MINUS_ASGN
-	TOK_FLOAT
-	TOK_INT
-	TOK_STRING
-	TOK_NAME
-	TOK_EOF
-	TOK_LBRACE
-	TOK_RBRACE
-	TOK_LPAR
-	TOK_RPAR
-	TOK_LBRACK
-	TOK_RBRACK
-	TOK_GE
-	TOK_GT
-	TOK_LE
-	TOK_LT
-	TOK_EQ
-	TOK_NE
-)
-
-var usedToken [24]bool
 
 func Compile(workdir string, inputPath string, outputName string) error {
 	entries, err := os.ReadDir(inputPath)
@@ -58,8 +22,18 @@ func Compile(workdir string, inputPath string, outputName string) error {
 			if err != nil {
 				slog.Error("Could not open file %s : %s", entry.Name(), err.Error())
 			}
-			CompileFile(s, workdir)
+			// CheckFile(s, workdir)
+			err = CompileFile(s, workdir)
 		}
+	}
+	return err
+}
+
+func CheckFile(s *state, workdir string) {
+	for s.token != TOK_EOF {
+		nextToken(s)
+		slog.Info("Token", "Lno", s.lineNum, "Value", s.token, "String", s.tokenString)
+		usedToken[s.token] = true
 	}
 	for i, t := range usedToken {
 		if t == false && i > 0 {
@@ -68,195 +42,247 @@ func Compile(workdir string, inputPath string, outputName string) error {
 	}
 }
 
-func CompileFile(s *state, workdir string) {
-	for s.token != TOK_EOF {
+type PrimaryType int
+
+type typeDef struct {
+	name string
+	size int
+	pt   PrimaryType
+}
+type valueDef struct {
+	name string
+}
+
+const (
+	TYP_NULL PrimaryType = iota
+	TYP_I8
+	TYP_I16
+	TYP_I32
+	TYP_I64
+	TYP_U8
+	TYP_U16
+	TYP_U32
+	TYP_U64
+	TYP_F32
+	TYP_F64
+	TYP_STRUCT
+	TYP_MAP
+	TYP_FUNC
+	TYP_ARRAY
+)
+
+var TypeDefs map[string]*typeDef
+
+func InitTypes() {
+	TypeDefs = make(map[string]*typeDef)
+	TypeDefs["I32"] = &typeDef{name: "I32", pt: TYP_I32}
+	TypeDefs["I64"] = &typeDef{name: "I64", pt: TYP_I64}
+	TypeDefs["U32"] = &typeDef{name: "U32", pt: TYP_U32}
+	TypeDefs["U64"] = &typeDef{name: "U64", pt: TYP_U64}
+	TypeDefs["F32"] = &typeDef{name: "F32", pt: TYP_F32}
+	TypeDefs["F64"] = &typeDef{name: "F64", pt: TYP_F64}
+	TypeDefs["struct"] = &typeDef{name: "struct", pt: TYP_STRUCT}
+	TypeDefs["func"] = &typeDef{name: "func", pt: TYP_FUNC}
+	TypeDefs["array"] = &typeDef{name: "array", pt: TYP_ARRAY}
+}
+
+func ParseType(s *state) (*typeDef, error) {
+	var err error
+	slog.Info("Parsing type", "id", s.tokenString)
+	v := TypeDefs[s.tokenString]
+	nextToken(s)
+	if s.token == TOK_LBRACK {
 		nextToken(s)
-		usedToken[s.token] = true
-	}
-}
-
-func isNum(ch uint8) bool {
-	return ch >= uint8('0') && (ch <= uint8('9'))
-}
-func isAlfa(ch uint8) bool {
-	return ch >= uint8('A') && ch <= 'Z' || ch >= 'a' && ch <= 'z'
-}
-
-func isAlfaNum(ch uint8) bool {
-	return isNum(ch) || isAlfa(ch)
-}
-
-func nextChar(s *state) (uint8, uint8) {
-	ch1 := s.text[s.p]
-	if ch1 == '\n' {
-		s.lineNum++
-	}
-	s.p++
-	if s.p >= len(s.text) {
-		s.token = TOK_EOF
-		return ch1, 0
-	}
-	ch2 := s.text[s.p]
-	return ch1, ch2
-}
-
-func eof(s *state) bool {
-	return s.p >= len(s.text)
-}
-
-func nextToken(s *state) {
-	s.token = TOK_EOF
-	for s.token == TOK_EOF {
-		if eof(s) {
-			return
+		if s.token == TOK_ID {
+			v.size, err = strconv.Atoi(s.tokenString)
+			nextToken(s)
 		}
-		ch1, ch2 := nextChar(s)
-		s.tokenString = string(ch1)
-		switch {
-		case ch1 == '/' && ch2 == '/':
-			// Skip comment
-			slog.Info("Skipping comment")
-			for ch1 != '\n' && !eof(s) {
-				ch1, ch2 = nextChar(s)
-			}
-		case ch1 == '/' && ch2 == '*':
-			// Skip /* */ comment
-			slog.Info("Skipping long comment")
-			for (ch1 != '*' || ch2 != '/') && !eof(s) {
-				ch1, ch2 = nextChar(s)
-			}
-		case ch1 == '>' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_GE
+		if s.token != TOK_RBRACK {
+			return nil, fmt.Errorf("Invalid token %s", s.tokenString)
+		}
+		nextToken(s)
+
+	}
+	return v, err
+}
+
+func ParseConstValue(s *state) (*valueDef, error) {
+	return nil, nil
+}
+
+func addDef(id string, typ *typeDef, value *valueDef, isConst bool) error {
+	return nil
+}
+
+func ParseVar(s *state, isConst bool) error {
+	var val *valueDef
+	var err error
+	if s.token != TOK_ID {
+		return fmt.Errorf("Expected id but got %s", s.tokenString)
+	}
+	id := s.tokenString
+	nextToken(s)
+	typ, err := ParseType(s)
+	if err != nil {
+		return err
+	}
+	if s.token == TOK_EQ {
+		val, err = ParseConstValue(s)
+	}
+	err = addDef(id, typ, val, isConst)
+	return err
+}
+
+func addArg(funcName string, argName string, typ *typeDef) error {
+	slog.Info("Arg list", "ArgName", argName, "type", typ.name)
+	return nil
+}
+
+func ParseArgList(s *state, funcName string) error {
+	for {
+		if s.token != TOK_ID {
+			return fmt.Errorf("Expected argument name but got %s", s.tokenString)
+		}
+		id := s.tokenString
+		nextToken(s)
+		typ, err := ParseType(s)
+		if err != nil {
+			return err
+		}
+		if typ == nil {
+			return fmt.Errorf("Expected argument type but got nil")
+		}
+		addArg(funcName, id, typ)
+		if s.token == TOK_RPAR {
 			break
-		case ch1 == '>':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_GT
-			break
-		case ch1 == '<' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_LE
-			break
-		case ch1 == '<':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_LT
-			break
-		case ch1 == '=' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_EQ
-			break
-		case ch1 == '!' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_NE
-			break
-		case ch1 == '(':
-			s.token = TOK_LPAR
-			break
-		case ch1 == ')':
-			s.token = TOK_RPAR
-			break
-		case ch1 == '{':
-			s.token = TOK_LBRACE
-			break
-		case ch1 == '}':
-			s.token = TOK_RBRACE
-			break
-		case ch1 == '[':
-			s.token = TOK_LBRACK
-			break
-		case ch1 == ']':
-			s.token = TOK_RBRACK
-			break
-		case ch1 == '+' && ch2 != '+' && ch2 != '=':
-			s.token = TOK_PLUS
-			break
-		case ch1 == '+' && ch2 == '+':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_PLUS_PLUS
-			s.tokenString = "++"
-			break
-		case ch1 == '+' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.tokenString = "+="
-			s.token = TOK_PLUS_ASGN
-			break
-		case ch1 == '-' && ch2 != '-' && ch2 != '=':
-			s.token = TOK_MINUS
-			break
-		case ch1 == '-' && ch2 == '-':
-			ch1, ch2 = nextChar(s)
-			s.tokenString = "--"
-			s.token = TOK_MINUS_MINUS
-			break
-		case ch1 == '-' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
-			s.token = TOK_MINUS_ASGN
-			s.tokenString = "-="
-			break
-		case ch1 == ' ':
-		case ch1 == '\f':
-		case ch1 == '\v':
-		case ch1 == '\r':
-			ch1, ch2 = nextChar(s)
-		case ch1 == '\n':
-			s.lineNum++
-		case isAlfa(ch1):
-			value := string(ch1)
-			for isAlfaNum(ch2) {
-				ch1, ch2 = nextChar(s)
-				value += string(ch1)
-			}
-			s.tokenString = value
-			s.token = TOK_NAME
-		case isNum(ch1) || ch1 == '-' && isNum(ch2):
-			// Parse number
-			var hasDp bool
-			var hasExp bool
-			var hasExpSgn bool
-			num := string(ch1)
+		}
+		if s.token != TOK_COMMA {
+			return fmt.Errorf("Expected comma or reight parantesis but got %s", s.tokenString)
+		}
+		nextToken(s)
+	}
+	if s.token != TOK_RPAR {
+		return fmt.Errorf("Expected ')' but got %s", s.tokenString)
+	}
+	nextToken(s)
+	return nil
+}
+
+func ParseExpression(s *state, funcName string) error {
+	slog.Info("Parsing expression", "id", id1, "func", funcName)
+	if s.token == TOK_LPAR {
+		nextToken(s)
+		err := ParseExpression(x, funcName)
+		if err != nil {
+			return err
+		}
+		if s.token != TOK_RPAR {
+			return fmt.Errorf("Expected ')' but got %s", s.tokenString)
+		}
+		nextToken(s)
+	} else if s.token == TOK_ID {
+		id1 := s.tokenString
+		nextToken(s)
+		if s.token != TOK_LPAR {
+			slog.Info("Evaluate", "function", id1)
 			for {
-				if isNum(ch2) {
-					num = num + string(ch2)
-				} else if ch2 == '.' && !hasDp {
-					num = num + string(ch2)
-					hasDp = true
-				} else if ch2 == 'e' || ch2 == 'E' {
-					num = num + string(ch2)
-					hasExp = true
-				} else if (ch2 == '+') || (ch2 == '-') && hasExp && !hasExpSgn {
-					num = num + string(ch2)
-					hasExpSgn = true
-				} else {
+				err := ParseExpression(s, funcName)
+				if err != nil {
+					return err
+				}
+				if s.token == TOK_RPAR {
+					nextToken(s)
 					break
 				}
-				ch1, ch2 = nextChar(s)
+				if s.token != TOK_COMMA {
+					return fmt.Errorf("Expected comma or right parentesis but got %s", s.tokenString)
+				}
+				nextToken(s)
 			}
-			s.tokenString = num
-			if hasExp || hasDp {
-				s.token = TOK_FLOAT
-			} else {
-				s.token = TOK_INT
+		}
+	}
+	return nil
+}
+
+func ParseStatements(s *state, funcName string) error {
+	if s.token == TOK_RETURN {
+		nextToken(s)
+		err := ParseExpression(s, funcName)
+		if err != nil {
+			return err
+		}
+	} else if s.token == TOK_FOR {
+		nextToken(s)
+	}
+	return nil
+}
+
+func CompileFile(s *state, workdir string) error {
+	InitTypes()
+	nextToken(s)
+	for s.token != TOK_EOF {
+		if s.token == TOK_FUNC {
+			nextToken(s)
+			if s.token != TOK_ID {
+				return fmt.Errorf("Expected function name but got %s", s.tokenString)
+			}
+			fun := s.tokenString
+			nextToken(s)
+			if s.token != TOK_LPAR {
+				return fmt.Errorf("Expected left parantesis but got %s", s.tokenString)
+			}
+			nextToken(s)
+			slog.Info("Compiling", "function", fun)
+			err := ParseArgList(s, fun)
+			if err != nil {
+				return err
+			}
+			ParseType(s)
+			if s.token != TOK_LBRACE {
+				return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
+			}
+			nextToken(s)
+			ParseStatements(s, fun)
+			if s.token != TOK_LBRACE {
+				return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
 			}
 
-		case ch1 == '"':
-			s.tokenString = ""
-			for {
-				ch1, ch2 = nextChar(s)
-				if ch1 == '\\' {
-					ch1, ch2 = nextChar(s)
-					if ch1 == 'n' {
-						s.tokenString += string('\n')
-						continue
+		} else if s.token == TOK_CONST {
+			nextToken(s)
+			if s.token == TOK_LPAR {
+				for s.token != TOK_RPAR {
+					err := ParseVar(s, true)
+					if err != nil {
+						return err
 					}
 				}
-				if ch1 == '"' {
-					break
+			} else {
+				err := ParseVar(s, true)
+				if err != nil {
+					return err
 				}
-				s.tokenString += string(ch1)
-				s.token = TOK_STRING
 			}
-		}
+		} else if s.token == TOK_VAR {
+			nextToken(s)
+			if s.token == TOK_LPAR {
+				nextToken(s)
+				for s.token != TOK_RPAR {
+					err := ParseVar(s, false)
+					if err != nil {
+						return err
+					}
+				}
+				nextToken(s)
+			} else {
+				err := ParseVar(s, false)
+				if err != nil {
+					return err
+				}
+			}
 
+		} else {
+			return fmt.Errorf("Unexpected token %s", s.tokenString)
+		}
 	}
-	slog.Info("Token", "Lno", s.lineNum, "Value", s.token, "String", s.tokenString)
+	return nil
 }

@@ -1,20 +1,32 @@
-    var mat [32]int
-var greating="Hello!\n"
+var arr I32[]
 var (
-  x int
-  y int
-  z int
+  x I32
+  y I32
+  z I32
+)
+
+func sum(x F64, y F64) F64 {
+  return x+y
+}
+
+func do() {
+  w1 = x+y
+  w2 = x+y*z
+  w3 = x+y+z
+  w4 = (x+y)*z
+}
+
+const (
+    num1 I32 = 1
+    num2 I32 = 1
 )
 
 /*
 Long comment
 */
-func sum(x float64, y float64) float64 {
-  return x+y
-}
 
 func main() {
-    var mat [32]int
+    var mat [32]I32
     a = 1.234   // Comment a
     b = 2.345   // Comment b
     c = sum(a,b)
@@ -32,7 +44,5 @@ func main() {
     y--
     z+=x
     z-=y
+    x = y&z|x
 }
-
-
-var zz int
