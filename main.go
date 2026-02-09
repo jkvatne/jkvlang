@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"os/exec"
 )
@@ -20,6 +21,7 @@ var (
 
 func main() {
 	flag.Parse()
+	log.SetFlags(0)
 	if *version {
 		fmt.Println(Version)
 	}
