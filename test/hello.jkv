@@ -1,35 +1,7 @@
-func do() {
-    x = sum(x,33)
-}
-
-func sum(x F64, y F64) F64 {
-  a = 450
-  return a+y+x+6
-}
-
-var (
-  x I32
-  y I32
-  z I32
-)
-
-func more() {
-  w1 = x+y
-  w2 = x+y*z
-  w3 = x+y+z
-  w4 = (x+y)*z
-}
-
-const (
-    num1 I32 = 1
-    num2 I32 = 1
-)
-
 func main() {
-    var mat [32]I32
+    c = sum(a,b)
     a = 1.234   // Comment a
     b = 2.345   // Comment b
-    c = sum(a,b)
     println("Hello World %s!\n", )
     if a>b && c>=a {
         printl("OK")
@@ -46,3 +18,32 @@ func main() {
     z-=y
     x = y&z|x
 }
+
+func do() {
+    x = sum(x,33)
+}
+
+func sum(x F64, y F64) F64 {
+  a = 450
+  return a+y+x+6
+}
+
+var (
+  xx I32
+  yy I32
+  zz I32
+  mat[32] I32
+)
+
+func foo() {
+  w1 = x+y
+  w2 = x+y*z
+  w3 = x+y+z
+  w4 = (x+y)*z
+}
+
+const (
+    num1 I32 = 1
+    num2 I32 = 1
+)
+

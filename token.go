@@ -251,7 +251,10 @@ func nextToken(s *state) {
 			s.token = TOK_OR
 			s.tokenString = "|"
 			break
-
+		case ch1 == '*':
+			s.token = TOK_MULT
+			s.tokenString = "*"
+			break
 		case ch1 == ' ':
 		case ch1 == '\f':
 		case ch1 == '\v':
