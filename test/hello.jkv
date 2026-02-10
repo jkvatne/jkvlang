@@ -1,17 +1,21 @@
 func main() {
-    c = sum(a,b)
-    a = 1.234   // Comment a
-    b = 2.345   // Comment b
-    println("Hello World %s!\n", )
-    if a>b && c>=a {
-        printl("OK")
-    } else if a<=b || c<a {
+    if b {
+        println("OK")
+    } else if a>=b || c<a {
         println("Hi")
     } else if a==b {
         c = a-b+mat[4]
     } else if b!=c {
         println("Lo")
     }
+ }
+
+ /*
+ func bar() [
+    c = sum(a,b)
+    a = 1.234   // Comment a
+    b = 2.345   // Comment b
+    println("Hello World %s!\n")
     x++
     y--
     z+=x
@@ -47,3 +51,4 @@ const (
     num2 I32 = 1
 )
 
+*/

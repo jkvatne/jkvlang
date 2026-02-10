@@ -11,6 +11,7 @@ type state = struct {
 	lineNum     int
 	token       int
 	tokenString string
+	labelNo     int
 }
 
 const (
@@ -167,7 +168,6 @@ func nextToken(s *state) {
 			s.token = TOK_GE
 			break
 		case ch1 == '>':
-			ch1, ch2 = nextChar(s)
 			s.token = TOK_GT
 			break
 		case ch1 == '<' && ch2 == '=':
@@ -175,7 +175,6 @@ func nextToken(s *state) {
 			s.token = TOK_LE
 			break
 		case ch1 == '<':
-			ch1, ch2 = nextChar(s)
 			s.token = TOK_LT
 			break
 		case ch1 == '=' && ch2 == '=':

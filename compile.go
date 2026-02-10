@@ -199,9 +199,9 @@ func ParseFormalArgList(s *state, funcName string) error {
 
 // ParseUnary will parse a parantesis term, a number, a string, a function call
 func ParseUnary(s *state) error {
+	slog.Info("ParseUnary variable/function/array", "Token", s.tokenString)
+	id := s.tokenString
 	if s.token == TOK_ID {
-		slog.Info("ParseUnary variable/function/array", "Token", s.tokenString)
-		id := s.tokenString
 		nextToken(s)
 		if s.token == TOK_LBRACK {
 			slog.Info("Parse array indexes for ", "array", id)
@@ -231,18 +231,21 @@ func ParseUnary(s *state) error {
 			if s.token != TOK_RPAR {
 				return fmt.Errorf("Expected right parantesis but got %s", s.tokenString)
 			}
+			slog.Info("Emit CALL", "function", id)
+			EmitCall(id)
 			nextToken(s)
-			Emit("CALL", id)
-		}
-		if s.token == TOK_ASSIGN {
+		} else if s.token == TOK_ASSIGN {
 			nextToken(s)
 			err := ParseExpression(s)
 			if err != nil {
 				return err
 			}
 			slog.Info("Pop", "lvalue", id)
-			Emit("POP", id)
+			EmitPop(id)
+		} else {
+			EmitPush(id)
 		}
+
 	} else if s.token == TOK_LPAR {
 		// Parantesis term
 		nextToken(s)
@@ -263,43 +266,18 @@ func ParseUnary(s *state) error {
 	} else if s.token == TOK_STRING {
 		PushString(s, s.tokenString)
 		nextToken(s)
-	} else if s.token == TOK_ID {
-		name := s.tokenString
-		nextToken(s)
-		if s.token == TOK_LPAR {
-			slog.Info("Unary: Evaluate arguments for ", "function", name)
-			for {
-				if s.token == TOK_RPAR {
-					break
-				}
-				nextToken(s)
-				err := ParseExpression(s)
-				if err != nil {
-					return err
-				}
-				if s.token == TOK_RPAR {
-					break
-				}
-				if s.token != TOK_COMMA {
-					return fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
-				}
-			}
-			slog.Info("Emit CALL", "function", name)
-			Emit("CALL", name)
+	} else if s.token == TOK_LBRACK {
+		slog.Info("Unary: Evaluate array indexes for ", "function", id)
+		for {
 			nextToken(s)
-		} else if s.token == TOK_LBRACK {
-			slog.Info("Unary: Evaluate array indexes for ", "function", name)
-			for {
+			if s.token == TOK_RBRACK {
 				nextToken(s)
-				if s.token == TOK_RBRACK {
-					nextToken(s)
-					break
-				}
+				break
 			}
-		} else {
-			slog.Info("Unary: Got a variable", "name", name)
-			Emit("PUSH", name)
 		}
+	} else {
+		slog.Info("Unary: Got a variable", "name", id)
+		EmitPush(id)
 	}
 	return nil
 }
@@ -323,7 +301,7 @@ func ParseProd(s *state) error {
 	return nil
 }
 
-func ParseExpression(s *state) error {
+func ParseSumTerm(s *state) error {
 	err := ParseProd(s)
 	if err != nil {
 		return err
@@ -343,6 +321,116 @@ func ParseExpression(s *state) error {
 	return nil
 }
 
+func ParseCompareTerm(s *state) error {
+	err := ParseSumTerm(s)
+	if err != nil {
+		return err
+	}
+	for s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE {
+		op := s.token
+		nextToken(s)
+		err = ParseSumTerm(s)
+		if err != nil {
+			return err
+		}
+		GenerateOp(s, op)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseExpression(s *state) error {
+	err := ParseCompareTerm(s)
+	if err != nil {
+		return err
+	}
+	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+		op := s.token
+		nextToken(s)
+		err = ParseCompareTerm(s)
+		if err != nil {
+			return err
+		}
+		GenerateOp(s, op)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseStatements(s *state) error {
+	nextToken(s)
+	for s.token != TOK_RBRACE {
+		err := ParseStatement(s)
+		if err != nil {
+			return err
+		}
+		if s.token == TOK_RBRACE {
+			break
+		}
+		nextToken(s)
+	}
+	return nil
+}
+
+func NewLabel(s *state) int {
+	s.labelNo++
+	return s.labelNo
+}
+
+func ParseIf(s *state) error {
+	nextToken(s)
+	err := ParseExpression(s)
+	if err != nil {
+		return err
+	}
+	label := NewLabel(s)
+	EmitJumpFalse(s.labelNo)
+	if s.token != TOK_LBRACE {
+		return fmt.Errorf("Expected { after if but got %s", s.tokenString)
+	}
+	err = ParseStatements(s)
+	if err != nil {
+		return err
+	}
+	if s.token != TOK_RBRACE {
+		return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
+	}
+	nextToken(s)
+	for s.token == TOK_ELSE {
+		EmitLabel(label)
+		nextToken(s)
+		if s.token == TOK_IF {
+			nextToken(s)
+			err = ParseExpression(s)
+			if err != nil {
+				return err
+			}
+			label = NewLabel(s)
+			EmitJump(label)
+			if s.token != TOK_LBRACE {
+				return fmt.Errorf("Expected { after if but got %s", s.tokenString)
+			}
+			err = ParseStatements(s)
+			if err != nil {
+				return err
+			}
+			if s.token != TOK_RBRACE {
+				return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
+			}
+		}
+		if s.token != TOK_LBRACE {
+			return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
+		}
+		EmitLabel(label)
+		nextToken(s)
+	}
+	return nil
+}
+
 func ParseStatement(s *state) error {
 	if s.token == TOK_RETURN {
 		nextToken(s)
@@ -350,19 +438,19 @@ func ParseStatement(s *state) error {
 		if err != nil {
 			return err
 		}
-		Emit("RETURN", "")
+		EmitReturn()
 	} else if s.token == TOK_IF {
-		err := ParseExpression(s)
+		err := ParseIf(s)
 		if err != nil {
 			return err
-		}
-		if s.token != TOK_LBRACE {
-
 		}
 	} else if s.token == TOK_FOR {
 		nextToken(s)
 	} else if s.token == TOK_ID {
-		ParseExpression(s)
+		err := ParseExpression(s)
+		if err != nil {
+			return err
+		}
 	} else {
 		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
@@ -375,7 +463,7 @@ func ParseFunctionDefinition(s *state) error {
 	}
 	fun := s.tokenString
 	slog.Info("Parsing function definition", "name", fun)
-	Emit(fun, ":")
+	EmitFunction(fun)
 	nextToken(s)
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("Expected left parantesis but got %s", s.tokenString)
