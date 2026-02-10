@@ -21,6 +21,9 @@ const (
 	TOK_MINUS
 	TOK_MINUS_MINUS
 	TOK_MINUS_ASGN
+	TOK_MULT
+	TOK_DIV
+	TOK_MOD
 	TOK_FLOAT
 	TOK_INT
 	TOK_STRING
@@ -55,6 +58,49 @@ const (
 )
 
 var usedToken [TOK_SIZE]bool
+var TokenNames = [...]string{
+	TOK_UNDEF:       "UNDEF",
+	TOK_PLUS:        "PLUS",
+	TOK_PLUS_PLUS:   "PLUS_PLUS",
+	TOK_PLUS_ASGN:   "PLUS_ASGN",
+	TOK_MINUS:       "MINUS",
+	TOK_MINUS_MINUS: "MINUS_MINUS",
+	TOK_MINUS_ASGN:  "MINUS_ASGN",
+	TOK_MULT:        "MULT",
+	TOK_DIV:         "DIV",
+	TOK_MOD:         "MOD",
+	TOK_FLOAT:       "FLOAT",
+	TOK_INT:         "INT",
+	TOK_STRING:      "STRING",
+	TOK_ID:          "ID",
+	TOK_EOF:         "EOF",
+	TOK_LBRACE:      "LBRACE",
+	TOK_RBRACE:      "RBRACE",
+	TOK_LPAR:        "LPAR",
+	TOK_RPAR:        "RPAR",
+	TOK_LBRACK:      "LBRACK",
+	TOK_RBRACK:      "RBRACK",
+	TOK_COMMA:       "COMMA",
+	TOK_ASSIGN:      "ASSIGN",
+	TOK_GE:          "GE",
+	TOK_GT:          "GT",
+	TOK_LE:          "LE",
+	TOK_LT:          "LT",
+	TOK_EQ:          "EQ",
+	TOK_NE:          "NE",
+	TOK_OR:          "OR",
+	TOK_LOG_OR:      "LOG_OR",
+	TOK_AND:         "AND",
+	TOK_LOG_AND:     "LOG_AND",
+	TOK_VAR:         "VAR",
+	TOK_FUNC:        "FUNC",
+	TOK_CONST:       "CONST",
+	TOK_IF:          "IF",
+	TOK_ELSE:        "ELSE",
+	TOK_FOR:         "FOR",
+	TOK_RETURN:      "RETURN",
+	TOK_SIZE:        "SIZE",
+}
 
 func isNum(ch uint8) bool {
 	return ch >= uint8('0') && (ch <= uint8('9'))
@@ -251,8 +297,10 @@ func nextToken(s *state) {
 					hasDp = true
 				} else if ch2 == 'e' || ch2 == 'E' {
 					num = num + string(ch2)
+					ch1, ch2 = nextChar(s)
 					hasExp = true
-				} else if (ch2 == '+') || (ch2 == '-') && hasExp && !hasExpSgn {
+					hasExpSgn = ch1 == '-' || ch2 == '+'
+				} else if ((ch2 == '+') || (ch2 == '-')) && hasExp && !hasExpSgn {
 					num = num + string(ch2)
 					hasExpSgn = true
 				} else {

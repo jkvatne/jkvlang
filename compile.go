@@ -86,6 +86,14 @@ func InitTypes() {
 	TypeDefs["array"] = &typeDef{name: "array", pt: TYP_ARRAY}
 }
 
+/* value on stack */
+type StackValue = struct {
+	typ    typeDef /* type */
+	reg1   int     /* register + flags */
+	reg2   int     /* second register, used for 'I64g' type. If not used, set to VT_CONST */
+	symbol string  /* symbol, if (VT_SYM | VT_CONST), or if result of unary() for an identifier. */
+}
+
 func ParseType(s *state) (*typeDef, error) {
 	var err error
 	slog.Info("Parsing type", "id", s.tokenString)
@@ -138,7 +146,7 @@ func addArg(funcName string, argName string, typ *typeDef) error {
 	return nil
 }
 
-func ParseArgList(s *state, funcName string) error {
+func ParseFormalArgList(s *state, funcName string) error {
 	for {
 		if s.token != TOK_ID {
 			return fmt.Errorf("Expected argument name but got %s", s.tokenString)
@@ -168,11 +176,31 @@ func ParseArgList(s *state, funcName string) error {
 	return nil
 }
 
-func ParseExpression(s *state, funcName string) error {
-	slog.Info("Parsing expression", "id", id1, "func", funcName)
+func GenerateOp(s *state, op int) error {
+	slog.Info("Generate", "Op", TokenNames[op])
+	return nil
+}
+
+func PushInt(s *state, value string) error {
+	slog.Info("PushInt", "Value", value)
+	return nil
+}
+
+func PushFloat(s *state, value string) error {
+	slog.Info("PushFloat", "Value", value)
+	return nil
+}
+
+func PushString(s *state, value string) error {
+	slog.Info("PushString", "Value", value)
+	return nil
+}
+
+// ParseUnary will parse a parantesis term, a number, a string, a function call
+func ParseUnary(s *state) error {
 	if s.token == TOK_LPAR {
 		nextToken(s)
-		err := ParseExpression(x, funcName)
+		err := ParseExpression(s)
 		if err != nil {
 			return err
 		}
@@ -180,34 +208,95 @@ func ParseExpression(s *state, funcName string) error {
 			return fmt.Errorf("Expected ')' but got %s", s.tokenString)
 		}
 		nextToken(s)
+	} else if s.token == TOK_INT {
+		PushInt(s, s.tokenString)
+		nextToken(s)
+	} else if s.token == TOK_FLOAT {
+		PushFloat(s, s.tokenString)
+		nextToken(s)
+	} else if s.token == TOK_STRING {
+		PushString(s, s.tokenString)
+		nextToken(s)
 	} else if s.token == TOK_ID {
 		id1 := s.tokenString
 		nextToken(s)
-		if s.token != TOK_LPAR {
-			slog.Info("Evaluate", "function", id1)
+		if s.token == TOK_LPAR {
+			slog.Info("Unary: Evaluate arguments for ", "function", id1)
 			for {
-				err := ParseExpression(s, funcName)
+				err := ParseExpression(s)
 				if err != nil {
 					return err
 				}
-				if s.token == TOK_RPAR {
+				if s.token != TOK_COMMA {
+					return fmt.Errorf("Expected comma or reight parantesis but got %s", s.tokenString)
+				}
+				nextToken(s)
+				if s.token != TOK_RPAR {
+					return fmt.Errorf("Expected ')' but got %s", s.tokenString)
+				}
+				break
+			}
+			nextToken(s)
+		} else if s.token == TOK_LBRACK {
+			slog.Info("Unary: Evaluate array indexes for ", "function", id1)
+			for {
+				nextToken(s)
+				if s.token == TOK_RBRACK {
 					nextToken(s)
 					break
 				}
-				if s.token != TOK_COMMA {
-					return fmt.Errorf("Expected comma or right parentesis but got %s", s.tokenString)
-				}
-				nextToken(s)
 			}
+		} else {
+			slog.Info("Unary: Got a variable", "name", id1)
 		}
 	}
 	return nil
 }
 
-func ParseStatements(s *state, funcName string) error {
+func ParseProd(s *state) error {
+	ParseUnary(s)
+	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
+		op := s.token
+		nextToken(s)
+		err := ParseUnary(s)
+		if err == nil {
+			err = GenerateOp(s, op)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseSum(s *state) error {
+	err := ParseProd(s)
+	if err != nil {
+		return err
+	}
+	for s.token == TOK_PLUS || s.token == TOK_MINUS {
+		op := s.token
+		nextToken(s)
+		err = ParseProd(s)
+		if err != nil {
+			return err
+		}
+		err = GenerateOp(s, op)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseExpression(s *state) error {
+	return ParseSum(s)
+}
+
+func ParseStatements(s *state) error {
 	if s.token == TOK_RETURN {
 		nextToken(s)
-		err := ParseExpression(s, funcName)
+		err := ParseExpression(s)
 		if err != nil {
 			return err
 		}
@@ -233,19 +322,24 @@ func CompileFile(s *state, workdir string) error {
 			}
 			nextToken(s)
 			slog.Info("Compiling", "function", fun)
-			err := ParseArgList(s, fun)
+			err := ParseFormalArgList(s, fun)
 			if err != nil {
 				return err
 			}
-			ParseType(s)
+			_, err = ParseType(s)
+			if err != nil {
+				return err
+			}
+
 			if s.token != TOK_LBRACE {
 				return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
 			}
 			nextToken(s)
-			ParseStatements(s, fun)
-			if s.token != TOK_LBRACE {
+			ParseStatements(s)
+			if s.token != TOK_RBRACE {
 				return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
 			}
+			nextToken(s)
 
 		} else if s.token == TOK_CONST {
 			nextToken(s)
