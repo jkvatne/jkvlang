@@ -22,6 +22,7 @@ var (
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
+	slog.SetLogLoggerLevel(4)
 	if *version {
 		fmt.Println(Version)
 	}

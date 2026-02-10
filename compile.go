@@ -97,6 +97,9 @@ type StackValue = struct {
 func ParseType(s *state) (*typeDef, error) {
 	var err error
 	slog.Info("Parsing type", "id", s.tokenString)
+	if s.token == TOK_LBRACE {
+		return nil, nil
+	}
 	v := TypeDefs[s.tokenString]
 	nextToken(s)
 	if s.token == TOK_LBRACK {
@@ -148,6 +151,9 @@ func addArg(funcName string, argName string, typ *typeDef) error {
 
 func ParseFormalArgList(s *state, funcName string) error {
 	for {
+		if s.token == TOK_RPAR {
+			break
+		}
 		if s.token != TOK_ID {
 			return fmt.Errorf("Expected argument name but got %s", s.tokenString)
 		}
@@ -178,16 +184,19 @@ func ParseFormalArgList(s *state, funcName string) error {
 
 func GenerateOp(s *state, op int) error {
 	slog.Info("Generate", "Op", TokenNames[op])
+	fmt.Println(TokenNames[op])
 	return nil
 }
 
 func PushInt(s *state, value string) error {
 	slog.Info("PushInt", "Value", value)
+	fmt.Printf("PUSH %s\n", value)
 	return nil
 }
 
 func PushFloat(s *state, value string) error {
 	slog.Info("PushFloat", "Value", value)
+	fmt.Printf("PUSH %s\n", value)
 	return nil
 }
 
@@ -218,27 +227,30 @@ func ParseUnary(s *state) error {
 		PushString(s, s.tokenString)
 		nextToken(s)
 	} else if s.token == TOK_ID {
-		id1 := s.tokenString
+		name := s.tokenString
 		nextToken(s)
 		if s.token == TOK_LPAR {
-			slog.Info("Unary: Evaluate arguments for ", "function", id1)
+			slog.Info("Unary: Evaluate arguments for ", "function", name)
 			for {
+				if s.token == TOK_RPAR {
+					break
+				}
+				nextToken(s)
 				err := ParseExpression(s)
 				if err != nil {
 					return err
 				}
+				if s.token == TOK_RPAR {
+					break
+				}
 				if s.token != TOK_COMMA {
-					return fmt.Errorf("Expected comma or reight parantesis but got %s", s.tokenString)
+					return fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
 				}
-				nextToken(s)
-				if s.token != TOK_RPAR {
-					return fmt.Errorf("Expected ')' but got %s", s.tokenString)
-				}
-				break
 			}
+			fmt.Printf("CALL %s\n", name)
 			nextToken(s)
 		} else if s.token == TOK_LBRACK {
-			slog.Info("Unary: Evaluate array indexes for ", "function", id1)
+			slog.Info("Unary: Evaluate array indexes for ", "function", name)
 			for {
 				nextToken(s)
 				if s.token == TOK_RBRACK {
@@ -247,7 +259,8 @@ func ParseUnary(s *state) error {
 				}
 			}
 		} else {
-			slog.Info("Unary: Got a variable", "name", id1)
+			slog.Info("Unary: Got a variable", "name", name)
+			fmt.Printf("PUSH %s\n", name)
 		}
 	}
 	return nil
@@ -293,90 +306,123 @@ func ParseExpression(s *state) error {
 	return ParseSum(s)
 }
 
-func ParseStatements(s *state) error {
+func ParseStatement(s *state) error {
 	if s.token == TOK_RETURN {
 		nextToken(s)
 		err := ParseExpression(s)
 		if err != nil {
 			return err
 		}
+		fmt.Println("RETURN")
 	} else if s.token == TOK_FOR {
 		nextToken(s)
+	} else if s.token == TOK_ID {
+		slog.Info("Parse lvalue")
+		lvalue := s.tokenString
+		nextToken(s)
+		if s.token == TOK_LBRACK {
+			slog.Info("Parse array indexes for ", "array", lvalue)
+			for {
+				if s.token != TOK_RBRACK {
+					break
+				}
+				nextToken(s)
+			}
+		}
+		if s.token == TOK_ASSIGN {
+			nextToken(s)
+			err := ParseExpression(s)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("POP %s\n", lvalue)
+		} else {
+			return fmt.Errorf("Invalid token %s", s.tokenString)
+		}
+	} else {
+		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
+	return nil
+}
+func ParseFunctionDefinition(s *state) error {
+	nextToken(s)
+	if s.token != TOK_ID {
+		return fmt.Errorf("Expected function name but got %s", s.tokenString)
+	}
+	fun := s.tokenString
+	fmt.Printf("%s:\n", fun)
+	nextToken(s)
+	if s.token != TOK_LPAR {
+		return fmt.Errorf("Expected left parantesis but got %s", s.tokenString)
+	}
+	nextToken(s)
+	slog.Info("Compiling", "function", fun)
+	err := ParseFormalArgList(s, fun)
+	if err != nil {
+		return err
+	}
+	_, err = ParseType(s)
+	if err != nil {
+		return err
+	}
+
+	if s.token != TOK_LBRACE {
+		return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
+	}
+	nextToken(s)
+	for {
+		err = ParseStatement(s)
+		if err != nil {
+			return err
+		}
+		if s.token == TOK_RBRACE {
+			break
+		}
+	}
+	if s.token != TOK_RBRACE {
+		return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
+	}
+	nextToken(s)
 	return nil
 }
 
 func CompileFile(s *state, workdir string) error {
 	InitTypes()
 	nextToken(s)
+	var err error
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
-			nextToken(s)
-			if s.token != TOK_ID {
-				return fmt.Errorf("Expected function name but got %s", s.tokenString)
-			}
-			fun := s.tokenString
-			nextToken(s)
-			if s.token != TOK_LPAR {
-				return fmt.Errorf("Expected left parantesis but got %s", s.tokenString)
-			}
-			nextToken(s)
-			slog.Info("Compiling", "function", fun)
-			err := ParseFormalArgList(s, fun)
-			if err != nil {
-				return err
-			}
-			_, err = ParseType(s)
-			if err != nil {
-				return err
-			}
-
-			if s.token != TOK_LBRACE {
-				return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
-			}
-			nextToken(s)
-			ParseStatements(s)
-			if s.token != TOK_RBRACE {
-				return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
-			}
-			nextToken(s)
-
+			err = ParseFunctionDefinition(s)
 		} else if s.token == TOK_CONST {
 			nextToken(s)
 			if s.token == TOK_LPAR {
 				for s.token != TOK_RPAR {
-					err := ParseVar(s, true)
-					if err != nil {
-						return err
-					}
+					err = ParseVar(s, true)
 				}
 			} else {
-				err := ParseVar(s, true)
-				if err != nil {
-					return err
-				}
+				err = ParseVar(s, true)
 			}
 		} else if s.token == TOK_VAR {
 			nextToken(s)
 			if s.token == TOK_LPAR {
 				nextToken(s)
 				for s.token != TOK_RPAR {
-					err := ParseVar(s, false)
+					err = ParseVar(s, false)
 					if err != nil {
-						return err
+						break
 					}
 				}
 				nextToken(s)
 			} else {
-				err := ParseVar(s, false)
-				if err != nil {
-					return err
-				}
+				err = ParseVar(s, false)
 			}
-
 		} else {
 			return fmt.Errorf("Unexpected token %s", s.tokenString)
 		}
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }

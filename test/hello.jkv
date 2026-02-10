@@ -1,17 +1,19 @@
-func sum(x F64, y F64) F64 {
-  return x+y+5+6
+func do() {
+    x = sum(x,33)
 }
 
-/*
-var arr I32[]
+func sum(x F64, y F64) F64 {
+  a = 450
+  return a+y+x+6
+}
+
 var (
   x I32
   y I32
   z I32
 )
 
-
-func do() {
+func more() {
   w1 = x+y
   w2 = x+y*z
   w3 = x+y+z
@@ -44,4 +46,3 @@ func main() {
     z-=y
     x = y&z|x
 }
-*/
