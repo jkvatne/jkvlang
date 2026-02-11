@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"os"
 )
 
 type state = struct {
@@ -13,6 +14,8 @@ type state = struct {
 	tokenString string
 	labelNo     int
 	returned    bool
+	outputFile  *os.File
+	unitName    string
 }
 
 const (
@@ -58,6 +61,7 @@ const (
 	TOK_RETURN
 	TOK_DIV_ASGN
 	TOK_MULT_ASGN
+	TOK_SEMICOLON
 	TOK_SIZE
 )
 
@@ -105,6 +109,7 @@ var TokenNames = [...]string{
 	TOK_RETURN:      "RETURN",
 	TOK_DIV_ASGN:    "DIV_ASGN",
 	TOK_MULT_ASGN:   "MULT_ASGN",
+	TOK_SEMICOLON:   "SEMICOLON",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -152,6 +157,8 @@ func nextToken(s *state) {
 		switch {
 		case ch1 == ' ':
 
+		case ch1 == ';':
+			s.token = TOK_SEMICOLON
 		case ch1 == ',':
 			s.token = TOK_COMMA
 			break

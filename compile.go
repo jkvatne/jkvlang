@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func Compile(workdir string, inputPath string, outputName string) error {
@@ -19,6 +20,7 @@ func Compile(workdir string, inputPath string, outputName string) error {
 		if !entry.IsDir() {
 			slog.Info("Compiling", "filename", entry.Name())
 			s.text, err = os.ReadFile(filepath.Join(inputPath, entry.Name()))
+			s.unitName = strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
 			if err != nil {
 				slog.Error("Could not open file %s : %s", entry.Name(), err.Error())
 			}
@@ -44,7 +46,7 @@ func CheckFile(s *state, workdir string) {
 
 type PrimaryType int
 
-type typeDef struct {
+type TypeDef struct {
 	name string
 	size int
 	pt   PrimaryType
@@ -69,32 +71,33 @@ const (
 	TYP_MAP
 	TYP_FUNC
 	TYP_ARRAY
+	TYP_ERROR
 )
 
-var TypeDefs map[string]*typeDef
+var TypeDefs map[string]*TypeDef
 
 func InitTypes() {
-	TypeDefs = make(map[string]*typeDef)
-	TypeDefs["I32"] = &typeDef{name: "I32", pt: TYP_I32}
-	TypeDefs["I64"] = &typeDef{name: "I64", pt: TYP_I64}
-	TypeDefs["U32"] = &typeDef{name: "U32", pt: TYP_U32}
-	TypeDefs["U64"] = &typeDef{name: "U64", pt: TYP_U64}
-	TypeDefs["F32"] = &typeDef{name: "F32", pt: TYP_F32}
-	TypeDefs["F64"] = &typeDef{name: "F64", pt: TYP_F64}
-	TypeDefs["struct"] = &typeDef{name: "struct", pt: TYP_STRUCT}
-	TypeDefs["func"] = &typeDef{name: "func", pt: TYP_FUNC}
-	TypeDefs["array"] = &typeDef{name: "array", pt: TYP_ARRAY}
+	TypeDefs = make(map[string]*TypeDef)
+	TypeDefs["I32"] = &TypeDef{name: "I32", pt: TYP_I32}
+	TypeDefs["I64"] = &TypeDef{name: "I64", pt: TYP_I64}
+	TypeDefs["U32"] = &TypeDef{name: "U32", pt: TYP_U32}
+	TypeDefs["U64"] = &TypeDef{name: "U64", pt: TYP_U64}
+	TypeDefs["F32"] = &TypeDef{name: "F32", pt: TYP_F32}
+	TypeDefs["F64"] = &TypeDef{name: "F64", pt: TYP_F64}
+	TypeDefs["struct"] = &TypeDef{name: "struct", pt: TYP_STRUCT}
+	TypeDefs["func"] = &TypeDef{name: "func", pt: TYP_FUNC}
+	TypeDefs["array"] = &TypeDef{name: "array", pt: TYP_ARRAY}
 }
 
 /* value on stack */
 type StackValue = struct {
-	typ    typeDef /* type */
+	typ    TypeDef /* type */
 	reg1   int     /* register + flags */
 	reg2   int     /* second register, used for 'I64g' type. If not used, set to VT_CONST */
 	symbol string  /* symbol, if (VT_SYM | VT_CONST), or if result of unary() for an identifier. */
 }
 
-func ParseType(s *state) (*typeDef, error) {
+func ParseType(s *state) (*TypeDef, error) {
 	var err error
 	if s.token == TOK_LBRACE {
 		return nil, nil
@@ -117,11 +120,7 @@ func ParseType(s *state) (*typeDef, error) {
 	return v, err
 }
 
-func ParseConstValue(s *state) (*valueDef, error) {
-	return nil, nil
-}
-
-func addDef(id string, typ *typeDef, value string, size string, isConst bool) error {
+func addDef(id string, typ *TypeDef, value string, size string, isConst bool) error {
 	return nil
 }
 
@@ -159,9 +158,8 @@ func ParseVar(s *state, isConst bool) error {
 	return err
 }
 
-func addArg(funcName string, argName string, typ *typeDef) error {
+func AddArg(funcName string, argName string, typ *TypeDef) {
 	slog.Info("Arg list", "ArgName", argName, "type", typ.name)
-	return nil
 }
 
 func ParseFormalArgList(s *state, funcName string) error {
@@ -181,7 +179,7 @@ func ParseFormalArgList(s *state, funcName string) error {
 		if typ == nil {
 			return fmt.Errorf("Expected argument type but got nil")
 		}
-		addArg(funcName, id, typ)
+		AddArg(funcName, id, typ)
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -232,7 +230,7 @@ func ParseUnary(s *state) error {
 				return fmt.Errorf("Expected right parantesis but got %s", s.tokenString)
 			}
 			slog.Info("Emit CALL", "function", id)
-			EmitCall(id)
+			EmitCall(s, id)
 			nextToken(s)
 		} else if s.token == TOK_ASSIGN {
 			nextToken(s)
@@ -241,7 +239,7 @@ func ParseUnary(s *state) error {
 				return err
 			}
 			slog.Info("Store top of stack to", "lvalue", id)
-			EmitStore(id)
+			EmitStore(s, id)
 		} else if s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
 			op := s.token
 			nextToken(s)
@@ -250,10 +248,9 @@ func ParseUnary(s *state) error {
 				return err
 			}
 			slog.Info("Store lvalue op tos to", "lvalue", id)
-			EmitPush(id)
-			GenerateOp(s, op)
+			EmitModify(s, id, op)
 		} else {
-			EmitPush(id)
+			EmitPush(s, id)
 		}
 
 	} else if s.token == TOK_LPAR {
@@ -287,7 +284,7 @@ func ParseUnary(s *state) error {
 		}
 	} else {
 		slog.Info("Unary: Got a variable", "name", id)
-		EmitPush(id)
+		EmitPush(s, id)
 	}
 	return nil
 }
@@ -324,9 +321,6 @@ func ParseSumTerm(s *state) error {
 			return err
 		}
 		GenerateOp(s, op)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -344,9 +338,6 @@ func ParseCompareTerm(s *state) error {
 			return err
 		}
 		GenerateOp(s, op)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -364,9 +355,6 @@ func ParseExpression(s *state) error {
 			return err
 		}
 		GenerateOp(s, op)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -382,6 +370,9 @@ func ParseStatements(s *state) error {
 			break
 		}
 		nextToken(s)
+		if s.token == TOK_SEMICOLON {
+			nextToken(s)
+		}
 	}
 	return nil
 }
@@ -399,12 +390,12 @@ func ParseIf(s *state) error {
 	}
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
-	EmitJumpFalse(elseLabel)
+	EmitJumpFalse(s, elseLabel)
 	if s.token != TOK_LBRACE {
 		return fmt.Errorf("Expected { after if but got %s", s.tokenString)
 	}
 	err = ParseStatements(s)
-	EmitJump(endLabel)
+	EmitJump(s, endLabel)
 	if err != nil {
 		return err
 	}
@@ -413,7 +404,7 @@ func ParseIf(s *state) error {
 	}
 	nextToken(s)
 	for s.token == TOK_ELSE {
-		EmitLabel(elseLabel)
+		EmitLabel(s, elseLabel)
 		nextToken(s)
 		if s.token == TOK_IF {
 			nextToken(s)
@@ -422,12 +413,12 @@ func ParseIf(s *state) error {
 				return err
 			}
 			elseLabel = NewLabel(s)
-			EmitJumpFalse(elseLabel)
+			EmitJumpFalse(s, elseLabel)
 			if s.token != TOK_LBRACE {
 				return fmt.Errorf("Expected { after if but got %s", s.tokenString)
 			}
 			err = ParseStatements(s)
-			EmitJump(endLabel)
+			EmitJump(s, endLabel)
 			if err != nil {
 				return err
 			}
@@ -443,7 +434,7 @@ func ParseIf(s *state) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
 	}
-	EmitLabel(endLabel)
+	EmitLabel(s, endLabel)
 
 	return nil
 }
@@ -456,7 +447,7 @@ func ParseStatement(s *state) error {
 			return err
 		}
 		s.returned = true
-		EmitReturn()
+		EmitReturn(s)
 	} else if s.token == TOK_IF {
 		err := ParseIf(s)
 		if err != nil {
@@ -469,6 +460,9 @@ func ParseStatement(s *state) error {
 		if err != nil {
 			return err
 		}
+	} else if s.token == TOK_SEMICOLON {
+		// Ignore
+		nextToken(s)
 	} else {
 		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
@@ -482,7 +476,7 @@ func ParseFunctionDefinition(s *state) error {
 	s.returned = false
 	fun := s.tokenString
 	slog.Info("Parsing function definition", "name", fun)
-	EmitFunction(fun)
+	EmitFunction(s, fun)
 	nextToken(s)
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("Expected left parantesis but got %s", s.tokenString)
@@ -515,19 +509,22 @@ func ParseFunctionDefinition(s *state) error {
 		return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
 	}
 	if fun == "main" {
-		EmitExit()
+		EmitExit(s)
 	}
 	if !s.returned {
-		EmitReturn()
+		EmitReturn(s)
 	}
 	nextToken(s)
 	return nil
 }
 
 func CompileFile(s *state, workdir string) error {
+	err := EmitTo(s, workdir)
+	if err != nil {
+		return err
+	}
 	InitTypes()
 	nextToken(s)
-	var err error
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			err = ParseFunctionDefinition(s)
