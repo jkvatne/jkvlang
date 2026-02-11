@@ -150,7 +150,7 @@ func ParseVar(s *state, isConst bool) error {
 	if err != nil {
 		return err
 	}
-	if s.token == TOK_ASSIGN {
+	if s.token == TOK_ASSIGN || s.token == TOK_MINUS_ASGN || s.token == TOK_PLUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
 		nextToken(s)
 		val = s.tokenString
 		nextToken(s)
@@ -240,8 +240,18 @@ func ParseUnary(s *state) error {
 			if err != nil {
 				return err
 			}
-			slog.Info("Pop", "lvalue", id)
-			EmitPop(id)
+			slog.Info("Store top of stack to", "lvalue", id)
+			EmitStore(id)
+		} else if s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
+			op := s.token
+			nextToken(s)
+			err := ParseExpression(s)
+			if err != nil {
+				return err
+			}
+			slog.Info("Store lvalue op tos to", "lvalue", id)
+			EmitPush(id)
+			GenerateOp(s, op)
 		} else {
 			EmitPush(id)
 		}
@@ -290,7 +300,7 @@ func ParseProd(s *state) error {
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
 		op := s.token
 		nextToken(s)
-		err := ParseUnary(s)
+		err = ParseUnary(s)
 		if err == nil {
 			GenerateOp(s, op)
 		}
@@ -306,7 +316,7 @@ func ParseSumTerm(s *state) error {
 	if err != nil {
 		return err
 	}
-	for s.token == TOK_PLUS || s.token == TOK_MINUS {
+	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 		op := s.token
 		nextToken(s)
 		err = ParseProd(s)
@@ -326,7 +336,7 @@ func ParseCompareTerm(s *state) error {
 	if err != nil {
 		return err
 	}
-	for s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE {
+	for s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE || s.token == TOK_NE {
 		op := s.token
 		nextToken(s)
 		err = ParseSumTerm(s)
@@ -387,12 +397,14 @@ func ParseIf(s *state) error {
 	if err != nil {
 		return err
 	}
-	label := NewLabel(s)
-	EmitJumpFalse(s.labelNo)
+	endLabel := NewLabel(s)
+	elseLabel := NewLabel(s)
+	EmitJumpFalse(elseLabel)
 	if s.token != TOK_LBRACE {
 		return fmt.Errorf("Expected { after if but got %s", s.tokenString)
 	}
 	err = ParseStatements(s)
+	EmitJump(endLabel)
 	if err != nil {
 		return err
 	}
@@ -401,7 +413,7 @@ func ParseIf(s *state) error {
 	}
 	nextToken(s)
 	for s.token == TOK_ELSE {
-		EmitLabel(label)
+		EmitLabel(elseLabel)
 		nextToken(s)
 		if s.token == TOK_IF {
 			nextToken(s)
@@ -409,25 +421,30 @@ func ParseIf(s *state) error {
 			if err != nil {
 				return err
 			}
-			label = NewLabel(s)
-			EmitJump(label)
+			elseLabel = NewLabel(s)
+			EmitJumpFalse(elseLabel)
 			if s.token != TOK_LBRACE {
 				return fmt.Errorf("Expected { after if but got %s", s.tokenString)
 			}
 			err = ParseStatements(s)
+			EmitJump(endLabel)
 			if err != nil {
 				return err
 			}
 			if s.token != TOK_RBRACE {
 				return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
 			}
+			nextToken(s)
+		} else {
+			err = ParseStatements(s)
+			nextToken(s)
 		}
-		if s.token != TOK_LBRACE {
-			return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
-		}
-		EmitLabel(label)
-		nextToken(s)
 	}
+	if s.token != TOK_RBRACE {
+		return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
+	}
+	EmitLabel(endLabel)
+
 	return nil
 }
 
@@ -438,6 +455,7 @@ func ParseStatement(s *state) error {
 		if err != nil {
 			return err
 		}
+		s.returned = true
 		EmitReturn()
 	} else if s.token == TOK_IF {
 		err := ParseIf(s)
@@ -461,6 +479,7 @@ func ParseFunctionDefinition(s *state) error {
 	if s.token != TOK_ID {
 		return fmt.Errorf("Expected function name but got %s", s.tokenString)
 	}
+	s.returned = false
 	fun := s.tokenString
 	slog.Info("Parsing function definition", "name", fun)
 	EmitFunction(fun)
@@ -494,6 +513,12 @@ func ParseFunctionDefinition(s *state) error {
 	}
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
+	}
+	if fun == "main" {
+		EmitExit()
+	}
+	if !s.returned {
+		EmitReturn()
 	}
 	nextToken(s)
 	return nil

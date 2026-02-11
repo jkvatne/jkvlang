@@ -12,6 +12,7 @@ type state = struct {
 	token       int
 	tokenString string
 	labelNo     int
+	returned    bool
 }
 
 const (
@@ -55,6 +56,8 @@ const (
 	TOK_ELSE
 	TOK_FOR
 	TOK_RETURN
+	TOK_DIV_ASGN
+	TOK_MULT_ASGN
 	TOK_SIZE
 )
 
@@ -100,6 +103,8 @@ var TokenNames = [...]string{
 	TOK_ELSE:        "ELSE",
 	TOK_FOR:         "FOR",
 	TOK_RETURN:      "RETURN",
+	TOK_DIV_ASGN:    "DIV_ASGN",
+	TOK_MULT_ASGN:   "MULT_ASGN",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -163,14 +168,28 @@ func nextToken(s *state) {
 				ch1, ch2 = nextChar(s)
 			}
 			ch1, ch2 = nextChar(s)
+
+		case ch1 == '/' && ch2 == '=':
+			ch1, ch2 = nextChar(s)
+			s.tokenString = "/="
+			s.token = TOK_DIV_ASGN
+			break
+		case ch1 == '/':
+			ch1, ch2 = nextChar(s)
+			s.tokenString = "*="
+			s.token = TOK_DIV
+			break
+
 		case ch1 == '>' && ch2 == '=':
 			ch1, ch2 = nextChar(s)
+			s.tokenString = ">="
 			s.token = TOK_GE
 			break
 		case ch1 == '>':
 			s.token = TOK_GT
 			break
 		case ch1 == '<' && ch2 == '=':
+			s.tokenString = "<="
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_LE
 			break
@@ -178,6 +197,7 @@ func nextToken(s *state) {
 			s.token = TOK_LT
 			break
 		case ch1 == '=' && ch2 == '=':
+			s.tokenString = "=="
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_EQ
 			break
@@ -185,6 +205,7 @@ func nextToken(s *state) {
 			s.token = TOK_ASSIGN
 			break
 		case ch1 == '!' && ch2 == '=':
+			s.tokenString = "!="
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_NE
 			break
@@ -206,9 +227,6 @@ func nextToken(s *state) {
 		case ch1 == ']':
 			s.token = TOK_RBRACK
 			break
-		case ch1 == '+' && ch2 != '+' && ch2 != '=':
-			s.token = TOK_PLUS
-			break
 		case ch1 == '+' && ch2 == '+':
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_PLUS_PLUS
@@ -219,8 +237,8 @@ func nextToken(s *state) {
 			s.tokenString = "+="
 			s.token = TOK_PLUS_ASGN
 			break
-		case ch1 == '-' && ch2 != '-' && ch2 != '=':
-			s.token = TOK_MINUS
+		case ch1 == '+':
+			s.token = TOK_PLUS
 			break
 		case ch1 == '-' && ch2 == '-':
 			ch1, ch2 = nextChar(s)
@@ -231,6 +249,9 @@ func nextToken(s *state) {
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_MINUS_ASGN
 			s.tokenString = "-="
+			break
+		case ch1 == '-':
+			s.token = TOK_MINUS
 			break
 		case ch1 == '&' && ch2 == '&':
 			ch1, ch2 = nextChar(s)
@@ -249,6 +270,11 @@ func nextToken(s *state) {
 		case ch1 == '|':
 			s.token = TOK_OR
 			s.tokenString = "|"
+			break
+		case ch1 == '*' && ch2 == '=':
+			ch1, ch2 = nextChar(s)
+			s.tokenString = "*="
+			s.token = TOK_MULT_ASGN
 			break
 		case ch1 == '*':
 			s.token = TOK_MULT

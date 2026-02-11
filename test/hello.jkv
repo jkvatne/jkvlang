@@ -1,29 +1,34 @@
+func short() {
+    z-=x
+    a*=b
+    s/=t
+}
+
+ func bar() {
+    x+=1
+    c = sum(a,b)
+    a = 1.234   // Comment a
+    b = 2.345   // Comment b
+    println("Hello World %s!\n")
+    x = y&z|x
+}
+
 func main() {
     if b {
         println("OK")
     } else if a>=b || c<a {
         println("Hi")
     } else if a==b {
-        c = a-b+mat[4]
+        c = a-b+m
     } else if b!=c {
         println("Lo")
+    } else {
+        printl("else")
     }
  }
 
- /*
- func bar() [
-    c = sum(a,b)
-    a = 1.234   // Comment a
-    b = 2.345   // Comment b
-    println("Hello World %s!\n")
-    x++
-    y--
-    z+=x
-    z-=y
-    x = y&z|x
-}
 
-func do() {
+func xdo() {
     x = sum(x,33)
 }
 
@@ -50,5 +55,3 @@ const (
     num1 I32 = 1
     num2 I32 = 1
 )
-
-*/

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 )
 
 func emit(opcode string, value string) {
@@ -12,9 +13,9 @@ func emit(opcode string, value string) {
 	}
 }
 
-func EmitPop(id string) {
-	slog.Info("Emit pop", "name", id)
-	emit("   POP", id)
+func EmitStore(id string) {
+	slog.Info("Pop stack and store value into", "name", id)
+	emit("   STORE", id)
 }
 
 func EmitPush(id string) {
@@ -43,6 +44,7 @@ func PushFloat(s *state, value string) {
 }
 
 func PushString(s *state, value string) {
+	value = strings.Replace(value, "\n", "\\n", -1)
 	slog.Info("PushString", "Value", value)
 	emit("   PUSHSTR", "\""+value+"\"")
 }
@@ -55,6 +57,7 @@ func EmitLabel(n int) {
 func EmitFunction(id string) {
 	slog.Info("EmitFunction")
 	emit(id, ":")
+	emit("   PROLOG", "")
 }
 
 func EmitJump(n int) {
@@ -70,4 +73,9 @@ func EmitJumpFalse(n int) {
 func EmitReturn() {
 	slog.Info("EmitReturn")
 	emit("   RETURN", "")
+}
+
+func EmitExit() {
+	slog.Info("EmitExit")
+	emit("   EXIT", "")
 }

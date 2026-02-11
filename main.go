@@ -12,7 +12,7 @@ const Version string = "v0.0.1"
 
 var (
 	workdir    = flag.String("build", "./build", "Path to intermediate files during build")
-	run        = flag.Bool("run", true, "Set false to not run after compile")
+	run        = flag.Bool("run", false, "Set false to not run after compile")
 	help       = flag.Bool("help", false, "Show help")
 	version    = flag.Bool("version", false, "Show version and exit")
 	outputName = flag.String("o", "", "Output filename")
