@@ -100,3 +100,15 @@ func EmitModify(s *state, id string, op int) {
 	slog.Info("EmitModify", "id", id, "op", op)
 	emit(s, "   "+TokenNames[op], id)
 }
+
+func EmitType(s *state, name string, typ int) {
+	emit(s, "Type "+name, strconv.Itoa(typ))
+}
+
+func EmitVar(s *state, name string, value string, typ string) {
+	emit(s, "Var:"+name+" value:\""+value+"\" Func:\""+s.currentFunc+"\" Type:"+typ, "")
+}
+
+func EmitConst(s *state, name string, value string, typ string) {
+	emit(s, "Const:"+name+"="+value+" Func:"+s.currentFunc+" Type:"+typ, "")
+}

@@ -1,5 +1,30 @@
 
-func foo() I64 {
+func fi(a Bool) {
+    if a ? a+=1 : a+=2
+}
+
+func short() {
+    z-=3;  z+=4
+    z*=8
+    s = 24
+    s /=6
+    return s
+}
+
+const (
+    const1 I32 = 1
+    const2 I32 = 2
+)
+
+type Test = U16
+type Age = U8
+
+type (
+    Name = string
+    Address = string
+)
+
+func foo() Age {
     var (
       XI32 I32
       XI64 I64
@@ -15,20 +40,13 @@ func foo() I64 {
     return XI64
 }
 
-func fi() {
-    if a ? a+=1 : a+=2
-}
 
-/* Comment */
-// Comment
+// ShortComment
+/*
+/* Nested comment */
+*/
 
-func short() {
-    z-=3;  z+=4
-    z*=8
-    s = 24
-    s /=6
-    return s
-}
+/* Temporarily ignore the rest
 
 func bar() {
     x+=1
@@ -54,21 +72,18 @@ func main() {
  }
 
 
-func xdo() {
+func do(x I32) I32 {
     x = sum(x,33)
 }
 
-func sum(x F64, y F64) F64 {
+func sum(x I32, y I32) I32 {
   a = 450
-  return a+y+x+6
+  return y+x
 }
 
-var (
-  xx I32
-  yy I32
-  zz I32
-  mat[32] I32
-)
+func incr(x I32) I32 {
+  return x+1
+}
 
 func foo() {
   w1 = x+y
@@ -77,7 +92,10 @@ func foo() {
   w4 = (x+y)*z
 }
 
-const (
-    num1 I32 = 1
-    num2 I32 = 1
+// This should fail
+var (
+  xx I32
+  yy I32
 )
+
+*/

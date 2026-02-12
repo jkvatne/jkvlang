@@ -16,6 +16,7 @@ type state = struct {
 	returned    bool
 	outputFile  *os.File
 	unitName    string
+	currentFunc string
 }
 
 const (
@@ -70,6 +71,7 @@ const (
 	TOK_MAX
 	TOK_MIN
 	TOK_ABS
+	TOK_TYPE
 	TOK_SIZE
 )
 
@@ -126,6 +128,7 @@ var TokenNames = [...]string{
 	TOK_MIN:         "MIN",
 	TOK_MAX:         "MAX",
 	TOK_ABS:         "ABS",
+	TOK_TYPE:        "TYPE",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -208,7 +211,6 @@ func nextToken(s *state) {
 		case ch1 == '\r':
 			continue
 		case ch1 == '\n':
-			s.lineNum++
 			continue
 		case ch1 == '\f':
 			continue
@@ -281,16 +283,28 @@ func nextToken(s *state) {
 			s.token = TOK_DOT
 		case ch1 == '/' && ch2 == '/':
 			// Skip comment
-			slog.Info("Skipping comment")
+			slog.Info("Skipping short comment", "line", s.lineNum)
 			for ch1 != '\n' && !eof(s) {
 				ch1, ch2 = nextChar(s)
 			}
 			continue
 		case ch1 == '/' && ch2 == '*':
 			// Skip /* */ comment
-			slog.Info("Skipping long comment")
-			for (ch1 != '*' || ch2 != '/') && !eof(s) {
+			slog.Info("Skipping long comment", "line", s.lineNum)
+			level := 1
+			for !eof(s) && level > 0 {
 				ch1, ch2 = nextChar(s)
+				if ch1 == '/' && ch2 == '*' {
+					slog.Info("Nested comment started", "line", s.lineNum)
+					level++
+				} else if ch1 == '*' && ch2 == '/' {
+					if level > 1 {
+						slog.Info("End of nested comment", "line", s.lineNum)
+					} else {
+						slog.Info("End of long comment", "line", s.lineNum)
+					}
+					level--
+				}
 			}
 			ch1, ch2 = nextChar(s)
 			continue
@@ -360,6 +374,8 @@ func nextToken(s *state) {
 				s.token = TOK_MAX
 			case "abs":
 				s.token = TOK_ABS
+			case "type":
+				s.token = TOK_TYPE
 			case "struct":
 				s.token = TOK_STRUCT
 			}
