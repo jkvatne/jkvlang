@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 )
 
 var emitPath string
@@ -34,9 +33,9 @@ func EmitStore(s *state, id string) {
 	emit(s, "   STORE", id)
 }
 
-func EmitPush(s *state, id string) {
+func EmitPush(s *state, id string, typ string) {
 	slog.Info("Emit push", "name", id)
-	emit(s, "   PUSH", id)
+	emit(s, "   PUSH_"+typ, id)
 }
 
 func EmitCall(s *state, id string) {
@@ -47,22 +46,6 @@ func EmitCall(s *state, id string) {
 func GenerateOp(s *state, op int) {
 	slog.Info("Generate", "Op", TokenNames[op])
 	emit(s, "   OP", TokenNames[op])
-}
-
-func PushInt(s *state, value string) {
-	slog.Info("PushInt", "Value", value)
-	emit(s, "   PUSH", value)
-}
-
-func PushFloat(s *state, value string) {
-	slog.Info("PushFloat", "Value", value)
-	emit(s, "   PUSH", value)
-}
-
-func PushString(s *state, value string) {
-	value = strings.Replace(value, "\n", "\\n", -1)
-	slog.Info("PushString", "Value", value)
-	emit(s, "   PUSHSTR", "\""+value+"\"")
 }
 
 func EmitLabel(s *state, n int) {
@@ -96,9 +79,9 @@ func EmitExit(s *state) {
 	emit(s, "   EXIT", "")
 }
 
-func EmitModify(s *state, id string, op int) {
+func EmitModify(s *state, id string, op int, value string) {
 	slog.Info("EmitModify", "id", id, "op", op)
-	emit(s, "   "+TokenNames[op], id)
+	emit(s, "   "+TokenNames[op], id+" "+value)
 }
 
 func EmitType(s *state, name string, typ int) {

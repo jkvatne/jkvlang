@@ -209,14 +209,14 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 				return typ, err
 			}
 			slog.Info("Store lvalue op tos to", "lvalue", id)
-			EmitModify(s, id, op)
+			EmitModify(s, id, op, typ.Name())
 		} else {
 			v := Variables[id]
 			if v == nil {
 				return nil, fmt.Errorf("Did not find variable \"%s\"", id)
 			}
 			typ = v.typ
-			EmitPush(s, id)
+			EmitPush(s, id, TypeName[typ.pt])
 		}
 
 	} else if s.token == TOK_LPAR {
@@ -231,13 +231,14 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 		}
 		nextToken(s)
 	} else if s.token == TOK_INT {
-		PushInt(s, s.tokenString)
+		EmitPush(s, s.tokenString, "INT")
+		typ = TypeDefs["I64"]
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
-		PushFloat(s, s.tokenString)
+		EmitPush(s, s.tokenString, "FLOAT")
 		nextToken(s)
 	} else if s.token == TOK_STRING {
-		PushString(s, s.tokenString)
+		EmitPush(s, s.tokenString, "STRING")
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
 		slog.Info("Unary: Evaluate array indexes for ", "function", id)
@@ -250,7 +251,8 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 		}
 	} else {
 		slog.Info("Unary: Got a variable", "name", id)
-		EmitPush(s, id)
+		v := Variables[id]
+		EmitPush(s, id, TypeName[v.typ.pt])
 	}
 	return typ, nil
 }
@@ -296,7 +298,7 @@ func ParseCompareTerm(s *state) (*TypeDef, error) {
 	if err != nil {
 		return typ, err
 	}
-	for s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE || s.token == TOK_NE {
+	if s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE || s.token == TOK_NE {
 		op := s.token
 		nextToken(s)
 		typ, err = ParseSumTerm(s)
@@ -304,8 +306,9 @@ func ParseCompareTerm(s *state) (*TypeDef, error) {
 			return typ, err
 		}
 		GenerateOp(s, op)
+		typ = TypeDefs["bool"]
 	}
-	return TypeDefs["bool"], nil
+	return typ, err
 }
 
 func ParseExpression(s *state) (*TypeDef, error) {

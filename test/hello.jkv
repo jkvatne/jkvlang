@@ -1,6 +1,7 @@
 
-func fi(a Bool) {
-    if a ? a+=1 : a+=2
+func fi(a Bool, c I32) {
+    if a ? c+=1 : c+=2
+    return c
 }
 
 func short() {

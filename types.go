@@ -29,6 +29,10 @@ type TypeDef struct {
 	size int
 }
 
+func (t *TypeDef) Name() string {
+	return TypeName[t.pt]
+}
+
 var TypeName = [...]string{"NULL", "BOOL", "I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64", "F32", "F64", "Rune", "String", "string", "func", "array"}
 
 var TypeDefs map[string]*TypeDef
