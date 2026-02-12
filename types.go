@@ -3,6 +3,7 @@ package main
 const (
 	TYP_NULL PrimaryType = iota
 	TYP_BOOL
+	TYP_INT
 	TYP_I8
 	TYP_I16
 	TYP_I32
@@ -25,15 +26,16 @@ const (
 type PrimaryType int
 
 type TypeDef struct {
-	pt   PrimaryType
-	size int
+	pt    PrimaryType
+	size  int
+	value string
 }
 
 func (t *TypeDef) Name() string {
 	return TypeName[t.pt]
 }
 
-var TypeName = [...]string{"NULL", "BOOL", "I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64", "F32", "F64", "Rune", "String", "string", "func", "array"}
+var TypeName = [...]string{"NULL", "BOOL", "INT", "I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64", "F32", "F64", "Rune", "String", "string", "func", "array"}
 
 var TypeDefs map[string]*TypeDef
 var UserTypes map[string]*TypeDef
@@ -41,6 +43,7 @@ var UserTypes map[string]*TypeDef
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)
 	UserTypes = make(map[string]*TypeDef)
+	TypeDefs["INT"] = &TypeDef{pt: TYP_INT, size: 0}
 	TypeDefs["Bool"] = &TypeDef{pt: TYP_BOOL, size: 1}
 	TypeDefs["bool"] = &TypeDef{pt: TYP_BOOL, size: 1}
 	TypeDefs["I8"] = &TypeDef{pt: TYP_I8, size: 1}

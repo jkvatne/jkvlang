@@ -153,6 +153,35 @@ func ParseFormalArgList(s *state, funcName string) error {
 	return nil
 }
 
+// CanAssign is true if we can assign type t2 to t1
+func CanAssign(dst *TypeDef, src *TypeDef) bool {
+	if dst.pt == TYP_I8 && src.pt == TYP_I8 {
+		return true
+	}
+	if dst.pt == TYP_I16 && (src.pt == TYP_I16 || src.pt == TYP_I8 || src.pt == TYP_U8) {
+		return true
+	}
+	if dst.pt == TYP_I32 && (src.pt == TYP_I32 || src.pt == TYP_I16 || src.pt == TYP_I8 || src.pt == TYP_U8) {
+		return true
+	}
+	if dst.pt == TYP_I64 && (src.pt == TYP_I32 || src.pt == TYP_U32 || src.pt == TYP_U16 || src.pt == TYP_I16 || src.pt == TYP_I8 || src.pt == TYP_U8) {
+		return true
+	}
+	if dst.pt == TYP_U8 && src.pt == TYP_U8 {
+		return true
+	}
+	if dst.pt == TYP_U16 && (src.pt == TYP_U16 || src.pt == TYP_U8) {
+		return true
+	}
+	if dst.pt == TYP_U32 && (src.pt == TYP_U32 || src.pt == TYP_U16 || src.pt == TYP_U8) {
+		return true
+	}
+	if dst.pt == TYP_U64 && (src.pt == TYP_U64 || src.pt == TYP_U32 || src.pt == TYP_U16 || src.pt == TYP_U8) {
+		return true
+	}
+	return false
+}
+
 // ParseUnary will parse a parantesis term, a number, a string, a function call
 func ParseUnary(s *state) (typ *TypeDef, err error) {
 	slog.Info("ParseUnary variable/function/array", "Token", s.tokenString)
@@ -195,6 +224,7 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 			typ, err = ParseExpression(s)
 			if TypeDefs[id] == nil {
 				EmitVar(s, id, "", "")
+				AddVar(s, id, typ, "", 0)
 			}
 			if err != nil {
 				return typ, err
@@ -204,16 +234,43 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 		} else if s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
 			op := s.token
 			nextToken(s)
+			v := Variables[id]
 			typ, err = ParseExpression(s)
 			if err != nil {
 				return typ, err
+			}
+			if typ.pt == TYP_INT {
+				var num int64
+				// The expression was an integer litteral of unknown type
+				// Assign type to the variable based on size of integer
+				if typ.value != "" {
+					num, err = strconv.ParseInt(typ.value, 10, 64)
+					if err == nil {
+						if num >= -128 && num <= 127 {
+							typ.pt = TYP_I8
+						} else if num >= -32768 && num <= 32767 {
+							typ.pt = TYP_I16
+						} else if num >= -2147483648 && num <= 2147483647 {
+							typ.pt = TYP_I32
+						} else {
+							typ.pt = TYP_I64
+						}
+					}
+				}
+			}
+			if v == nil {
+				AddVar(s, id, typ, "", 0)
+				v = Variables[id]
+			}
+			if !CanAssign(v.typ, typ) {
+				return typ, fmt.Errorf("Expected type %s but got %s for %s", v.typ.Name(), typ.Name(), id)
 			}
 			slog.Info("Store lvalue op tos to", "lvalue", id)
 			EmitModify(s, id, op, typ.Name())
 		} else {
 			v := Variables[id]
 			if v == nil {
-				return nil, fmt.Errorf("Did not find variable \"%s\"", id)
+				return nil, fmt.Errorf("Line %d: Did not find variable \"%s\"", s.lineNum, id)
 			}
 			typ = v.typ
 			EmitPush(s, id, TypeName[typ.pt])
@@ -232,7 +289,8 @@ func ParseUnary(s *state) (typ *TypeDef, err error) {
 		nextToken(s)
 	} else if s.token == TOK_INT {
 		EmitPush(s, s.tokenString, "INT")
-		typ = TypeDefs["I64"]
+		typ = TypeDefs["INT"]
+		typ.value = s.tokenString
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
 		EmitPush(s, s.tokenString, "FLOAT")

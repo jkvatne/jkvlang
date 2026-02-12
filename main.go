@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"os/exec"
+	"time"
 )
 
 const Version string = "v0.0.1"
@@ -21,6 +22,8 @@ var (
 )
 
 func main() {
+	t := time.Now()
+	fmt.Printf("%v\n", t)
 	if len(TokenNames) != TOK_SIZE+1 {
 		panic("Token names length must be equal to TOK_SIZE")
 	}

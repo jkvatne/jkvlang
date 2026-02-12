@@ -55,7 +55,7 @@ func EmitLabel(s *state, n int) {
 
 func EmitFunction(s *state, id string) {
 	slog.Info("EmitFunction")
-	emit(s, id, ":")
+	emit(s, id, ":  // Line "+strconv.Itoa(s.lineNum))
 	emit(s, "   PROLOG", "")
 }
 
