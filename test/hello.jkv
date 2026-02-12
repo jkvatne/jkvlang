@@ -1,3 +1,27 @@
+
+func foo() I64 {
+    var (
+      XI32 I32
+      XI64 I64
+      XI16 I16
+      XI8 I8
+      XU8 U8
+      XU16 U16
+      XU32  U32
+      XU64 U64
+      mat[32] I32
+    )
+    YI32 = I32(123)
+    return XI64
+}
+
+func fi() {
+    if a ? a+=1 : a+=2
+}
+
+/* Comment */
+// Comment
+
 func short() {
     z-=3;  z+=4
     z*=8
@@ -6,7 +30,7 @@ func short() {
     return s
 }
 
- func bar() {
+func bar() {
     x+=1
     c = sum(a,b)
     a = 1.234   // Comment a

@@ -366,7 +366,7 @@ func ParseStatements(s *state) error {
 		if err != nil {
 			return err
 		}
-		if s.token == TOK_RBRACE {
+		if s.token == TOK_RBRACE || s.token == TOK_COLON {
 			break
 		}
 		nextToken(s)
@@ -391,48 +391,63 @@ func ParseIf(s *state) error {
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
 	EmitJumpFalse(s, elseLabel)
-	if s.token != TOK_LBRACE {
-		return fmt.Errorf("Expected { after if but got %s", s.tokenString)
-	}
-	err = ParseStatements(s)
-	EmitJump(s, endLabel)
-	if err != nil {
-		return err
-	}
-	if s.token != TOK_RBRACE {
-		return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
-	}
-	nextToken(s)
-	for s.token == TOK_ELSE {
-		EmitLabel(s, elseLabel)
-		nextToken(s)
-		if s.token == TOK_IF {
-			nextToken(s)
-			err = ParseExpression(s)
-			if err != nil {
-				return err
-			}
-			elseLabel = NewLabel(s)
-			EmitJumpFalse(s, elseLabel)
-			if s.token != TOK_LBRACE {
-				return fmt.Errorf("Expected { after if but got %s", s.tokenString)
-			}
-			err = ParseStatements(s)
-			EmitJump(s, endLabel)
-			if err != nil {
-				return err
-			}
-			if s.token != TOK_RBRACE {
-				return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
-			}
-			nextToken(s)
-		} else {
-			err = ParseStatements(s)
-			nextToken(s)
+
+	if s.token == TOK_COLON || s.token == TOK_QMARK {
+		err = ParseStatements(s)
+		EmitJump(s, endLabel)
+		if err != nil {
+			return err
 		}
-	}
-	if s.token != TOK_RBRACE {
-		return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
+		if s.token == TOK_COLON {
+			EmitLabel(s, elseLabel)
+			err = ParseStatements(s)
+			if err != nil {
+				return err
+			}
+		}
+	} else if s.token == TOK_LBRACE {
+		err = ParseStatements(s)
+		EmitJump(s, endLabel)
+		if err != nil {
+			return err
+		}
+		if s.token != TOK_RBRACE {
+			return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
+		}
+		nextToken(s)
+		for s.token == TOK_ELSE {
+			EmitLabel(s, elseLabel)
+			nextToken(s)
+			if s.token == TOK_IF {
+				nextToken(s)
+				err = ParseExpression(s)
+				if err != nil {
+					return err
+				}
+				elseLabel = NewLabel(s)
+				EmitJumpFalse(s, elseLabel)
+				if s.token != TOK_LBRACE {
+					return fmt.Errorf("Expected { after if but got %s", s.tokenString)
+				}
+				err = ParseStatements(s)
+				EmitJump(s, endLabel)
+				if err != nil {
+					return err
+				}
+				if s.token != TOK_RBRACE {
+					return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
+				}
+				nextToken(s)
+			} else {
+				err = ParseStatements(s)
+				nextToken(s)
+			}
+		}
+		if s.token != TOK_RBRACE {
+			return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
+		}
+	} else {
+		return fmt.Errorf("Expected { or :  but got %s", s.tokenString)
 	}
 	EmitLabel(s, endLabel)
 
@@ -463,6 +478,8 @@ func ParseStatement(s *state) error {
 	} else if s.token == TOK_SEMICOLON {
 		// Ignore
 		nextToken(s)
+	} else if s.token == TOK_VAR {
+		return ParseVars(s)
 	} else {
 		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
@@ -518,6 +535,24 @@ func ParseFunctionDefinition(s *state) error {
 	return nil
 }
 
+func ParseVars(s *state) error {
+	var err error
+	nextToken(s)
+	if s.token == TOK_LPAR {
+		nextToken(s)
+		for s.token != TOK_RPAR {
+			err = ParseVar(s, false)
+			if err != nil {
+				break
+			}
+		}
+		nextToken(s)
+	} else {
+		err = ParseVar(s, false)
+	}
+	return err
+}
+
 func CompileFile(s *state, workdir string) error {
 	err := EmitTo(s, workdir)
 	if err != nil {
@@ -544,19 +579,7 @@ func CompileFile(s *state, workdir string) error {
 				err = ParseVar(s, true)
 			}
 		} else if s.token == TOK_VAR {
-			nextToken(s)
-			if s.token == TOK_LPAR {
-				nextToken(s)
-				for s.token != TOK_RPAR {
-					err = ParseVar(s, false)
-					if err != nil {
-						break
-					}
-				}
-				nextToken(s)
-			} else {
-				err = ParseVar(s, false)
-			}
+			ParseVars(s)
 		} else {
 			return fmt.Errorf("Unexpected token %s", s.tokenString)
 		}

@@ -21,6 +21,9 @@ var (
 )
 
 func main() {
+	if len(TokenNames) != TOK_SIZE+1 {
+		panic("Token names length must be equal to TOK_SIZE")
+	}
 	flag.Parse()
 	log.SetFlags(0)
 	slog.SetLogLoggerLevel(4)

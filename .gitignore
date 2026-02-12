@@ -4,18 +4,16 @@
 /build/
 /.idea/
 
-# binaries
-/babygo.mac
-
-/babygo*
-/bbg*
-/hello
-
-# pre stuff
-/pre/internal/
-/pre/*.go
-
 # intermediate files
 a.out
 *.o
+*.obj
+
+# generated files
 *.exe
+*.tok
+*.asm
+*.var
+
+#private files
+.private/

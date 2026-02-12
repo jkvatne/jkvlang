@@ -88,7 +88,7 @@ func EmitJumpFalse(s *state, n int) {
 
 func EmitReturn(s *state) {
 	slog.Info("EmitReturn")
-	emit(s, "   RETURN", "")
+	emit(s, "   RETURN", "\n")
 }
 
 func EmitExit(s *state) {
