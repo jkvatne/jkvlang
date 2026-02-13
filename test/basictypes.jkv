@@ -1,0 +1,22 @@
+
+type Age = U8
+
+func bar() Age {
+    x = 123
+    return x
+}
+
+func foo() Age {
+    var (
+      xI32 I32
+      xI64 I64
+      xI16 I16
+      xU8 U8
+      xU16 U16
+      xU32  U32
+    )
+    yI32 = 123
+    return xU8
+}
+
+

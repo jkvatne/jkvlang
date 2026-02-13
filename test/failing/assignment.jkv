@@ -1,0 +1,5 @@
+// Should fail because of retuned value out of range
+
+func fi(a Bool, c I32) U8 {
+    return 2345
+}

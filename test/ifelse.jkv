@@ -1,0 +1,23 @@
+
+func main() {
+    b = true
+    c = 1
+    a = 2
+    if b {
+        println("OK")
+    } else if a>=b || c<a {
+        println("Hi")
+    } else if a==b {
+        c = a-b+c
+    } else if b!=c {
+        println("Lo")
+        if b {
+           println("ack")
+        }
+    } else {
+        println("else")
+    }
+    
+    if b ? println("OK") : println("FAIL")
+ }
+

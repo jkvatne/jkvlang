@@ -1,0 +1,5 @@
+// Sould fail because of mismatched comment
+
+/* Comment
+
+ a=f(2)
