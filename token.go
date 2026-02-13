@@ -10,7 +10,7 @@ type state = struct {
 	text        []byte
 	p           int
 	lineNum     int
-	token       int
+	token       Token
 	tokenString string
 	labelNo     int
 	returned    bool
@@ -19,8 +19,10 @@ type state = struct {
 	currentFunc string
 }
 
+type Token int
+
 const (
-	TOK_UNDEF = iota
+	TOK_UNDEF Token = iota
 	TOK_PLUS
 	TOK_PLUS_PLUS
 	TOK_PLUS_ASGN
@@ -72,6 +74,7 @@ const (
 	TOK_MIN
 	TOK_ABS
 	TOK_TYPE
+	TOK_ASSERT
 	TOK_SIZE
 )
 
@@ -129,6 +132,7 @@ var TokenNames = [...]string{
 	TOK_MAX:         "MAX",
 	TOK_ABS:         "ABS",
 	TOK_TYPE:        "TYPE",
+	TOK_ASSERT:      "ASSERT",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -378,6 +382,8 @@ func nextToken(s *state) {
 				s.token = TOK_TYPE
 			case "struct":
 				s.token = TOK_STRUCT
+			case "assert":
+				s.token = TOK_ASSERT
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK

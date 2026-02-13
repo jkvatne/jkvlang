@@ -28,24 +28,19 @@ func emit(s *state, opcode string, value string) {
 	s.outputFile.WriteString(fmt.Sprintf("%s %s\n", opcode, value))
 }
 
-func EmitStore(s *state, id string) {
+func EmitStore(s *state, id string, typ string) {
 	slog.Info("Pop stack and store value into", "name", id)
-	emit(s, "   STORE", id)
+	emit(s, "   STORE_"+typ, id)
 }
 
-func EmitPush(s *state, id string, typ string) {
-	slog.Info("Emit push", "name", id)
-	emit(s, "   PUSH_"+typ, id)
+func EmitLoad(s *state, id string, typ string) {
+	slog.Info("Emit load", "name", id)
+	emit(s, "   LOAD_"+typ, id)
 }
 
 func EmitCall(s *state, id string) {
 	slog.Info("Emit call", "name", id)
 	emit(s, "   CALL", id)
-}
-
-func GenerateOp(s *state, op int) {
-	slog.Info("Generate", "Op", TokenNames[op])
-	emit(s, "   OP", TokenNames[op])
 }
 
 func EmitLabel(s *state, n int) {
@@ -79,17 +74,17 @@ func EmitExit(s *state) {
 	emit(s, "   EXIT", "")
 }
 
-func EmitModify(s *state, id string, op int, value string) {
+func EmitModify(s *state, id string, op Token, value string) {
 	slog.Info("EmitModify", "id", id, "op", op)
 	emit(s, "   "+TokenNames[op], id+" "+value)
 }
 
 func EmitType(s *state, name string, typ int) {
-	emit(s, "Type "+name, strconv.Itoa(typ))
+	slog.Info("Type "+name, strconv.Itoa(typ))
 }
 
 func EmitVar(s *state, name string, value string, typ string) {
-	emit(s, "Var:"+name+" value:\""+value+"\" Func:\""+s.currentFunc+"\" Type:"+typ, "")
+	slog.Info("Var:"+name+" value:\""+value+"\" Func:\""+s.currentFunc+"\" Type:"+typ, "")
 }
 
 func EmitConst(s *state, name string, value string, typ string) {
