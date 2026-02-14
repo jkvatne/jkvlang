@@ -15,6 +15,7 @@ type ValueDef struct {
 	floatValue  float64
 	boolValue   bool
 	stringValue string
+	regNo       int
 }
 
 var (
@@ -75,7 +76,7 @@ func GenerateOp(s *state, op Token, val1 ValueDef, val2 ValueDef) {
 		}
 	}
 	slog.Info("Generate", "Op", TokenNames[op])
-	emit(s, "   OP", TokenNames[op])
+	EmitOp(s, op)
 }
 
 func StringToValue(s string) (value ValueDef, err error) {

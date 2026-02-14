@@ -5,11 +5,11 @@ func main() {
   y=300
   z=1
   w1 = x+y
-  assert w1=302
+  assert w1==302
   w2 = x+y*z
-  assert w2=302
+  assert w2==302
   w3 = (x+y)*z
-  assert w3=302
+  assert w3==302
   w4 = ((x+y)*z+1)
-  assert w4=303
+  assert w4==303
 }

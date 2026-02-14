@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -70,6 +71,7 @@ type VarDef = struct {
 	name     string
 	typ      *TypeDef
 	location VarLocation
+	value    ValueDef
 }
 
 var VarDefs map[string]*VarDef
@@ -85,8 +87,11 @@ func AddConst(s *state, id string, typ *TypeDef, value string) {
 func AddVar(s *state, id string, typ *TypeDef, value string, arraysize int) {
 	v := VarDefs[id]
 	if v == nil {
-		v = &VarDef{name: id, typ: typ}
+		v = &VarDef{name: id, typ: typ, value: ValueDef{typ: typ, hasValue: false}}
 		VarDefs[id] = v
+	}
+	if typ == nil {
+		return
 	}
 	EmitVar(s, id, "", PrimaryTypeNames[v.typ.pt])
 }
@@ -177,6 +182,9 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 			if ok {
 				idTyp = idValue.typ
 			}
+			if idTyp == nil {
+				slog.Error("Expected type definition but got nil", "type", idTyp)
+			}
 			if !ok {
 				AddVar(s, id, idTyp, "", 0)
 			}
@@ -199,20 +207,21 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 			slog.Info("Store lvalue op tos to", "lvalue", id)
 			EmitModify(s, id, op, value.typ.pt.Name())
 		} else {
-			v := VarDefs[id]
-			if v == nil {
+			v, ok := VarDefs[id]
+			if !ok {
 				return NoValue, fmt.Errorf("Line %d: Did not find variable \"%s\"", s.lineNum, id)
 			}
-			EmitLoad(s, id, v.typ.pt.Name())
+			value = v.value
+			if v.value.typ == nil {
+				return NoValue, fmt.Errorf("Line %d: No type for \"%s\"", s.lineNum, id)
+			}
+			EmitLoad(s, id, value.typ.pt.Name())
 		}
 
 	} else if s.token == TOK_LPAR {
 		// Parantesis term
 		nextToken(s)
 		value, err = ParseExpression(s)
-		if err != nil {
-			return value, err
-		}
 		if s.token != TOK_RPAR {
 			return value, fmt.Errorf("Expected ')' but got %s", s.tokenString)
 		}
@@ -220,9 +229,6 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
 		EmitLoad(s, s.tokenString, value.typ.pt.Name())
-		if err != nil {
-			return NoValue, err
-		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
 		EmitLoad(s, s.tokenString, "FLOAT")
@@ -246,11 +252,9 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 			}
 		}
 	} else {
-		slog.Info("Unary: Got a variable", "name", id)
-		v := VarDefs[id]
-		EmitLoad(s, id, PrimaryTypeNames[v.typ.pt])
+		slog.Error("Unexpected token ", s.tokenString)
 	}
-	return value, nil
+	return value, err
 }
 
 func ParseProd(s *state) (value ValueDef, err error) {
@@ -273,6 +277,13 @@ func ParseProd(s *state) (value ValueDef, err error) {
 	return value, nil
 }
 
+func widest(v1 ValueDef, v2 ValueDef) ValueDef {
+	if v1.typ.pt > v2.typ.pt {
+		return v1
+	}
+	return v2
+}
+
 func ParseSumTerm(s *state) (value ValueDef, err error) {
 	var value2 ValueDef
 	value, err = ParseProd(s)
@@ -287,6 +298,7 @@ func ParseSumTerm(s *state) (value ValueDef, err error) {
 			GenerateOp(s, op, value, value2)
 		}
 		GenerateOp(s, op, value, value2)
+		value = widest(value, value2)
 	}
 	return value, nil
 }
@@ -354,7 +366,9 @@ func ParseStatement(s *state) (err error) {
 	} else if s.token == TOK_FOR {
 		nextToken(s)
 	} else if s.token == TOK_ASSERT {
+		nextToken(s)
 		_, err = ParseExpression(s)
+		EmitAssert(s)
 	} else if s.token == TOK_ID {
 		_, err = ParseExpression(s)
 	} else if s.token == TOK_SEMICOLON {
@@ -365,6 +379,7 @@ func ParseStatement(s *state) (err error) {
 	} else {
 		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
+	EmitLineNo(s)
 	return err
 }
 
@@ -642,8 +657,7 @@ func CompileFile(name string, workdir string) error {
 	if err != nil {
 		slog.Error("Could not open file %s : %s", name, err.Error())
 	}
-	s.unitName = strings.TrimSuffix(name, ".jkv")
-
+	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 	err = EmitTo(s, workdir)
 	if err != nil {
 		return err
@@ -664,5 +678,6 @@ func CompileFile(name string, workdir string) error {
 			return err
 		}
 	}
+	_ = EmitClose(s)
 	return nil
 }
