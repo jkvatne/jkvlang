@@ -526,9 +526,6 @@ func ParseFunctionDefinition(s *state) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
 	}
-	if fun == "main" {
-		EmitExit(s)
-	}
 	if !s.returned {
 		EmitReturn(s)
 	}

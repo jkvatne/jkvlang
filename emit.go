@@ -11,7 +11,7 @@ import (
 func EmitTo(s *state, workDir string) error {
 	fn := filepath.Join(workDir, s.unitName+".tok")
 	var err error
-	s.outputFile, err = os.OpenFile(fn, os.O_CREATE, os.ModePerm)
+	s.outputFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	emit(s, "// Token file ", fn)
 	return err
 }
