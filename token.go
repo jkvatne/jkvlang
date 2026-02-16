@@ -157,6 +157,9 @@ func No(s *State) string {
 }
 
 func nextChar(s *State) (uint8, uint8) {
+	if eof(s) {
+		return 0, 0
+	}
 	ch1 := s.text[s.p]
 	if ch1 == '\n' {
 		s.lineNum++
@@ -167,7 +170,6 @@ func nextChar(s *State) (uint8, uint8) {
 		return ch1, 0
 	}
 	ch2 := s.text[s.p]
-	// slog.Debug("Got", "s1:", string(ch1), "s2:", string(ch2))
 	return ch1, ch2
 }
 

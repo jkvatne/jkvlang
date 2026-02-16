@@ -20,7 +20,6 @@ var (
 	version    = flag.Bool("version", false, "Show version and exit")
 	outputName = flag.String("o", "", "Output filename")
 	inputPath  = flag.String("src", "./", "Source directory")
-	noCode     = flag.Bool("no", false, "Do not generate code")
 	oneFile    = flag.String("file", "", "Compile a single file")
 )
 
@@ -47,7 +46,7 @@ func main() {
 	}
 	flag.Parse()
 	log.SetFlags(0)
-	slog.SetLogLoggerLevel(-16)
+	slog.SetLogLoggerLevel(4)
 	if *version {
 		fmt.Println(Version)
 	}

@@ -174,6 +174,12 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		} else if s.token == TOK_ASSIGN {
 			nextToken(s)
 			value, err = ParseExpression(s)
+			if err != nil {
+				return value, err
+			}
+			if value.typ == nil {
+				return NoValue, fmt.Errorf(No(s) + " No type of expression")
+			}
 			exprTyp := value.typ
 			idTyp := exprTyp
 			// id is the variable we assign to. Find its type, if any
@@ -182,7 +188,7 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 				idTyp = idValue.typ
 			}
 			if idTyp == nil {
-				slog.Error("Expected type definition but got nil", "type", idTyp)
+				return NoValue, fmt.Errorf(No(s) + " No type of left side variable")
 			}
 			if !ok {
 				AddVar(s, id, idTyp, "", 0)
@@ -227,6 +233,9 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		nextToken(s)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
+		if value.typ == nil {
+			return NoValue, fmt.Errorf(No(s) + " Missing integer type")
+		}
 		EmitLoad(s, s.tokenString, value.typ.pt.Name())
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
@@ -276,7 +285,7 @@ func ParseProd(s *State) (value ValueDef, err error) {
 		nextToken(s)
 		value2, err = ParseUnary(s)
 		if err == nil {
-			GenerateOp(s, op, value, value2)
+			err = GenerateOp(s, op, value, value2)
 		}
 		if err != nil {
 			return NoValue, err
@@ -303,9 +312,9 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 		nextToken(s)
 		value2, err = ParseProd(s)
 		if err != nil {
-			GenerateOp(s, op, value, value2)
+			return NoValue, err
 		}
-		GenerateOp(s, op, value, value2)
+		err = GenerateOp(s, op, value, value2)
 		value = widest(value, value2)
 	}
 	return value, nil
@@ -315,12 +324,12 @@ func ParseCompareTerm(s *State) (result ValueDef, err error) {
 	var value1 ValueDef
 	var value2 ValueDef
 	value1, err = ParseSumTerm(s)
+	if err != nil {
+		return NoValue, err
+	}
 	result = value1
 	if value1.typ == nil {
 		slog.Error("ParseCompareTerm: No type for ", value1.typ.pt.Name())
-	}
-	if err != nil {
-		return NoValue, err
 	}
 	if s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE || s.token == TOK_NE {
 		op := s.token
@@ -392,7 +401,7 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 	}
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
 		if value1.typ.pt != TYP_BOOL {
-			slog.Error("&& requires boolean operands!")
+			return NoValue, fmt.Errorf("&& requires boolean operands!")
 		}
 		op := s.token
 		nextToken(s)
@@ -401,24 +410,21 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 			return NoValue, err
 		}
 		if value2.typ == nil {
-			slog.Error("value2.typ is nil")
+			return NoValue, fmt.Errorf("value2.typ is nil")
 		}
 		if value2.typ.pt != TYP_BOOL {
-			slog.Error("&& requires boolean operands!")
+			return NoValue, fmt.Errorf("&& requires boolean operands!")
 		}
 		GenerateOp(s, op, value1, value2)
 		result.typ = value1.typ
 	}
 	if result.typ == nil {
-		slog.Error("value.type is nil")
+		return NoValue, fmt.Errorf("value.type is nil")
 	}
 	return result, nil
 }
 
 func ParseStatement(s *State) (err error) {
-	if s.lineNum == 28 {
-		slog.Error("Halt")
-	}
 	if s.token == TOK_RETURN {
 		nextToken(s)
 		_, err = ParseExpression(s)
@@ -448,9 +454,6 @@ func ParseStatement(s *State) (err error) {
 func ParseStatements(s *State) error {
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		EmitLineNo(s)
-		if s.lineNum == 21 {
-			slog.Error("Halt")
-		}
 		err := ParseStatement(s)
 		if err != nil {
 			return err
@@ -725,13 +728,21 @@ func CompileFile(name string, workdir string) error {
 		slog.Error("Could not open file %s : %s", name, err.Error())
 	}
 	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
-	err = OpenObjFile(s, workdir)
+
+	objectFile := filepath.Join(workdir, s.unitName+".tok")
+	s.outputFile, err = os.OpenFile(objectFile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	defer CloseObjFile(s)
+	emit(s, "// Token file ", objectFile)
+
 	if err != nil {
 		return err
 	}
 	InitTypes()
 	nextToken(s)
-	for s.token != TOK_EOF {
+	if s.token == TOK_EOF {
+		return fmt.Errorf("No program content in file")
+	}
+	for s.token != TOK_EOF && err == nil {
 		if s.token == TOK_FUNC {
 			err = ParseFunctionDefinition(s)
 		} else if s.token == TOK_CONST {
@@ -739,12 +750,22 @@ func CompileFile(name string, workdir string) error {
 		} else if s.token == TOK_TYPE {
 			err = ParseTypeDefs(s)
 		} else {
-			return fmt.Errorf("Unexpected token \"%s\"", s.tokenString)
-		}
-		if err != nil {
-			return err
+			slog.Error("Unexpected", "token", s.tokenString)
+			err = fmt.Errorf("Unexpected token \"%s\"", s.tokenString)
 		}
 	}
-	_ = CloseObjFile(s)
+	if err != nil {
+		EmitError(s, err)
+	}
+	if true {
+		targetFile := "./test/targets/" + s.unitName + ".tok"
+		ok, err := FilesAreEqual(objectFile, targetFile)
+		if err != nil {
+			fmt.Printf("Error comparing files %s and %s : %s\n", objectFile, targetFile, err.Error())
+		}
+		if !ok {
+			fmt.Printf(err.Error())
+		}
+	}
 	return nil
 }

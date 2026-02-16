@@ -3,26 +3,18 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
 )
-
-func OpenObjFile(s *State, workDir string) error {
-	fn := filepath.Join(workDir, s.unitName+".tok")
-	var err error
-	s.outputFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC, os.ModePerm)
-	emit(s, "// Token file ", fn)
-	return err
-}
 
 func CloseObjFile(s *State) error {
 	return s.outputFile.Close()
 }
 
 func emit(s *State, opcode string, value string) {
-	//	fmt.Printf("%s %s\n", opcode, value)
-	s.outputFile.WriteString(fmt.Sprintf("%s %s\n", opcode, value))
+	_, err := s.outputFile.WriteString(fmt.Sprintf("%s %s\n", opcode, value))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func EmitStore(s *State, id string, typ string) {
@@ -71,11 +63,6 @@ func EmitReturn(s *State) {
 	emit(s, "   RETURN", "\n")
 }
 
-func EmitExit(s *State) {
-	slog.Info(No(s) + " EmitExit")
-	emit(s, "   EXIT", "")
-}
-
 func EmitModify(s *State, id string, op Token, value string) {
 	slog.Info(No(s)+" EmitModify: ", "id", id, "op", op)
 	emit(s, "   "+TokenNames[op], id+" "+value)
@@ -95,12 +82,13 @@ func EmitConst(s *State, name string, value string, typ string) {
 }
 
 func EmitLineNo(s *State) {
-	if s.lineNum == 21 {
-		slog.Error("Halt")
-	}
 	emit(s, " // Line no", strconv.Itoa(s.lineNum))
 }
 
 func EmitOp(s *State, op Token) {
 	emit(s, "   "+TokenNames[op], "")
+}
+
+func EmitError(s *State, err error) {
+	emit(s, "Error on line "+strconv.Itoa(s.lineNum)+": ", err.Error())
 }

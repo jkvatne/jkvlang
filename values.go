@@ -56,7 +56,7 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
 	return TYP_NONE
 }
 
-func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) {
+func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) error {
 	var result ValueDef
 	if val1.hasValue && val2.hasValue && val1.typ.pt == val2.typ.pt {
 		// Both operands are constant. Evaluate at compile time.
@@ -73,10 +73,19 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) {
 		case TOK_DIV:
 			result.intValue = val1.intValue / val2.intValue
 			result.floatValue = val1.floatValue / val2.floatValue
+		case TOK_AND:
+			result.intValue = val1.intValue & val2.intValue
+		case TOK_OR:
+			result.intValue = val1.intValue & val2.intValue
+		default:
+			// Invalid operand
+			return fmt.Errorf("Invalid operation: %s", TokenNames[op])
 		}
+	} else {
+		slog.Info("Generate", "Op", TokenNames[op])
+		EmitOp(s, op)
 	}
-	slog.Info("Generate", "Op", TokenNames[op])
-	EmitOp(s, op)
+	return nil
 }
 
 func StringToValue(s string) (value ValueDef, err error) {
