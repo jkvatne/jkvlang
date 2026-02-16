@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 )
 
-type state = struct {
+type State struct {
 	text        []byte
 	p           int
 	lineNum     int
@@ -75,6 +76,8 @@ const (
 	TOK_ABS
 	TOK_TYPE
 	TOK_ASSERT
+	TOK_TRUE
+	TOK_FALSE
 	TOK_SIZE
 )
 
@@ -133,6 +136,8 @@ var TokenNames = [...]string{
 	TOK_ABS:         "ABS",
 	TOK_TYPE:        "TYPE",
 	TOK_ASSERT:      "ASSERT",
+	TOK_TRUE:        "TRUE",
+	TOK_FALSE:       "FALSE",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -147,7 +152,11 @@ func isAlfaNum(ch uint8) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func nextChar(s *state) (uint8, uint8) {
+func No(s *State) string {
+	return strconv.Itoa(s.lineNum)
+}
+
+func nextChar(s *State) (uint8, uint8) {
 	ch1 := s.text[s.p]
 	if ch1 == '\n' {
 		s.lineNum++
@@ -158,18 +167,15 @@ func nextChar(s *state) (uint8, uint8) {
 		return ch1, 0
 	}
 	ch2 := s.text[s.p]
-	s1 := string(ch1)
-	s2 := string(ch2)
-	slog.Debug("Got", "s1:", s1, "s2:", s2)
-
+	// slog.Debug("Got", "s1:", string(ch1), "s2:", string(ch2))
 	return ch1, ch2
 }
 
-func eof(s *state) bool {
+func eof(s *State) bool {
 	return s.p >= len(s.text)
 }
 
-func parseNumber(s *state, ch1 uint8, ch2 uint8) (uint8, uint8) {
+func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
 	// Parse number
 	var hasDp bool
 	var hasExp bool
@@ -203,7 +209,7 @@ func parseNumber(s *state, ch1 uint8, ch2 uint8) (uint8, uint8) {
 	return ch1, ch2
 }
 
-func nextToken(s *state) {
+func nextToken(s *State) {
 	s.token = TOK_EOF
 	for s.token == TOK_EOF {
 		if eof(s) {
@@ -360,6 +366,10 @@ func nextToken(s *state) {
 			switch value {
 			case "func":
 				s.token = TOK_FUNC
+			case "true":
+				s.token = TOK_TRUE
+			case "false":
+				s.token = TOK_FALSE
 			case "if":
 				s.token = TOK_IF
 			case "for":

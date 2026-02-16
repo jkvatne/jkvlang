@@ -1,23 +1,30 @@
 
 func main() {
-    b = true
-    c = 1
-    a = 2
-    if b {
-        println("OK")
+    a = 1
+    b = 3
+    if a!=0 {
+       println("if1")
+    }
+    c = 2
+    if b==0 {
+        println("if2")
+        if a!=0 {
+           println("if3")
+        }
+        b=4
     } else if a>=b || c<a {
-        println("Hi")
+        println("if4")
     } else if a==b {
         c = a-b+c
     } else if b!=c {
-        println("Lo")
-        if b {
-           println("ack")
+        println("if5")
+        if c==3 {
+           println("if6")
         }
     } else {
         println("else")
     }
-    
-    if b ? println("OK") : println("FAIL")
+
+    if b==0 ? println("OK") : println("FAIL")
  }
 

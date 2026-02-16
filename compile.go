@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func CheckFile(s *state, workdir string) {
+func CheckFile(s *State, workdir string) {
 	for s.token != TOK_EOF {
 		nextToken(s)
 		slog.Info("Token", "Lno", s.lineNum, "Value", s.token, "String", s.tokenString)
@@ -27,10 +27,10 @@ type StackValue = struct {
 	typ    TypeDef /* type */
 	reg1   int     /* register + flags */
 	reg2   int     /* second register, used for 'I64g' type. If not used, set to VT_CONST */
-	symbol string  /* symbol, if (VT_SYM | VT_CONST), or if result of unary() for an identifier. */
+	symbol string  /* symbol, if (VT_SYM | VT_CONST), or if result of an identifier. */
 }
 
-func ParseType(s *state) (*TypeDef, error) {
+func ParseType(s *State) (*TypeDef, error) {
 	var err error
 	if s.token == TOK_LBRACE {
 		return nil, nil
@@ -80,11 +80,11 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 }
 
-func AddConst(s *state, id string, typ *TypeDef, value string) {
+func AddConst(s *State, id string, typ *TypeDef, value string) {
 	EmitConst(s, id, value, PrimaryTypeNames[typ.pt])
 }
 
-func AddVar(s *state, id string, typ *TypeDef, value string, arraysize int) {
+func AddVar(s *State, id string, typ *TypeDef, value string, arraysize int) {
 	v := VarDefs[id]
 	if v == nil {
 		v = &VarDef{name: id, typ: typ, value: ValueDef{typ: typ, hasValue: false}}
@@ -96,13 +96,13 @@ func AddVar(s *state, id string, typ *TypeDef, value string, arraysize int) {
 	EmitVar(s, id, "", PrimaryTypeNames[v.typ.pt])
 }
 
-func AddArg(s *state, funcName string, argName string, typ *TypeDef) {
+func AddArg(s *State, funcName string, argName string, typ *TypeDef) {
 	slog.Info("Arg list", "funcName", funcName, "ArgName", argName)
 	EmitVar(s, argName, "", PrimaryTypeNames[typ.pt])
 	VarDefs[argName] = &VarDef{name: argName, typ: typ}
 }
 
-func ParseFormalArgList(s *state, funcName string) error {
+func ParseFormalArgList(s *State, funcName string) error {
 	for {
 		if s.token == TOK_RPAR {
 			break
@@ -136,7 +136,7 @@ func ParseFormalArgList(s *state, funcName string) error {
 }
 
 // ParseUnary will parse a parantesis term, a number, a string, a function call
-func ParseUnary(s *state) (value ValueDef, err error) {
+func ParseUnary(s *State) (value ValueDef, err error) {
 	slog.Info("ParseUnary variable/function/array", "Token", s.tokenString)
 	id := s.tokenString
 	if s.token == TOK_ID {
@@ -169,7 +169,6 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 			if s.token != TOK_RPAR {
 				return value, fmt.Errorf("Expected right parantesis but got %s", s.tokenString)
 			}
-			slog.Info("Emit CALL", "function", id)
 			EmitCall(s, id)
 			nextToken(s)
 		} else if s.token == TOK_ASSIGN {
@@ -251,13 +250,22 @@ func ParseUnary(s *state) (value ValueDef, err error) {
 				break
 			}
 		}
+	} else if s.token == TOK_TRUE {
+		EmitLoad(s, s.tokenString, "BOOL")
+		value = True
+		nextToken(s)
+	} else if s.token == TOK_FALSE {
+		EmitLoad(s, s.tokenString, "BOOL")
+		value = False
+		nextToken(s)
 	} else {
 		slog.Error("Unexpected token ", s.tokenString)
+		nextToken(s)
 	}
 	return value, err
 }
 
-func ParseProd(s *state) (value ValueDef, err error) {
+func ParseProd(s *State) (value ValueDef, err error) {
 	var value2 ValueDef
 	value, err = ParseUnary(s)
 	if err != nil {
@@ -284,7 +292,7 @@ func widest(v1 ValueDef, v2 ValueDef) ValueDef {
 	return v2
 }
 
-func ParseSumTerm(s *state) (value ValueDef, err error) {
+func ParseSumTerm(s *State) (value ValueDef, err error) {
 	var value2 ValueDef
 	value, err = ParseProd(s)
 	if err != nil {
@@ -303,9 +311,14 @@ func ParseSumTerm(s *state) (value ValueDef, err error) {
 	return value, nil
 }
 
-func ParseCompareTerm(s *state) (value ValueDef, err error) {
+func ParseCompareTerm(s *State) (result ValueDef, err error) {
+	var value1 ValueDef
 	var value2 ValueDef
-	value, err = ParseSumTerm(s)
+	value1, err = ParseSumTerm(s)
+	result = value1
+	if value1.typ == nil {
+		slog.Error("ParseCompareTerm: No type for ", value1.typ.pt.Name())
+	}
 	if err != nil {
 		return NoValue, err
 	}
@@ -313,49 +326,99 @@ func ParseCompareTerm(s *state) (value ValueDef, err error) {
 		op := s.token
 		nextToken(s)
 		value2, err = ParseSumTerm(s)
+		result.typ = TypeDefs["Bool"]
 		if err != nil {
 			return NoValue, err
 		}
-		if value.hasValue && value2.hasValue {
+		if value1.hasValue && value2.hasValue {
 			if op == TOK_EQ {
-				if value.stringValue == value2.stringValue {
+				if value1.stringValue == value2.stringValue {
 					return True, nil
 				} else {
 					return False, nil
 				}
 			} else if op == TOK_NE {
-				if value.stringValue != value2.stringValue {
+				if value1.stringValue != value2.stringValue {
+					return True, nil
+				} else {
+					return False, nil
+				}
+			} else if op == TOK_LE {
+				if value1.stringValue <= value2.stringValue {
+					return True, nil
+				} else {
+					return False, nil
+				}
+			} else if op == TOK_LT {
+				if value1.stringValue < value2.stringValue {
+					return True, nil
+				} else {
+					return False, nil
+				}
+			} else if op == TOK_GE {
+				if value1.stringValue >= value2.stringValue {
+					return True, nil
+				} else {
+					return False, nil
+				}
+			} else if op == TOK_GT {
+				if value1.stringValue > value2.stringValue {
 					return True, nil
 				} else {
 					return False, nil
 				}
 			}
 		} else {
-			GenerateOp(s, op, value, value2)
+			GenerateOp(s, op, value1, value2)
+			return result, nil
 		}
 	}
-	return value, err
+	if result.typ == nil {
+		slog.Error("result.type is nil")
+	}
+	return result, err
 }
 
-func ParseExpression(s *state) (value ValueDef, err error) {
+func ParseExpression(s *State) (result ValueDef, err error) {
+	var value1 ValueDef
 	var value2 ValueDef
-	value, err = ParseCompareTerm(s)
+	value1, err = ParseCompareTerm(s)
+	result.typ = value1.typ
+	if value1.typ == nil {
+		slog.Error("value1.type is nil")
+	}
 	if err != nil {
-		return value, err
+		return NoValue, err
 	}
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+		if value1.typ.pt != TYP_BOOL {
+			slog.Error("&& requires boolean operands!")
+		}
 		op := s.token
 		nextToken(s)
 		value2, err = ParseCompareTerm(s)
 		if err != nil {
-			return value, err
+			return NoValue, err
 		}
-		GenerateOp(s, op, value, value2)
+		if value2.typ == nil {
+			slog.Error("value2.typ is nil")
+		}
+		if value2.typ.pt != TYP_BOOL {
+			slog.Error("&& requires boolean operands!")
+		}
+		GenerateOp(s, op, value1, value2)
+		result.typ = value1.typ
 	}
-	return value, nil
+	if result.typ == nil {
+		slog.Error("value.type is nil")
+	}
+	return result, nil
 }
 
-func ParseStatement(s *state) (err error) {
+func ParseStatement(s *State) (err error) {
+	if s.lineNum == 28 {
+		slog.Error("Halt")
+	}
 	if s.token == TOK_RETURN {
 		nextToken(s)
 		_, err = ParseExpression(s)
@@ -379,21 +442,19 @@ func ParseStatement(s *state) (err error) {
 	} else {
 		return fmt.Errorf("Unknown statement starting with %s", s.tokenString)
 	}
-	EmitLineNo(s)
 	return err
 }
 
-func ParseStatements(s *state) error {
-	nextToken(s)
-	for s.token != TOK_RBRACE {
+func ParseStatements(s *State) error {
+	for s.token != TOK_RBRACE && s.token != TOK_COLON {
+		EmitLineNo(s)
+		if s.lineNum == 21 {
+			slog.Error("Halt")
+		}
 		err := ParseStatement(s)
 		if err != nil {
 			return err
 		}
-		if s.token == TOK_RBRACE || s.token == TOK_COLON {
-			break
-		}
-		nextToken(s)
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
 		}
@@ -401,38 +462,44 @@ func ParseStatements(s *state) error {
 	return nil
 }
 
-func NewLabel(s *state) int {
+func NewLabel(s *State) int {
 	s.labelNo++
 	return s.labelNo
 }
 
-func ParseIf(s *state) error {
+func ParseIf(s *State) error {
+	slog.Debug("ParseIf")
 	nextToken(s)
 	typ, err := ParseExpression(s)
 	if err != nil {
 		return err
 	}
 	if typ.typ.pt != TYP_BOOL {
-		return fmt.Errorf("Expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
+		return fmt.Errorf("Line %d: Expected boolean but got %s", s.lineNum, PrimaryTypeNames[typ.typ.pt])
 	}
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
 	EmitJumpFalse(s, elseLabel)
 
 	if s.token == TOK_COLON || s.token == TOK_QMARK {
+		nextToken(s)
 		err = ParseStatements(s)
 		EmitJump(s, endLabel)
 		if err != nil {
 			return err
 		}
 		if s.token == TOK_COLON {
+			nextToken(s)
 			EmitLabel(s, elseLabel)
 			err = ParseStatements(s)
 			if err != nil {
 				return err
 			}
 		}
+
 	} else if s.token == TOK_LBRACE {
+		slog.Debug("Parse if statements")
+		nextToken(s)
 		err = ParseStatements(s)
 		EmitJump(s, endLabel)
 		if err != nil {
@@ -443,48 +510,55 @@ func ParseIf(s *state) error {
 		}
 		nextToken(s)
 		for s.token == TOK_ELSE {
+			EmitLineNo(s)
 			EmitLabel(s, elseLabel)
 			nextToken(s)
 			if s.token == TOK_IF {
+				slog.Debug("Parsing else if", "line", s.lineNum)
 				nextToken(s)
 				typ, err = ParseExpression(s)
 				if err != nil {
 					return err
 				}
 				if typ.typ.pt != TYP_BOOL {
-					return fmt.Errorf("Expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
+					return fmt.Errorf("Line %d: Expected boolean but got %s", s.lineNum, PrimaryTypeNames[typ.typ.pt])
 				}
 				elseLabel = NewLabel(s)
 				EmitJumpFalse(s, elseLabel)
 				if s.token != TOK_LBRACE {
-					return fmt.Errorf("Expected { after if but got %s", s.tokenString)
+					return fmt.Errorf("Line %d: Expected { after if but got %s", s.lineNum, s.tokenString)
 				}
+				nextToken(s)
+				slog.Debug("Parsing 'else if' statements")
 				err = ParseStatements(s)
 				EmitJump(s, endLabel)
 				if err != nil {
 					return err
 				}
 				if s.token != TOK_RBRACE {
-					return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
+					return fmt.Errorf("Line %d: Expected } after if clause, but got %s", s.lineNum, s.tokenString)
 				}
 				nextToken(s)
-			} else {
+			} else if s.token == TOK_LBRACE {
+				nextToken(s)
+				slog.Debug("Else without if")
 				err = ParseStatements(s)
 				nextToken(s)
+			} else {
+				slog.Info("Else without {")
+				err = ParseStatement(s)
 			}
-		}
-		if s.token != TOK_RBRACE {
-			return fmt.Errorf("Expected { after else, but got %s", s.tokenString)
 		}
 	} else {
 		return fmt.Errorf("Expected { or :  but got %s", s.tokenString)
 	}
+	slog.Debug("ParseIf end - emitting lagel")
 	EmitLabel(s, endLabel)
-
 	return nil
 }
 
-func ParseFunctionDefinition(s *state) error {
+func ParseFunctionDefinition(s *State) error {
+	EmitLineNo(s)
 	nextToken(s)
 	if s.token != TOK_ID {
 		return fmt.Errorf("Expected function name but got %s", s.tokenString)
@@ -514,17 +588,13 @@ func ParseFunctionDefinition(s *state) error {
 		return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
 	}
 	nextToken(s)
-	for {
-		err = ParseStatement(s)
-		if err != nil {
-			return err
-		}
-		if s.token == TOK_RBRACE {
-			break
-		}
+	err = ParseStatements(s)
+	if err != nil {
+		return err
 	}
+	// After all the statements in the function, we expec to have a right-brace.
 	if s.token != TOK_RBRACE {
-		return fmt.Errorf("Funcion definition expected ending '}' but got %s", s.tokenString)
+		return fmt.Errorf("Function definition expected ending '}' but got %s", s.tokenString)
 	}
 	if !s.returned {
 		EmitReturn(s)
@@ -534,7 +604,7 @@ func ParseFunctionDefinition(s *state) error {
 	return nil
 }
 
-func ParseTypeDef(s *state) error {
+func ParseTypeDef(s *State) error {
 	slog.Info("ParseTypeDef", "id", s.tokenString)
 	if s.token != TOK_ID {
 		return fmt.Errorf("Expected id but got %s", s.tokenString)
@@ -556,7 +626,7 @@ func ParseTypeDef(s *state) error {
 	return nil
 }
 
-func ParseTypeDefs(s *state) error {
+func ParseTypeDefs(s *State) error {
 	var err error
 	nextToken(s)
 	if s.token == TOK_LPAR {
@@ -574,7 +644,7 @@ func ParseTypeDefs(s *state) error {
 	return err
 }
 
-func ParseVar(s *state, isConst bool) error {
+func ParseVar(s *State, isConst bool) error {
 	var val string
 	var err error
 	var arraySize int
@@ -608,7 +678,7 @@ func ParseVar(s *state, isConst bool) error {
 	return err
 }
 
-func ParseVars(s *state) error {
+func ParseVars(s *State) error {
 	var err error
 	nextToken(s)
 	if s.token == TOK_LPAR {
@@ -626,7 +696,7 @@ func ParseVars(s *state) error {
 	return err
 }
 
-func ParseConsts(s *state) error {
+func ParseConsts(s *State) error {
 	var err error
 	nextToken(s)
 	if s.token == TOK_LPAR {
@@ -648,14 +718,14 @@ func CompileFile(name string, workdir string) error {
 	fmt.Printf("=== Compiling %s ===\n", name)
 	slog.Info("Compiling", "filename", name)
 	var err error
-	s := new(state)
+	s := new(State)
 	s.lineNum = 1
 	s.text, err = os.ReadFile(name)
 	if err != nil {
 		slog.Error("Could not open file %s : %s", name, err.Error())
 	}
 	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
-	err = EmitTo(s, workdir)
+	err = OpenObjFile(s, workdir)
 	if err != nil {
 		return err
 	}
@@ -675,6 +745,6 @@ func CompileFile(name string, workdir string) error {
 			return err
 		}
 	}
-	_ = EmitClose(s)
+	_ = CloseObjFile(s)
 	return nil
 }

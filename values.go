@@ -56,7 +56,7 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
 	return TYP_NONE
 }
 
-func GenerateOp(s *state, op Token, val1 ValueDef, val2 ValueDef) {
+func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) {
 	var result ValueDef
 	if val1.hasValue && val2.hasValue && val1.typ.pt == val2.typ.pt {
 		// Both operands are constant. Evaluate at compile time.

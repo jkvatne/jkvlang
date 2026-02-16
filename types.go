@@ -69,7 +69,7 @@ func InitTypes() {
 	TypeDefs["Error"] = &TypeDef{pt: TYP_ERROR, name: "Error"}
 }
 
-func AddType(s *state, name string, typ *TypeDef) {
+func AddType(s *State, name string, typ *TypeDef) {
 	EmitType(s, name, int(typ.pt))
 	TypeDefs[name] = typ
 }
