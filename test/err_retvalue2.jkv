@@ -1,0 +1,8 @@
+// Should fail because of statements after return
+
+func fi(a Bool, c I32) I32 {
+    if a ? c+=1 : c+=2
+    return c
+    c=c+1
+    return c
+}

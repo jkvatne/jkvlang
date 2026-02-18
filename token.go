@@ -8,16 +8,17 @@ import (
 )
 
 type State struct {
-	text        []byte
-	p           int
-	lineNum     int
-	token       Token
-	tokenString string
-	labelNo     int
-	returned    bool
-	outputFile  *os.File
-	unitName    string
-	currentFunc string
+	text            []byte
+	p               int
+	lineNum         int
+	token           Token
+	tokenString     string
+	tokenFloatValue float64
+	labelNo         int
+	hasReturned     bool
+	outputFile      *os.File
+	unitName        string
+	currentFunc     string
 }
 
 type Token int
@@ -33,7 +34,8 @@ const (
 	TOK_MULT
 	TOK_DIV
 	TOK_MOD
-	TOK_FLOAT
+	TOK_F32
+	TOK_F64
 	TOK_INT
 	TOK_STRING
 	TOK_ID
@@ -78,6 +80,7 @@ const (
 	TOK_ASSERT
 	TOK_TRUE
 	TOK_FALSE
+	TOK_INVALID
 	TOK_SIZE
 )
 
@@ -93,7 +96,8 @@ var TokenNames = [...]string{
 	TOK_MULT:        "MULT",
 	TOK_DIV:         "DIV",
 	TOK_MOD:         "MOD",
-	TOK_FLOAT:       "FLOAT",
+	TOK_F32:         "F32",
+	TOK_F64:         "F64",
 	TOK_INT:         "INT",
 	TOK_STRING:      "STRING",
 	TOK_ID:          "ID",
@@ -139,6 +143,7 @@ var TokenNames = [...]string{
 	TOK_TRUE:        "TRUE",
 	TOK_FALSE:       "FALSE",
 	TOK_SIZE:        "SIZE",
+	TOK_INVALID:     "INVALID",
 }
 
 func isNum(ch uint8) bool {
@@ -146,6 +151,10 @@ func isNum(ch uint8) bool {
 }
 func isAlfa(ch uint8) bool {
 	return ch >= uint8('A') && ch <= 'Z' || ch >= 'a' && ch <= 'z'
+}
+
+func (t Token) Name() string {
+	return TokenNames[t]
 }
 
 func isAlfaNum(ch uint8) bool {
@@ -203,10 +212,22 @@ func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
 		ch1, ch2 = nextChar(s)
 	}
 	s.tokenString = num
+	var err error
 	if hasExp || hasDp {
-		s.token = TOK_FLOAT
+		s.tokenFloatValue, err = strconv.ParseFloat(num, 32)
+		if err == nil {
+			s.token = TOK_F32
+		} else {
+			s.tokenFloatValue, err = strconv.ParseFloat(num, 64)
+			if err == nil {
+				s.token = TOK_F64
+			}
+		}
 	} else {
 		s.token = TOK_INT
+	}
+	if err != nil {
+		s.token = TOK_INVALID
 	}
 	return ch1, ch2
 }

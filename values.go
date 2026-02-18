@@ -24,38 +24,6 @@ var (
 	NoValue = ValueDef{typ: &NoneType, hasValue: true, boolValue: false}
 )
 
-// CanAssign is true if we can assign type "src" to "dst"
-func CanAssign(dst PrimaryType, src PrimaryType) bool {
-	return dst == TYP_I16 && (src == TYP_I16 || src == TYP_U8) ||
-		dst == TYP_I32 && (src == TYP_I32 || src == TYP_I16 || src == TYP_U8) ||
-		dst == TYP_I64 && (src == TYP_I32 || src == TYP_U32 || src == TYP_U16 || src == TYP_I16 || src == TYP_U8) ||
-		dst == TYP_U8 && src == TYP_U8 ||
-		dst == TYP_U16 && (src == TYP_U16 || src == TYP_U8) ||
-		dst == TYP_U32 && (src == TYP_U32 || src == TYP_U16 || src == TYP_U8)
-}
-
-func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
-	if t1 == TYP_I64 || t2 == TYP_I64 {
-		return TYP_I64
-	}
-	if t1 == TYP_I32 && t2 < TYP_I32 || t2 == TYP_I32 && t1 < TYP_I32 {
-		return TYP_I32
-	}
-	if t1 == TYP_U32 && (t2 == TYP_I16 || t2 == TYP_I32) {
-		return TYP_I64
-	}
-	if t2 == TYP_U32 && (t1 == TYP_I16 || t1 == TYP_I32) {
-		return TYP_I64
-	}
-	if (t1 == TYP_I16 || t2 == TYP_I16) && t1 != TYP_U16 && t2 != TYP_U16 {
-		return TYP_I16
-	}
-	if t1 == TYP_F64 || t2 == TYP_F64 {
-		return TYP_F64
-	}
-	return TYP_NONE
-}
-
 func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) error {
 	var result ValueDef
 	if val1.hasValue && val2.hasValue && val1.typ.pt == val2.typ.pt {
@@ -115,6 +83,7 @@ func StringToValue(s string) (value ValueDef, err error) {
 				value.typ = TypeDefs["I64"]
 			}
 			value.intValue = num
+			value.hasValue = true
 			return value, nil
 		}
 	}

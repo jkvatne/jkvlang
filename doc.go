@@ -8,6 +8,10 @@ BYTECODES
 The stack consists of quadwords, 8 bytes long.
 Immediate values are allways 64bit, but can be compressed.
 
+Data types: 8bit, 16bit, 32bit, 64bit, F32, F64 = 6 types
+
+16 operations * 4 adr mode = 64 instructions
+
 
 
   The 8 basic operations on integers
@@ -19,39 +23,73 @@ Immediate values are allways 64bit, but can be compressed.
   5 AND                                             [SP-1] = [SP]&[SP-1]; SP--
   6 OR                                              [SP-1] = [SP]|[SP-1]; SP--
   7 XOR                                             [SP-1] = [SP]^[SP-1]; SP--
+  8 SHR                                             [SP-1] = [SP-1]>>[SP]; SP--
+  9 SHL                                             [SP-1] = [SP-1]<<[SP-1]; SP--
+ 10 SAR                                             [SP-1] = [SP-1]>>[SP]; SP--
 
-  8-15 Op Immediate                                 [SP] = [SP] op Immediate
- 16-31 Op BP+Immediate                              [SP] = [SP] op Immediate
- 32-39 Op GP+Immediate                              [SP] = [SP] op Immediate
+ 11-21 Op Immediate                                 [SP] = [SP] op Immediate
+ 22-32 Op [BP+Immediate]                            [SP] = [SP] op [BP+Immediate]
+ 33-43 Op [GP+Immediate]                            [SP] = [SP] op [GP+Immediate]
 
- 40 LOADI8                                          SP++; [SP] = immediate;
- 41 LOADI16                                         SP++; [SP] = immediate;
- 42 LOADI32                                         SP++; [SP] = immediate;
- 43 LOADI64                                         SP++; [SP] = immediate;
- 44 LOADL8                                          SP++; [SP] = [BP+immediate]
- 45 LOADL16                                         SP++; [SP] = [BP+immediate]
- 46 LOADL32                                         SP++; [SP] = [BP+immediate]
- 47 LOADL64                                         SP++; [SP] = [BP+immediate]
- 48 LOADG8                                          SP++; [SP] = [BP+immediate]
- 49 LOADG16                                         SP++; [SP] = [BP+immediate]
- 50 LOADG32                                         SP++; [SP] = [BP+immediate]
- 51 LOADG64                                         SP++; [SP] = [BP+immediate]
+// Load immediate
+ 44 LOADI8                                          SP++; [SP] = immediate;
+ 45 LOADI16                                         SP++; [SP] = immediate;
+ 46 LOADI32                                         SP++; [SP] = immediate;
+ 47 LOADI64                                         SP++; [SP] = immediate;
+ 56 LOADIF32                                        SP++; [SP] = immediate F32;
+ 56 LOADIF64                                        SP++; [SP] = immediate F64;
 
- 52 LOADIF32                                        SP++; [SP] = immediate F32;
- 53 LOADLF32                                        SP++; [SP] = [BP+immediate]
- 54 LOADGF32                                        SP++; [SP] = [BP+immediate]
- 55 LOADIF64                                        SP++; [SP] = immediate;
- 56 LOADLF64                                        SP++; [SP] = [BP+immediate]
- 57 LOADGF64                                        SP++; [SP] = [BP+immediate]
+// Load/store local 12
+ 48 LOADL8                                          SP++; [SP] = [BP+immediate] 8bit
+ 49 LOADL16                                         SP++; [SP] = [BP+immediate] 16 bit
+ 50 LOADL32                                         SP++; [SP] = [BP+immediate] 32 bit
+ 51 LOADL64                                         SP++; [SP] = [BP+immediate] 64 bit
+ 57 LOADLF32                                        SP++; [SP] = [BP+immediate] F32
+ 58 LOADLF64                                        SP++; [SP] = [BP+immediate] F64
+ 52 STOREL8                                         [BP+immediate] = [SP]; SP--
+ 53 STOREL16                                        [BP+immediate] = [SP]; SP--
+ 54 STOREL32                                        [BP+immediate] = [SP]; SP--
+ 55 STOREL64                                        [BP+immediate] = [SP]; SP--
+ 59 STORELF32                                       [BP+immediate] = [SP]; SP--
+ 59 STORELF64                                       [BP+immediate] = [SP]; SP--
 
- 58 ADDF32                                          [SP-1] = [SP]+[SP-1]; SP--
- 59 SUBF32                                          [SP-1] = [SP]-[SP-1]; SP--
- 60 MULF32                                          [SP-1] = [SP]*[SP-1]; SP--
- 61 DIVF32                                          [SP-1] = [SP]/[SP-1]; SP--
- 62 ADDF64                                          [SP-1] = [SP]+[SP-1]; SP--
- 63 SUBF64                                          [SP-1] = [SP]-[SP-1]; SP--
- 64 MULF64                                          [SP-1] = [SP]*[SP-1]; SP--
- 65 DIVF64                                          [SP-1] = [SP]/[SP-1]; SP--
+// Load/store global 12
+ 48 LOADG8                                          SP++; [SP] = [BP+immediate] 8bit
+ 49 LOADG16                                         SP++; [SP] = [BP+immediate] 16 bit
+ 50 LOADG32                                         SP++; [SP] = [BP+immediate] 32 bit
+ 51 LOADG64                                         SP++; [SP] = [BP+immediate] 64 bit
+ 57 LOADGF32                                        SP++; [SP] = [BP+immediate] F32
+ 58 LOADGF32                                        SP++; [SP] = [BP+immediate] F64
+ 52 STOREG8                                         [BP+immediate] = [SP]; SP--
+ 53 STOREG16                                        [BP+immediate] = [SP]; SP--
+ 54 STOREG32                                        [BP+immediate] = [SP]; SP--
+ 55 STOREG64                                        [BP+immediate] = [SP]; SP--
+ 59 STOREGF32                                       [BP+immediate] = [SP]; SP--
+ 59 STOREGF64                                       [BP+immediate] = [SP]; SP--
+
+// Load/store indirect 12
+ 48 LOADG8                                          SP++; [SP] = [DP+immediate] 8bit
+ 49 LOADG16                                         SP++; [SP] = [DP+immediate] 16 bit
+ 50 LOADG32                                         SP++; [SP] = [DP+immediate] 32 bit
+ 51 LOADG64                                         SP++; [SP] = [DP+immediate] 64 bit
+ 57 LOADGF32                                        SP++; [SP] = [DP+immediate] F32
+ 58 LOADGF32                                        SP++; [SP] = [DP+immediate] F64
+ 52 STOREG8                                         [DP+immediate] = [SP]; SP--
+ 53 STOREG16                                        [DP+immediate] = [SP]; SP--
+ 54 STOREG32                                        [DP+immediate] = [SP]; SP--
+ 55 STOREG64                                        [DP+immediate] = [SP]; SP--
+ 59 STOREGF32                                       [DP+immediate] = [SP]; SP--
+ 59 STOREGF64                                       [DP+immediate] = [SP]; SP--
+
+
+ 62 ADDF32                                          [SP-1] = [SP]+[SP-1]; SP--
+ 63 SUBF32                                          [SP-1] = [SP]-[SP-1]; SP--
+ 64 MULF32                                          [SP-1] = [SP]*[SP-1]; SP--
+ 65 DIVF32                                          [SP-1] = [SP]/[SP-1]; SP--
+ 66 ADDF64                                          [SP-1] = [SP]+[SP-1]; SP--
+ 67 SUBF64                                          [SP-1] = [SP]-[SP-1]; SP--
+ 68 MULF64                                          [SP-1] = [SP]*[SP-1]; SP--
+ 69 DIVF64                                          [SP-1] = [SP]/[SP-1]; SP--
 
 
  227 CALL <offset>

@@ -1,10 +1,22 @@
 
 
 func main() {
-  x=2
-  y=300
-  z=1
+  x = 1
+  y = 2
   w1 = x+y
+
+  var a U8
+  var (
+     b U16
+     c I16 = 55
+     d I32
+     e U32
+     f F32
+  )
+  z=1.1
+  b=300
+  f=2.1
+  a=255
   assert w1==302
   w2 = x+y*z
   assert w2==302

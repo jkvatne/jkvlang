@@ -1,0 +1,7 @@
+// Sould fail because of mismatched comment
+
+func fi() {
+    a=f(2)
+}
+
+*/

@@ -22,9 +22,9 @@ func EmitStore(s *State, id string, typ string) {
 	emit(s, "   STORE_"+typ, id)
 }
 
-func EmitLoad(s *State, id string, typ string) {
-	slog.Info(No(s)+" EmitLoad: ", "name", id)
-	emit(s, "   LOAD_"+typ, id)
+func EmitPush(s *State, id string, typ string) {
+	slog.Info(No(s)+" EmitPush: ", "name", id)
+	emit(s, "   PUSH_"+typ, id)
 }
 
 func EmitAssert(s *State) {
@@ -32,8 +32,8 @@ func EmitAssert(s *State) {
 	emit(s, "   ASSERT", "")
 }
 
-func EmitCall(s *State, id string) {
-	slog.Info(No(s)+" EmitCall:", "name", id)
+func EmitCall(s *State, id string, argNo int) {
+	slog.Info(No(s)+" EmitCall:", "name", id, "argNo", argNo)
 	emit(s, "   CALL", id)
 }
 
@@ -63,17 +63,14 @@ func EmitReturn(s *State) {
 	emit(s, "   RETURN", "\n")
 }
 
+// EmitModify will emit a +=, -= etc operation
 func EmitModify(s *State, id string, op Token, value string) {
-	slog.Info(No(s)+" EmitModify: ", "id", id, "op", op)
+	slog.Info(No(s)+" EmitModify: ", "id", id, "op", op.Name(), "value", value)
 	emit(s, "   "+TokenNames[op], id+" "+value)
 }
 
 func EmitType(s *State, name string, typ int) {
 	slog.Info(No(s)+" EmitType: "+name, strconv.Itoa(typ))
-}
-
-func EmitVar(s *State, name string, value string, typ string) {
-	slog.Info(No(s) + " EmitVar: " + name + " value:\"" + value + "\" Func:\"" + s.currentFunc + "\" Type:" + typ)
 }
 
 func EmitConst(s *State, name string, value string, typ string) {
@@ -91,4 +88,27 @@ func EmitOp(s *State, op Token) {
 
 func EmitError(s *State, err error) {
 	emit(s, "Error on line "+strconv.Itoa(s.lineNum)+": ", err.Error())
+	fmt.Printf("Error on line %d, %s\n", s.lineNum, err.Error())
+}
+
+func EmitPushConst(s *State, value ValueDef) {
+	slog.Info(No(s) + " EmitPushConst: " + value.stringValue)
+	if !value.hasValue {
+		slog.Error("EmitPushConst without value")
+	}
+	if value.typ.pt == TYP_U8 {
+		emit(s, "   PUSH_U8 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_U16 {
+		emit(s, "   PUSH_U16 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_I16 {
+		emit(s, "   PUSH_U16 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_U32 {
+		emit(s, "   PUSH_U32 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_I32 {
+		emit(s, "   PUSH_I32 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_I64 {
+		emit(s, "   PUSH_I64 ", strconv.FormatInt(value.intValue, 10))
+	} else {
+		emit(s, "   PUSH_STRING ", value.stringValue)
+	}
 }

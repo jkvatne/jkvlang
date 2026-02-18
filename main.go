@@ -3,11 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -38,8 +40,23 @@ func CompileDir(inputPath string, outputPath string) error {
 	return err
 }
 
+func demo() {
+	f, err1 := os.Create("./temp.txt")
+	if err1 != nil {
+		return
+	}
+	r := strings.NewReader("Hello and goodby dear friend")
+	n, err := io.Copy(f, r)
+	if err != nil {
+		return
+	}
+	fmt.Printf("%d bytes copied\n", n)
+	f.Close()
+}
+
 func main() {
 	t := time.Now()
+	// demo()
 	fmt.Printf("%v\n", t)
 	if len(TokenNames) != int(TOK_SIZE)+1 {
 		panic("Token names length must be equal to TOK_SIZE")
