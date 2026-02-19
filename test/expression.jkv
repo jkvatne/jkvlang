@@ -3,7 +3,11 @@
 func main() {
   x = 1
   y = 2
+  z = 1.1
+  w2 = x+y*z
+  assert w2==3.2
   w1 = x+y
+  assert w1==302
 
   var a U8
   var (
@@ -13,15 +17,11 @@ func main() {
      e U32
      f F32
   )
-  z=1.1
   b=300
   f=2.1
   a=255
-  assert w1==302
-  w2 = x+y*z
-  assert w2==302
   w3 = (x+y)*z
-  assert w3==302
+  assert w3==3.3
   w4 = ((x+y)*z+1)
-  assert w4==303
+  assert w4==4.3
 }

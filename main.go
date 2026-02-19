@@ -40,7 +40,7 @@ func CompileDir(inputPath string, outputPath string) error {
 	return err
 }
 
-func demo() {
+func readerDemo() {
 	f, err1 := os.Create("./temp.txt")
 	if err1 != nil {
 		return
@@ -52,6 +52,16 @@ func demo() {
 	}
 	fmt.Printf("%d bytes copied\n", n)
 	f.Close()
+}
+
+func stringDemo() {
+	s := "HHHæåø"
+	b := []byte(s) // 48 48 48 c3 a6 c3 a5 c3 b8
+	fmt.Printf("len(s)=%2x  len(b)=%2x\n", len(s), len(b))
+	fmt.Printf("%2x %2x %2x %2x %2x %2x %2x %2x %2x\n", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8])
+	t := strings.TrimRight(s, "øåæ")
+	fmt.Println(t)
+	os.Exit(0)
 }
 
 func main() {

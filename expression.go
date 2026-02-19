@@ -114,7 +114,7 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 	lvalue, ok := VarDefs[id]
 	if !ok {
 		if s.token == TOK_ASSIGN {
-			// If it iss an assign statement we must create the variable if it does not exist
+			// If it is an assign statement we must create the variable if it does not exist
 			// We don't yet know the type, so just use nil as type
 			lvalue = AddVar(id, nil)
 		} else if s.token == TOK_LPAR {
@@ -153,25 +153,27 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 		if lvalue.typ == nil {
 			lvalue.typ = value.typ
 		}
-		if value.hasValue && CanAssingConst(lvalue.typ.pt, value) {
-			lvalue.value = value
-			EmitPushConst(s, value)
-		} else {
-			ct := CommonType(lvalue.typ.pt, value.typ.pt)
-			if ct != value.typ.pt {
-				if ct != lvalue.typ.pt {
-					return NoValue, fmt.Errorf("Expected type of left side variable ")
-				}
-				// Convert expression's type to variable's type
-				emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
+		if value.hasValue {
+			if CanAssingConst(lvalue.typ.pt, value) {
+				lvalue.value = value
+				return value, nil
 			}
-			// Assign type if not known
-			if lvalue.typ.pt == TYP_NONE {
-				lvalue.typ.pt = ct
+			return NoValue, fmt.Errorf("Line %d: Cannot assign to variable \"%s\"", s.lineNum, id)
+		}
+		ct := CommonType(lvalue.typ.pt, value.typ.pt)
+		if ct != value.typ.pt {
+			if ct != lvalue.typ.pt {
+				return NoValue, fmt.Errorf("Expected type of left side variable ")
 			}
-			if !CanAssign(lvalue.typ.pt, value.typ.pt) {
-				return NoValue, fmt.Errorf("Expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), id)
-			}
+			// Convert expression's type to variable's type
+			emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
+		}
+		// Assign type if not known
+		if lvalue.typ.pt == TYP_NONE {
+			lvalue.typ.pt = ct
+		}
+		if !CanAssign(lvalue.typ.pt, value.typ.pt) {
+			return NoValue, fmt.Errorf("Expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), id)
 		}
 		slog.Info("Store lvalue <op> TOS to", "lvalue", id)
 		if op == TOK_ASSIGN {

@@ -26,8 +26,16 @@ var (
 
 func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 	var result ValueDef
-	if val1.hasValue && val2.hasValue && val1.typ.pt == val2.typ.pt {
+	if val1.typ.pt == TYP_F64 || val1.typ.pt == TYP_F32 {
+		val2.floatValue = float64(val2.intValue)
+	}
+	if val2.typ.pt == TYP_F64 || val2.typ.pt == TYP_F32 {
+		val1.floatValue = float64(val1.intValue)
+	}
+	if val1.hasValue && val2.hasValue {
 		// Both operands are constant. Evaluate at compile time.
+		result.typ = widest(val1, val2).typ
+		result.hasValue = true
 		switch op {
 		case TOK_PLUS:
 			result.intValue = val1.intValue + val2.intValue
@@ -49,7 +57,6 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 			// Invalid operand
 			return NoValue, fmt.Errorf("Invalid operation: %s", TokenNames[op])
 		}
-		result.typ = widest(val1, val2).typ
 	} else {
 		slog.Info("Generate", "Op", TokenNames[op])
 		EmitOp(s, op)

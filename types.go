@@ -145,7 +145,19 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 		dst == TYP_F64 || dst == TYP_F32
 }
 
+// CanAssingConst : Given a constant value, can we assign it to the dst variable?
+// A F64 can accept anything. A F32 value can accept evertything except F64.
+// For integers, it depends on the value.
 func CanAssingConst(dst PrimaryType, value ValueDef) bool {
+	if dst == value.typ.pt {
+		return true
+	}
+	if dst == TYP_F64 {
+		return true
+	}
+	if dst == TYP_F32 && value.typ.pt != TYP_F64 {
+		return true
+	}
 	if dst < TYP_U8 || dst > TYP_I64 {
 		return false
 	}

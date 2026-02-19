@@ -3,6 +3,7 @@ package main
 import "fmt"
 
 // ParseStatement will parse the statements inside a {} block or similar.
+// retured is true if the statemend emited a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_RETURN {
 		if s.hasReturned {
@@ -18,8 +19,17 @@ func ParseStatement(s *State) (returned bool, err error) {
 		nextToken(s)
 	} else if s.token == TOK_ASSERT {
 		nextToken(s)
-		_, err = ParseExpression(s)
-		EmitAssert(s)
+		var v ValueDef
+		v, err = ParseExpression(s)
+		if v.hasValue {
+			if !v.boolValue {
+				return false, fmt.Errorf("Assert failed")
+			} else {
+				emit(s, "Assert succeeded", "")
+			}
+		} else {
+			EmitAssert(s)
+		}
 	} else if s.token == TOK_ID {
 		_, err = ParseAssignOrCall(s)
 	} else if s.token == TOK_SEMICOLON {
