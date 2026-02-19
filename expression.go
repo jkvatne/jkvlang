@@ -318,10 +318,10 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 			return NoValue, err
 		}
 		ct := CommonType(value.typ.pt, value2.typ.pt)
-		if value.typ.pt != ct {
+		if value.typ.pt != ct && !value.hasValue {
 			emit(s, "   NOS "+value2.typ.pt.Name(), "TO "+ct.Name())
 		}
-		if value2.typ.pt != ct {
+		if value2.typ.pt != ct && !value2.hasValue {
 			emit(s, "   TOS "+value2.typ.pt.Name(), "TO "+ct.Name())
 		}
 		value, err = GenerateOp(s, op, value, value2)
