@@ -42,6 +42,7 @@ func CompileFile(name string, workdir string) error {
 		return err
 	}
 	InitTypes()
+	FuncInit()
 	nextToken(s)
 	if s.token == TOK_EOF {
 		return fmt.Errorf("No program content in file")

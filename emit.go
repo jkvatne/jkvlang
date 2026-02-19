@@ -79,7 +79,7 @@ func EmitConst(s *State, name string, value string, typ string) {
 }
 
 func EmitLineNo(s *State) {
-	emit(s, " // Line no", strconv.Itoa(s.lineNum))
+	emit(s, "  // Line no", strconv.Itoa(s.lineNum))
 }
 
 func EmitOp(s *State, op Token) {
@@ -108,6 +108,10 @@ func EmitPushConst(s *State, value ValueDef) {
 		emit(s, "   PUSH_I32 ", strconv.FormatInt(value.intValue, 10))
 	} else if value.typ.pt == TYP_I64 {
 		emit(s, "   PUSH_I64 ", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_F64 {
+		emit(s, "   PUSH_F64 ", strconv.FormatFloat(value.floatValue, 'g', -1, 64))
+	} else if value.typ.pt == TYP_F32 {
+		emit(s, "   PUSH_F32 ", strconv.FormatFloat(value.floatValue, 'g', -1, 32))
 	} else {
 		emit(s, "   PUSH_STRING ", value.stringValue)
 	}

@@ -35,37 +35,39 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
-func ParseFormalArgList(s *State, funcName string) error {
+func ParseFormalArgList(s *State, funcName string) ([]*TypeDef, error) {
+	argList := []*TypeDef{}
 	for {
 		if s.token == TOK_RPAR {
 			break
 		}
 		if s.token != TOK_ID {
-			return fmt.Errorf("Expected argument name but got %s", s.tokenString)
+			return argList, fmt.Errorf("Expected argument name but got %s", s.tokenString)
 		}
 		id := s.tokenString
 		nextToken(s)
 		typ, err := ParseType(s)
 		if err != nil {
-			return err
+			return argList, err
 		}
 		if typ == nil {
-			return fmt.Errorf("Expected argument type but got nil")
+			return argList, fmt.Errorf("Expected argument type but got nil")
 		}
 		AddArg(s, funcName, id, typ)
+		argList = append(argList, typ)
 		if s.token == TOK_RPAR {
 			break
 		}
 		if s.token != TOK_COMMA {
-			return fmt.Errorf("Expected comma or reight parantesis but got %s", s.tokenString)
+			return argList, fmt.Errorf("Expected comma or reight parantesis but got %s", s.tokenString)
 		}
 		nextToken(s)
 	}
 	if s.token != TOK_RPAR {
-		return fmt.Errorf("Expected ')' but got %s", s.tokenString)
+		return argList, fmt.Errorf("Expected ')' but got %s", s.tokenString)
 	}
 	nextToken(s)
-	return nil
+	return argList, nil
 }
 
 func ParseArrayIndexes(s *State) error {
@@ -140,6 +142,7 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 		EmitCall(s, id, argNo)
 		// The function call should be alone, so just continue
 		nextToken(s)
+		return
 	} else if s.token == TOK_ASSIGN || s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
 		// Now parse the expression to find the value
 		op := s.token
@@ -183,7 +186,7 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 			EmitModify(s, id, op, value.typ.pt.Name())
 		}
 	} else {
-		return NoValue, fmt.Errorf(No(s) + " Unrecognized assignment or function call")
+		return NoValue, fmt.Errorf("Unrecognized assignment or function call")
 	}
 	// Statements have no value
 	return NoValue, nil
@@ -208,7 +211,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 			return NoValue, fmt.Errorf("Line %d: No type for \"%s\"", s.lineNum, id)
 		}
 		if !v.value.hasValue {
-			EmitPush(s, id, v.name)
+			EmitPush(s, id, v.typ.pt.Name())
 		}
 		return v.value, err
 	} else if s.token == TOK_LBRACK {
@@ -221,7 +224,6 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		var argNo int
 		argNo, err = ParseArgumentList(s)
 		EmitCall(s, id, argNo)
-		nextToken(s)
 		return NoValue, nil
 	}
 	return NoValue, fmt.Errorf(No(s) + " Unrecognized variable or function call")
@@ -320,7 +322,7 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 		}
 		ct := CommonType(value.typ.pt, value2.typ.pt)
 		if value.typ.pt != ct && !value.hasValue {
-			emit(s, "   NOS "+value2.typ.pt.Name(), "TO "+ct.Name())
+			emit(s, "   NOS "+value.typ.pt.Name(), "TO "+ct.Name())
 		}
 		if value2.typ.pt != ct && !value2.hasValue {
 			emit(s, "   TOS "+value2.typ.pt.Name(), "TO "+ct.Name())
@@ -522,12 +524,21 @@ func ParseFunctionDefinition(s *State) error {
 	}
 	nextToken(s)
 	slog.Info("Compiling", "function", fun)
-	err := ParseFormalArgList(s, fun)
+	argList, err := ParseFormalArgList(s, fun)
 	if err != nil {
 		return err
 	}
-	// Parse the type of the function (after arguments)
-	_, err = ParseType(s)
+	// Parse the return type list of the function
+	var returnList []*TypeDef
+	var ft *TypeDef
+	for s.token != TOK_LBRACE {
+		ft, err = ParseType(s)
+		if err != nil {
+			return err
+		}
+		returnList = append(returnList, ft)
+	}
+	err = AddFunc(fun, argList, returnList)
 	if err != nil {
 		return err
 	}
@@ -549,7 +560,7 @@ func ParseFunctionDefinition(s *State) error {
 		EmitReturn(s)
 	}
 	nextToken(s)
-	s.currentFunc = fun
+	s.currentFunc = ""
 	return nil
 }
 

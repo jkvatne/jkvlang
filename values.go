@@ -21,7 +21,7 @@ type ValueDef struct {
 var (
 	False   = ValueDef{typ: &BoolType, hasValue: true, boolValue: false}
 	True    = ValueDef{typ: &BoolType, hasValue: true, boolValue: true}
-	NoValue = ValueDef{typ: &NoneType, hasValue: true, boolValue: false}
+	NoValue = ValueDef{typ: &NoneType, hasValue: false, boolValue: false}
 )
 
 func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
