@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math"
 )
 
 func ParseType(s *State) (*TypeDef, error) {
@@ -329,9 +330,56 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 	return value, nil
 }
 
+// CompareConsts assumes v1 and v2 both have values.
+func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) bool {
+	if v1.typ.pt == TYP_STRING {
+		x1 := v1.stringValue
+		x2 := v2.stringValue
+		if op == TOK_EQ {
+			return x1 == x2
+		} else if op == TOK_NE {
+			return x1 == x2
+		} else if op == TOK_LT {
+			return x1 < x2
+		} else if op == TOK_LE {
+			return x1 <= x2
+		} else if op == TOK_GT {
+			return x1 > x2
+		} else if op == TOK_GE {
+			return x1 >= x2
+		} else {
+			slog.Error("Unexpected operation on constants ", op)
+			return false
+		}
+	}
+	x1 := v1.floatValue
+	if v1.typ.pt != TYP_F32 && v1.typ.pt != TYP_F64 {
+		x1 = float64(v1.intValue)
+	}
+	x2 := v2.floatValue
+	if v2.typ.pt != TYP_F32 && v2.typ.pt != TYP_F64 {
+		x2 = float64(v1.intValue)
+	}
+	if op == TOK_EQ {
+		return math.Abs(x1-x2)/max(x1, x2, 1e-30) < 1e-7
+	} else if op == TOK_NE {
+		return math.Abs(x1-x2)/max(x1, x2, 1e-30) >= 1e-7
+	} else if op == TOK_LT {
+		return x1 < x2
+	} else if op == TOK_LE {
+		return x1 <= x2
+	} else if op == TOK_GT {
+		return x1 > x2
+	} else if op == TOK_GE {
+		return x1 >= x2
+	} else {
+		slog.Error("Unexpected operation on constants ", op)
+		return false
+	}
+}
+
 func ParseCompareTerm(s *State) (result ValueDef, err error) {
-	var value1 ValueDef
-	var value2 ValueDef
+	var value1, value2 ValueDef
 	value1, err = ParseSumTerm(s)
 	if err != nil {
 		return NoValue, err
@@ -349,47 +397,12 @@ func ParseCompareTerm(s *State) (result ValueDef, err error) {
 			return NoValue, err
 		}
 		if value1.hasValue && value2.hasValue {
-			if op == TOK_EQ {
-				if value1.stringValue == value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			} else if op == TOK_NE {
-				if value1.stringValue != value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			} else if op == TOK_LE {
-				if value1.stringValue <= value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			} else if op == TOK_LT {
-				if value1.stringValue < value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			} else if op == TOK_GE {
-				if value1.stringValue >= value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			} else if op == TOK_GT {
-				if value1.stringValue > value2.stringValue {
-					return True, nil
-				} else {
-					return False, nil
-				}
-			}
+			result.boolValue = CompareConsts(op, value1, value2)
+			result.hasValue = true
 		} else {
 			GenerateOp(s, op, value1, value2)
-			return result, nil
 		}
+		return result, nil
 	}
 	if result.typ == nil {
 		slog.Error("result.type is nil")

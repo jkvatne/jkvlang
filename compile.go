@@ -70,7 +70,7 @@ func CompileFile(name string, workdir string) error {
 		targetFile := "./test/targets/" + s.unitName + ".tok"
 		ok, err := FilesAreEqual(objectFile, targetFile)
 		if err != nil {
-			fmt.Printf("Error comparing files %s and %s : %s\n", objectFile, targetFile, err.Error())
+			fmt.Printf("Object file not correct: %s\n", err.Error())
 		}
 		if !ok {
 			fmt.Printf(err.Error())
