@@ -24,7 +24,7 @@ var (
 	NoValue = ValueDef{typ: &NoneType, hasValue: true, boolValue: false}
 )
 
-func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) error {
+func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 	var result ValueDef
 	if val1.hasValue && val2.hasValue && val1.typ.pt == val2.typ.pt {
 		// Both operands are constant. Evaluate at compile time.
@@ -47,13 +47,15 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) error {
 			result.intValue = val1.intValue & val2.intValue
 		default:
 			// Invalid operand
-			return fmt.Errorf("Invalid operation: %s", TokenNames[op])
+			return NoValue, fmt.Errorf("Invalid operation: %s", TokenNames[op])
 		}
+		result.typ = widest(val1, val2).typ
 	} else {
 		slog.Info("Generate", "Op", TokenNames[op])
 		EmitOp(s, op)
+		result.typ = val1.typ
 	}
-	return nil
+	return result, nil
 }
 
 func StringToValue(s string) (value ValueDef, err error) {
@@ -88,4 +90,11 @@ func StringToValue(s string) (value ValueDef, err error) {
 		}
 	}
 	return NoValue, fmt.Errorf("Not a value: %s", s)
+}
+
+func widest(v1 ValueDef, v2 ValueDef) ValueDef {
+	if v1.typ.pt > v2.typ.pt {
+		return v1
+	}
+	return v2
 }

@@ -439,3 +439,11 @@ func nextToken(s *State) {
 		break
 	}
 }
+
+func Expect(s *State, token Token) error {
+	if s.token != token {
+		return fmt.Errorf("Expected token %s, but got %s", token.Name(), s.tokenString)
+	}
+	nextToken(s)
+	return nil
+}
