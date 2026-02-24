@@ -37,9 +37,9 @@ func CompileDir(inputPath string, outputPath string) error {
 			fmt.Printf("=== Compiling %s ===\n", name)
 			err = CompileFile(name, outputPath)
 			if err != nil {
-				fmt.Printf("%v\n", err)
+				return err
 			} else {
-				fmt.Printf("Comiled ok\n")
+				fmt.Printf("File %s compiled ok\n", name)
 			}
 		}
 	}
@@ -96,17 +96,13 @@ func main() {
 	if *oneFile != "" {
 		fmt.Printf("=== Compiling %s ===\n", *oneFile)
 		err = CompileFile(*oneFile, *workdir)
-		if err != nil {
-			fmt.Printf("%v\n", err)
-		} else {
-			fmt.Printf("Comiled ok\n")
-		}
 	} else {
 		err = CompileDir(*inputPath, *workdir)
 	}
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Printf("%v\n", err)
 	} else if *run {
+		fmt.Printf("Compiled ok\n")
 		cmd := exec.Command(*outputName)
 		err := cmd.Start()
 		if err != nil {

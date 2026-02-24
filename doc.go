@@ -2,6 +2,31 @@ package main
 
 /*
 
+ABI
+===
+
+Registers for arguments:
+RAX, RBX, RCX, RDI, RSI, R8, R9, R10, R11
+
+Caller:
+
+Push Ret 1  ; Subtract length of return values from SP
+Push Ret 2
+Push Arg 1
+Push Arg 2
+...
+Call Function (Push PC and jump)
+
+Callee:
+push ebp
+mov ebp, esp
+sub esp, <size of locals>
+
+; leave
+mov esp, ebp
+pop ebp
+ret
+
 
 BYTECODES
 =========

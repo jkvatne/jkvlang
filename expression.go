@@ -86,14 +86,14 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
-func ParseArgumentList(s *State) (argCount int, err error) {
+func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 	for {
-		argCount++
 		if s.token == TOK_RPAR {
 			break
 		}
 		var value ValueDef
 		value, err = ParseExpression(s)
+		valueList = append(valueList, value)
 		if err != nil {
 			return
 		}
@@ -106,30 +106,46 @@ func ParseArgumentList(s *State) (argCount int, err error) {
 		nextToken(s)
 	}
 	if s.token != TOK_RPAR {
-		return argCount, fmt.Errorf("Expected right parantesis but got %s", s.tokenString)
+		return nil, fmt.Errorf("Expected right parantesis but got %s", s.tokenString)
 	}
 	// Skip the final )
 	nextToken(s)
-	return argCount, nil
+	return valueList, nil
 }
 
-func ParseAssignOrCall(s *State) (value ValueDef, err error) {
-	// We now have s.token == TOK_ID
-	id := s.tokenString
-	nextToken(s)
-	lvalue, ok := VarDefs[id]
-	if !ok {
-		if s.token == TOK_ASSIGN {
-			// If it is an assign statement we must create the variable if it does not exist
-			// We don't yet know the type, so just use nil as type
-			lvalue = AddVar(id, nil)
-		} else if s.token == TOK_LPAR {
-			// Unknown function. Add it
-			_ = AddVar(id, &FuncType)
-		} else {
-			return NoValue, fmt.Errorf("Line %d: Did not find variable \"%s\"", s.lineNum, id)
+func ParseLvalueList(s *State) (lvalues []*VarDef, err error) {
+	for {
+		id := s.tokenString
+		nextToken(s)
+		lvalue, ok := VarDefs[id]
+		if !ok {
+			if s.token == TOK_ASSIGN {
+				// If it is an assign statement we must create the variable if it does not exist
+				// We don't yet know the type, so just use nil as type
+				lvalue = AddVar(id, nil)
+			} else if s.token == TOK_LPAR {
+				// Unknown function. Add it
+				_ = AddVar(id, &FuncType)
+			} else {
+				return nil, fmt.Errorf("Did not find variable \"%s\"", s.lineNum, id)
+			}
+		}
+		lvalues = append(lvalues, lvalue)
+		if !s.found(TOK_COMMA) {
+			break
 		}
 	}
+	return lvalues, err
+}
+
+func ParseAssignOrCall(s *State) error {
+	var err error
+	// We now have s.token == TOK_ID
+	lvalues, err := ParseLvalueList(s)
+	if err != nil {
+		return err
+	}
+
 	if s.token == TOK_LBRACK {
 		// TODO: This is an array. For now just skip it
 		for s.token != TOK_RBRACK {
@@ -137,71 +153,88 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 		}
 		nextToken(s)
 	}
-	if s.token == TOK_LPAR {
-		nextToken(s)
+	op := s.token
+	if s.found(TOK_LPAR) {
+		id := lvalues[0].name
 		// This is a function call. Look up the function name
 		f := FuncDefs[id]
 		if f == nil {
-			return NoValue, fmt.Errorf("Funcion not defined: %s", id)
+			return fmt.Errorf("Funcion not defined: %s", id)
 		}
 		// Push 0 to make space for return values
 		for range len(f.returnTypes) {
 			EmitPushConst(s, ZeroValue)
 		}
-		var argNo int
 		// Parse the argument list and push each arg
-		argNo, err = ParseArgumentList(s)
-		EmitCall(s, id, argNo)
+		values, err := ParseArgumentList(s)
+		EmitCall(s, id, len(values))
 		// The function call should be alone, so just continue
-		return
-	} else if s.token == TOK_ASSIGN || s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
-		// Now parse the expression to find the value
-		op := s.token
+		return err
+	} else if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+		id := s.tokenString
+		// Now parse the expression to find the value(s)
 		nextToken(s)
-		value, err = ParseExpression(s)
+		if !s.found(TOK_LPAR) {
+			return fmt.Errorf("Expected (, found %s", s.tokenString)
+		}
+		values, err := ParseArgumentList(s)
 		if err != nil {
-			return value, err
+			return err
 		}
-		if value.typ == nil {
-			return NoValue, fmt.Errorf("Line %d: No type for \"%s\"", s.lineNum, id)
+		if len(values) != len(lvalues) {
+			return fmt.Errorf("Expected %d values but got %d", len(lvalues), len(values))
 		}
-		if lvalue.typ == nil {
-			lvalue.typ = value.typ
-			lvalue.value.typ = value.typ
-		}
-		if value.hasValue {
-			if CanAssingConst(lvalue.typ.pt, value) {
-				lvalue.value = value
-				return value, nil
+		// Check that all values have a type.
+		for _, value := range values {
+			if value.typ == nil {
+				return fmt.Errorf("No type for \"%s\"", s.lineNum, id)
 			}
-			return NoValue, fmt.Errorf("Line %d: Cannot assign to variable \"%s\"", s.lineNum, id)
 		}
-		ct := CommonType(lvalue.typ.pt, value.typ.pt)
-		if ct != value.typ.pt {
-			if ct != lvalue.typ.pt {
-				return NoValue, fmt.Errorf("Expected type of left side variable ")
+		// Assign types to new variables on the left side
+		for i, lvalue := range lvalues {
+			if lvalue.typ == nil {
+				lvalue.typ = values[i].typ
+				lvalue.value.typ = values[i].typ
 			}
-			// Convert expression's type to variable's type
-			emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
 		}
-		// Assign type if not known
-		if lvalue.typ.pt == TYP_NONE {
-			lvalue.typ.pt = ct
-		}
-		if !CanAssign(lvalue.typ.pt, value.typ.pt) {
-			return NoValue, fmt.Errorf("Expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), id)
-		}
-		slog.Info("Store lvalue <op> TOS to", "lvalue", id)
-		if op == TOK_ASSIGN {
-			EmitStore(s, id, value.typ.pt.Name())
-		} else {
-			EmitModify(s, id, op, value.typ.pt.Name())
+
+		// Assign constants
+		for i, value := range values {
+			lvalue := lvalues[i]
+			if value.hasValue {
+				if CanAssingConst(lvalues[i].typ.pt, value) {
+					lvalues[i].value = value
+				} else {
+					return fmt.Errorf("Cannot assign to variable \"%s\"", id)
+				}
+			}
+			ct := CommonType(lvalue.typ.pt, value.typ.pt)
+			if ct != value.typ.pt {
+				if ct != lvalue.typ.pt {
+					return fmt.Errorf("Incompatible types, %s and %s", ct.Name(), lvalue.typ.Name())
+				}
+				// Convert expression's type to variable's type
+				emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
+			}
+			// Assign type if not known
+			if lvalue.typ.pt == TYP_NONE {
+				lvalue.typ.pt = ct
+			}
+			if !CanAssign(lvalue.typ.pt, value.typ.pt) {
+				return fmt.Errorf("Expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), id)
+			}
+			slog.Info("Store lvalue <op> TOS to", "lvalue", id)
+			if op == TOK_ASSIGN {
+				EmitStore(s, id, value.typ.pt.Name())
+			} else {
+				EmitModify(s, id, op, value.typ.pt.Name())
+			}
 		}
 	} else {
-		return NoValue, fmt.Errorf("Unrecognized id \"%s\"", id)
+		return fmt.Errorf("Unrecognized token \"%s\"", s.tokenString)
 	}
 	// Statements have no value
-	return NoValue, nil
+	return nil
 }
 
 // ParseVarOrFunc is called for an unary function or variable.
@@ -214,7 +247,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		// It is  a simple variable
 		v, ok := VarDefs[id]
 		if !ok {
-			return NoValue, fmt.Errorf("Line %d: Did not find variable \"%s\"", s.lineNum, id)
+			return NoValue, fmt.Errorf("Did not find variable \"%s\"", s.lineNum, id)
 		}
 		if v.typ == nil {
 			return NoValue, fmt.Errorf("No type for \"%s\"", id)
@@ -233,9 +266,11 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 	} else if s.token == TOK_LPAR {
 		// It is a function call. Parse argument list
 		nextToken(s)
-		var argNo int
-		argNo, err = ParseArgumentList(s)
-		EmitCall(s, id, argNo)
+		valueList, err := ParseArgumentList(s)
+		if err != nil {
+			return NoValue, err
+		}
+		EmitCall(s, id, len(valueList))
 		f := FuncDefs[id]
 		if f == nil {
 			return NoValue, fmt.Errorf("Did not find function \"%s\"", id)
@@ -449,6 +484,86 @@ func ParseCompareTerm(s *State) (result ValueDef, err error) {
 	return result, err
 }
 
+func ParseExpression(s *State) (result ValueDef, err error) {
+	var value2 ValueDef
+	result, err = ParseCompareTerm(s)
+	if result.typ == nil {
+		return NoValue, fmt.Errorf("Expression type is nil - internal error")
+	}
+	if err != nil {
+		return NoValue, err
+	}
+	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+		if result.typ.pt != TYP_BOOL {
+			return NoValue, fmt.Errorf("&& requires boolean operands!")
+		}
+		op := s.token
+		nextToken(s)
+		value2, err = ParseCompareTerm(s)
+		if err != nil {
+			return NoValue, err
+		}
+		if value2.typ == nil {
+			return NoValue, fmt.Errorf("value2.typ is nil")
+		}
+		if value2.typ.pt != TYP_BOOL {
+			return NoValue, fmt.Errorf("&& requires boolean operands!")
+		}
+		_, err = GenerateOp(s, op, result, value2)
+		if err != nil {
+			return NoValue, err
+		}
+	}
+	if result.typ == nil {
+		return NoValue, fmt.Errorf("value.type is nil - internal error")
+	}
+	return result, nil
+}
+
+// ParseExpressions will parse either a comma separated list of values,
+// or a function call returning potentially many values.
+func ParseExpressions(s *State) (results []ValueDef, err error) {
+	var v ValueDef
+	results = make([]ValueDef, 0, 3)
+	expectRpar := s.found(TOK_LPAR)
+	for {
+		f := FuncDefs[s.tokenString]
+		if s.token == TOK_ID && f != nil && len(f.returnTypes) > 0 {
+			nextToken(s)
+			if !s.found(TOK_LPAR) {
+				return nil, fmt.Errorf("Expected ( after function, found: %s", s.tokenString)
+			}
+			if len(f.returnTypes) == 1 {
+				v, err = ParseVarOrFunc(s)
+				if err != nil {
+					return nil, err
+				}
+				results = append(results, v)
+			} else if len(f.returnTypes) > 1 {
+				// The expression is a function call with more than one result
+				valueList, err := ParseArgumentList(s)
+				if err != nil {
+					return nil, err
+				}
+				EmitCall(s, f.name, len(valueList))
+				for _, t := range f.returnTypes {
+					v = ValueDef{typ: t}
+					results = append(results, v)
+				}
+			}
+		}
+		v, err = ParseExpression(s)
+		results = append(results, v)
+		if !s.found(TOK_COMMA) {
+			break
+		}
+	}
+	if expectRpar && !s.found(TOK_RPAR) {
+		return nil, fmt.Errorf("Expected ) after function, found: %s", s.tokenString)
+	}
+	return results, nil
+}
+
 func NewLabel(s *State) int {
 	s.labelNo++
 	return s.labelNo
@@ -462,7 +577,7 @@ func ParseIf(s *State) error {
 		return err
 	}
 	if typ.typ.pt != TYP_BOOL {
-		return fmt.Errorf("Line %d: Expected boolean but got %s", s.lineNum, PrimaryTypeNames[typ.typ.pt])
+		return fmt.Errorf("Expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
 	}
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
@@ -508,12 +623,12 @@ func ParseIf(s *State) error {
 					return err
 				}
 				if typ.typ.pt != TYP_BOOL {
-					return fmt.Errorf("Line %d: Expected boolean but got %s", s.lineNum, PrimaryTypeNames[typ.typ.pt])
+					return fmt.Errorf("Expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
 				}
 				elseLabel = NewLabel(s)
 				EmitJumpFalse(s, elseLabel)
 				if s.token != TOK_LBRACE {
-					return fmt.Errorf("Line %d: Expected { after if but got %s", s.lineNum, s.tokenString)
+					return fmt.Errorf("Expected { after if but got %s", s.tokenString)
 				}
 				nextToken(s)
 				slog.Debug("Parsing 'else if' statements")
@@ -523,7 +638,7 @@ func ParseIf(s *State) error {
 					return err
 				}
 				if s.token != TOK_RBRACE {
-					return fmt.Errorf("Line %d: Expected } after if clause, but got %s", s.lineNum, s.tokenString)
+					return fmt.Errorf("Expected } after if clause, but got %s", s.tokenString)
 				}
 				nextToken(s)
 			} else if s.token == TOK_LBRACE {
@@ -564,15 +679,26 @@ func ParseFunctionDefinition(s *State) error {
 	if err != nil {
 		return err
 	}
-	// Parse the return type list of the function
+	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
-	var ft *TypeDef
-	for s.token != TOK_LBRACE {
-		ft, err = ParseType(s)
-		if err != nil {
-			return err
+	if !s.found(TOK_LBRACE) {
+		expectRpar := s.found(TOK_LPAR)
+		for {
+			ft, err := ParseType(s)
+			if err != nil {
+				return err
+			}
+			returnList = append(returnList, ft)
+			if !s.found(TOK_COMMA) {
+				break
+			}
 		}
-		returnList = append(returnList, ft)
+		if !expectRpar || !s.found(TOK_RPAR) {
+			return fmt.Errorf("Expected ) but got %s", s.tokenString)
+		}
+		if !s.found(TOK_LBRACE) {
+			return fmt.Errorf("Expected { but got %s", s.tokenString)
+		}
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, argList, returnList)
@@ -580,11 +706,6 @@ func ParseFunctionDefinition(s *State) error {
 	if err != nil {
 		return err
 	}
-	// After the type, we must have a {
-	if s.token != TOK_LBRACE {
-		return fmt.Errorf("Funcion definition expected '{' but got %s", s.tokenString)
-	}
-	nextToken(s)
 	// Now parse all the statements in the function
 	err = ParseStatements(s)
 	if err != nil {
@@ -643,37 +764,4 @@ func ParseTypeDefs(s *State) error {
 		err = ParseTypeDef(s)
 	}
 	return err
-}
-
-func ParseExpression(s *State) (result ValueDef, err error) {
-	var value2 ValueDef
-	result, err = ParseCompareTerm(s)
-	if result.typ == nil {
-		return NoValue, fmt.Errorf("Expression type is nil - internal error")
-	}
-	if err != nil {
-		return NoValue, err
-	}
-	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
-		if result.typ.pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("&& requires boolean operands!")
-		}
-		op := s.token
-		nextToken(s)
-		value2, err = ParseCompareTerm(s)
-		if err != nil {
-			return NoValue, err
-		}
-		if value2.typ == nil {
-			return NoValue, fmt.Errorf("value2.typ is nil")
-		}
-		if value2.typ.pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("&& requires boolean operands!")
-		}
-		GenerateOp(s, op, result, value2)
-	}
-	if result.typ == nil {
-		return NoValue, fmt.Errorf("value.type is nil - internal error")
-	}
-	return result, nil
 }

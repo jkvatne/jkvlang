@@ -1,0 +1,14 @@
+
+func foo(a Bool, c I16) (I32, Bool) {
+    if a {
+        return c, a
+    } else {
+        return c*2, a
+    }
+}
+
+func main() {
+  var n I32
+  n, a = foo(true, 5)
+  PrintInt(n)
+}

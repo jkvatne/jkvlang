@@ -231,6 +231,15 @@ func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
 	}
 	return ch1, ch2
 }
+func (s *State) found(tokens ...Token) bool {
+	for _, t := range tokens {
+		if s.token == t {
+			nextToken(s)
+			return true
+		}
+	}
+	return false
+}
 
 func nextToken(s *State) {
 	s.token = TOK_EOF

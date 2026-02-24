@@ -63,7 +63,6 @@ func CompileFile(name string, workdir string) error {
 	}
 	if err != nil {
 		EmitError(s, err)
-		err = fmt.Errorf("Error on line %d: %v", s.lineNum, err)
 	}
-	return err
+	return fmt.Errorf("%s Line %d: %v", name, s.lineNum, err)
 }

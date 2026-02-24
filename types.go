@@ -135,6 +135,9 @@ func (t *TypeDef) Name() string {
 
 // CanAssign is true if we can assign type "src" to "dst"
 func CanAssign(dst PrimaryType, src PrimaryType) bool {
+	if src == dst {
+		return true
+	}
 	return dst == TYP_U8 && src == TYP_U8 ||
 		dst == TYP_I16 && (src == TYP_I16 || src == TYP_U8) ||
 		dst == TYP_I32 && (src == TYP_I32 || src == TYP_I16 || src == TYP_U8) ||

@@ -7,38 +7,30 @@ import (
 
 func ParseReturn(s *State) error {
 	f := s.currentFunc
-	requireRpar := false
-	if s.token == TOK_LPAR {
-		// We have return values inside a parantesis
-		nextToken(s)
-		requireRpar = true
-	}
+	requireRpar := s.found(TOK_LPAR)
 	i := 0
 	for {
 		v, err := ParseExpression(s)
 		if err != nil {
 			return err
 		}
-		if !CanAssign(f.returnTypes[0].pt, v.typ.pt) {
+		if !CanAssign(f.returnTypes[i].pt, v.typ.pt) {
 			return fmt.Errorf("Returns wrong type")
 		}
 		if v.hasValue {
 			EmitPushConst(s, v)
 		}
-		if s.token != TOK_COMMA {
+		if !s.found(TOK_COMMA) {
 			break
 		}
 		i++
 	}
-	if requireRpar {
-		if s.token != TOK_RPAR {
-			return errors.New("expected )")
-		}
+	if requireRpar && !s.found(TOK_RPAR) {
+		return errors.New("expected )")
 	}
 	if len(f.returnTypes) == 0 {
 		return fmt.Errorf("Function '%s' has no return_type declaration", f.name)
 	}
-
 	EmitReturn(s)
 	return nil
 }
@@ -74,7 +66,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 			EmitAssert(s)
 		}
 	} else if s.token == TOK_ID {
-		_, err = ParseAssignOrCall(s)
+		err = ParseAssignOrCall(s)
 	} else if s.token == TOK_SEMICOLON {
 		// Ignore
 		nextToken(s)
