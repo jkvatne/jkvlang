@@ -18,7 +18,7 @@ type State struct {
 	hasReturned     bool
 	outputFile      *os.File
 	unitName        string
-	currentFunc     string
+	currentFunc     *FuncDef
 }
 
 type Token int

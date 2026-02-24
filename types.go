@@ -102,7 +102,7 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
 		return TYP_U32
 	}
 
-	if t1 == TYP_U16 && t2 != TYP_U32 || t2 == TYP_U16 && t1 != TYP_U32 {
+	if t1 == TYP_U16 || t2 == TYP_U16 && t1 != TYP_U32 {
 		return TYP_I32
 	}
 	if t1 == TYP_I16 {
@@ -110,10 +110,8 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
 			return TYP_I32
 		}
 	}
-	if t2 == TYP_I16 {
-		if t1 == TYP_U16 || t1 == TYP_I32 {
-			return TYP_I32
-		}
+	if t2 == TYP_I16 && t1 == TYP_I32 {
+		return TYP_I32
 	}
 	if t1 == TYP_U32 && (t2 <= TYP_U16 || t2 == TYP_I32) {
 		return TYP_I64

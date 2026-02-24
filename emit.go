@@ -37,6 +37,7 @@ func EmitAssert(s *State) {
 func EmitCall(s *State, id string, argNo int) {
 	slog.Info(No(s)+" EmitCall:", "name", id, "argNo", argNo)
 	emit(s, "   CALL", id)
+	emit(s, "   ADD SP, ", strconv.Itoa(argNo)+"  // Remove arguments from stack")
 }
 
 func EmitLabel(s *State, n int) {
@@ -47,7 +48,8 @@ func EmitLabel(s *State, n int) {
 func EmitFunction(s *State, id string) {
 	slog.Info(No(s) + " EmitFunction")
 	emit(s, id, "")
-	emit(s, "   PROLOG", "")
+	emit(s, "   PUSH FP", "")
+	emit(s, "   SET FP=SP", "")
 }
 
 func EmitJump(s *State, n int) {
@@ -64,6 +66,9 @@ func EmitJumpFalse(s *State, n int) {
 }
 
 func EmitReturn(s *State) {
+	for i := range len(s.currentFunc.returnTypes) {
+		emit(s, "   POP", "[BP-"+strconv.Itoa(len(s.currentFunc.argTypes)+i)+"]  // Return value")
+	}
 	slog.Info(No(s) + " EmitReturn")
 	emit(s, "   RETURN", "\n")
 }
@@ -76,11 +81,6 @@ func EmitModify(s *State, id string, op Token, value string) {
 
 func EmitType(s *State, name string, typ int) {
 	slog.Info(No(s) + " EmitType: " + name + strconv.Itoa(typ))
-}
-
-func EmitConst(s *State, name string, value string, typ string) {
-	slog.Info(No(s) + " EmitConst: " + name + " value:\"" + value + "\" Type:" + typ)
-	emit(s, "EmitConst: "+name+"="+value+" Func:"+s.currentFunc+" Type:"+typ, "")
 }
 
 func EmitLineNo(s *State) {

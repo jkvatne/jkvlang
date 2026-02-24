@@ -6,7 +6,7 @@ import (
 )
 
 func ParseReturn(s *State) error {
-	f := FuncDefs[s.currentFunc]
+	f := s.currentFunc
 	requireRpar := false
 	if s.token == TOK_LPAR {
 		// We have return values inside a parantesis
@@ -36,7 +36,7 @@ func ParseReturn(s *State) error {
 		}
 	}
 	if len(f.returnTypes) == 0 {
-		return fmt.Errorf("Function '%s' has no return_type declaration", s.currentFunc)
+		return fmt.Errorf("Function '%s' has no return_type declaration", f.name)
 	}
 
 	EmitReturn(s)

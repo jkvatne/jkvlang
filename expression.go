@@ -552,7 +552,6 @@ func ParseFunctionDefinition(s *State) error {
 	}
 	VarInit()
 	fun := s.tokenString
-	s.currentFunc = fun
 	slog.Info("Parsing function definition", "name", fun)
 	EmitFunction(s, fun)
 	nextToken(s)
@@ -577,6 +576,7 @@ func ParseFunctionDefinition(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, argList, returnList)
+	s.currentFunc = f
 	if err != nil {
 		return err
 	}
@@ -601,7 +601,7 @@ func ParseFunctionDefinition(s *State) error {
 		EmitReturn(s)
 	}
 	nextToken(s)
-	s.currentFunc = ""
+	s.currentFunc = nil
 	return nil
 }
 

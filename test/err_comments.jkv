@@ -1,0 +1,16 @@
+// ShortComment
+/*
+/* Nested comment */
+// ShortComment
+*/
+
+/* Temporarily ignore the rest
+func bar() {
+    x+=1
+    c = sum(a,b)
+    a = 1.234   // Comment a
+    b = 2.345   // Comment b
+    println("Hello World %s!\n")
+    x = y&z|x
+}
+*/

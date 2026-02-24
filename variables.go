@@ -45,10 +45,6 @@ func AddVar(id string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func AddConst(s *State, id string, typ *TypeDef, value string) {
-	EmitConst(s, id, value, PrimaryTypeNames[typ.pt])
-}
-
 func AddArg(s *State, funcName string, argName string, typ *TypeDef) {
 	slog.Info("Arg list", "funcName", funcName, "ArgName", argName)
 	AddVar(argName, typ)
