@@ -1,8 +1,12 @@
 
 func fi(a Bool, c I32) I32 {
     if a {
-        return 1
+        return c
     } else {
-        return 2
+        return c*2
     }
+}
+
+func main() {
+  PrintInt(fi(true, 5))
 }

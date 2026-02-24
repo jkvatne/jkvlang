@@ -1,17 +1,57 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+func ParseReturn(s *State) error {
+	f := FuncDefs[s.currentFunc]
+	requireRpar := false
+	if s.token == TOK_LPAR {
+		// We have return values inside a parantesis
+		nextToken(s)
+		requireRpar = true
+	}
+	i := 0
+	for {
+		v, err := ParseExpression(s)
+		if err != nil {
+			return err
+		}
+		if !CanAssign(f.returnTypes[0].pt, v.typ.pt) {
+			return fmt.Errorf("Returns wrong type")
+		}
+		if v.hasValue {
+			EmitPushConst(s, v)
+		}
+		if s.token != TOK_COMMA {
+			break
+		}
+		i++
+	}
+	if requireRpar {
+		if s.token != TOK_RPAR {
+			return errors.New("expected )")
+		}
+	}
+	if len(f.returnTypes) == 0 {
+		return fmt.Errorf("Function '%s' has no return_type declaration", s.currentFunc)
+	}
+
+	EmitReturn(s)
+	return nil
+}
 
 // ParseStatement will parse the statements inside a {} block or similar.
 // retured is true if the statemend emited a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_RETURN {
+		nextToken(s)
 		if s.hasReturned {
 			return true, fmt.Errorf("More than one return in block")
 		}
-		nextToken(s)
-		_, err = ParseExpression(s)
-		EmitReturn(s)
+		err = ParseReturn(s)
 		returned = true
 	} else if s.token == TOK_IF {
 		err = ParseIf(s)
@@ -21,6 +61,9 @@ func ParseStatement(s *State) (returned bool, err error) {
 		nextToken(s)
 		var v ValueDef
 		v, err = ParseExpression(s)
+		if err != nil {
+			return false, err
+		}
 		if v.hasValue {
 			if !v.boolValue {
 				return false, fmt.Errorf("Assert failed")

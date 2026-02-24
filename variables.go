@@ -63,7 +63,7 @@ func ParseVars(s *State) error {
 		for s.token != TOK_RPAR {
 			err = ParseVar(s, false)
 			if err != nil {
-				break
+				return err
 			}
 		}
 		nextToken(s)

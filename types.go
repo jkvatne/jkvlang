@@ -42,6 +42,8 @@ var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool"}
 var NoneType = TypeDef{pt: TYP_NONE, name: "None"}
 var ErrType = TypeDef{pt: TYP_ERROR, name: "Err"}
 var FuncType = TypeDef{pt: TYP_FUNC, name: "func"}
+var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr"}
+var I64Type = TypeDef{pt: TYP_I64, name: "I64"}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)
@@ -139,7 +141,6 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 		dst == TYP_I16 && (src == TYP_I16 || src == TYP_U8) ||
 		dst == TYP_I32 && (src == TYP_I32 || src == TYP_I16 || src == TYP_U8) ||
 		dst == TYP_I64 && (src == TYP_I32 || src == TYP_U32 || src == TYP_U16 || src == TYP_I16 || src == TYP_U8) ||
-		dst == TYP_U8 && src == TYP_U8 ||
 		dst == TYP_U16 && (src == TYP_U16 || src == TYP_U8) ||
 		dst == TYP_U32 && (src == TYP_U32 || src == TYP_U16 || src == TYP_U8) ||
 		dst == TYP_F64 || dst == TYP_F32

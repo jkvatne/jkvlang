@@ -28,13 +28,19 @@ var (
 func CompileDir(inputPath string, outputPath string) error {
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
-		return fmt.Errorf("Fatal error " + err.Error())
+		return fmt.Errorf("Fatal error %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			// CheckFile(s, workdir)
 			name := filepath.Join(inputPath, entry.Name())
+			fmt.Printf("=== Compiling %s ===\n", name)
 			err = CompileFile(name, outputPath)
+			if err != nil {
+				fmt.Printf("%v\n", err)
+			} else {
+				fmt.Printf("Comiled ok\n")
+			}
 		}
 	}
 	return err
@@ -88,7 +94,13 @@ func main() {
 	}
 	var err error
 	if *oneFile != "" {
+		fmt.Printf("=== Compiling %s ===\n", *oneFile)
 		err = CompileFile(*oneFile, *workdir)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		} else {
+			fmt.Printf("Comiled ok\n")
+		}
 	} else {
 		err = CompileDir(*inputPath, *workdir)
 	}

@@ -380,7 +380,7 @@ func nextToken(s *State) {
 			s.token = TOK_AT
 		case isAlfa(ch1):
 			value := string(ch1)
-			for isAlfaNum(ch2) {
+			for isAlfaNum(ch2) || ch2 == '_' {
 				ch1, ch2 = nextChar(s)
 				value += string(ch1)
 			}

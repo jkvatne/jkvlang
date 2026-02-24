@@ -19,9 +19,10 @@ type ValueDef struct {
 }
 
 var (
-	False   = ValueDef{typ: &BoolType, hasValue: true, boolValue: false}
-	True    = ValueDef{typ: &BoolType, hasValue: true, boolValue: true}
-	NoValue = ValueDef{typ: &NoneType, hasValue: false, boolValue: false}
+	False     = ValueDef{typ: &BoolType, hasValue: true, boolValue: false}
+	True      = ValueDef{typ: &BoolType, hasValue: true, boolValue: true}
+	NoValue   = ValueDef{typ: &NoneType, hasValue: false, boolValue: false}
+	ZeroValue = ValueDef{typ: &PtrType, hasValue: true, intValue: 0, floatValue: 0, boolValue: false}
 )
 
 func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
@@ -57,6 +58,12 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 			// Invalid operand
 			return NoValue, fmt.Errorf("Invalid operation: %s", TokenNames[op])
 		}
+	} else if val1.hasValue {
+		EmitOpConst(s, op, val1)
+		result.typ = val2.typ
+	} else if val2.hasValue {
+		EmitOpConst(s, op, val2)
+		result.typ = val2.typ
 	} else {
 		slog.Info("Generate", "Op", TokenNames[op])
 		EmitOp(s, op)

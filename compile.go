@@ -22,7 +22,6 @@ func CheckFile(s *State, workdir string) {
 }
 
 func CompileFile(name string, workdir string) error {
-	fmt.Printf("=== Compiling %s ===\n", name)
 	slog.Info("Compiling", "filename", name)
 	var err error
 	s := new(State)
@@ -36,7 +35,7 @@ func CompileFile(name string, workdir string) error {
 	objectFile := filepath.Join(workdir, s.unitName+".tok")
 	s.outputFile, err = os.OpenFile(objectFile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	defer CloseObjFile(s)
-	emit(s, "// Token file ", objectFile)
+	emit(s, "   // Token file ", objectFile)
 
 	if err != nil {
 		return err
@@ -64,18 +63,7 @@ func CompileFile(name string, workdir string) error {
 	}
 	if err != nil {
 		EmitError(s, err)
-	} else {
-		fmt.Printf("Comilation ok\n")
+		err = fmt.Errorf("Error on line %d: %v", s.lineNum, err)
 	}
-	if true {
-		targetFile := "./test/targets/" + s.unitName + ".tok"
-		ok, err := FilesAreEqual(objectFile, targetFile)
-		if err != nil {
-			fmt.Printf("Object file not correct: %s\n", err.Error())
-		}
-		if !ok {
-			fmt.Printf(err.Error())
-		}
-	}
-	return nil
+	return err
 }

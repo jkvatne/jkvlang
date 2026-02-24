@@ -6,11 +6,11 @@ func fi(a Bool, c I32) I32 {
 
 func test_fi()  {
     r = fi(true, 30)
-    assert r=31
+    assert r==31
 }
 
-func shortfunc() {
-    z-=3;  z+=4
+func shortfunc() I32 {
+    z=3;  z+=4
     z*=8
     s = 24
     s /=6
@@ -26,8 +26,8 @@ type Test = U16
 type Age = U8
 
 type (
-    Name = string
-    Address = string
+    Name = String
+    Address = String
 )
 
 func foo() Age {
@@ -35,15 +35,13 @@ func foo() Age {
       XI32 I32
       XI64 I64
       XI16 I16
-      XI8 I8
       XU8 U8
       XU16 U16
       XU32  U32
-      XU64 U64
       mat[32] I32
     )
-    YI32 = I32(123)
-    return XI64
+    YI32 = 123
+    return XU8
 }
 
 

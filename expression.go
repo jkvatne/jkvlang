@@ -12,11 +12,14 @@ func ParseType(s *State) (*TypeDef, error) {
 		return nil, nil
 	}
 	id := s.tokenString
+	if id[0] > 'Z' {
+		return nil, fmt.Errorf("Types must start with a capital letter: '%s'", id)
+	}
 	slog.Info("Parsing type", "id", id)
 	nextToken(s)
 	typ, ok := TypeDefs[id]
 	if !ok {
-		return nil, fmt.Errorf("Unknown type: %s", s.tokenString)
+		return nil, fmt.Errorf("Unknown type: %s", id)
 	}
 	/*
 		typ := new(TypeDef)
@@ -135,13 +138,21 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 		nextToken(s)
 	}
 	if s.token == TOK_LPAR {
-		// This is a function call. Parse the argument list
 		nextToken(s)
+		// This is a function call. Look up the function name
+		f := FuncDefs[id]
+		if f == nil {
+			return NoValue, fmt.Errorf("Funcion not defined: %s", id)
+		}
+		// Push 0 to make space for return values
+		for range len(f.returnTypes) {
+			EmitPushConst(s, ZeroValue)
+		}
 		var argNo int
+		// Parse the argument list and push each arg
 		argNo, err = ParseArgumentList(s)
 		EmitCall(s, id, argNo)
 		// The function call should be alone, so just continue
-		nextToken(s)
 		return
 	} else if s.token == TOK_ASSIGN || s.token == TOK_PLUS_ASGN || s.token == TOK_MINUS_ASGN || s.token == TOK_MULT_ASGN || s.token == TOK_DIV_ASGN {
 		// Now parse the expression to find the value
@@ -156,6 +167,7 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 		}
 		if lvalue.typ == nil {
 			lvalue.typ = value.typ
+			lvalue.value.typ = value.typ
 		}
 		if value.hasValue {
 			if CanAssingConst(lvalue.typ.pt, value) {
@@ -186,7 +198,7 @@ func ParseAssignOrCall(s *State) (value ValueDef, err error) {
 			EmitModify(s, id, op, value.typ.pt.Name())
 		}
 	} else {
-		return NoValue, fmt.Errorf("Unrecognized assignment or function call")
+		return NoValue, fmt.Errorf("Unrecognized id \"%s\"", id)
 	}
 	// Statements have no value
 	return NoValue, nil
@@ -205,10 +217,10 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 			return NoValue, fmt.Errorf("Line %d: Did not find variable \"%s\"", s.lineNum, id)
 		}
 		if v.typ == nil {
-			return NoValue, fmt.Errorf("No type for \"%s\"", s.lineNum, id)
+			return NoValue, fmt.Errorf("No type for \"%s\"", id)
 		}
 		if v.typ.pt == TYP_NONE {
-			return NoValue, fmt.Errorf("Line %d: No type for \"%s\"", s.lineNum, id)
+			return NoValue, fmt.Errorf("No type for \"%s\"", id)
 		}
 		if !v.value.hasValue {
 			EmitPush(s, id, v.typ.pt.Name())
@@ -224,9 +236,17 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		var argNo int
 		argNo, err = ParseArgumentList(s)
 		EmitCall(s, id, argNo)
-		return NoValue, nil
+		f := FuncDefs[id]
+		if f == nil {
+			return NoValue, fmt.Errorf("Did not find function \"%s\"", id)
+		}
+		if len(f.returnTypes) == 0 {
+			return NoValue, nil
+		}
+		v := ValueDef{typ: f.returnTypes[0]}
+		return v, nil
 	}
-	return NoValue, fmt.Errorf(No(s) + " Unrecognized variable or function call")
+	return NoValue, fmt.Errorf("Unrecognized variable or function call")
 }
 
 // ParseUnary will parse a parantesis term, a number, a string, a function call
@@ -244,7 +264,7 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
 		if value.typ == nil {
-			return NoValue, fmt.Errorf(No(s) + " Missing integer type")
+			return NoValue, fmt.Errorf("Missing integer type")
 		}
 		nextToken(s)
 	} else if s.token == TOK_F32 {
@@ -273,15 +293,13 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 			}
 		}
 	} else if s.token == TOK_TRUE {
-		EmitPush(s, s.tokenString, "BOOL")
 		value = True
 		nextToken(s)
 	} else if s.token == TOK_FALSE {
-		EmitPush(s, s.tokenString, "BOOL")
 		value = False
 		nextToken(s)
 	} else {
-		slog.Error("Unexpected token ", s.tokenString)
+		slog.Error("Unexpected", "token", s.tokenString)
 		return NoValue, fmt.Errorf("Unexpected token %s", s.tokenString)
 	}
 	return value, err
@@ -350,7 +368,7 @@ func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) bool {
 		} else if op == TOK_GE {
 			return x1 >= x2
 		} else {
-			slog.Error("Unexpected operation on constants ", op)
+			slog.Error("Unexpected operation on constants", "op", op)
 			return false
 		}
 	}
@@ -375,8 +393,23 @@ func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) bool {
 	} else if op == TOK_GE {
 		return x1 >= x2
 	} else {
-		slog.Error("Unexpected operation on constants ", op)
+		slog.Error("Unexpected operation on constants ", "Op", op)
 		return false
+	}
+}
+
+func Inverse(op Token) Token {
+	switch op {
+	case TOK_LT:
+		return TOK_GT
+	case TOK_LE:
+		return TOK_GE
+	case TOK_GT:
+		return TOK_LT
+	case TOK_GE:
+		return TOK_LE
+	default:
+		return op
 	}
 }
 
@@ -401,8 +434,12 @@ func ParseCompareTerm(s *State) (result ValueDef, err error) {
 		if value1.hasValue && value2.hasValue {
 			result.boolValue = CompareConsts(op, value1, value2)
 			result.hasValue = true
-		} else {
-			GenerateOp(s, op, value1, value2)
+		} else if value2.hasValue {
+			EmitPushConst(s, value2)
+			return GenerateOp(s, op, value1, value2)
+		} else if value1.hasValue {
+			EmitPushConst(s, value2)
+			return GenerateOp(s, Inverse(op), value1, value2)
 		}
 		return result, nil
 	}
@@ -538,7 +575,8 @@ func ParseFunctionDefinition(s *State) error {
 		}
 		returnList = append(returnList, ft)
 	}
-	err = AddFunc(fun, argList, returnList)
+	var f *FuncDef
+	f, err = AddFunc(fun, argList, returnList)
 	if err != nil {
 		return err
 	}
@@ -555,6 +593,9 @@ func ParseFunctionDefinition(s *State) error {
 	// After all the statements in the function, we must have a right-brace }.
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("Function definition expected ending '}' but got %s", s.tokenString)
+	}
+	if !s.hasReturned && f != nil && len(f.returnTypes) > 0 {
+		return fmt.Errorf("Function definition does not return a value")
 	}
 	if !s.hasReturned {
 		EmitReturn(s)

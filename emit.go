@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 )
 
 func CloseObjFile(s *State) error {
@@ -24,6 +25,7 @@ func EmitStore(s *State, id string, typ string) {
 
 func EmitPush(s *State, id string, typ string) {
 	slog.Info(No(s)+" EmitPush: ", "name", id)
+	typ = strings.ToUpper(typ)
 	emit(s, "   PUSH_"+typ, id)
 }
 
@@ -49,6 +51,9 @@ func EmitFunction(s *State, id string) {
 }
 
 func EmitJump(s *State, n int) {
+	if s.hasReturned {
+		return
+	}
 	slog.Info(No(s)+" EmitJump", "no", n)
 	emit(s, "   JUMP", "L"+strconv.Itoa(n))
 }
@@ -70,7 +75,7 @@ func EmitModify(s *State, id string, op Token, value string) {
 }
 
 func EmitType(s *State, name string, typ int) {
-	slog.Info(No(s)+" EmitType: "+name, strconv.Itoa(typ))
+	slog.Info(No(s) + " EmitType: " + name + strconv.Itoa(typ))
 }
 
 func EmitConst(s *State, name string, value string, typ string) {
@@ -79,16 +84,37 @@ func EmitConst(s *State, name string, value string, typ string) {
 }
 
 func EmitLineNo(s *State) {
-	emit(s, "  // Line no", strconv.Itoa(s.lineNum))
+	emit(s, "   // Line no", strconv.Itoa(s.lineNum))
 }
 
 func EmitOp(s *State, op Token) {
 	emit(s, "   "+TokenNames[op], "")
 }
 
+func ValueAsString(v ValueDef) string {
+	if v.typ.pt == TYP_U8 || v.typ.pt == TYP_U16 || v.typ.pt == TYP_U32 || v.typ.pt == TYP_I16 || v.typ.pt == TYP_I32 || v.typ.pt == TYP_I64 {
+		return strconv.FormatInt(v.intValue, 10)
+	} else if v.typ.pt == TYP_BOOL {
+		if v.boolValue {
+			return "true"
+		} else {
+			return "false"
+		}
+	} else if v.typ.pt == TYP_F64 {
+		return strconv.FormatFloat(v.floatValue, 'g', -1, 64)
+	} else if v.typ.pt == TYP_F32 {
+		return strconv.FormatFloat(v.floatValue, 'g', -1, 32)
+	}
+	return v.stringValue
+}
+
+func EmitOpConst(s *State, op Token, c ValueDef) {
+	emit(s, "   "+TokenNames[op]+"_IM", ValueAsString(c))
+}
+
 func EmitError(s *State, err error) {
 	emit(s, "Error on line "+strconv.Itoa(s.lineNum)+": ", err.Error())
-	fmt.Printf("Error on line %d, %s\n", s.lineNum, err.Error())
+	// fmt.Printf("Error on line %d, %s\n", s.lineNum, err.Error())
 }
 
 func EmitPushConst(s *State, value ValueDef) {
@@ -96,22 +122,16 @@ func EmitPushConst(s *State, value ValueDef) {
 	if !value.hasValue {
 		slog.Error("EmitPushConst without value")
 	}
-	if value.typ.pt == TYP_U8 {
-		emit(s, "   PUSH_U8 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_U16 {
-		emit(s, "   PUSH_U16 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_I16 {
-		emit(s, "   PUSH_U16 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_U32 {
-		emit(s, "   PUSH_U32 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_I32 {
-		emit(s, "   PUSH_I32 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_I64 {
-		emit(s, "   PUSH_I64 ", strconv.FormatInt(value.intValue, 10))
-	} else if value.typ.pt == TYP_F64 {
-		emit(s, "   PUSH_F64 ", strconv.FormatFloat(value.floatValue, 'g', -1, 64))
-	} else if value.typ.pt == TYP_F32 {
-		emit(s, "   PUSH_F32 ", strconv.FormatFloat(value.floatValue, 'g', -1, 32))
+	if value.typ.pt == TYP_BOOL {
+		if value.boolValue {
+			emit(s, "   PUSH_INT", "1")
+		} else {
+			emit(s, "   PUSH_INT", "0")
+		}
+	} else if value.typ.pt == TYP_U8 || value.typ.pt == TYP_U16 || value.typ.pt == TYP_I16 || value.typ.pt == TYP_U32 || value.typ.pt == TYP_I32 || value.typ.pt == TYP_I64 {
+		emit(s, "   PUSH_INT", strconv.FormatInt(value.intValue, 10))
+	} else if value.typ.pt == TYP_F64 || value.typ.pt == TYP_F32 {
+		emit(s, "   PUSH_FLOAT", strconv.FormatFloat(value.floatValue, 'g', -1, 64))
 	} else {
 		emit(s, "   PUSH_STRING ", value.stringValue)
 	}
