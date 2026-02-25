@@ -3,13 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -45,6 +43,7 @@ func CompileDir(inputPath string, outputPath string) error {
 	return err
 }
 
+/*
 func readerDemo() {
 	f, err1 := os.Create("./temp.txt")
 	defer func(f *os.File) {
@@ -70,6 +69,7 @@ func stringDemo() {
 	fmt.Println(t)
 	os.Exit(0)
 }
+*/
 
 func main() {
 	t := time.Now()

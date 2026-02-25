@@ -8,21 +8,8 @@ import (
 	"strings"
 )
 
-func CheckFile(s *State, workdir string) {
-	for s.token != TOK_EOF {
-		nextToken(s)
-		slog.Info("Token", "Lno", s.lineNum, "Value", s.token, "String", s.tokenString)
-		usedToken[s.token] = true
-	}
-	for i, t := range usedToken {
-		if t == false && i > 0 {
-			slog.Error("Missing", "token", i)
-		}
-	}
-}
-
 func CompileFile(name string, workdir string) error {
-	slog.Info("Compiling", "filename", name)
+	slog.Info("Compiling", "filename", name, "workdir", workdir)
 	var err error
 	s := new(State)
 	s.lineNum = 1

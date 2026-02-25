@@ -28,11 +28,11 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 }
 
-func AddVar(id string, typ *TypeDef) *VarDef {
+func AddVar(id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{name: id, typ: typ, value: ValueDef{typ: typ, hasValue: false}}
+		v = &VarDef{name: id, typ: typ, value: ValueDef{typ: typ, hasValue: isConst}}
 		VarDefs[id] = v
 	}
 	return v
@@ -40,7 +40,7 @@ func AddVar(id string, typ *TypeDef) *VarDef {
 
 func AddArg(s *State, funcName string, argName string, typ *TypeDef) {
 	slog.Info("Arg list", "funcName", funcName, "ArgName", argName)
-	AddVar(argName, typ)
+	AddVar(argName, typ, false)
 }
 
 // ParseVars parses a parenthesis var declaration
@@ -80,7 +80,7 @@ func ParseConsts(s *State) error {
 	return err
 }
 
-// ParseVar will parse a variable declaration
+// ParseVar will parse a variable or constant declaration
 func ParseVar(s *State, isConst bool) error {
 	var val string
 	var err error
@@ -107,7 +107,7 @@ func ParseVar(s *State, isConst bool) error {
 	if err != nil {
 		return err
 	}
-	v := AddVar(id, typ)
+	v := AddVar(id, typ, isConst)
 	v.typ.arraySize = arraySize
 	if s.token == TOK_ASSIGN {
 		nextToken(s)

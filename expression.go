@@ -56,7 +56,8 @@ func ParseFormalArgList(s *State, funcName string) ([]*TypeDef, error) {
 		if typ == nil {
 			return argList, fmt.Errorf("expected argument type but got nil")
 		}
-		AddArg(s, funcName, id, typ)
+		// Add argument as local variable
+		AddVar(id, typ, false)
 		argList = append(argList, typ)
 		if s.token == TOK_RPAR {
 			break
@@ -118,7 +119,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		lvalue := VarDefs[id]
 		if lvalue == nil {
 			// We don't yet know the type, so just use nil as type
-			lvalue = AddVar(id, nil)
+			lvalue = AddVar(id, nil, false)
 		}
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {

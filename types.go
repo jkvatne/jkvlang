@@ -41,8 +41,9 @@ type TypeDef struct {
 var TypeDefs map[string]*TypeDef
 var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool"}
 var NoneType = TypeDef{pt: TYP_NONE, name: "None"}
-var ErrType = TypeDef{pt: TYP_ERROR, name: "Err"}
-var FuncType = TypeDef{pt: TYP_FUNC, name: "func"}
+
+// var ErrType = TypeDef{pt: TYP_ERROR, name: "Err"}
+// var FuncType = TypeDef{pt: TYP_FUNC, name: "func"}
 var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr"}
 var I64Type = TypeDef{pt: TYP_I64, name: "I64"}
 
