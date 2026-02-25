@@ -113,71 +113,61 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 	return valueList, nil
 }
 
-func ParseLvalueList(s *State) (lvalues []*VarDef, err error) {
+func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	for {
-		id := s.tokenString
-		nextToken(s)
-		lvalue, ok := VarDefs[id]
-		if !ok {
-			if s.token == TOK_ASSIGN {
-				// If it is an assign statement we must create the variable if it does not exist
-				// We don't yet know the type, so just use nil as type
-				lvalue = AddVar(id, nil)
-			} else if s.token == TOK_LPAR {
-				// Unknown function. Add it
-				_ = AddVar(id, &FuncType)
-			} else {
-				return nil, fmt.Errorf("Did not find variable \"%s\"", s.lineNum, id)
-			}
+		lvalue := VarDefs[id]
+		if lvalue == nil {
+			// We don't yet know the type, so just use nil as type
+			lvalue = AddVar(id, nil)
 		}
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {
 			break
 		}
+		if s.token != TOK_ID {
+			break
+		}
+		nextToken(s)
+		id = s.tokenString
 	}
 	return lvalues, err
 }
 
 func ParseAssignOrCall(s *State) error {
-	var err error
 	// We now have s.token == TOK_ID
-	lvalues, err := ParseLvalueList(s)
+	id := s.tokenString
+	nextToken(s)
+	// This might be the start of a lvalue list or a function call
+	if s.found(TOK_LPAR) {
+		if FuncDefs[id] != nil {
+			// This is a function call. Look up the function name
+			f := FuncDefs[id]
+			if f == nil {
+				return fmt.Errorf("Funcion not defined: %s", id)
+			}
+			// Push 0 to make space for return values
+			for range len(f.returnTypes) {
+				EmitPushConst(s, ZeroValue)
+			}
+			// Parse the argument list and push each arg
+			values, err := ParseArgumentList(s)
+			EmitCall(s, id, len(values))
+			// The function call should be alone, so just continue
+			return err
+		} else {
+			return fmt.Errorf("Funcition not defined: %s", id)
+		}
+	}
+	// Then it must be a list
+	lvalues, err := ParseLvalueList(s, id)
 	if err != nil {
 		return err
 	}
 
-	if s.token == TOK_LBRACK {
-		// TODO: This is an array. For now just skip it
-		for s.token != TOK_RBRACK {
-			nextToken(s)
-		}
-		nextToken(s)
-	}
 	op := s.token
-	if s.found(TOK_LPAR) {
-		id := lvalues[0].name
-		// This is a function call. Look up the function name
-		f := FuncDefs[id]
-		if f == nil {
-			return fmt.Errorf("Funcion not defined: %s", id)
-		}
-		// Push 0 to make space for return values
-		for range len(f.returnTypes) {
-			EmitPushConst(s, ZeroValue)
-		}
-		// Parse the argument list and push each arg
-		values, err := ParseArgumentList(s)
-		EmitCall(s, id, len(values))
-		// The function call should be alone, so just continue
-		return err
-	} else if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
-		id := s.tokenString
-		// Now parse the expression to find the value(s)
-		nextToken(s)
-		if !s.found(TOK_LPAR) {
-			return fmt.Errorf("Expected (, found %s", s.tokenString)
-		}
-		values, err := ParseArgumentList(s)
+	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+		// Now parse the expressions to find the value(s)
+		values, err := ParseExpressions(s)
 		if err != nil {
 			return err
 		}
@@ -551,9 +541,10 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 					results = append(results, v)
 				}
 			}
+		} else {
+			v, err = ParseExpression(s)
+			results = append(results, v)
 		}
-		v, err = ParseExpression(s)
-		results = append(results, v)
 		if !s.found(TOK_COMMA) {
 			break
 		}

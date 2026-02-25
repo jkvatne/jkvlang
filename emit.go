@@ -114,7 +114,6 @@ func EmitOpConst(s *State, op Token, c ValueDef) {
 
 func EmitError(s *State, err error) {
 	emit(s, "Error on line "+strconv.Itoa(s.lineNum)+": ", err.Error())
-	// fmt.Printf("Error on line %d, %s\n", s.lineNum, err.Error())
 }
 
 func EmitPushConst(s *State, value ValueDef) {
