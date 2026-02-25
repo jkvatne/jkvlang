@@ -2,6 +2,7 @@ package main
 
 type PrimaryType int
 
+//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
 const (
 	TYP_NONE PrimaryType = iota
 	TYP_BOOL
@@ -66,7 +67,7 @@ func InitTypes() {
 }
 
 // CommonType is the smallest type that is greater or equal to each of the two types.
-// The common operations like add, mult etc needs identical types on both operands,
+// The common operations like add, mult etc. needs identical types on both operands,
 // so we promote each to the CommonType.
 // F.ex. to add U16 and I16, both must be promoted to I32 to get correct results.
 // Overflow is not handled or detected, so adding 32737+32737 will be -2, which is wrong.
@@ -148,7 +149,7 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 }
 
 // CanAssingConst : Given a constant value, can we assign it to the dst variable?
-// A F64 can accept anything. A F32 value can accept evertything except F64.
+// A F64 can accept anything. An F32 value can accept evertything except F64.
 // For integers, it depends on the value.
 func CanAssingConst(dst PrimaryType, value ValueDef) bool {
 	if dst == value.typ.pt {

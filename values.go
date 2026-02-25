@@ -56,7 +56,7 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 			result.intValue = val1.intValue & val2.intValue
 		default:
 			// Invalid operand
-			return NoValue, fmt.Errorf("Invalid operation: %s", TokenNames[op])
+			return NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
 		}
 	} else if val1.hasValue {
 		EmitOpConst(s, op, val1)
@@ -103,7 +103,7 @@ func StringToValue(s string) (value ValueDef, err error) {
 			return value, nil
 		}
 	}
-	return NoValue, fmt.Errorf("Not a value: %s", s)
+	return NoValue, fmt.Errorf("not a value: %s", s)
 }
 
 func widest(v1 ValueDef, v2 ValueDef) ValueDef {

@@ -34,7 +34,9 @@ func CompileFile(name string, workdir string) error {
 
 	objectFile := filepath.Join(workdir, s.unitName+".tok")
 	s.outputFile, err = os.OpenFile(objectFile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
-	defer CloseObjFile(s)
+	defer func(s *State) {
+		_ = CloseObjFile(s)
+	}(s)
 	emit(s, "   // Token file ", objectFile)
 
 	if err != nil {
@@ -44,7 +46,7 @@ func CompileFile(name string, workdir string) error {
 	FuncInit()
 	nextToken(s)
 	if s.token == TOK_EOF {
-		return fmt.Errorf("No program content in file")
+		return fmt.Errorf("no program content in file")
 	}
 
 	// Top level statements can only be func, const or type.
@@ -58,11 +60,12 @@ func CompileFile(name string, workdir string) error {
 			err = ParseTypeDefs(s)
 		} else {
 			slog.Error("Unexpected", "token", s.tokenString)
-			err = fmt.Errorf("Unexpected token \"%s\"", s.tokenString)
+			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}
 	if err != nil {
 		EmitError(s, err)
 		return fmt.Errorf("%s Line %d: %v", name, s.lineNum, err)
 	}
+	return nil
 }

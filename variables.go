@@ -8,19 +8,12 @@ import (
 
 type VarLocation int
 
+//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
 const (
 	VAR_HEAP VarLocation = iota
 	VAR_ARG
 	VAR_STACK
 )
-
-/* value on stack */
-type StackValue = struct {
-	typ    TypeDef /* type */
-	reg1   int     /* register + flags */
-	reg2   int     /* second register, used for 'I64g' type. If not used, set to VT_CONST */
-	symbol string  /* symbol, if (VT_SYM | VT_CONST), or if result of an identifier. */
-}
 
 type VarDef = struct {
 	name     string
@@ -94,7 +87,7 @@ func ParseVar(s *State, isConst bool) error {
 	var arraySize int
 
 	if s.token != TOK_ID {
-		return fmt.Errorf("Expected id but got %s", s.tokenString)
+		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
 	id := s.tokenString
 	nextToken(s)
@@ -106,7 +99,7 @@ func ParseVar(s *State, isConst bool) error {
 		}
 		nextToken(s)
 		if s.token != TOK_RBRACK {
-			return fmt.Errorf("Expected ], got %s", s.tokenString)
+			return fmt.Errorf("expected ], got %s", s.tokenString)
 		}
 		nextToken(s)
 	}

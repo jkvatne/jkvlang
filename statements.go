@@ -15,7 +15,7 @@ func ParseReturn(s *State) error {
 			return err
 		}
 		if !CanAssign(f.returnTypes[i].pt, v.typ.pt) {
-			return fmt.Errorf("Returns wrong type")
+			return fmt.Errorf("returns wrong type")
 		}
 		if v.hasValue {
 			EmitPushConst(s, v)
@@ -29,7 +29,7 @@ func ParseReturn(s *State) error {
 		return errors.New("expected )")
 	}
 	if len(f.returnTypes) == 0 {
-		return fmt.Errorf("Function '%s' has no return_type declaration", f.name)
+		return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 	}
 	EmitReturn(s)
 	return nil
@@ -41,7 +41,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {
-			return true, fmt.Errorf("More than one return in block")
+			return true, fmt.Errorf("more than one return in block")
 		}
 		err = ParseReturn(s)
 		returned = true
@@ -58,15 +58,16 @@ func ParseStatement(s *State) (returned bool, err error) {
 		}
 		if v.hasValue {
 			if !v.boolValue {
-				return false, fmt.Errorf("Assert failed")
-			} else {
-				emit(s, "Assert succeeded", "")
+				return false, fmt.Errorf("assert failed")
 			}
+			emit(s, "Assert succeeded", "")
 		} else {
 			EmitAssert(s)
 		}
 	} else if s.token == TOK_ID {
-		err = ParseAssignOrCall(s)
+		id := s.tokenString
+		s.next()
+		err = ParseAssignOrCall(s, id)
 	} else if s.token == TOK_SEMICOLON {
 		// Ignore
 		nextToken(s)
@@ -75,7 +76,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 	} else if s.token == TOK_TYPE {
 		return false, ParseTypeDefs(s)
 	} else {
-		return false, fmt.Errorf("Unknown statement starting with %s", s.tokenString)
+		return false, fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
 	return returned, err
 }
@@ -90,7 +91,7 @@ func ParseStatements(s *State) error {
 		}
 		if returned {
 			if s.hasReturned {
-				return fmt.Errorf("Statements afer return")
+				return fmt.Errorf("statements afer return")
 			}
 			s.hasReturned = true
 		}

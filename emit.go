@@ -73,7 +73,7 @@ func EmitReturn(s *State) {
 	emit(s, "   RETURN", "\n")
 }
 
-// EmitModify will emit a +=, -= etc operation
+// EmitModify will emit a +=, -= etc. operation
 func EmitModify(s *State, id string, op Token, value string) {
 	slog.Info(No(s)+" EmitModify: ", "id", id, "op", op.Name(), "value", value)
 	emit(s, "   "+TokenNames[op], id+" "+value)
@@ -97,9 +97,8 @@ func ValueAsString(v ValueDef) string {
 	} else if v.typ.pt == TYP_BOOL {
 		if v.boolValue {
 			return "true"
-		} else {
-			return "false"
 		}
+		return "false"
 	} else if v.typ.pt == TYP_F64 {
 		return strconv.FormatFloat(v.floatValue, 'g', -1, 64)
 	} else if v.typ.pt == TYP_F32 {
@@ -132,6 +131,10 @@ func EmitPushConst(s *State, value ValueDef) {
 	} else if value.typ.pt == TYP_F64 || value.typ.pt == TYP_F32 {
 		emit(s, "   PUSH_FLOAT", strconv.FormatFloat(value.floatValue, 'g', -1, 64))
 	} else {
-		emit(s, "   PUSH_STRING ", value.stringValue)
+		emit(s, "   PUSH_PTR ", "0")
 	}
+}
+
+func EmitComment(s *State, comment string) {
+	emit(s, "  //", comment)
 }

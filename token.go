@@ -23,6 +23,7 @@ type State struct {
 
 type Token int
 
+//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
 const (
 	TOK_UNDEF Token = iota
 	TOK_PLUS
@@ -231,6 +232,7 @@ func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
 	}
 	return ch1, ch2
 }
+
 func (s *State) found(tokens ...Token) bool {
 	for _, t := range tokens {
 		if s.token == t {
@@ -239,6 +241,19 @@ func (s *State) found(tokens ...Token) bool {
 		}
 	}
 	return false
+}
+
+func (s *State) foundId() (string, error) {
+	if s.token == TOK_ID {
+		id := s.tokenString
+		nextToken(s)
+		return id, nil
+	}
+	return "", fmt.Errorf("expected ID but found %s", s.tokenString)
+}
+
+func (s *State) next() {
+	nextToken(s)
 }
 
 func nextToken(s *State) {
@@ -451,7 +466,7 @@ func nextToken(s *State) {
 
 func Expect(s *State, token Token) error {
 	if s.token != token {
-		return fmt.Errorf("Expected token %s, but got %s", token.Name(), s.tokenString)
+		return fmt.Errorf("expected token %s, but got %s", token.Name(), s.tokenString)
 	}
 	nextToken(s)
 	return nil

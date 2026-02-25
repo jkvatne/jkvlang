@@ -28,7 +28,7 @@ var (
 func CompileDir(inputPath string, outputPath string) error {
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
-		return fmt.Errorf("Fatal error %s", err.Error())
+		return fmt.Errorf("fatal error %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
@@ -38,9 +38,8 @@ func CompileDir(inputPath string, outputPath string) error {
 			err = CompileFile(name, outputPath)
 			if err != nil {
 				return err
-			} else {
-				fmt.Printf("File %s compiled ok\n", name)
 			}
+			fmt.Printf("File %s compiled ok\n", name)
 		}
 	}
 	return err
@@ -48,6 +47,9 @@ func CompileDir(inputPath string, outputPath string) error {
 
 func readerDemo() {
 	f, err1 := os.Create("./temp.txt")
+	defer func(f *os.File) {
+		_ = f.Close()
+	}(f)
 	if err1 != nil {
 		return
 	}
@@ -57,7 +59,6 @@ func readerDemo() {
 		return
 	}
 	fmt.Printf("%d bytes copied\n", n)
-	f.Close()
 }
 
 func stringDemo() {
