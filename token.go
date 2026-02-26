@@ -19,6 +19,7 @@ type State struct {
 	outputFile      *os.File
 	unitName        string
 	currentFunc     *FuncDef
+	noCode          bool
 }
 
 type Token int
@@ -35,8 +36,7 @@ const (
 	TOK_MULT
 	TOK_DIV
 	TOK_MOD
-	TOK_F32
-	TOK_F64
+	TOK_FLOAT
 	TOK_INT
 	TOK_STRING
 	TOK_ID
@@ -97,8 +97,7 @@ var TokenNames = [...]string{
 	TOK_MULT:        "MULT",
 	TOK_DIV:         "DIV",
 	TOK_MOD:         "MOD",
-	TOK_F32:         "F32",
-	TOK_F64:         "F64",
+	TOK_FLOAT:       "FLOAT",
 	TOK_INT:         "INT",
 	TOK_STRING:      "STRING",
 	TOK_ID:          "ID",
@@ -215,14 +214,9 @@ func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
 	s.tokenString = num
 	var err error
 	if hasExp || hasDp {
-		s.tokenFloatValue, err = strconv.ParseFloat(num, 32)
+		s.tokenFloatValue, err = strconv.ParseFloat(num, 64)
 		if err == nil {
-			s.token = TOK_F32
-		} else {
-			s.tokenFloatValue, err = strconv.ParseFloat(num, 64)
-			if err == nil {
-				s.token = TOK_F64
-			}
+			s.token = TOK_FLOAT
 		}
 	} else {
 		s.token = TOK_INT
@@ -470,4 +464,8 @@ func Expect(s *State, token Token) error {
 	}
 	nextToken(s)
 	return nil
+}
+
+func IsCompare(op Token) bool {
+	return op >= TOK_GE && op <= TOK_NE
 }

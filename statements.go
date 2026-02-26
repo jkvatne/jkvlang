@@ -1,18 +1,20 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 )
 
 func ParseReturn(s *State) error {
 	f := s.currentFunc
-	requireRpar := s.found(TOK_LPAR)
+	// requireRpar := s.found(TOK_LPAR)
 	i := 0
 	for {
 		v, err := ParseExpression(s)
 		if err != nil {
 			return err
+		}
+		if len(f.returnTypes) <= i {
+			return fmt.Errorf("too many return values")
 		}
 		if !CanAssign(f.returnTypes[i].pt, v.typ.pt) {
 			return fmt.Errorf("returns wrong type")
@@ -25,9 +27,9 @@ func ParseReturn(s *State) error {
 		}
 		i++
 	}
-	if requireRpar && !s.found(TOK_RPAR) {
-		return errors.New("expected )")
-	}
+	// if requireRpar && !s.found(TOK_RPAR) {
+	//	return errors.New("expected )")
+	// }
 	if len(f.returnTypes) == 0 {
 		return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 	}

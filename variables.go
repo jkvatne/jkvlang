@@ -20,6 +20,7 @@ type VarDef = struct {
 	typ      *TypeDef
 	location VarLocation
 	value    ValueDef
+	isConst  bool
 }
 
 var VarDefs map[string]*VarDef
@@ -32,7 +33,7 @@ func AddVar(id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{name: id, typ: typ, value: ValueDef{typ: typ, hasValue: isConst}}
+		v = &VarDef{name: id, typ: typ, isConst: isConst, value: ValueDef{typ: typ, hasValue: isConst}}
 		VarDefs[id] = v
 	}
 	return v

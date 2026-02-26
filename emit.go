@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -11,8 +10,17 @@ func CloseObjFile(s *State) error {
 	return s.outputFile.Close()
 }
 
-func emit(s *State, opcode string, value string) {
-	_, err := s.outputFile.WriteString(fmt.Sprintf("%s %s\n", opcode, value))
+func emit(s *State, opcodes ...string) {
+	if s.noCode {
+		return
+	}
+	for _, op := range opcodes {
+		_, err := s.outputFile.WriteString(op + " ")
+		if err != nil {
+			panic(err)
+		}
+	}
+	_, err := s.outputFile.WriteString("\n")
 	if err != nil {
 		panic(err)
 	}
@@ -53,9 +61,6 @@ func EmitFunction(s *State, id string) {
 }
 
 func EmitJump(s *State, n int) {
-	if s.hasReturned {
-		return
-	}
 	slog.Info(No(s)+" EmitJump", "no", n)
 	emit(s, "   JUMP", "L"+strconv.Itoa(n))
 }
@@ -91,22 +96,6 @@ func EmitOp(s *State, op Token) {
 	emit(s, "   "+TokenNames[op], "")
 }
 
-func ValueAsString(v ValueDef) string {
-	if v.typ.pt == TYP_U8 || v.typ.pt == TYP_U16 || v.typ.pt == TYP_U32 || v.typ.pt == TYP_I16 || v.typ.pt == TYP_I32 || v.typ.pt == TYP_I64 {
-		return strconv.FormatInt(v.intValue, 10)
-	} else if v.typ.pt == TYP_BOOL {
-		if v.boolValue {
-			return "true"
-		}
-		return "false"
-	} else if v.typ.pt == TYP_F64 {
-		return strconv.FormatFloat(v.floatValue, 'g', -1, 64)
-	} else if v.typ.pt == TYP_F32 {
-		return strconv.FormatFloat(v.floatValue, 'g', -1, 32)
-	}
-	return v.stringValue
-}
-
 func EmitOpConst(s *State, op Token, c ValueDef) {
 	emit(s, "   "+TokenNames[op]+"_IM", ValueAsString(c))
 }
@@ -130,11 +119,17 @@ func EmitPushConst(s *State, value ValueDef) {
 		emit(s, "   PUSH_INT", strconv.FormatInt(value.intValue, 10))
 	} else if value.typ.pt == TYP_F64 || value.typ.pt == TYP_F32 {
 		emit(s, "   PUSH_FLOAT", strconv.FormatFloat(value.floatValue, 'g', -1, 64))
+	} else if value.typ.pt == TYP_STRING {
+		emit(s, "   PUSH_STRING \"", value.stringValue, "\"")
 	} else {
 		emit(s, "   PUSH_PTR ", "0")
 	}
 }
 
 func EmitComment(s *State, comment string) {
-	emit(s, "  //", comment)
+	emit(s, "   //", comment)
+}
+
+func EmitStoreConst(s *State, v ValueDef) {
+	// emit(s, "   STORE ",ValueAsString(v))
 }

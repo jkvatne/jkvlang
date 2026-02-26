@@ -14,7 +14,9 @@ var FuncDefs map[string]*FuncDef
 func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
 	args := []*TypeDef{&I64Type}
-	_, _ = AddFunc("PrintInt", args, nil)
+	_, _ = AddFunc("print_int", args, nil)
+	_, _ = AddFunc("println", args, nil)
+	_, _ = AddFunc("printf", args, nil)
 }
 
 func AddFunc(id string, argList []*TypeDef, returnList []*TypeDef) (*FuncDef, error) {

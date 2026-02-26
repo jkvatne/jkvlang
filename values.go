@@ -33,6 +33,11 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 	if val2.typ.pt == TYP_F64 || val2.typ.pt == TYP_F32 {
 		val1.floatValue = float64(val1.intValue)
 	}
+	if IsCompare(op) {
+		EmitOp(s, op)
+		result.typ = &BoolType
+		return result, nil
+	}
 	if val1.hasValue && val2.hasValue {
 		// Both operands are constant. Evaluate at compile time.
 		result.typ = widest(val1, val2).typ
@@ -53,7 +58,11 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 		case TOK_AND:
 			result.intValue = val1.intValue & val2.intValue
 		case TOK_OR:
-			result.intValue = val1.intValue & val2.intValue
+			result.intValue = val1.intValue | val2.intValue
+		case TOK_LOG_OR:
+			result.boolValue = val1.boolValue || val2.boolValue
+		case TOK_LOG_AND:
+			result.boolValue = val1.boolValue && val2.boolValue
 		default:
 			// Invalid operand
 			return NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
@@ -111,4 +120,20 @@ func widest(v1 ValueDef, v2 ValueDef) ValueDef {
 		return v1
 	}
 	return v2
+}
+
+func ValueAsString(v ValueDef) string {
+	if v.typ.pt == TYP_U8 || v.typ.pt == TYP_U16 || v.typ.pt == TYP_U32 || v.typ.pt == TYP_I16 || v.typ.pt == TYP_I32 || v.typ.pt == TYP_I64 {
+		return strconv.FormatInt(v.intValue, 10)
+	} else if v.typ.pt == TYP_BOOL {
+		if v.boolValue {
+			return "true"
+		}
+		return "false"
+	} else if v.typ.pt == TYP_F64 {
+		return strconv.FormatFloat(v.floatValue, 'g', -1, 64)
+	} else if v.typ.pt == TYP_F32 {
+		return strconv.FormatFloat(v.floatValue, 'g', -1, 32)
+	}
+	return v.stringValue
 }

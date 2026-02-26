@@ -142,6 +142,7 @@ func ParseAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	if value.hasValue {
 		if CanAssingConst(lvalue.typ.pt, value) {
 			lvalue.value = value
+			return nil
 		} else {
 			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.name)
 		}
@@ -152,7 +153,7 @@ func ParseAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 			return fmt.Errorf("incompatible types, %s and %s", ct.Name(), lvalue.typ.Name())
 		}
 		// Convert expression's type to variable's type
-		emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
+		// emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
 	}
 	// Assign type if not known
 	if lvalue.typ.pt == TYP_NONE {
@@ -226,9 +227,17 @@ func ParseAssignOrCall(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			err := ParseAssignment(s, op, lvalues[i], value)
+			if lvalues[i].isConst {
+				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
+			}
+			oldHasValue := lvalues[i].value.hasValue
+			err = ParseAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
+			}
+			// Old constant values are no longer constant when assigned to.
+			if oldHasValue {
+				lvalues[i].value.hasValue = false
 			}
 		}
 	} else {
@@ -292,12 +301,7 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 			return NoValue, fmt.Errorf("missing integer type")
 		}
 		nextToken(s)
-	} else if s.token == TOK_F32 {
-		value.typ = TypeDefs["F32"]
-		value.floatValue = s.tokenFloatValue
-		value.hasValue = true
-		nextToken(s)
-	} else if s.token == TOK_F64 {
+	} else if s.token == TOK_FLOAT {
 		value.typ = TypeDefs["F64"]
 		value.floatValue = s.tokenFloatValue
 		value.hasValue = true
@@ -306,7 +310,7 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		EmitPush(s, s.tokenString, "STRING")
 		value.typ = TypeDefs["String"]
 		value.stringValue = s.tokenString
-		value.hasValue = true
+		value.hasValue = false
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
 		slog.Info("Unary: Evaluate array indexes for ", "function", id)
@@ -376,49 +380,55 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 }
 
 // CompareConsts assumes v1 and v2 both have values.
-func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) bool {
-	if v1.typ.pt == TYP_STRING {
+func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) (bool, error) {
+	if v1.typ.pt == TYP_STRING || v2.typ.pt == TYP_STRING {
+		if v1.typ.pt != TYP_STRING || v2.typ.pt != TYP_STRING {
+			return false, fmt.Errorf("Compare string constant with another type is not allowed")
+		}
 		x1 := v1.stringValue
 		x2 := v2.stringValue
 		if op == TOK_EQ {
-			return x1 == x2
+			return x1 == x2, nil
 		} else if op == TOK_NE {
-			return x1 == x2
+			return x1 == x2, nil
 		} else if op == TOK_LT {
-			return x1 < x2
+			return x1 < x2, nil
 		} else if op == TOK_LE {
-			return x1 <= x2
+			return x1 <= x2, nil
 		} else if op == TOK_GT {
-			return x1 > x2
+			return x1 > x2, nil
 		} else if op == TOK_GE {
-			return x1 >= x2
+			return x1 >= x2, nil
 		}
-		slog.Error("Unexpected operation on constants", "op", op)
-		return false
+		return false, fmt.Errorf("unexpected operation on constants, op=%s", TokenNames[op])
 	}
 	x1 := v1.floatValue
-	if v1.typ.pt != TYP_F32 && v1.typ.pt != TYP_F64 {
+	if v1.typ.pt.IsInteger() {
 		x1 = float64(v1.intValue)
+	} else if v1.typ.pt == TYP_BOOL && v1.boolValue {
+		x1 = 1.0
 	}
-	x2 := v2.floatValue
-	if v2.typ.pt != TYP_F32 && v2.typ.pt != TYP_F64 {
-		x2 = float64(v1.intValue)
+
+	x2 := v1.floatValue
+	if v1.typ.pt.IsInteger() {
+		x2 = float64(v2.intValue)
+	} else if v2.typ.pt == TYP_BOOL && v2.boolValue {
+		x2 = 1.0
 	}
 	if op == TOK_EQ {
-		return math.Abs(x1-x2)/max(x1, x2, 1e-30) < 1e-7
+		return math.Abs(x1-x2)/max(x1, x2, 1e-30) < 1e-7, nil
 	} else if op == TOK_NE {
-		return math.Abs(x1-x2)/max(x1, x2, 1e-30) >= 1e-7
+		return math.Abs(x1-x2)/max(x1, x2, 1e-30) >= 1e-7, nil
 	} else if op == TOK_LT {
-		return x1 < x2
+		return x1 < x2, nil
 	} else if op == TOK_LE {
-		return x1 <= x2
+		return x1 <= x2, nil
 	} else if op == TOK_GT {
-		return x1 > x2
+		return x1 > x2, nil
 	} else if op == TOK_GE {
-		return x1 >= x2
+		return x1 >= x2, nil
 	}
-	slog.Error("Unexpected operation on constants ", "Op", op)
-	return false
+	return false, fmt.Errorf("unexpected operation on constants,op %s", TokenNames[op])
 }
 
 func Inverse(op Token) Token {
@@ -455,13 +465,13 @@ func ParseCompareTerm(s *State) (result ValueDef, err error) {
 			return NoValue, err
 		}
 		if value1.hasValue && value2.hasValue {
-			result.boolValue = CompareConsts(op, value1, value2)
+			result.boolValue, err = CompareConsts(op, value1, value2)
 			result.hasValue = true
 		} else if value2.hasValue {
 			EmitPushConst(s, value2)
 			return GenerateOp(s, op, value1, value2)
 		} else if value1.hasValue {
-			EmitPushConst(s, value2)
+			EmitPushConst(s, value1)
 			return GenerateOp(s, Inverse(op), value1, value2)
 		}
 		return result, nil
@@ -483,9 +493,10 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 	}
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
 		if result.typ.pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("&& requires boolean operands")
+			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		op := s.token
+		ops := s.tokenString
 		nextToken(s)
 		value2, err = ParseCompareTerm(s)
 		if err != nil {
@@ -495,7 +506,7 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 			return NoValue, fmt.Errorf("value2.typ is nil")
 		}
 		if value2.typ.pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("&& requires boolean operands")
+			return NoValue, fmt.Errorf("%s requires boolean operands", ops)
 		}
 		_, err = GenerateOp(s, op, result, value2)
 		if err != nil {
@@ -513,7 +524,7 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 func ParseExpressions(s *State) (results []ValueDef, err error) {
 	var v ValueDef
 	results = make([]ValueDef, 0, 3)
-	expectRpar := s.found(TOK_LPAR)
+	// expectRpar := s.found(TOK_LPAR)
 	for {
 		id := s.tokenString
 		f := FuncDefs[s.tokenString]
@@ -522,19 +533,13 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 			if !s.found(TOK_LPAR) {
 				return nil, fmt.Errorf("expected ( after function, found: %s", s.tokenString)
 			}
-			if len(f.returnTypes) == 1 {
-				v, err = ParseVarOrFunc(s)
-				if err != nil {
-					return nil, err
-				}
+			err = ParseFunctionCall(s, id)
+			if err != nil {
+				return nil, err
+			}
+			for _, t := range f.returnTypes {
+				v = ValueDef{typ: t}
 				results = append(results, v)
-			} else if len(f.returnTypes) > 1 {
-				// The expression is a function call with more than one result
-				err = ParseFunctionCall(s, id)
-				for _, t := range f.returnTypes {
-					v = ValueDef{typ: t}
-					results = append(results, v)
-				}
 			}
 		} else {
 			v, err = ParseExpression(s)
@@ -544,9 +549,9 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 			break
 		}
 	}
-	if expectRpar && !s.found(TOK_RPAR) {
-		return nil, fmt.Errorf("expected ) after function, found: %s", s.tokenString)
-	}
+	// if expectRpar && !s.found(TOK_RPAR) {
+	//	return nil, fmt.Errorf("expected ) after function, found: %s", s.tokenString)
+	// }
 	return results, nil
 }
 
@@ -556,25 +561,34 @@ func NewLabel(s *State) int {
 }
 
 func ParseIf(s *State) error {
+	oldNocode := s.noCode
+	endLabelUsed := false
 	slog.Debug("ParseIf")
 	nextToken(s)
-	typ, err := ParseExpression(s)
+	value, err := ParseExpression(s)
 	if err != nil {
 		return err
 	}
-	if typ.typ.pt != TYP_BOOL {
-		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
+	if value.typ.pt != TYP_BOOL {
+		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.typ.pt])
 	}
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
-	EmitJumpFalse(s, elseLabel)
+	if !value.hasValue {
+		EmitJumpFalse(s, elseLabel)
+	}
 
 	if s.token == TOK_COLON || s.token == TOK_QMARK {
 		nextToken(s)
+		s.noCode = value.hasValue && !value.boolValue
 		err = ParseStatements(s)
-		EmitJump(s, endLabel)
+		s.noCode = value.hasValue && !value.boolValue
 		if err != nil {
 			return err
+		}
+		if !s.hasReturned {
+			EmitJump(s, endLabel)
+			endLabelUsed = true
 		}
 		if s.token == TOK_COLON {
 			nextToken(s)
@@ -588,10 +602,15 @@ func ParseIf(s *State) error {
 	} else if s.token == TOK_LBRACE {
 		slog.Debug("Parse if statements")
 		nextToken(s)
+		s.noCode = value.hasValue && value.boolValue
 		err = ParseStatements(s)
-		EmitJump(s, endLabel)
+		s.noCode = value.hasValue && !value.boolValue
 		if err != nil {
 			return err
+		}
+		if !s.hasReturned {
+			EmitJump(s, endLabel)
+			endLabelUsed = true
 		}
 		if s.token != TOK_RBRACE {
 			return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
@@ -604,12 +623,12 @@ func ParseIf(s *State) error {
 			if s.token == TOK_IF {
 				slog.Debug("Parsing else if", "line", s.lineNum)
 				nextToken(s)
-				typ, err = ParseExpression(s)
+				value, err = ParseExpression(s)
 				if err != nil {
 					return err
 				}
-				if typ.typ.pt != TYP_BOOL {
-					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[typ.typ.pt])
+				if value.typ.pt != TYP_BOOL {
+					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.typ.pt])
 				}
 				elseLabel = NewLabel(s)
 				EmitJumpFalse(s, elseLabel)
@@ -619,7 +638,10 @@ func ParseIf(s *State) error {
 				nextToken(s)
 				slog.Debug("Parsing 'else if' statements")
 				err = ParseStatements(s)
-				EmitJump(s, endLabel)
+				if !s.hasReturned {
+					endLabelUsed = true
+					EmitJump(s, endLabel)
+				}
 				if err != nil {
 					return err
 				}
@@ -641,7 +663,10 @@ func ParseIf(s *State) error {
 		return fmt.Errorf("expected { or :  but got %s", s.tokenString)
 	}
 	slog.Debug("ParseIf end - emitting label")
-	EmitLabel(s, endLabel)
+	if endLabelUsed {
+		EmitLabel(s, endLabel)
+	}
+	s.noCode = oldNocode
 	return nil
 }
 
@@ -679,7 +704,7 @@ func ParseFunctionDefinition(s *State) error {
 				break
 			}
 		}
-		if !expectRpar || !s.found(TOK_RPAR) {
+		if expectRpar && !s.found(TOK_RPAR) {
 			return fmt.Errorf("expected ) but got %s", s.tokenString)
 		}
 		if !s.found(TOK_LBRACE) {

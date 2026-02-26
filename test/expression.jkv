@@ -4,8 +4,8 @@ func main() {
   x = 1
   y = 2
   z = 1.1
-  w2 = x+y*z
-  assert w2==3.2
+  w2 = (x+y)*z
+  assert w2==3.3
   w1 = x+y
   assert w1==3
 
