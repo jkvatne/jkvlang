@@ -134,35 +134,27 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-func ParseAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
+func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
+	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.typ == nil {
 		lvalue.typ = value.typ
 		lvalue.value.typ = value.typ
 	}
+	// If the value is known (a compile time constant), we copy it into the lvalue
 	if value.hasValue {
 		if CanAssingConst(lvalue.typ.pt, value) {
 			lvalue.value = value
-			return nil
+			// The lvalue was a constant and was not on the stack, so we push it
+			EmitPushConst(s, value)
 		} else {
 			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.name)
 		}
 	}
-	ct := CommonType(lvalue.typ.pt, value.typ.pt)
-	if ct != value.typ.pt {
-		if ct != lvalue.typ.pt {
-			return fmt.Errorf("incompatible types, %s and %s", ct.Name(), lvalue.typ.Name())
-		}
-		// Convert expression's type to variable's type
-		// emit(s, "   TOS "+value.typ.pt.Name()+" TO "+ct.Name(), "")
-	}
-	// Assign type if not known
-	if lvalue.typ.pt == TYP_NONE {
-		lvalue.typ.pt = ct
-	}
+	// Check if assignment is possible
 	if !CanAssign(lvalue.typ.pt, value.typ.pt) {
 		return fmt.Errorf("expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), lvalue.name)
 	}
-	slog.Info("Store lvalue <op> TOS to", "lvalue", lvalue.name)
+	// Top of stack contains the value as a 64 bit number. Store it to the local variable with correct type
 	if op == TOK_ASSIGN {
 		EmitStore(s, lvalue.name, value.typ.pt.Name())
 	} else {
@@ -231,7 +223,7 @@ func ParseAssignOrCall(s *State, id string) error {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
 			oldHasValue := lvalues[i].value.hasValue
-			err = ParseAssignment(s, op, lvalues[i], value)
+			err = DoAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
@@ -560,8 +552,21 @@ func NewLabel(s *State) int {
 	return s.labelNo
 }
 
+// StartCond will increment noCode if the value is a constant equal to cond
+func StartCond(s *State, value *ValueDef, cond bool) {
+	if value.hasValue && (value.boolValue != cond) {
+		s.noCode++
+	}
+}
+
+// EndCond will decrement noCode if the value is a constant equal to cond
+func EndCond(s *State, value *ValueDef, cond bool) {
+	if value.hasValue && (value.boolValue != cond) {
+		s.noCode--
+	}
+}
+
 func ParseIf(s *State) error {
-	oldNocode := s.noCode
 	endLabelUsed := false
 	slog.Debug("ParseIf")
 	nextToken(s)
@@ -580,12 +585,13 @@ func ParseIf(s *State) error {
 
 	if s.token == TOK_COLON || s.token == TOK_QMARK {
 		nextToken(s)
-		s.noCode = value.hasValue && !value.boolValue
+		StartCond(s, &value, true)
+		// Parse stm1 in if cond ? stm1 : stm2
 		err = ParseStatements(s)
-		s.noCode = value.hasValue && !value.boolValue
 		if err != nil {
 			return err
 		}
+		EndCond(s, &value, true)
 		if !s.hasReturned {
 			EmitJump(s, endLabel)
 			endLabelUsed = true
@@ -593,22 +599,24 @@ func ParseIf(s *State) error {
 		if s.token == TOK_COLON {
 			nextToken(s)
 			EmitLabel(s, elseLabel)
+			StartCond(s, &value, false)
 			err = ParseStatements(s)
 			if err != nil {
 				return err
 			}
+			EndCond(s, &value, false)
 		}
 
 	} else if s.token == TOK_LBRACE {
 		slog.Debug("Parse if statements")
 		nextToken(s)
-		s.noCode = value.hasValue && value.boolValue
+		StartCond(s, &value, true)
 		err = ParseStatements(s)
-		s.noCode = value.hasValue && !value.boolValue
 		if err != nil {
 			return err
 		}
-		if !s.hasReturned {
+		EndCond(s, &value, true)
+		if !s.hasReturned && !value.hasValue {
 			EmitJump(s, endLabel)
 			endLabelUsed = true
 		}
@@ -636,14 +644,16 @@ func ParseIf(s *State) error {
 					return fmt.Errorf("expected { after if but got %s", s.tokenString)
 				}
 				nextToken(s)
-				slog.Debug("Parsing 'else if' statements")
+				// Parsing 'else if' statements")
+				StartCond(s, &value, true)
 				err = ParseStatements(s)
+				if err != nil {
+					return err
+				}
+				EndCond(s, &value, true)
 				if !s.hasReturned {
 					endLabelUsed = true
 					EmitJump(s, endLabel)
-				}
-				if err != nil {
-					return err
 				}
 				if s.token != TOK_RBRACE {
 					return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
@@ -651,12 +661,14 @@ func ParseIf(s *State) error {
 				nextToken(s)
 			} else if s.token == TOK_LBRACE {
 				nextToken(s)
-				slog.Debug("Else without if")
+				// Else without if
+				StartCond(s, &value, false)
 				err = ParseStatements(s)
+				EndCond(s, &value, false)
 				nextToken(s)
 			} else {
-				slog.Info("Else without {")
-				_, err = ParseStatement(s)
+				// Else without {
+				return fmt.Errorf("expected { after else but got %s", s.tokenString)
 			}
 		}
 	} else {
@@ -666,7 +678,6 @@ func ParseIf(s *State) error {
 	if endLabelUsed {
 		EmitLabel(s, endLabel)
 	}
-	s.noCode = oldNocode
 	return nil
 }
 

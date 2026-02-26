@@ -11,7 +11,7 @@ func CloseObjFile(s *State) error {
 }
 
 func emit(s *State, opcodes ...string) {
-	if s.noCode {
+	if s.noCode > 0 {
 		return
 	}
 	for _, op := range opcodes {

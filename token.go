@@ -19,7 +19,7 @@ type State struct {
 	outputFile      *os.File
 	unitName        string
 	currentFunc     *FuncDef
-	noCode          bool
+	noCode          int
 }
 
 type Token int
