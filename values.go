@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -74,7 +73,6 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 		EmitOpConst(s, op, val2)
 		result.typ = val2.typ
 	} else {
-		slog.Info("Generate", "Op", TokenNames[op])
 		EmitOp(s, op)
 		result.typ = val1.typ
 	}

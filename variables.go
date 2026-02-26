@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 )
 
@@ -37,11 +36,6 @@ func AddVar(id string, typ *TypeDef, isConst bool) *VarDef {
 		VarDefs[id] = v
 	}
 	return v
-}
-
-func AddArg(s *State, funcName string, argName string, typ *TypeDef) {
-	slog.Info("Arg list", "funcName", funcName, "ArgName", argName)
-	AddVar(argName, typ, false)
 }
 
 // ParseVars parses a parenthesis var declaration
@@ -92,7 +86,6 @@ func ParseVar(s *State, isConst bool) error {
 	}
 	id := s.tokenString
 	nextToken(s)
-	slog.Info("ParseVar", "id", id)
 	if s.token == TOK_LBRACK {
 		nextToken(s)
 		if s.token == TOK_INT {

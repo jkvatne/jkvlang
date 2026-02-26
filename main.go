@@ -52,22 +52,12 @@ func readerDemo() {
 	if err1 != nil {
 		return
 	}
-	r := strings.NewReader("Hello and goodby dear friend")
+	r := strings.NewReader("Hello and farewell dear friend")
 	n, err := io.Copy(f, r)
 	if err != nil {
 		return
 	}
 	fmt.Printf("%d bytes copied\n", n)
-}
-
-func stringDemo() {
-	s := "HHHæåø"
-	b := []byte(s) // 48 48 48 c3 a6 c3 a5 c3 b8
-	fmt.Printf("len(s)=%2x  len(b)=%2x\n", len(s), len(b))
-	fmt.Printf("%2x %2x %2x %2x %2x %2x %2x %2x %2x\n", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8])
-	t := strings.TrimRight(s, "øåæ")
-	fmt.Println(t)
-	os.Exit(0)
 }
 */
 

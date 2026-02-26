@@ -85,7 +85,6 @@ const (
 	TOK_SIZE
 )
 
-var usedToken [TOK_SIZE]bool
 var TokenNames = [...]string{
 	TOK_UNDEF:       "UNDEF",
 	TOK_PLUS:        "PLUS",
@@ -159,10 +158,6 @@ func (t Token) Name() string {
 
 func isAlfaNum(ch uint8) bool {
 	return isNum(ch) || isAlfa(ch)
-}
-
-func No(s *State) string {
-	return strconv.Itoa(s.lineNum)
 }
 
 func nextChar(s *State) (uint8, uint8) {
@@ -334,26 +329,18 @@ func nextToken(s *State) {
 			s.token = TOK_DOT
 		case ch1 == '/' && ch2 == '/':
 			// Skip comment
-			slog.Info("Skipping short comment", "line", s.lineNum)
 			for ch1 != '\n' && !eof(s) {
 				ch1, ch2 = nextChar(s)
 			}
 			continue
 		case ch1 == '/' && ch2 == '*':
 			// Skip /* */ comment
-			slog.Info("Skipping long comment", "line", s.lineNum)
 			level := 1
 			for !eof(s) && level > 0 {
 				ch1, ch2 = nextChar(s)
 				if ch1 == '/' && ch2 == '*' {
-					slog.Info("Nested comment started", "line", s.lineNum)
 					level++
 				} else if ch1 == '*' && ch2 == '/' {
-					if level > 1 {
-						slog.Info("End of nested comment", "line", s.lineNum)
-					} else {
-						slog.Info("End of long comment", "line", s.lineNum)
-					}
 					level--
 				}
 			}

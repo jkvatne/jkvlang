@@ -41,9 +41,6 @@ type TypeDef struct {
 var TypeDefs map[string]*TypeDef
 var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool"}
 var NoneType = TypeDef{pt: TYP_NONE, name: "None"}
-
-// var ErrType = TypeDef{pt: TYP_ERROR, name: "Err"}
-// var FuncType = TypeDef{pt: TYP_FUNC, name: "func"}
 var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr"}
 var I64Type = TypeDef{pt: TYP_I64, name: "I64"}
 
@@ -81,7 +78,7 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
 		return TYP_F64
 	}
 	if t1 == TYP_F32 || t2 == TYP_F32 {
-		// F32 can take all numeric types (but with loss of precission).
+		// F32 can take all numeric types (but with loss of precision).
 		return TYP_F32
 	}
 	if t1 == TYP_I64 && t2 < TYP_I64 {
@@ -149,10 +146,10 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 		dst == TYP_F64 || dst == TYP_F32
 }
 
-// CanAssingConst : Given a constant value, can we assign it to the dst variable?
-// A F64 can accept anything. An F32 value can accept evertything except F64.
+// CanAssignConst : Given a constant value, can we assign it to the dst variable?
+// A F64 can accept anything. An F32 value can accept everything except F64.
 // For integers, it depends on the value.
-func CanAssingConst(dst PrimaryType, value ValueDef) bool {
+func CanAssignConst(dst PrimaryType, value ValueDef) bool {
 	if dst == value.typ.pt {
 		return true
 	}
@@ -173,8 +170,7 @@ func CanAssingConst(dst PrimaryType, value ValueDef) bool {
 		dst == TYP_U32 && value.intValue >= 0 && value.intValue <= 4294967296
 }
 
-func AddType(s *State, name string, typ *TypeDef) {
-	EmitType(s, name, int(typ.pt))
+func AddType(name string, typ *TypeDef) {
 	TypeDefs[name] = typ
 }
 

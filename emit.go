@@ -27,46 +27,38 @@ func emit(s *State, opcodes ...string) {
 }
 
 func EmitStore(s *State, id string, typ string) {
-	slog.Info(No(s)+" EmitStore: ", "name", id)
 	emit(s, "   STORE_"+typ, id)
 }
 
 func EmitPush(s *State, id string, typ string) {
-	slog.Info(No(s)+" EmitPush: ", "name", id)
 	typ = strings.ToUpper(typ)
 	emit(s, "   PUSH_"+typ, id)
 }
 
 func EmitAssert(s *State) {
-	slog.Info(No(s) + " EmitAssert")
 	emit(s, "   ASSERT", "")
 }
 
 func EmitCall(s *State, id string, argNo int) {
-	slog.Info(No(s)+" EmitCall:", "name", id, "argNo", argNo)
 	emit(s, "   CALL", id)
 	emit(s, "   ADD SP, ", strconv.Itoa(argNo)+"  // Remove arguments from stack")
 }
 
 func EmitLabel(s *State, n int) {
-	slog.Info(No(s)+" EmitLabel: ", "no", n)
 	emit(s, "L"+strconv.Itoa(n), ":")
 }
 
 func EmitFunction(s *State, id string) {
-	slog.Info(No(s) + " EmitFunction")
 	emit(s, id, "")
 	emit(s, "   PUSH FP", "")
 	emit(s, "   SET FP=SP", "")
 }
 
 func EmitJump(s *State, n int) {
-	slog.Info(No(s)+" EmitJump", "no", n)
 	emit(s, "   JUMP", "L"+strconv.Itoa(n))
 }
 
 func EmitJumpFalse(s *State, n int) {
-	slog.Info(No(s)+" EmitJumpFalse", "no", n)
 	emit(s, "   JUMPFALSE", "L"+strconv.Itoa(n))
 }
 
@@ -74,18 +66,12 @@ func EmitReturn(s *State) {
 	for i := range len(s.currentFunc.returnTypes) {
 		emit(s, "   POP", "[BP-"+strconv.Itoa(len(s.currentFunc.argTypes)+i)+"]  // Return value")
 	}
-	slog.Info(No(s) + " EmitReturn")
 	emit(s, "   RETURN", "\n")
 }
 
 // EmitModify will emit a +=, -= etc. operation
 func EmitModify(s *State, id string, op Token, value string) {
-	slog.Info(No(s)+" EmitModify: ", "id", id, "op", op.Name(), "value", value)
 	emit(s, "   "+TokenNames[op], id+" "+value)
-}
-
-func EmitType(s *State, name string, typ int) {
-	slog.Info(No(s) + " EmitType: " + name + strconv.Itoa(typ))
 }
 
 func EmitLineNo(s *State) {
@@ -105,7 +91,6 @@ func EmitError(s *State, err error) {
 }
 
 func EmitPushConst(s *State, value ValueDef) {
-	slog.Info(No(s) + " EmitPushConst: " + value.stringValue)
 	if !value.hasValue {
 		slog.Error("EmitPushConst without value")
 	}
@@ -128,8 +113,4 @@ func EmitPushConst(s *State, value ValueDef) {
 
 func EmitComment(s *State, comment string) {
 	emit(s, "   //", comment)
-}
-
-func EmitStoreConst(s *State, v ValueDef) {
-	// emit(s, "   STORE ",ValueAsString(v))
 }

@@ -15,7 +15,6 @@ func ParseType(s *State) (*TypeDef, error) {
 	if id[0] > 'Z' {
 		return nil, fmt.Errorf("types must start with a capital letter: '%s'", id)
 	}
-	slog.Info("Parsing type", "id", id)
 	nextToken(s)
 	typ, ok := TypeDefs[id]
 	if !ok {
@@ -38,7 +37,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
-func ParseFormalArgList(s *State, funcName string) ([]*TypeDef, error) {
+func ParseFormalArgList(s *State) ([]*TypeDef, error) {
 	var argList []*TypeDef
 	for {
 		if s.token == TOK_RPAR {
@@ -76,7 +75,6 @@ func ParseFormalArgList(s *State, funcName string) ([]*TypeDef, error) {
 
 func ParseArrayIndexes(s *State) error {
 	// Assuming s.token==TOK_LBRACK
-	slog.Info("DUMMY: Parse array indexes")
 	for {
 		nextToken(s)
 		if s.token != TOK_RBRACK {
@@ -142,7 +140,7 @@ func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	}
 	// If the value is known (a compile time constant), we copy it into the lvalue
 	if value.hasValue {
-		if CanAssingConst(lvalue.typ.pt, value) {
+		if CanAssignConst(lvalue.typ.pt, value) {
 			lvalue.value = value
 			// The lvalue was a constant and was not on the stack, so we push it
 			EmitPushConst(s, value)
@@ -154,7 +152,7 @@ func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	if !CanAssign(lvalue.typ.pt, value.typ.pt) {
 		return fmt.Errorf("expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), lvalue.name)
 	}
-	// Top of stack contains the value as a 64 bit number. Store it to the local variable with correct type
+	// Top of stack contains the value as a 64-bit number. Store it to the local variable with correct type
 	if op == TOK_ASSIGN {
 		EmitStore(s, lvalue.name, value.typ.pt.Name())
 	} else {
@@ -274,8 +272,6 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
 func ParseUnary(s *State) (value ValueDef, err error) {
-	slog.Info("ParseUnary variable/function/array", "Token", s.tokenString)
-	id := s.tokenString
 	if s.token == TOK_ID {
 		// An id can be either a variable or a function call
 		value, err = ParseVarOrFunc(s)
@@ -305,7 +301,6 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		value.hasValue = false
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
-		slog.Info("Unary: Evaluate array indexes for ", "function", id)
 		for {
 			nextToken(s)
 			if s.token == TOK_RBRACK {
@@ -375,7 +370,7 @@ func ParseSumTerm(s *State) (value ValueDef, err error) {
 func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) (bool, error) {
 	if v1.typ.pt == TYP_STRING || v2.typ.pt == TYP_STRING {
 		if v1.typ.pt != TYP_STRING || v2.typ.pt != TYP_STRING {
-			return false, fmt.Errorf("Compare string constant with another type is not allowed")
+			return false, fmt.Errorf("comparing string constant with another type is not allowed")
 		}
 		x1 := v1.stringValue
 		x2 := v2.stringValue
@@ -568,7 +563,6 @@ func EndCond(s *State, value *ValueDef, cond bool) {
 
 func ParseIf(s *State) error {
 	endLabelUsed := false
-	slog.Debug("ParseIf")
 	nextToken(s)
 	value, err := ParseExpression(s)
 	if err != nil {
@@ -608,7 +602,6 @@ func ParseIf(s *State) error {
 		}
 
 	} else if s.token == TOK_LBRACE {
-		slog.Debug("Parse if statements")
 		nextToken(s)
 		StartCond(s, &value, true)
 		err = ParseStatements(s)
@@ -629,7 +622,6 @@ func ParseIf(s *State) error {
 			EmitLabel(s, elseLabel)
 			nextToken(s)
 			if s.token == TOK_IF {
-				slog.Debug("Parsing else if", "line", s.lineNum)
 				nextToken(s)
 				value, err = ParseExpression(s)
 				if err != nil {
@@ -644,7 +636,7 @@ func ParseIf(s *State) error {
 					return fmt.Errorf("expected { after if but got %s", s.tokenString)
 				}
 				nextToken(s)
-				// Parsing 'else if' statements")
+				// Parsing 'else if' statements
 				StartCond(s, &value, true)
 				err = ParseStatements(s)
 				if err != nil {
@@ -674,7 +666,6 @@ func ParseIf(s *State) error {
 	} else {
 		return fmt.Errorf("expected { or :  but got %s", s.tokenString)
 	}
-	slog.Debug("ParseIf end - emitting label")
 	if endLabelUsed {
 		EmitLabel(s, endLabel)
 	}
@@ -689,15 +680,13 @@ func ParseFunctionDefinition(s *State) error {
 	}
 	VarInit()
 	fun := s.tokenString
-	slog.Info("Parsing function definition", "name", fun)
 	EmitFunction(s, fun)
 	nextToken(s)
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
-	slog.Info("Compiling", "function", fun)
-	argList, err := ParseFormalArgList(s, fun)
+	argList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err
 	}
@@ -749,7 +738,6 @@ func ParseFunctionDefinition(s *State) error {
 }
 
 func ParseTypeDef(s *State) error {
-	slog.Info("ParseTypeDef", "id", s.tokenString)
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
@@ -766,7 +754,7 @@ func ParseTypeDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	AddType(s, id, typ)
+	AddType(id, typ)
 	return nil
 }
 

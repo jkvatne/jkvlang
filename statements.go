@@ -38,7 +38,7 @@ func ParseReturn(s *State) error {
 }
 
 // ParseStatement will parse the statements inside a {} block or similar.
-// retured is true if the statemend emited a return instruction
+// returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_RETURN {
 		nextToken(s)
@@ -93,7 +93,7 @@ func ParseStatements(s *State) error {
 		}
 		if returned {
 			if s.hasReturned {
-				return fmt.Errorf("statements afer return")
+				return fmt.Errorf("statements after return")
 			}
 			s.hasReturned = true
 		}
