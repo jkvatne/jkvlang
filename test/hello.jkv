@@ -4,6 +4,15 @@ func fi(a Bool, c I32) I32 {
     return c
 }
 
+func fa(a Bool, c I32) I32 {
+    if a {
+        c+=1
+    } else {
+        c-=1
+    }
+    return c
+}
+
 func test_fi()  {
     r = fi(true, 30)
     assert r==31

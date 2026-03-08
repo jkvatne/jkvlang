@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 )
 
 func ParseReturn(s *State) error {
@@ -20,7 +21,7 @@ func ParseReturn(s *State) error {
 			return fmt.Errorf("returns wrong type")
 		}
 		if v.hasValue {
-			EmitPushConst(s, v)
+			EmitPushConst(s, v.intValue, "Return value "+strconv.Itoa(i))
 		}
 		if !s.found(TOK_COMMA) {
 			break
@@ -62,7 +63,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if !v.boolValue {
 				return false, fmt.Errorf("assert failed")
 			}
-			emit(s, "Assert succeeded", "")
+			EmitComment(s, "Assert succeeded")
 		} else {
 			EmitAssert(s)
 		}

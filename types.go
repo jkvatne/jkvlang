@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type PrimaryType int
 
 //goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
@@ -33,35 +35,23 @@ var PrimaryTypeSizes = [...]int{
 	4, 4, 4, 4, 4, 4, 4, 4}
 
 type TypeDef struct {
-	pt        PrimaryType
-	name      string
-	arraySize int
+	pt    PrimaryType
+	name  string
+	basic bool
 }
 
 var TypeDefs map[string]*TypeDef
-var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool"}
-var NoneType = TypeDef{pt: TYP_NONE, name: "None"}
-var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr"}
-var I64Type = TypeDef{pt: TYP_I64, name: "I64"}
+
+var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool", basic: true}
+var NoneType = TypeDef{pt: TYP_NONE, name: "None", basic: true}
+var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr", basic: true}
+var I64Type = TypeDef{pt: TYP_I64, name: "I64", basic: true}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)
 	for t := TYP_NONE; t < TYP_LEN; t++ {
-		TypeDefs[PrimaryTypeNames[t]] = &TypeDef{pt: t, name: PrimaryTypeNames[t]}
+		TypeDefs[PrimaryTypeNames[t]] = &TypeDef{pt: t, name: PrimaryTypeNames[t], basic: true}
 	}
-	/*
-		// Testing the CommonType() function
-		for t1 := TYP_U8; t1 <= TYP_F64; t1++ {
-			for t2 := TYP_U8; t2 <= TYP_F64; t2++ {
-				if t1 != TYP_RUNE && t2 != TYP_RUNE {
-					tc := CommonType(t1, t2)
-					fmt.Printf("%10s %10s %10s\n", PrimaryTypeNames[t1], PrimaryTypeNames[t2], PrimaryTypeNames[tc])
-					if tc.Name() == "None" {
-						fmt.Printf("No common type for %s and %s\n", PrimaryTypeNames[t1], PrimaryTypeNames[t2])
-					}
-				}
-			}
-		}	*/
 }
 
 // CommonType is the smallest type that is greater or equal to each of the two types.
@@ -69,56 +59,56 @@ func InitTypes() {
 // so we promote each to the CommonType.
 // F.ex. to add U16 and I16, both must be promoted to I32 to get correct results.
 // Overflow is not handled or detected, so adding 32737+32737 will be -2, which is wrong.
-func CommonType(t1 PrimaryType, t2 PrimaryType) PrimaryType {
+func CommonType(t1 PrimaryType, t2 PrimaryType) (*TypeDef, error) {
 	if t1 == t2 {
-		return t1
+		return &TypeDef{pt: t1, name: PrimaryTypeNames[t1], basic: true}, nil
 	}
 	if t1 == TYP_F64 || t2 == TYP_F64 {
 		// F64 can take all numeric types
-		return TYP_F64
+		return &TypeDef{pt: TYP_F64, name: PrimaryTypeNames[TYP_F64], basic: true}, nil
 	}
 	if t1 == TYP_F32 || t2 == TYP_F32 {
 		// F32 can take all numeric types (but with loss of precision).
-		return TYP_F32
+		return &TypeDef{pt: TYP_F32, name: PrimaryTypeNames[TYP_F32], basic: true}, nil
 	}
 	if t1 == TYP_I64 && t2 < TYP_I64 {
 		// I64 can take all integers
-		return TYP_I64
+		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
 	}
 	if t2 == TYP_I64 && t1 < TYP_I64 {
 		// I64 can take all integers
-		return TYP_I64
+		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
 	}
 	if t1 == TYP_U8 {
 		// U8 can be included in all other types
-		return t2
+		return &TypeDef{pt: t2, name: PrimaryTypeNames[t2], basic: true}, nil
 	}
 	if t2 == TYP_U8 {
 		// U8 can be included in all other types
-		return t1
+		return &TypeDef{pt: t1, name: PrimaryTypeNames[t1], basic: true}, nil
 	}
 	if t1 == TYP_U16 && t2 == TYP_U32 || t2 == TYP_U16 && t1 == TYP_U32 {
-		return TYP_U32
+		return &TypeDef{pt: TYP_U32, name: PrimaryTypeNames[TYP_U32], basic: true}, nil
 	}
 
 	if t1 == TYP_U16 || t2 == TYP_U16 && t1 != TYP_U32 {
-		return TYP_I32
+		return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
 	}
 	if t1 == TYP_I16 {
 		if t2 == TYP_U16 || t2 == TYP_I32 {
-			return TYP_I32
+			return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
 		}
 	}
 	if t2 == TYP_I16 && t1 == TYP_I32 {
-		return TYP_I32
+		return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
 	}
 	if t1 == TYP_U32 && (t2 <= TYP_U16 || t2 == TYP_I32) {
-		return TYP_I64
+		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
 	}
 	if t2 == TYP_U32 && (t1 <= TYP_U16 || t1 == TYP_I32) {
-		return TYP_I64
+		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
 	}
-	return TYP_NONE
+	return nil, fmt.Errorf("Common type not found for %s and %s", t1.Name(), t2.Name())
 }
 
 func (t PrimaryType) Name() string {

@@ -20,6 +20,13 @@ type State struct {
 	unitName        string
 	currentFunc     *FuncDef
 	noCode          int
+	localSp         int
+	VarCount        [16]int
+	level           int
+	RaxIsTOS        bool
+	LocalArgSize    int
+	LocalRetSize    int
+	ArgCount        int
 }
 
 type Token int
@@ -56,8 +63,10 @@ const (
 	TOK_EQ
 	TOK_NE
 	TOK_OR
+	TOK_OR_ASGN
 	TOK_LOG_OR
 	TOK_AND
+	TOK_AND_ASGN
 	TOK_LOG_AND
 	TOK_VAR
 	TOK_FUNC
@@ -116,8 +125,10 @@ var TokenNames = [...]string{
 	TOK_EQ:          "EQ",
 	TOK_NE:          "NE",
 	TOK_OR:          "OR",
+	TOK_OR_ASGN:     "OR_ASGN",
 	TOK_LOG_OR:      "LOG_OR",
 	TOK_AND:         "AND",
+	TOK_AND_ASGN:    "AND_ASGN",
 	TOK_LOG_AND:     "LOG_AND",
 	TOK_VAR:         "VAR",
 	TOK_FUNC:        "FUNC",

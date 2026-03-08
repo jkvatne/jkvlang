@@ -39,8 +39,8 @@ func TestCompile(t *testing.T) {
 		} else if err != nil {
 			t.Errorf("Error in file \"%s.jkv\" : %v", unitName, err)
 		} else {
-			targetFile := "./test/targets/" + unitName + ".tok"
-			objectFile := "./test/objectfiles/" + unitName + ".tok"
+			targetFile := "./test/targets/" + unitName + ".asm"
+			objectFile := "./test/objectfiles/" + unitName + ".asm"
 			err := FilesAreEqual(objectFile, targetFile)
 			if err != nil {
 				fmt.Printf("Object file not correct: %s\n", err.Error())

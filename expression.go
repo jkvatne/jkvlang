@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 )
 
 func ParseType(s *State) (*TypeDef, error) {
@@ -56,7 +57,7 @@ func ParseFormalArgList(s *State) ([]*TypeDef, error) {
 			return argList, fmt.Errorf("expected argument type but got nil")
 		}
 		// Add argument as local variable
-		AddVar(id, typ, false)
+		AddLocalArg(s, id, typ)
 		argList = append(argList, typ)
 		if s.token == TOK_RPAR {
 			break
@@ -86,6 +87,7 @@ func ParseArrayIndexes(s *State) error {
 }
 
 func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
+	argNo := 0
 	for {
 		if s.token == TOK_RPAR {
 			break
@@ -96,8 +98,9 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 		if err != nil {
 			return
 		}
+		argNo++
 		if value.hasValue {
-			EmitPushConst(s, value)
+			EmitPushConst(s, value.intValue, "Argument "+strconv.Itoa(argNo))
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -117,7 +120,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		lvalue := VarDefs[id]
 		if lvalue == nil {
 			// We don't yet know the type, so just use nil as type
-			lvalue = AddVar(id, nil, false)
+			lvalue = AddLocalVar(s, id, nil, false)
 		}
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {
@@ -134,29 +137,27 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 
 func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// Set lvalue type if not already set. Needed for new variables.
-	if lvalue.typ == nil {
-		lvalue.typ = value.typ
-		lvalue.value.typ = value.typ
+	if lvalue.Typ == nil {
+		lvalue.Typ = value.typ
+		lvalue.Value.typ = value.typ
 	}
-	// If the value is known (a compile time constant), we copy it into the lvalue
+	// Check types to see if the value can be assigned to the lvalue
+	if !CanAssign(lvalue.Typ.pt, value.typ.pt) {
+		return fmt.Errorf("expected type %s but got %s for %s", lvalue.Typ.pt.Name(), value.typ.Name(), lvalue.Name)
+	}
+	// If the value is known (a compile time constant)
 	if value.hasValue {
-		if CanAssignConst(lvalue.typ.pt, value) {
-			lvalue.value = value
-			// The lvalue was a constant and was not on the stack, so we push it
-			EmitPushConst(s, value)
+		if CanAssignConst(lvalue.Typ.pt, value) {
+			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.pt.Size(), value.intValue, "")
+			if err != nil {
+				return err
+			}
 		} else {
-			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.name)
+			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 		}
-	}
-	// Check if assignment is possible
-	if !CanAssign(lvalue.typ.pt, value.typ.pt) {
-		return fmt.Errorf("expected type %s but got %s for %s", lvalue.typ.pt.Name(), value.typ.Name(), lvalue.name)
-	}
-	// Top of stack contains the value as a 64-bit number. Store it to the local variable with correct type
-	if op == TOK_ASSIGN {
-		EmitStore(s, lvalue.name, value.typ.pt.Name())
 	} else {
-		EmitModify(s, lvalue.name, op, value.typ.pt.Name())
+		// The value is on the top of the stack (rax). Save it to the lvalue.
+		EmitStore(s, lvalue.Typ.pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
 	}
 	return nil
 }
@@ -168,8 +169,8 @@ func ParseFunctionCall(s *State, id string) error {
 		if len(f.returnTypes) > 0 {
 			EmitComment(s, "Make space for return values from "+id)
 		}
-		for range len(f.returnTypes) {
-			EmitPushConst(s, ZeroValue)
+		for i := range len(f.returnTypes) {
+			EmitPushConst(s, 0, "Make space for return value "+strconv.Itoa(i))
 		}
 		// Parse the argument list and push each arg
 		values, err := ParseArgumentList(s)
@@ -217,17 +218,17 @@ func ParseAssignOrCall(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			if lvalues[i].isConst {
+			if lvalues[i].IsConst {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
-			oldHasValue := lvalues[i].value.hasValue
+			oldHasValue := lvalues[i].Value.hasValue
 			err = DoAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
 			if oldHasValue {
-				lvalues[i].value.hasValue = false
+				lvalues[i].Value.hasValue = false
 			}
 		}
 	} else {
@@ -248,16 +249,16 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		if !ok {
 			return NoValue, fmt.Errorf("did not find variable \"%s\"", id)
 		}
-		if v.typ == nil {
+		if v.Typ == nil {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if v.typ.pt == TYP_NONE {
+		if v.Typ.pt == TYP_NONE {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.value.hasValue {
-			EmitPush(s, id, v.typ.pt.Name())
+		if !v.Value.hasValue {
+			EmitLoad(s, v.Typ.pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
-		return v.value, err
+		return v.Value, err
 	} else if s.token == TOK_LBRACK {
 		// It is an array
 		err = ParseArrayIndexes(s)
@@ -295,7 +296,7 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		value.hasValue = true
 		nextToken(s)
 	} else if s.token == TOK_STRING {
-		EmitPush(s, s.tokenString, "STRING")
+		EmitPushString(s, s.tokenString)
 		value.typ = TypeDefs["String"]
 		value.stringValue = s.tokenString
 		value.hasValue = false
@@ -341,29 +342,24 @@ func ParseProd(s *State) (value ValueDef, err error) {
 	return value, nil
 }
 
-func ParseSumTerm(s *State) (value ValueDef, err error) {
-	var value2 ValueDef
-	value, err = ParseProd(s)
+func ParseSumTerm(s *State) (ValueDef, error) {
+	value1, err := ParseProd(s)
 	if err != nil {
 		return NoValue, err
 	}
 	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 		op := s.token
 		nextToken(s)
-		value2, err = ParseProd(s)
+		value2, err := ParseProd(s)
 		if err != nil {
 			return NoValue, err
 		}
-		ct := CommonType(value.typ.pt, value2.typ.pt)
-		if value.typ.pt != ct && !value.hasValue {
-			emit(s, "   NOS "+value.typ.pt.Name(), "TO "+ct.Name())
+		value1, err = GenerateOp(s, op, value1, value2)
+		if err != nil {
+			return NoValue, err
 		}
-		if value2.typ.pt != ct && !value2.hasValue {
-			emit(s, "   TOS "+value2.typ.pt.Name(), "TO "+ct.Name())
-		}
-		value, err = GenerateOp(s, op, value, value2)
 	}
-	return value, nil
+	return value1, nil
 }
 
 // CompareConsts assumes v1 and v2 both have values.
@@ -433,40 +429,40 @@ func Inverse(op Token) Token {
 	}
 }
 
-func ParseCompareTerm(s *State) (result ValueDef, err error) {
-	var value1, value2 ValueDef
+func ParseCompareTerm(s *State) (ValueDef, error) {
+	var value1, value2, result ValueDef
+	var err error
 	value1, err = ParseSumTerm(s)
 	if err != nil {
 		return NoValue, err
 	}
-	result = value1
 	if value1.typ == nil {
-		slog.Error("ParseCompareTerm: No type")
+		return NoValue, fmt.Errorf("internal error, no type")
 	}
-	if s.token == TOK_LT || s.token == TOK_GT || s.token == TOK_EQ || s.token == TOK_GE || s.token == TOK_LE || s.token == TOK_NE {
-		op := s.token
-		nextToken(s)
-		value2, err = ParseSumTerm(s)
-		result.typ = TypeDefs["Bool"]
-		if err != nil {
-			return NoValue, err
-		}
-		if value1.hasValue && value2.hasValue {
-			result.boolValue, err = CompareConsts(op, value1, value2)
-			result.hasValue = true
-		} else if value2.hasValue {
-			EmitPushConst(s, value2)
-			return GenerateOp(s, op, value1, value2)
-		} else if value1.hasValue {
-			EmitPushConst(s, value1)
-			return GenerateOp(s, Inverse(op), value1, value2)
-		}
-		return result, nil
+	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
+		// Not a compare operation, return value1 immediately
+		return value1, nil
 	}
-	if result.typ == nil {
-		slog.Error("result.type is nil")
+	op := s.token
+	nextToken(s)
+	value2, err = ParseSumTerm(s)
+	if err != nil {
+		return NoValue, err
 	}
-	return result, err
+	result.typ = TypeDefs["Bool"]
+	if value1.hasValue && value2.hasValue {
+		// Both sides are known at compile time. Evaluate it now and return bool constant
+		result.boolValue, err = CompareConsts(op, value1, value2)
+		result.hasValue = true
+	} else if value2.hasValue {
+		// Right side was constant. Push it and do operation
+		EmitPushConst(s, value2.intValue, "")
+		return GenerateOp(s, op, value1, value2)
+	} else if value1.hasValue {
+		EmitPushConst(s, value1.intValue, "")
+		return GenerateOp(s, Inverse(op), value1, value2)
+	}
+	return result, nil
 }
 
 func ParseExpression(s *State) (result ValueDef, err error) {
@@ -482,8 +478,6 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 		if result.typ.pt != TYP_BOOL {
 			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
-		op := s.token
-		ops := s.tokenString
 		nextToken(s)
 		value2, err = ParseCompareTerm(s)
 		if err != nil {
@@ -493,9 +487,9 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 			return NoValue, fmt.Errorf("value2.typ is nil")
 		}
 		if value2.typ.pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("%s requires boolean operands", ops)
+			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
-		_, err = GenerateOp(s, op, result, value2)
+		_, err = GenerateOp(s, s.token, result, value2)
 		if err != nil {
 			return NoValue, err
 		}
@@ -574,7 +568,7 @@ func ParseIf(s *State) error {
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
 	if !value.hasValue {
-		EmitJumpFalse(s, elseLabel)
+		EmitJumpFalse(s, elseLabel, "")
 	}
 
 	if s.token == TOK_COLON || s.token == TOK_QMARK {
@@ -587,14 +581,14 @@ func ParseIf(s *State) error {
 		}
 		EndCond(s, &value, true)
 		if !s.hasReturned {
-			EmitJump(s, endLabel)
+			EmitJump(s, endLabel, "")
 			endLabelUsed = true
 		}
 		if s.token == TOK_COLON {
 			nextToken(s)
 			EmitLabel(s, elseLabel)
 			StartCond(s, &value, false)
-			err = ParseStatements(s)
+			_, err = ParseStatement(s)
 			if err != nil {
 				return err
 			}
@@ -604,13 +598,15 @@ func ParseIf(s *State) error {
 	} else if s.token == TOK_LBRACE {
 		nextToken(s)
 		StartCond(s, &value, true)
+		EnterBlock(s)
 		err = ParseStatements(s)
+		ExitBlock(s)
 		if err != nil {
 			return err
 		}
 		EndCond(s, &value, true)
 		if !s.hasReturned && !value.hasValue {
-			EmitJump(s, endLabel)
+			EmitJump(s, endLabel, "")
 			endLabelUsed = true
 		}
 		if s.token != TOK_RBRACE {
@@ -618,7 +614,6 @@ func ParseIf(s *State) error {
 		}
 		nextToken(s)
 		for s.token == TOK_ELSE {
-			EmitLineNo(s)
 			EmitLabel(s, elseLabel)
 			nextToken(s)
 			if s.token == TOK_IF {
@@ -631,31 +626,36 @@ func ParseIf(s *State) error {
 					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.typ.pt])
 				}
 				elseLabel = NewLabel(s)
-				EmitJumpFalse(s, elseLabel)
+				EmitJumpFalse(s, elseLabel, "")
 				if s.token != TOK_LBRACE {
 					return fmt.Errorf("expected { after if but got %s", s.tokenString)
 				}
 				nextToken(s)
 				// Parsing 'else if' statements
 				StartCond(s, &value, true)
+				EnterBlock(s)
 				err = ParseStatements(s)
+				ExitBlock(s)
 				if err != nil {
 					return err
 				}
 				EndCond(s, &value, true)
 				if !s.hasReturned {
 					endLabelUsed = true
-					EmitJump(s, endLabel)
+					EmitJump(s, endLabel, "")
 				}
 				if s.token != TOK_RBRACE {
 					return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
 				}
+				ExitBlock(s)
 				nextToken(s)
 			} else if s.token == TOK_LBRACE {
 				nextToken(s)
 				// Else without if
 				StartCond(s, &value, false)
+				EnterBlock(s)
 				err = ParseStatements(s)
+				ExitBlock(s)
 				EndCond(s, &value, false)
 				nextToken(s)
 			} else {
@@ -673,7 +673,6 @@ func ParseIf(s *State) error {
 }
 
 func ParseFunctionDefinition(s *State) error {
-	EmitLineNo(s)
 	nextToken(s)
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
@@ -686,6 +685,10 @@ func ParseFunctionDefinition(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
+	s.ArgCount = 0
+	s.VarCount = [16]int{}
+	s.level = 0
+	s.localSp = 0
 	argList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err

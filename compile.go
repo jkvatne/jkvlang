@@ -19,12 +19,12 @@ func CompileFile(name string, workdir string) error {
 	}
 	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 
-	objectFile := filepath.Join(workdir, s.unitName+".tok")
+	objectFile := filepath.Join(workdir, s.unitName+".asm")
 	s.outputFile, err = os.OpenFile(objectFile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
 	defer func(s *State) {
 		_ = CloseObjFile(s)
 	}(s)
-	emit(s, "   // Token file ", objectFile)
+	EmitComment(s, "File \""+objectFile+"\"\n")
 
 	if err != nil {
 		return err

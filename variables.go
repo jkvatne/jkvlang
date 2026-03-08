@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type VarLocation int
 
-//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
+//goland:noinspection GoSnakeCaseUsage
 const (
 	VAR_HEAP VarLocation = iota
 	VAR_ARG
@@ -15,11 +14,12 @@ const (
 )
 
 type VarDef = struct {
-	name     string
-	typ      *TypeDef
-	location VarLocation
-	value    ValueDef
-	isConst  bool
+	Name    string
+	Typ     *TypeDef
+	Offset  int
+	Value   ValueDef
+	IsConst bool
+	ArgNo   int
 }
 
 var VarDefs map[string]*VarDef
@@ -28,14 +28,37 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 }
 
-func AddVar(id string, typ *TypeDef, isConst bool) *VarDef {
+func AddLocalArg(s *State, name string, typ *TypeDef) {
+	v := &VarDef{Name: name, Typ: typ, IsConst: false, Value: ValueDef{typ: typ}}
+	s.ArgCount++
+	s.LocalArgSize += 8
+	v.Offset = s.LocalArgSize
+	v.ArgNo = s.ArgCount
+	VarDefs[name] = v
+}
+
+func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{name: id, typ: typ, isConst: isConst, value: ValueDef{typ: typ, hasValue: isConst}}
+		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{typ: typ, hasValue: isConst}}
+		EmitPushConst(s, 0, "New variable "+id)
+		s.localSp++
+		// Local variables are at negative offset. The first on -8.
+		v.Offset = -s.localSp * 8
 		VarDefs[id] = v
+		s.VarCount[s.level]++
 	}
 	return v
+}
+
+func EnterBlock(s *State) {
+	s.level++
+}
+
+func ExitBlock(s *State) {
+	EmitPop(s, s.VarCount[s.level], "")
+	s.level--
 }
 
 // ParseVars parses a parenthesis var declaration
@@ -79,8 +102,6 @@ func ParseConsts(s *State) error {
 func ParseVar(s *State, isConst bool) error {
 	var val string
 	var err error
-	var arraySize int
-
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
@@ -88,9 +109,7 @@ func ParseVar(s *State, isConst bool) error {
 	nextToken(s)
 	if s.token == TOK_LBRACK {
 		nextToken(s)
-		if s.token == TOK_INT {
-			arraySize, err = strconv.Atoi(s.tokenString)
-		}
+		// TODO: Parse array size
 		nextToken(s)
 		if s.token != TOK_RBRACK {
 			return fmt.Errorf("expected ], got %s", s.tokenString)
@@ -101,12 +120,11 @@ func ParseVar(s *State, isConst bool) error {
 	if err != nil {
 		return err
 	}
-	v := AddVar(id, typ, isConst)
-	v.typ.arraySize = arraySize
+	v := AddLocalVar(s, id, typ, isConst)
 	if s.token == TOK_ASSIGN {
 		nextToken(s)
 		val = s.tokenString
-		v.value.stringValue = val
+		v.Value.stringValue = val
 		nextToken(s)
 	}
 	return err
