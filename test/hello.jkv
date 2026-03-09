@@ -1,3 +1,13 @@
+func shortfunc() I32 {
+    s = 24
+    s = s/6
+
+    z=3
+
+    z+=4
+    z*=8
+    return s+z
+}
 
 func fi(a Bool, c I32) I32 {
     if a ? c+=1 : c+=2
@@ -18,13 +28,7 @@ func test_fi()  {
     assert r==31
 }
 
-func shortfunc() I32 {
-    z=3;  z+=4
-    z*=8
-    s = 24
-    s /=6
-    return s+z
-}
+
 
 const (
     const1 I32 = 1
