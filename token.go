@@ -267,8 +267,10 @@ func nextToken(s *State) {
 		s.tokenString = string(ch1)
 		switch {
 		case ch1 == '\r':
+			s.tokenString = "<cr>"
 			continue
 		case ch1 == '\n':
+			s.tokenString = "<lf>"
 			continue
 		case ch1 == '\f':
 			continue
@@ -304,8 +306,10 @@ func nextToken(s *State) {
 			s.tokenString = "&"
 		case ch1 == '(':
 			s.token = TOK_LPAR
+			s.tokenString = "("
 		case ch1 == ')':
 			s.token = TOK_RPAR
+			s.tokenString = ")"
 		case ch1 == '*' && ch2 == '=':
 			ch1, ch2 = nextChar(s)
 			s.tokenString = "*="
@@ -323,6 +327,7 @@ func nextToken(s *State) {
 			s.token = TOK_PLUS_ASGN
 		case ch1 == '+':
 			s.token = TOK_PLUS
+			s.tokenString = "+"
 		case ch1 == ',':
 			s.token = TOK_COMMA
 		case ch1 == '-' && isNum(ch2):
@@ -363,14 +368,15 @@ func nextToken(s *State) {
 			s.tokenString = "/="
 			s.token = TOK_DIV_ASGN
 		case ch1 == '/':
-			ch1, ch2 = nextChar(s)
 			s.tokenString = "/"
 			s.token = TOK_DIV
 		case isNum(ch1):
 			ch1, ch2 = parseNumber(s, ch1, ch2)
 		case ch1 == ':':
+			s.tokenString = ":"
 			s.token = TOK_COLON
 		case ch1 == ';':
+			s.tokenString = ";"
 			s.token = TOK_SEMICOLON
 			continue
 		case ch1 == '<' && ch2 == '=':
@@ -379,21 +385,26 @@ func nextToken(s *State) {
 			s.token = TOK_LE
 		case ch1 == '<':
 			s.token = TOK_LT
+			s.tokenString = "<"
 		case ch1 == '=' && ch2 == '=':
 			s.tokenString = "=="
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_EQ
 		case ch1 == '=':
+			s.tokenString = "="
 			s.token = TOK_ASSIGN
 		case ch1 == '>' && ch2 == '=':
 			ch1, ch2 = nextChar(s)
 			s.tokenString = ">="
 			s.token = TOK_GE
 		case ch1 == '>':
+			s.tokenString = ">"
 			s.token = TOK_GT
 		case ch1 == '?':
+			s.tokenString = "?"
 			s.token = TOK_QMARK
 		case ch1 == '@':
+			s.tokenString = "@"
 			s.token = TOK_AT
 		case isAlfa(ch1):
 			value := string(ch1)
@@ -437,7 +448,9 @@ func nextToken(s *State) {
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK
+			s.tokenString = "["
 		case ch1 == ']':
+			s.tokenString = "]"
 			s.token = TOK_RBRACK
 		case ch1 == '{':
 			s.token = TOK_LBRACE
@@ -450,6 +463,7 @@ func nextToken(s *State) {
 			s.tokenString = "|"
 		case ch1 == '}':
 			s.token = TOK_RBRACE
+			s.tokenString = "]"
 		default:
 			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", ch1))
 		}

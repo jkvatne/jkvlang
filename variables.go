@@ -24,6 +24,10 @@ func VarInit() {
 func (v *VarDef) Size() int {
 	return PrimaryTypeSizes[v.Typ.Pt]
 }
+func (v *VarDef) SetType(t *TypeDef) {
+	v.Typ = t
+	v.Value.Typ = t
+}
 
 func AddLocalArg(s *State, name string, typ *TypeDef) {
 	v := &VarDef{Name: name, Typ: typ, IsConst: false}
@@ -31,6 +35,7 @@ func AddLocalArg(s *State, name string, typ *TypeDef) {
 	s.LocalArgSize += 8
 	v.Offset = s.LocalArgSize
 	v.ArgNo = s.ArgCount
+	v.Value.Typ = typ
 	VarDefs[name] = v
 }
 

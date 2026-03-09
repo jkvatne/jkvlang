@@ -138,8 +138,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil {
-		lvalue.Typ = value.Typ
-		lvalue.Typ = value.Typ
+		lvalue.SetType(value.Typ)
 	}
 	// Check types to see if the value can be assigned to the lvalue
 	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
@@ -149,6 +148,9 @@ func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// If the value is known (a compile time constant)
 	if value.HasValue {
 		if CanAssignConst(lvalue.Typ.Pt, value) {
+			if value.HasValue {
+				lvalue.Value = value
+			}
 			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 			if err != nil {
 				return err
@@ -324,11 +326,11 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 }
 
 func ParseProd(s *State) (value ValueDef, err error) {
-	var value2 ValueDef
 	value, err = ParseUnary(s)
 	if err != nil {
 		return value, err
 	}
+	var value2 ValueDef
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
 		op := s.token
 		nextToken(s)

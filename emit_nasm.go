@@ -91,14 +91,17 @@ func EmitCall(s *State, id string, argNo int) {
 }
 
 func EmitReturn(s *State) {
-	for i := range len(s.currentFunc.returnTypes) {
-		emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
-		s.localSp++
+	if !s.RaxIsTOS || s.LocalRetSize > 1 {
+		for i := range len(s.currentFunc.returnTypes) {
+			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
+			s.localSp++
+		}
 	}
 	// Verify that the stack is now empty
 	if s.localSp != 0 {
 		slog.Warn(s.currentFunc.name+" returns with", "SP", s.localSp)
 	}
+	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
@@ -181,12 +184,24 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 	if instr == "" {
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
 	}
-	emit(s, instr, strconv.FormatInt(value, 10), DataType(size)+BpRel(adr), comment)
+	if instr == "imul" {
+		emit(s, "mov", strconv.FormatInt(value, 10), "rax", "")
+		emit(s, "movzx", DataType(size)+BpRel(adr), "rbx", comment)
+		emit(s, "imul", "rbx", "", "")
+	} else {
+		emit(s, instr, strconv.FormatInt(value, 10), DataType(size)+BpRel(adr), comment)
+	}
 	return nil
 }
 
 func BpRel(offset int) string {
-	return "[bp+" + strconv.Itoa(offset) + "]"
+	ofs := strconv.Itoa(Abs(offset))
+	if offset < 0 {
+		ofs = "-" + ofs
+	} else {
+		ofs = "+" + ofs
+	}
+	return "[rbp" + ofs + "]"
 }
 
 func DataType(size int) string {
@@ -205,7 +220,7 @@ func DataType(size int) string {
 func AxRegName(size int) string {
 	switch Abs(size) {
 	case 1:
-		return "ral"
+		return "al"
 	case 2:
 		return "rax"
 	case 4:
@@ -216,10 +231,16 @@ func AxRegName(size int) string {
 }
 
 func MovOpcode(size int) string {
-	if size < 0 {
-		return "movz"
+	if size == 1 {
+		// Zero extend bytes
+		return "movzx"
 	}
-	return "movs"
+	if size < 0 {
+		// Unsigned - zero extend
+		return "movzx"
+	}
+	// Sign extend
+	return "movsx"
 }
 
 // EmitStoreConst will store a constant of given size into a local variable at [BP+offset]
@@ -234,7 +255,7 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 		emit(s, "push", "rax", "", "Push TOS")
 	}
 	s.RaxIsTOS = true
-	emit(s, MovOpcode(size), BpRel(adr), AxRegName(size), comment)
+	emit(s, MovOpcode(size), DataType(size)+BpRel(adr), "rax", comment)
 	s.localSp++
 }
 
