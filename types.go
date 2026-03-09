@@ -35,22 +35,22 @@ var PrimaryTypeSizes = [...]int{
 	4, 4, 4, 4, 4, 4, 4, 4}
 
 type TypeDef struct {
-	pt    PrimaryType
-	name  string
-	basic bool
+	Pt       PrimaryType
+	TypeName string
+	Basic    bool
 }
 
 var TypeDefs map[string]*TypeDef
 
-var BoolType = TypeDef{pt: TYP_BOOL, name: "Bool", basic: true}
-var NoneType = TypeDef{pt: TYP_NONE, name: "None", basic: true}
-var PtrType = TypeDef{pt: TYP_PTR, name: "Ptr", basic: true}
-var I64Type = TypeDef{pt: TYP_I64, name: "I64", basic: true}
+var BoolType = TypeDef{Pt: TYP_BOOL, TypeName: "Bool", Basic: true}
+var NoneType = TypeDef{Pt: TYP_NONE, TypeName: "None", Basic: true}
+var PtrType = TypeDef{Pt: TYP_PTR, TypeName: "Ptr", Basic: true}
+var I64Type = TypeDef{Pt: TYP_I64, TypeName: "I64", Basic: true}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)
 	for t := TYP_NONE; t < TYP_LEN; t++ {
-		TypeDefs[PrimaryTypeNames[t]] = &TypeDef{pt: t, name: PrimaryTypeNames[t], basic: true}
+		TypeDefs[PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: PrimaryTypeNames[t], Basic: true}
 	}
 }
 
@@ -61,52 +61,52 @@ func InitTypes() {
 // Overflow is not handled or detected, so adding 32737+32737 will be -2, which is wrong.
 func CommonType(t1 PrimaryType, t2 PrimaryType) (*TypeDef, error) {
 	if t1 == t2 {
-		return &TypeDef{pt: t1, name: PrimaryTypeNames[t1], basic: true}, nil
+		return &TypeDef{Pt: t1, TypeName: PrimaryTypeNames[t1], Basic: true}, nil
 	}
 	if t1 == TYP_F64 || t2 == TYP_F64 {
 		// F64 can take all numeric types
-		return &TypeDef{pt: TYP_F64, name: PrimaryTypeNames[TYP_F64], basic: true}, nil
+		return &TypeDef{Pt: TYP_F64, TypeName: PrimaryTypeNames[TYP_F64], Basic: true}, nil
 	}
 	if t1 == TYP_F32 || t2 == TYP_F32 {
 		// F32 can take all numeric types (but with loss of precision).
-		return &TypeDef{pt: TYP_F32, name: PrimaryTypeNames[TYP_F32], basic: true}, nil
+		return &TypeDef{Pt: TYP_F32, TypeName: PrimaryTypeNames[TYP_F32], Basic: true}, nil
 	}
 	if t1 == TYP_I64 && t2 < TYP_I64 {
 		// I64 can take all integers
-		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
+		return &TypeDef{Pt: TYP_I64, TypeName: PrimaryTypeNames[TYP_I64], Basic: true}, nil
 	}
 	if t2 == TYP_I64 && t1 < TYP_I64 {
 		// I64 can take all integers
-		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
+		return &TypeDef{Pt: TYP_I64, TypeName: PrimaryTypeNames[TYP_I64], Basic: true}, nil
 	}
 	if t1 == TYP_U8 {
 		// U8 can be included in all other types
-		return &TypeDef{pt: t2, name: PrimaryTypeNames[t2], basic: true}, nil
+		return &TypeDef{Pt: t2, TypeName: PrimaryTypeNames[t2], Basic: true}, nil
 	}
 	if t2 == TYP_U8 {
 		// U8 can be included in all other types
-		return &TypeDef{pt: t1, name: PrimaryTypeNames[t1], basic: true}, nil
+		return &TypeDef{Pt: t1, TypeName: PrimaryTypeNames[t1], Basic: true}, nil
 	}
 	if t1 == TYP_U16 && t2 == TYP_U32 || t2 == TYP_U16 && t1 == TYP_U32 {
-		return &TypeDef{pt: TYP_U32, name: PrimaryTypeNames[TYP_U32], basic: true}, nil
+		return &TypeDef{Pt: TYP_U32, TypeName: PrimaryTypeNames[TYP_U32], Basic: true}, nil
 	}
 
 	if t1 == TYP_U16 || t2 == TYP_U16 && t1 != TYP_U32 {
-		return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
+		return &TypeDef{Pt: TYP_I32, TypeName: PrimaryTypeNames[TYP_I32], Basic: true}, nil
 	}
 	if t1 == TYP_I16 {
 		if t2 == TYP_U16 || t2 == TYP_I32 {
-			return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
+			return &TypeDef{Pt: TYP_I32, TypeName: PrimaryTypeNames[TYP_I32], Basic: true}, nil
 		}
 	}
 	if t2 == TYP_I16 && t1 == TYP_I32 {
-		return &TypeDef{pt: TYP_I32, name: PrimaryTypeNames[TYP_I32], basic: true}, nil
+		return &TypeDef{Pt: TYP_I32, TypeName: PrimaryTypeNames[TYP_I32], Basic: true}, nil
 	}
 	if t1 == TYP_U32 && (t2 <= TYP_U16 || t2 == TYP_I32) {
-		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
+		return &TypeDef{Pt: TYP_I64, TypeName: PrimaryTypeNames[TYP_I64], Basic: true}, nil
 	}
 	if t2 == TYP_U32 && (t1 <= TYP_U16 || t1 == TYP_I32) {
-		return &TypeDef{pt: TYP_I64, name: PrimaryTypeNames[TYP_I64], basic: true}, nil
+		return &TypeDef{Pt: TYP_I64, TypeName: PrimaryTypeNames[TYP_I64], Basic: true}, nil
 	}
 	return nil, fmt.Errorf("Common type not found for %s and %s", t1.Name(), t2.Name())
 }
@@ -119,7 +119,7 @@ func (t PrimaryType) Size() int {
 }
 
 func (t *TypeDef) Name() string {
-	return t.name
+	return t.TypeName
 }
 
 // CanAssign is true if we can assign type "src" to "dst"
@@ -140,24 +140,24 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 // A F64 can accept anything. An F32 value can accept everything except F64.
 // For integers, it depends on the value.
 func CanAssignConst(dst PrimaryType, value ValueDef) bool {
-	if dst == value.typ.pt {
+	if dst == value.Typ.Pt {
 		return true
 	}
 	if dst == TYP_F64 {
 		return true
 	}
-	if dst == TYP_F32 && value.typ.pt != TYP_F64 {
+	if dst == TYP_F32 && value.Typ.Pt != TYP_F64 {
 		return true
 	}
 	if dst < TYP_U8 || dst > TYP_I64 {
 		return false
 	}
 	return dst == TYP_I64 ||
-		dst == TYP_U8 && value.intValue >= 0 && value.intValue <= 255 ||
-		dst == TYP_I16 && value.intValue >= -32768 && value.intValue <= 32767 ||
-		dst == TYP_U16 && value.intValue >= -65535 && value.intValue <= 65535 ||
-		dst == TYP_I32 && value.intValue >= -2147483648 && value.intValue <= 2147483647 ||
-		dst == TYP_U32 && value.intValue >= 0 && value.intValue <= 4294967296
+		dst == TYP_U8 && value.IntValue >= 0 && value.IntValue <= 255 ||
+		dst == TYP_I16 && value.IntValue >= -32768 && value.IntValue <= 32767 ||
+		dst == TYP_U16 && value.IntValue >= -65535 && value.IntValue <= 65535 ||
+		dst == TYP_I32 && value.IntValue >= -2147483648 && value.IntValue <= 2147483647 ||
+		dst == TYP_U32 && value.IntValue >= 0 && value.IntValue <= 4294967296
 }
 
 func AddType(name string, typ *TypeDef) {

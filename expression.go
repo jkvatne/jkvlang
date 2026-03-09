@@ -99,8 +99,8 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 			return
 		}
 		argNo++
-		if value.hasValue {
-			EmitPushConst(s, value.intValue, "Argument "+strconv.Itoa(argNo))
+		if value.HasValue {
+			EmitPushConst(s, value.IntValue, "Argument "+strconv.Itoa(argNo))
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -138,17 +138,18 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil {
-		lvalue.Typ = value.typ
-		lvalue.Value.typ = value.typ
+		lvalue.Typ = value.Typ
+		lvalue.Typ = value.Typ
 	}
 	// Check types to see if the value can be assigned to the lvalue
-	if !CanAssign(lvalue.Typ.pt, value.typ.pt) {
-		return fmt.Errorf("expected type %s but got %s for %s", lvalue.Typ.pt.Name(), value.typ.Name(), lvalue.Name)
+	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
+		return fmt.Errorf("assignment expected type %s but got %s",
+			lvalue.Typ.Pt.Name(), value.Typ.Name())
 	}
 	// If the value is known (a compile time constant)
-	if value.hasValue {
-		if CanAssignConst(lvalue.Typ.pt, value) {
-			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.pt.Size(), value.intValue, "")
+	if value.HasValue {
+		if CanAssignConst(lvalue.Typ.Pt, value) {
+			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 			if err != nil {
 				return err
 			}
@@ -157,7 +158,7 @@ func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 		}
 	} else {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
-		EmitStore(s, lvalue.Typ.pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
+		EmitStore(s, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
 	}
 	return nil
 }
@@ -212,7 +213,7 @@ func ParseAssignOrCall(s *State, id string) error {
 		}
 		// Check that all values have a type.
 		for _, value := range values {
-			if value.typ == nil {
+			if value.Typ == nil {
 				return fmt.Errorf("no type for \"%s\"", id)
 			}
 		}
@@ -221,14 +222,14 @@ func ParseAssignOrCall(s *State, id string) error {
 			if lvalues[i].IsConst {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
-			oldHasValue := lvalues[i].Value.hasValue
+			oldHasValue := lvalues[i].HasValue
 			err = DoAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
 			if oldHasValue {
-				lvalues[i].Value.hasValue = false
+				lvalues[i].HasValue = false
 			}
 		}
 	} else {
@@ -252,11 +253,11 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		if v.Typ == nil {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if v.Typ.pt == TYP_NONE {
+		if v.Typ.Pt == TYP_NONE {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.Value.hasValue {
-			EmitLoad(s, v.Typ.pt.Size(), v.Offset, "Load variable "+v.Name)
+		if !v.HasValue {
+			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
 		return v.Value, err
 	} else if s.token == TOK_LBRACK {
@@ -286,20 +287,20 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		if err != nil {
 			return NoValue, err
 		}
-		if value.typ == nil {
+		if value.Typ == nil {
 			return NoValue, fmt.Errorf("missing integer type")
 		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
-		value.typ = TypeDefs["F64"]
-		value.floatValue = s.tokenFloatValue
-		value.hasValue = true
+		value.Typ = TypeDefs["F64"]
+		value.FloatValue = s.tokenFloatValue
+		value.HasValue = true
 		nextToken(s)
 	} else if s.token == TOK_STRING {
 		EmitPushString(s, s.tokenString)
-		value.typ = TypeDefs["String"]
-		value.stringValue = s.tokenString
-		value.hasValue = false
+		value.Typ = TypeDefs["String"]
+		value.StringValue = s.tokenString
+		value.HasValue = false
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
 		for {
@@ -364,12 +365,12 @@ func ParseSumTerm(s *State) (ValueDef, error) {
 
 // CompareConsts assumes v1 and v2 both have values.
 func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) (bool, error) {
-	if v1.typ.pt == TYP_STRING || v2.typ.pt == TYP_STRING {
-		if v1.typ.pt != TYP_STRING || v2.typ.pt != TYP_STRING {
+	if v1.Typ.Pt == TYP_STRING || v2.Typ.Pt == TYP_STRING {
+		if v1.Typ.Pt != TYP_STRING || v2.Typ.Pt != TYP_STRING {
 			return false, fmt.Errorf("comparing string constant with another type is not allowed")
 		}
-		x1 := v1.stringValue
-		x2 := v2.stringValue
+		x1 := v1.StringValue
+		x2 := v2.StringValue
 		if op == TOK_EQ {
 			return x1 == x2, nil
 		} else if op == TOK_NE {
@@ -385,17 +386,17 @@ func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) (bool, error) {
 		}
 		return false, fmt.Errorf("unexpected operation on constants, op=%s", TokenNames[op])
 	}
-	x1 := v1.floatValue
-	if v1.typ.pt.IsInteger() {
-		x1 = float64(v1.intValue)
-	} else if v1.typ.pt == TYP_BOOL && v1.boolValue {
+	x1 := v1.FloatValue
+	if v1.Typ.Pt.IsInteger() {
+		x1 = float64(v1.IntValue)
+	} else if v1.Typ.Pt == TYP_BOOL && v1.BoolValue {
 		x1 = 1.0
 	}
 
-	x2 := v1.floatValue
-	if v1.typ.pt.IsInteger() {
-		x2 = float64(v2.intValue)
-	} else if v2.typ.pt == TYP_BOOL && v2.boolValue {
+	x2 := v1.FloatValue
+	if v1.Typ.Pt.IsInteger() {
+		x2 = float64(v2.IntValue)
+	} else if v2.Typ.Pt == TYP_BOOL && v2.BoolValue {
 		x2 = 1.0
 	}
 	if op == TOK_EQ {
@@ -436,7 +437,7 @@ func ParseCompareTerm(s *State) (ValueDef, error) {
 	if err != nil {
 		return NoValue, err
 	}
-	if value1.typ == nil {
+	if value1.Typ == nil {
 		return NoValue, fmt.Errorf("internal error, no type")
 	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
@@ -449,17 +450,17 @@ func ParseCompareTerm(s *State) (ValueDef, error) {
 	if err != nil {
 		return NoValue, err
 	}
-	result.typ = TypeDefs["Bool"]
-	if value1.hasValue && value2.hasValue {
+	result.Typ = TypeDefs["Bool"]
+	if value1.HasValue && value2.HasValue {
 		// Both sides are known at compile time. Evaluate it now and return bool constant
-		result.boolValue, err = CompareConsts(op, value1, value2)
-		result.hasValue = true
-	} else if value2.hasValue {
+		result.BoolValue, err = CompareConsts(op, value1, value2)
+		result.HasValue = true
+	} else if value2.HasValue {
 		// Right side was constant. Push it and do operation
-		EmitPushConst(s, value2.intValue, "")
+		EmitPushConst(s, value2.IntValue, "")
 		return GenerateOp(s, op, value1, value2)
-	} else if value1.hasValue {
-		EmitPushConst(s, value1.intValue, "")
+	} else if value1.HasValue {
+		EmitPushConst(s, value1.IntValue, "")
 		return GenerateOp(s, Inverse(op), value1, value2)
 	}
 	return result, nil
@@ -471,11 +472,11 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 	if err != nil {
 		return NoValue, err
 	}
-	if result.typ == nil {
+	if result.Typ == nil {
 		return NoValue, fmt.Errorf("expression type is nil - internal error")
 	}
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
-		if result.typ.pt != TYP_BOOL {
+		if result.Typ.Pt != TYP_BOOL {
 			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		nextToken(s)
@@ -483,10 +484,10 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 		if err != nil {
 			return NoValue, err
 		}
-		if value2.typ == nil {
+		if value2.Typ == nil {
 			return NoValue, fmt.Errorf("value2.typ is nil")
 		}
-		if value2.typ.pt != TYP_BOOL {
+		if value2.Typ.Pt != TYP_BOOL {
 			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		_, err = GenerateOp(s, s.token, result, value2)
@@ -494,7 +495,7 @@ func ParseExpression(s *State) (result ValueDef, err error) {
 			return NoValue, err
 		}
 	}
-	if result.typ == nil {
+	if result.Typ == nil {
 		return NoValue, fmt.Errorf("value.type is nil - internal error")
 	}
 	return result, nil
@@ -519,7 +520,7 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 				return nil, err
 			}
 			for _, t := range f.returnTypes {
-				v = ValueDef{typ: t}
+				v = ValueDef{Typ: t}
 				results = append(results, v)
 			}
 		} else {
@@ -543,14 +544,14 @@ func NewLabel(s *State) int {
 
 // StartCond will increment noCode if the value is a constant equal to cond
 func StartCond(s *State, value *ValueDef, cond bool) {
-	if value.hasValue && (value.boolValue != cond) {
+	if value.HasValue && (value.BoolValue != cond) {
 		s.noCode++
 	}
 }
 
 // EndCond will decrement noCode if the value is a constant equal to cond
 func EndCond(s *State, value *ValueDef, cond bool) {
-	if value.hasValue && (value.boolValue != cond) {
+	if value.HasValue && (value.BoolValue != cond) {
 		s.noCode--
 	}
 }
@@ -562,12 +563,12 @@ func ParseIf(s *State) error {
 	if err != nil {
 		return err
 	}
-	if value.typ.pt != TYP_BOOL {
-		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.typ.pt])
+	if value.Typ.Pt != TYP_BOOL {
+		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 	}
 	endLabel := NewLabel(s)
 	elseLabel := NewLabel(s)
-	if !value.hasValue {
+	if !value.HasValue {
 		EmitJumpFalse(s, elseLabel, "")
 	}
 
@@ -605,7 +606,7 @@ func ParseIf(s *State) error {
 			return err
 		}
 		EndCond(s, &value, true)
-		if !s.hasReturned && !value.hasValue {
+		if !s.hasReturned && !value.HasValue {
 			EmitJump(s, endLabel, "")
 			endLabelUsed = true
 		}
@@ -622,8 +623,8 @@ func ParseIf(s *State) error {
 				if err != nil {
 					return err
 				}
-				if value.typ.pt != TYP_BOOL {
-					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.typ.pt])
+				if value.Typ.Pt != TYP_BOOL {
+					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 				}
 				elseLabel = NewLabel(s)
 				EmitJumpFalse(s, elseLabel, "")

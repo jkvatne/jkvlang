@@ -7,62 +7,59 @@ import (
 )
 
 type ValueDef struct {
-	typ         *TypeDef
-	size        int
-	hasValue    bool
-	intValue    int64
-	floatValue  float64
-	boolValue   bool
-	stringValue string
-	regNo       int
+	Pt          PrimaryType
+	IntValue    int64
+	FloatValue  float64
+	BoolValue   bool
+	StringValue string
 }
 
 var (
-	False     = ValueDef{typ: &BoolType, hasValue: true, boolValue: false}
-	True      = ValueDef{typ: &BoolType, hasValue: true, boolValue: true}
-	NoValue   = ValueDef{typ: &NoneType, hasValue: false, boolValue: false}
-	ZeroValue = ValueDef{typ: &PtrType, hasValue: true, intValue: 0, floatValue: 0, boolValue: false}
+	False     = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
+	True      = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: true}
+	NoValue   = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
+	ZeroValue = ValueDef{Typ: &PtrType, HasValue: true, IntValue: 0, FloatValue: 0, BoolValue: false}
 )
 
 // EvalConstOp will calculate the result of the operation on the two constant values
 // and return the constant result.
 func EvalConstOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 	var result ValueDef
-	result.typ = widest(val1, val2).typ
-	result.hasValue = true
+	result.Typ = widest(val1, val2).Typ
+	result.HasValue = true
 	switch op {
 	case TOK_PLUS:
-		result.intValue = val1.intValue + val2.intValue
-		result.floatValue = val1.floatValue + val2.floatValue
+		result.IntValue = val1.IntValue + val2.IntValue
+		result.FloatValue = val1.FloatValue + val2.FloatValue
 	case TOK_MINUS:
-		result.intValue = val1.intValue - val2.intValue
-		result.floatValue = val1.floatValue - val2.floatValue
+		result.IntValue = val1.IntValue - val2.IntValue
+		result.FloatValue = val1.FloatValue - val2.FloatValue
 	case TOK_MULT:
-		result.intValue = val1.intValue * val2.intValue
-		result.floatValue = val1.floatValue * val2.floatValue
+		result.IntValue = val1.IntValue * val2.IntValue
+		result.FloatValue = val1.FloatValue * val2.FloatValue
 	case TOK_DIV:
-		result.intValue = val1.intValue / val2.intValue
-		result.floatValue = val1.floatValue / val2.floatValue
+		result.IntValue = val1.IntValue / val2.IntValue
+		result.FloatValue = val1.FloatValue / val2.FloatValue
 	case TOK_AND:
-		result.intValue = val1.intValue & val2.intValue
+		result.IntValue = val1.IntValue & val2.IntValue
 	case TOK_OR:
-		result.intValue = val1.intValue | val2.intValue
+		result.IntValue = val1.IntValue | val2.IntValue
 	case TOK_LOG_OR:
-		result.boolValue = val1.boolValue || val2.boolValue
+		result.BoolValue = val1.BoolValue || val2.BoolValue
 	case TOK_LOG_AND:
-		result.boolValue = val1.boolValue && val2.boolValue
+		result.BoolValue = val1.BoolValue && val2.BoolValue
 	case TOK_GT:
-		result.boolValue = val1.intValue > val2.intValue
+		result.BoolValue = val1.IntValue > val2.IntValue
 	case TOK_GE:
-		result.boolValue = val1.intValue >= val2.intValue
+		result.BoolValue = val1.IntValue >= val2.IntValue
 	case TOK_LT:
-		result.boolValue = val1.intValue < val2.intValue
+		result.BoolValue = val1.IntValue < val2.IntValue
 	case TOK_LE:
-		result.boolValue = val1.intValue <= val2.intValue
+		result.BoolValue = val1.IntValue <= val2.IntValue
 	case TOK_EQ:
-		result.boolValue = val1.intValue == val2.intValue
+		result.BoolValue = val1.IntValue == val2.IntValue
 	case TOK_NE:
-		result.boolValue = val1.intValue != val2.intValue
+		result.BoolValue = val1.IntValue != val2.IntValue
 	default:
 		// Invalid operand
 		return NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
@@ -81,30 +78,30 @@ func GenerateConstOp(s *State, op Token, val1, val2 ValueDef, inverse bool) (Val
 func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 	var result ValueDef
 	// Convert int values to float in case of mixed types.
-	if val1.typ.pt != TYP_F64 && val1.typ.pt != TYP_F32 {
-		val1.floatValue = float64(val1.intValue)
+	if val1.Typ.Pt != TYP_F64 && val1.Typ.Pt != TYP_F32 {
+		val1.FloatValue = float64(val1.IntValue)
 	}
-	if val2.typ.pt != TYP_F64 && val2.typ.pt != TYP_F32 {
-		val2.floatValue = float64(val2.intValue)
+	if val2.Typ.Pt != TYP_F64 && val2.Typ.Pt != TYP_F32 {
+		val2.FloatValue = float64(val2.IntValue)
 	}
-	if !val1.typ.basic && !val2.typ.basic && val1.typ != val2.typ {
-		return NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.typ.pt.Name(), val2.typ.pt.Name())
+	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
+		return NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 	}
 	// If both operands are constant. Evaluate at compile time.
-	if val1.hasValue && val2.hasValue {
+	if val1.HasValue && val2.HasValue {
 		return EvalConstOp(s, op, val1, val2)
-	} else if val1.hasValue {
+	} else if val1.HasValue {
 		return GenerateConstOp(s, op, val1, val2, true)
-	} else if val2.hasValue {
+	} else if val2.HasValue {
 		return GenerateConstOp(s, op, val1, val2, false)
-	} else if val1.typ.pt.IsInteger() && val2.typ.pt.IsInteger() {
+	} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 		// both operands are integers, do operation on the two top stack elements.
 		EmitIntegerOp(s, op)
-		ct, err := CommonType(val1.typ.pt, val2.typ.pt)
+		ct, err := CommonType(val1.Typ.Pt, val2.Typ.Pt)
 		if err != nil {
 			return NoValue, err
 		}
-		result.typ = ct
+		result.Typ = ct
 		return result, nil
 	}
 	return NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
@@ -117,27 +114,27 @@ func StringToValue(s string) (value ValueDef, err error) {
 		if err != nil {
 			return NoValue, err
 		}
-		value.typ.pt = TYP_F64
-		value.floatValue = num
+		value.Typ.Pt = TYP_F64
+		value.FloatValue = num
 	} else {
 		var num int64
 		num, err = strconv.ParseInt(s, 10, 64)
 		if err == nil {
 			if num >= 0 && num <= 255 {
-				value.typ = TypeDefs["U8"]
+				value.Typ = TypeDefs["U8"]
 			} else if num >= -32768 && num <= 32767 {
-				value.typ = TypeDefs["I16"]
+				value.Typ = TypeDefs["I16"]
 			} else if num >= 32768 && num <= 65536 {
-				value.typ = TypeDefs["U16"]
+				value.Typ = TypeDefs["U16"]
 			} else if num >= -2147483648 && num <= 2147483647 {
-				value.typ = TypeDefs["I32"]
+				value.Typ = TypeDefs["I32"]
 			} else if num >= 2147483648 && num <= 4294967296 {
-				value.typ = TypeDefs["U32"]
+				value.Typ = TypeDefs["U32"]
 			} else {
-				value.typ = TypeDefs["I64"]
+				value.Typ = TypeDefs["I64"]
 			}
-			value.intValue = num
-			value.hasValue = true
+			value.IntValue = num
+			value.HasValue = true
 			return value, nil
 		}
 	}
@@ -145,24 +142,24 @@ func StringToValue(s string) (value ValueDef, err error) {
 }
 
 func widest(v1 ValueDef, v2 ValueDef) ValueDef {
-	if v1.typ.pt > v2.typ.pt {
+	if v1.Typ.Pt > v2.Typ.Pt {
 		return v1
 	}
 	return v2
 }
 
 func ValueAsString(v ValueDef) string {
-	if v.typ.pt == TYP_U8 || v.typ.pt == TYP_U16 || v.typ.pt == TYP_U32 || v.typ.pt == TYP_I16 || v.typ.pt == TYP_I32 || v.typ.pt == TYP_I64 {
-		return strconv.FormatInt(v.intValue, 10)
-	} else if v.typ.pt == TYP_BOOL {
-		if v.boolValue {
+	if v.Typ.Pt == TYP_U8 || v.Typ.Pt == TYP_U16 || v.Typ.Pt == TYP_U32 || v.Typ.Pt == TYP_I16 || v.Typ.Pt == TYP_I32 || v.Typ.Pt == TYP_I64 {
+		return strconv.FormatInt(v.IntValue, 10)
+	} else if v.Typ.Pt == TYP_BOOL {
+		if v.BoolValue {
 			return "true"
 		}
 		return "false"
-	} else if v.typ.pt == TYP_F64 {
-		return strconv.FormatFloat(v.floatValue, 'g', -1, 64)
-	} else if v.typ.pt == TYP_F32 {
-		return strconv.FormatFloat(v.floatValue, 'g', -1, 32)
+	} else if v.Typ.Pt == TYP_F64 {
+		return strconv.FormatFloat(v.FloatValue, 'g', -1, 64)
+	} else if v.Typ.Pt == TYP_F32 {
+		return strconv.FormatFloat(v.FloatValue, 'g', -1, 32)
 	}
-	return v.stringValue
+	return v.StringValue
 }

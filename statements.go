@@ -17,11 +17,11 @@ func ParseReturn(s *State) error {
 		if len(f.returnTypes) <= i {
 			return fmt.Errorf("too many return values")
 		}
-		if !CanAssign(f.returnTypes[i].pt, v.typ.pt) {
+		if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
 			return fmt.Errorf("returns wrong type")
 		}
-		if v.hasValue {
-			EmitPushConst(s, v.intValue, "Return value "+strconv.Itoa(i))
+		if v.HasValue {
+			EmitPushConst(s, v.IntValue, "Return value "+strconv.Itoa(i))
 		}
 		if !s.found(TOK_COMMA) {
 			break
@@ -41,7 +41,12 @@ func ParseReturn(s *State) error {
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
-	if s.token == TOK_RETURN {
+
+	if s.token == TOK_ID {
+		id := s.tokenString
+		s.next()
+		err = ParseAssignOrCall(s, id)
+	} else if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {
 			return true, fmt.Errorf("more than one return in block")
@@ -59,8 +64,8 @@ func ParseStatement(s *State) (returned bool, err error) {
 		if err != nil {
 			return false, err
 		}
-		if v.hasValue {
-			if !v.boolValue {
+		if v.HasValue {
+			if !v.BoolValue {
 				return false, fmt.Errorf("assert failed")
 			}
 			EmitComment(s, "Assert succeeded")

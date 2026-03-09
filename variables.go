@@ -6,18 +6,12 @@ import (
 
 type VarLocation int
 
-//goland:noinspection GoSnakeCaseUsage
-const (
-	VAR_HEAP VarLocation = iota
-	VAR_ARG
-	VAR_STACK
-)
-
 type VarDef = struct {
-	Name    string
 	Typ     *TypeDef
+	Size    int
+	Value   *ValueDef
+	Name    string
 	Offset  int
-	Value   ValueDef
 	IsConst bool
 	ArgNo   int
 }
@@ -29,7 +23,7 @@ func VarInit() {
 }
 
 func AddLocalArg(s *State, name string, typ *TypeDef) {
-	v := &VarDef{Name: name, Typ: typ, IsConst: false, Value: ValueDef{typ: typ}}
+	v := &VarDef{Name: name, Typ: typ, IsConst: false, Value: ValueDef{Typ: typ}}
 	s.ArgCount++
 	s.LocalArgSize += 8
 	v.Offset = s.LocalArgSize
@@ -41,7 +35,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{typ: typ, hasValue: isConst}}
+		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}}
 		EmitPushConst(s, 0, "New variable "+id)
 		s.localSp++
 		// Local variables are at negative offset. The first on -8.

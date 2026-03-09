@@ -31,7 +31,7 @@ type State struct {
 
 type Token int
 
-//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
+//goland:noinspection GoSnakeCaseUsage
 const (
 	TOK_UNDEF Token = iota
 	TOK_PLUS
@@ -94,6 +94,7 @@ const (
 	TOK_SIZE
 )
 
+//goland:noinspection GoSnakeCaseUsage
 var TokenNames = [...]string{
 	TOK_UNDEF:       "UNDEF",
 	TOK_PLUS:        "PLUS",
@@ -363,7 +364,7 @@ func nextToken(s *State) {
 			s.token = TOK_DIV_ASGN
 		case ch1 == '/':
 			ch1, ch2 = nextChar(s)
-			s.tokenString = "*="
+			s.tokenString = "/"
 			s.token = TOK_DIV
 		case isNum(ch1):
 			ch1, ch2 = parseNumber(s, ch1, ch2)
