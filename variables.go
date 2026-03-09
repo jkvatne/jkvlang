@@ -6,10 +6,9 @@ import (
 
 type VarLocation int
 
-type VarDef = struct {
+type VarDef struct {
 	Typ     *TypeDef
-	Size    int
-	Value   *ValueDef
+	Value   ValueDef
 	Name    string
 	Offset  int
 	IsConst bool
@@ -22,8 +21,12 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 }
 
+func (v *VarDef) Size() int {
+	return PrimaryTypeSizes[v.Typ.Pt]
+}
+
 func AddLocalArg(s *State, name string, typ *TypeDef) {
-	v := &VarDef{Name: name, Typ: typ, IsConst: false, Value: ValueDef{Typ: typ}}
+	v := &VarDef{Name: name, Typ: typ, IsConst: false}
 	s.ArgCount++
 	s.LocalArgSize += 8
 	v.Offset = s.LocalArgSize
@@ -118,7 +121,7 @@ func ParseVar(s *State, isConst bool) error {
 	if s.token == TOK_ASSIGN {
 		nextToken(s)
 		val = s.tokenString
-		v.Value.stringValue = val
+		v.Value.StringValue = val
 		nextToken(s)
 	}
 	return err

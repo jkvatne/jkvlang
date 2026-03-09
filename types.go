@@ -30,6 +30,7 @@ const (
 var PrimaryTypeNames = [...]string{
 	"None", "Bool", "U8", "I16", "U16", "I32", "U32", "Rune", "I64", "F32",
 	"F64", "String", "Struct", "Func", "Map", "Set", "Ptr", "Error"}
+
 var PrimaryTypeSizes = [...]int{
 	0, 1, 1, 2, 2, 4, 4, 4, 8, 4,
 	4, 4, 4, 4, 4, 4, 4, 4}

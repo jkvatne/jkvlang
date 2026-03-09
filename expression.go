@@ -222,14 +222,14 @@ func ParseAssignOrCall(s *State, id string) error {
 			if lvalues[i].IsConst {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
-			oldHasValue := lvalues[i].HasValue
+			oldHasValue := lvalues[i].Value.HasValue
 			err = DoAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
 			if oldHasValue {
-				lvalues[i].HasValue = false
+				lvalues[i].Value.HasValue = false
 			}
 		}
 	} else {
@@ -256,7 +256,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		if v.Typ.Pt == TYP_NONE {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.HasValue {
+		if !v.Value.HasValue {
 			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
 		return v.Value, err

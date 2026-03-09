@@ -7,7 +7,8 @@ import (
 )
 
 type ValueDef struct {
-	Pt          PrimaryType
+	Typ         *TypeDef
+	HasValue    bool
 	IntValue    int64
 	FloatValue  float64
 	BoolValue   bool
