@@ -47,6 +47,7 @@ var BoolType = TypeDef{Pt: TYP_BOOL, TypeName: "Bool", Basic: true}
 var NoneType = TypeDef{Pt: TYP_NONE, TypeName: "None", Basic: true}
 var PtrType = TypeDef{Pt: TYP_PTR, TypeName: "Ptr", Basic: true}
 var I64Type = TypeDef{Pt: TYP_I64, TypeName: "I64", Basic: true}
+var StringType = TypeDef{Pt: TYP_STRING, TypeName: "String", Basic: true}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)

@@ -4,8 +4,6 @@ import (
 	"fmt"
 )
 
-type VarLocation int
-
 type VarDef struct {
 	Typ     *TypeDef
 	Value   ValueDef
@@ -29,14 +27,15 @@ func (v *VarDef) SetType(t *TypeDef) {
 	v.Value.Typ = t
 }
 
-func AddLocalArg(s *State, name string, typ *TypeDef) {
+func AddLocalArg(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, IsConst: false}
 	s.ArgCount++
 	s.LocalArgSize += 8
-	v.Offset = s.LocalArgSize
+	v.Offset = s.LocalArgSize + 8
 	v.ArgNo = s.ArgCount
 	v.Value.Typ = typ
 	VarDefs[name] = v
+	return v
 }
 
 func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
@@ -44,10 +43,6 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	if v == nil {
 		// New variable.
 		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}}
-		EmitPushConst(s, 0, "New variable "+id)
-		s.localSp++
-		// Local variables are at negative offset. The first on -8.
-		v.Offset = -s.localSp * 8
 		VarDefs[id] = v
 		s.VarCount[s.level]++
 	}
@@ -59,7 +54,7 @@ func EnterBlock(s *State) {
 }
 
 func ExitBlock(s *State) {
-	EmitPop(s, s.VarCount[s.level], "")
+	EmitAddSp(s, s.VarCount[s.level], "")
 	s.level--
 }
 

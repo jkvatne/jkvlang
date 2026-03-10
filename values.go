@@ -17,7 +17,7 @@ type ValueDef struct {
 
 var (
 	False     = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
-	True      = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: true}
+	True      = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
 	NoValue   = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
 	ZeroValue = ValueDef{Typ: &PtrType, HasValue: true, IntValue: 0, FloatValue: 0, BoolValue: false}
 )

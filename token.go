@@ -11,6 +11,7 @@ type State struct {
 	text            []byte
 	p               int
 	lineNum         int
+	AtLineEnd       bool
 	token           Token
 	tokenString     string
 	tokenFloatValue float64
@@ -173,12 +174,16 @@ func isAlfaNum(ch uint8) bool {
 }
 
 func nextChar(s *State) (uint8, uint8) {
+	if s.AtLineEnd {
+		s.AtLineEnd = false
+		s.lineNum++
+	}
 	if eof(s) {
 		return 0, 0
 	}
 	ch1 := s.text[s.p]
 	if ch1 == '\n' {
-		s.lineNum++
+		s.AtLineEnd = true
 	}
 	s.p++
 	if s.p >= len(s.text) {

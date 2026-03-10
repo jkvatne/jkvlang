@@ -38,8 +38,8 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
-func ParseFormalArgList(s *State) ([]*TypeDef, error) {
-	var argList []*TypeDef
+func ParseFormalArgList(s *State) ([]*VarDef, error) {
+	var argList []*VarDef
 	for {
 		if s.token == TOK_RPAR {
 			break
@@ -57,8 +57,8 @@ func ParseFormalArgList(s *State) ([]*TypeDef, error) {
 			return argList, fmt.Errorf("expected argument type but got nil")
 		}
 		// Add argument as local variable
-		AddLocalArg(s, id, typ)
-		argList = append(argList, typ)
+		v := AddLocalArg(s, id, typ)
+		argList = append(argList, v)
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -66,6 +66,11 @@ func ParseFormalArgList(s *State) ([]*TypeDef, error) {
 			return argList, fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
 		}
 		nextToken(s)
+	}
+	l := len(argList)
+	if l > 0 {
+		// Adjust offset for last variable to be the first local variable
+		argList[l-1].Offset = -8
 	}
 	if s.token != TOK_RPAR {
 		return argList, fmt.Errorf("expected ')' but got %s", s.tokenString)
@@ -137,8 +142,15 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 
 func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// Set lvalue type if not already set. Needed for new variables.
-	if lvalue.Typ == nil {
+	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
+		// Local variables are at negative offset. The first on -8.
+		VarDefs[lvalue.Name].Offset = -s.localSp * 8
+		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
+		s.localSp++
+	}
+	if lvalue.Typ == nil {
+		return fmt.Errorf("New variable not allowed before op-assignment")
 	}
 	// Check types to see if the value can be assigned to the lvalue
 	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
@@ -148,12 +160,13 @@ func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
 	// If the value is known (a compile time constant)
 	if value.HasValue {
 		if CanAssignConst(lvalue.Typ.Pt, value) {
-			if value.HasValue {
+			if value.HasValue && op == TOK_ASSIGN {
 				lvalue.Value = value
-			}
-			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
-			if err != nil {
-				return err
+			} else {
+				err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
@@ -169,12 +182,9 @@ func ParseFunctionCall(s *State, id string) error {
 	f := FuncDefs[id]
 	if f != nil {
 		// Push 0 to make space for return values
-		if len(f.returnTypes) > 0 {
-			EmitComment(s, "Make space for return values from "+id)
-		}
-		for i := range len(f.returnTypes) {
-			EmitPushConst(s, 0, "Make space for return value "+strconv.Itoa(i))
-		}
+		n := len(f.returnTypes)
+		EmitAddSp(s, n, "Make space for "+strconv.Itoa(len(f.returnTypes))+" return values")
+
 		// Parse the argument list and push each arg
 		values, err := ParseArgumentList(s)
 		EmitCall(s, id, len(values))
@@ -230,7 +240,7 @@ func ParseAssignOrCall(s *State, id string) error {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
-			if oldHasValue {
+			if oldHasValue && !value.HasValue {
 				lvalues[i].Value.HasValue = false
 			}
 		}
@@ -533,9 +543,6 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 			break
 		}
 	}
-	// if expectRpar && !s.found(TOK_RPAR) {
-	//	return nil, fmt.Errorf("expected ) after function, found: %s", s.tokenString)
-	// }
 	return results, nil
 }
 
@@ -691,11 +698,11 @@ func ParseFunctionDefinition(s *State) error {
 	s.ArgCount = 0
 	s.VarCount = [16]int{}
 	s.level = 0
-	s.localSp = 0
 	argList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err
 	}
+	s.RaxIsTOS = len(argList) > 0
 	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
 	if !s.found(TOK_LBRACE) {

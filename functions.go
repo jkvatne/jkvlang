@@ -5,7 +5,7 @@ import "fmt"
 type FuncDef struct {
 	name        string
 	returnTypes []*TypeDef
-	argTypes    []*TypeDef
+	arguments   []*VarDef
 	stackSize   int
 }
 
@@ -13,19 +13,20 @@ var FuncDefs map[string]*FuncDef
 
 func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
-	args := []*TypeDef{&I64Type}
-	_, _ = AddFunc("print_int", args, nil)
-	_, _ = AddFunc("println", args, nil)
-	_, _ = AddFunc("printf", args, nil)
+	intArg := VarDef{Typ: &I64Type, Name: "intarg"}
+	strArg := VarDef{Typ: &StringType, Name: "strarg"}
+	_, _ = AddFunc("print_int", []*VarDef{&intArg}, nil)
+	_, _ = AddFunc("println", []*VarDef{&strArg}, nil)
+	_, _ = AddFunc("printf", []*VarDef{&strArg}, nil)
 }
 
-func AddFunc(id string, argList []*TypeDef, returnList []*TypeDef) (*FuncDef, error) {
+func AddFunc(id string, argList []*VarDef, returnList []*TypeDef) (*FuncDef, error) {
 	f := FuncDefs[id]
 	if f != nil {
 		return nil, fmt.Errorf("function %s already defined", id)
 	}
 	// New function
-	f = &FuncDef{name: id, returnTypes: returnList, argTypes: argList}
+	f = &FuncDef{name: id, returnTypes: returnList, arguments: argList}
 	FuncDefs[id] = f
 	// Calculate siz
 	f.stackSize = len(argList) + len(returnList)

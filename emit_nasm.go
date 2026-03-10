@@ -49,8 +49,15 @@ func EmitError(s *State, e error) {
 	}
 }
 
+func EmitSp(s *State) {
+	_, err := s.outputFile.WriteString("   ; Sp=" + strconv.Itoa(s.localSp) + "\n")
+	if err != nil {
+		panic(err)
+	}
+}
+
 func EmitComment(s *State, comment string) {
-	_, err := s.outputFile.WriteString("; " + comment + "\n")
+	_, err := s.outputFile.WriteString("   ; " + comment + "\n")
 	if err != nil {
 		panic(err)
 	}
@@ -85,8 +92,9 @@ func EmitJump(s *State, n int, comment string) {
 
 func EmitCall(s *State, id string, argNo int) {
 	emit(s, "call", id, "", "")
-	if argNo > 0 {
-		emit(s, "add", strconv.Itoa(argNo), "rsp", "Reserve space for local variables")
+	if argNo > 1 {
+		emit(s, "add", strconv.Itoa(8*(argNo-1)), "rsp", "Remove arguments")
+		s.localSp -= argNo - 1
 	}
 }
 
@@ -95,12 +103,14 @@ func EmitReturn(s *State) {
 		for i := range len(s.currentFunc.returnTypes) {
 			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
 			s.localSp++
+			EmitSp(s)
 		}
 	}
-	// Verify that the stack is now empty
-	if s.localSp != 0 {
-		slog.Warn(s.currentFunc.name+" returns with", "SP", s.localSp)
+	// Verify that the stack is now empty, except for the local arguments
+	if s.localSp != s.VarCount[0] {
+		slog.Warn(s.currentFunc.name+" returns with", "SP", s.VarCount[0])
 	}
+	EmitSp(s)
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
@@ -115,6 +125,8 @@ func EmitFunction(s *State, id string) {
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
+	EmitSp(s)
+	s.RaxIsTOS = false
 }
 
 var TokenOp = map[Token]string{
@@ -153,6 +165,7 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, instruction, "%rbx", "%rax", "")
 	}
 	s.localSp--
+	EmitSp(s)
 }
 
 // EmitOpConst will evaluate tos=tos op <constant>
@@ -192,6 +205,20 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 		emit(s, instr, strconv.FormatInt(value, 10), DataType(size)+BpRel(adr), comment)
 	}
 	return nil
+}
+
+// Number interface defines the constraint for types that can be used
+// with the generic Abs function.
+type Number interface {
+	int | int8 | int16 | int32 | int64 | float32 | float64
+}
+
+// Abs returns the absolute value of a number of any type that satisfies the Number constraint.
+func Abs[T Number](x T) T {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func BpRel(offset int) string {
@@ -252,11 +279,12 @@ func EmitStoreConst(s *State, size int, value int64, offset int, comment string)
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(s *State, size int, adr int, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push TOS")
+		emit(s, "push", "rax", "", "1 Push TOS")
+		s.localSp++
+		EmitSp(s)
 	}
 	s.RaxIsTOS = true
 	emit(s, MovOpcode(size), DataType(size)+BpRel(adr), "rax", comment)
-	s.localSp++
 }
 
 // EmitStore will save the Top of Stack (AX) into a local variable of given size.
@@ -266,18 +294,23 @@ func EmitStore(s *State, size int, adr int, comment string) {
 	emit(s, "add", "8", "rsp", "")
 	s.RaxIsTOS = false
 	s.localSp--
+	EmitSp(s)
 }
 
-// EmitPop will drop the top "count" 64-bit words.
-func EmitPop(s *State, count int, comment string) {
-	emit(s, "add", strconv.Itoa(count*8), "rsp", comment)
-	s.localSp += count
+// EmitAddSp will drop the top "count" 64-bit words.
+func EmitAddSp(s *State, count int, comment string) {
+	if count != 0 {
+		emit(s, "add", strconv.Itoa(-count*8), "rsp", comment)
+		s.localSp += count
+		EmitSp(s)
+	}
 	s.RaxIsTOS = false
 }
 
 func EmitPushString(s *State, txt string) {
 	// emit(s, "   PUSH_STRING", txt)
 	s.localSp++
+	EmitSp(s)
 }
 
 func EmitAssert(s *State) {
@@ -293,13 +326,19 @@ func EmitJumpFalse(s *State, n int, comment string) {
 	emit(s, "or", "rax", "rax", "Set zero flag if rax is zero")
 	emit(s, "jz", "L"+strconv.Itoa(n), "", "Jump if zero flag is set")
 	// Implicit pop of TOS
-	s.localSp--
 	s.RaxIsTOS = false
+}
+
+func EmitAllocLocalVar(s *State, size int, comment string) {
+	emit(s, "xor", "rax", "rax", "Clear rax")
+	emit(s, "push", "rax", "", "New variable, "+comment)
 }
 
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push TOS")
+		emit(s, "push", "rax", "", "2 Push TOS")
+		s.localSp++
+		EmitSp(s)
 	}
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
@@ -307,12 +346,4 @@ func EmitPushConst(s *State, value int64, comment string) {
 		emit(s, "mov", strconv.FormatInt(value, 10), "rax", comment)
 	}
 	s.RaxIsTOS = true
-	s.localSp++
-}
-
-func Abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
 }
