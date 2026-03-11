@@ -1,11 +1,12 @@
 func fi(a Bool, c I32) I32 {
+    assert c==30
     if a ? c+=1 : c+=2
     return c
 }
 
 func test_fi()  {
     r = fi(true, 30)
-    assert r==31
+    assert(r==31, "test_fi")
 }
 
 func shortfunc() I32 {

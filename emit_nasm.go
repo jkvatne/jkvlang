@@ -6,6 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
+)
+
+const (
+	CarryFlag    = "0x01" // Bit 0
+	ZeroFlag     = "0x40" // Bit 6
+	SignFlag     = "0x80"
+	OverflowFlag = "0x800"
 )
 
 var CommentIndent = 40
@@ -46,6 +54,21 @@ func EmitError(s *State, e error) {
 	_, err := s.outputFile.WriteString(e.Error() + "\n")
 	if err != nil {
 		panic(err)
+	}
+}
+
+func EmitSection(s *State, name string) {
+	name = strings.Trim(name, ".\n ")
+	_, err := s.outputFile.WriteString("section ." + name + "\n")
+	if err != nil {
+		panic(err)
+	}
+}
+
+func EmitTextLabel(s *State, text string) {
+	text = strings.Trim(text, ":\n ")
+	_, err := s.outputFile.WriteString(text + ":\n")
+	if err != nil {
 	}
 }
 
@@ -143,6 +166,12 @@ var TokenOp = map[Token]string{
 	TOK_MULT_ASGN:  "imul",
 }
 
+// EmitFloatOp will generate a stack operation on the top two stack entries, like fadd or fsub
+// The stack pointer will be incremented (pop), and the result will now be on top of the stack (MMX0)
+func EmitFloatOp(s *State, op Token) {
+
+}
+
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
 func EmitIntegerOp(s *State, op Token) {
@@ -156,6 +185,28 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rdx", "rax", "Move reminder to AX (top of stack)")
+	} else if op == TOK_EQ {
+		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "pushf", "", "", "Push flags")
+		emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
+	} else if op == TOK_NE {
+		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "pushf", "", "", "Push flags")
+		emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
+		emit(s, "xor", ZeroFlag, "[rsp]", "Invert zero flag")
+	} else if op == TOK_GT {
+		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "pushf", "", "", "Push flags")
+		emit(s, "and", SignFlag, "[rsp]", "Mask zero flag")
+	} else if op == TOK_LE {
+		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "pushf", "", "", "Push flags")
+		emit(s, "and", SignFlag, "[rsp]", "Mask sign flag")
+		emit(s, "xor", SignFlag, "[rsp]", "Invert sign flag")
 	} else {
 		emit(s, "pop", "%rbx", "", "")
 		instruction := TokenOp[op]
@@ -170,25 +221,37 @@ func EmitIntegerOp(s *State, op Token) {
 
 // EmitOpConst will evaluate tos=tos op <constant>
 // It uses 64bit integer values on the 64 bit rax register
-func EmitOpConst(s *State, op Token, value int64, comment string) {
+func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
+	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", strconv.FormatInt(value, 10), "rbx", "Get divisor from stack into RBX")
+		emit(s, "mov", sval, "rbx", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", "strconv.FormatInt(value,10)", "rbx", "RBX=constant divisor")
+		emit(s, "mov", sval, "rbx", "RBX=constant divisor")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rdx", "rax", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
-		emit(s, "mov", "strconv.FormatInt(value,10)", "rbx", "RBX=constant divisor")
+		emit(s, "mov", sval, "rbx", "")
+	} else if op == TOK_EQ {
+		emit(s, "cmp", sval, "rax", "Compare and set flags")
+		emit(s, "cmovz", "1", "[rsp]", "Set TOS if zero")
+		// emit(s, "pushf", "", "", "Push flags")
+		// emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
-			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
+			return fmt.Errorf("invalid operation %s", op.Name())
 		}
-		emit(s, TokenOp[op], "$"+strconv.FormatInt(value, 10), "rax", comment)
+		emit(s, instr, "$"+strconv.FormatInt(value, 10), "rax", comment)
 	}
+	return nil
+}
+
+// EmitOpFloatConst will evaluate tos=tos op <constant>
+func EmitOpFloatConst(s *State, op Token, value float64, comment string) error {
+	return fmt.Errorf("float operation not implemented")
 }
 
 // EmitOpAssign will set variable at <adr> to <adr> op <value>
@@ -314,7 +377,7 @@ func EmitPushString(s *State, txt string) {
 }
 
 func EmitAssert(s *State) {
-	// emit(s, "   ASSERT", "")
+	emit(s, "ASSERT", "", "", "")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
@@ -346,4 +409,32 @@ func EmitPushConst(s *State, value int64, comment string) {
 		emit(s, "mov", strconv.FormatInt(value, 10), "rax", comment)
 	}
 	s.RaxIsTOS = true
+}
+
+func EmitPrologue(s *State) {
+	EmitSection(s, "data")
+	EmitBlankLine(s)
+	EmitSection(s, "text")
+	emit(s, "global", "_start", "", "")
+	emit(s, "extern", "GetStdHandle", "", "")
+	emit(s, "extern", "WriteConsoleA", "", "")
+	emit(s, "extern", "WriteFile", "", "")
+	emit(s, "extern", "ExitProcess", "", "")
+	EmitBlankLine(s)
+	EmitTextLabel(s, "_start")
+	emit(s, "sub", "8", "rsp", "Allign to 16 byte")
+	emit(s, "call", "main", "", "Call the main procedure")
+	emit(s, "xor", "ecx", "ecx", "Error code = 0")
+	emit(s, "call", "ExitProcess", "", "")
+	EmitBlankLine(s)
+}
+
+func EmitPrintHello(s *State, format string) {
+	emit(s, "mov", "-11", "ecx", "STD_OUTPUT_HANDLE (.11)")
+	emit(s, "call", "GetStdHandle", "", "Handle returned in rax")
+	emit(s, "mov", "rax", "rcx", "1.arg - console handle")
+	emit(s, "mov", "[rel msg]", "rdx", "2.arg - pointer to message")
+	emit(s, "mov", "20", "r8", "3.arg - console handle")
+	emit(s, "xor", "r9", "r9", "4.arg - console handle")
+	emit(s, "mov", "0", "qword [3sp+32]", "5.arg - console handle")
 }

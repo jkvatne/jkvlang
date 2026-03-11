@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"strconv"
 )
 
@@ -140,50 +139,14 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-func DoAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
-	// Set lvalue type if not already set. Needed for new variables.
-	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		lvalue.SetType(value.Typ)
-		// Local variables are at negative offset. The first on -8.
-		VarDefs[lvalue.Name].Offset = -s.localSp * 8
-		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
-		s.localSp++
-	}
-	if lvalue.Typ == nil {
-		return fmt.Errorf("New variable not allowed before op-assignment")
-	}
-	// Check types to see if the value can be assigned to the lvalue
-	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
-		return fmt.Errorf("assignment expected type %s but got %s",
-			lvalue.Typ.Pt.Name(), value.Typ.Name())
-	}
-	// If the value is known (a compile time constant)
-	if value.HasValue {
-		if CanAssignConst(lvalue.Typ.Pt, value) {
-			if value.HasValue && op == TOK_ASSIGN {
-				lvalue.Value = value
-			} else {
-				err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
-				if err != nil {
-					return err
-				}
-			}
-		} else {
-			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
-		}
-	} else {
-		// The value is on the top of the stack (rax). Save it to the lvalue.
-		EmitStore(s, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
-	}
-	return nil
-}
-
 func ParseFunctionCall(s *State, id string) error {
 	f := FuncDefs[id]
 	if f != nil {
-		// Push 0 to make space for return values
+		// Make space for return values
 		n := len(f.returnTypes)
-		EmitAddSp(s, n, "Make space for "+strconv.Itoa(len(f.returnTypes))+" return values")
+		if n > 1 {
+			EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
+		}
 
 		// Parse the argument list and push each arg
 		values, err := ParseArgumentList(s)
@@ -235,7 +198,7 @@ func ParseAssignOrCall(s *State, id string) error {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
 			oldHasValue := lvalues[i].Value.HasValue
-			err = DoAssignment(s, op, lvalues[i], value)
+			err = GenertateAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
@@ -375,73 +338,6 @@ func ParseSumTerm(s *State) (ValueDef, error) {
 	return value1, nil
 }
 
-// CompareConsts assumes v1 and v2 both have values.
-func CompareConsts(op Token, v1 ValueDef, v2 ValueDef) (bool, error) {
-	if v1.Typ.Pt == TYP_STRING || v2.Typ.Pt == TYP_STRING {
-		if v1.Typ.Pt != TYP_STRING || v2.Typ.Pt != TYP_STRING {
-			return false, fmt.Errorf("comparing string constant with another type is not allowed")
-		}
-		x1 := v1.StringValue
-		x2 := v2.StringValue
-		if op == TOK_EQ {
-			return x1 == x2, nil
-		} else if op == TOK_NE {
-			return x1 == x2, nil
-		} else if op == TOK_LT {
-			return x1 < x2, nil
-		} else if op == TOK_LE {
-			return x1 <= x2, nil
-		} else if op == TOK_GT {
-			return x1 > x2, nil
-		} else if op == TOK_GE {
-			return x1 >= x2, nil
-		}
-		return false, fmt.Errorf("unexpected operation on constants, op=%s", TokenNames[op])
-	}
-	x1 := v1.FloatValue
-	if v1.Typ.Pt.IsInteger() {
-		x1 = float64(v1.IntValue)
-	} else if v1.Typ.Pt == TYP_BOOL && v1.BoolValue {
-		x1 = 1.0
-	}
-
-	x2 := v1.FloatValue
-	if v1.Typ.Pt.IsInteger() {
-		x2 = float64(v2.IntValue)
-	} else if v2.Typ.Pt == TYP_BOOL && v2.BoolValue {
-		x2 = 1.0
-	}
-	if op == TOK_EQ {
-		return math.Abs(x1-x2)/max(x1, x2, 1e-30) < 1e-7, nil
-	} else if op == TOK_NE {
-		return math.Abs(x1-x2)/max(x1, x2, 1e-30) >= 1e-7, nil
-	} else if op == TOK_LT {
-		return x1 < x2, nil
-	} else if op == TOK_LE {
-		return x1 <= x2, nil
-	} else if op == TOK_GT {
-		return x1 > x2, nil
-	} else if op == TOK_GE {
-		return x1 >= x2, nil
-	}
-	return false, fmt.Errorf("unexpected operation on constants,op %s", TokenNames[op])
-}
-
-func Inverse(op Token) Token {
-	switch op {
-	case TOK_LT:
-		return TOK_GT
-	case TOK_LE:
-		return TOK_GE
-	case TOK_GT:
-		return TOK_LT
-	case TOK_GE:
-		return TOK_LE
-	default:
-		return op
-	}
-}
-
 func ParseCompareTerm(s *State) (ValueDef, error) {
 	var value1, value2, result ValueDef
 	var err error
@@ -463,19 +359,7 @@ func ParseCompareTerm(s *State) (ValueDef, error) {
 		return NoValue, err
 	}
 	result.Typ = TypeDefs["Bool"]
-	if value1.HasValue && value2.HasValue {
-		// Both sides are known at compile time. Evaluate it now and return bool constant
-		result.BoolValue, err = CompareConsts(op, value1, value2)
-		result.HasValue = true
-	} else if value2.HasValue {
-		// Right side was constant. Push it and do operation
-		EmitPushConst(s, value2.IntValue, "")
-		return GenerateOp(s, op, value1, value2)
-	} else if value1.HasValue {
-		EmitPushConst(s, value1.IntValue, "")
-		return GenerateOp(s, Inverse(op), value1, value2)
-	}
-	return result, nil
+	return GenerateOp(s, op, value1, value2)
 }
 
 func ParseExpression(s *State) (result ValueDef, err error) {
