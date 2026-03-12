@@ -34,7 +34,7 @@ global _assert
 section .data                                   ; Initialized data segment
     Message         db "Hello from system.asm %d %d", 0Dh, 0Ah
     MessageLength   EQU $-Message                   ; Address of this line ($) - address of Message
-    Message2        db "Hello again", 0Dh, 0Ah
+    Message2        db "Hello again", 0Dh, 0Ah, 00h
     MessageLength2  EQU $-Message2                   ; Address of this line ($) - address of Message
     fmt             db "Hello, number: %d %d", 0Dh, 0Ah
 
@@ -87,6 +87,7 @@ _start:
     mov rcx, fmt         ; First argument: format string
     mov rdx, 42          ; Second argument: number
     mov r8,  45          ; Second argument: number
+    mov r9,  Message2
     call printf          ; Call printf
 
     mov   ecx, STD_OUTPUT_HANDLE
