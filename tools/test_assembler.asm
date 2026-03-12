@@ -1,3 +1,15 @@
+; test_assember.asm
+;
+; This is a file used to verify the assmembler setup and to test 
+; calling system files.
+
+
+
+    
+    
+%define STD_INPUT_HANDLE -10
+%define STD_OUTPUT_HANDLE -11
+%define STD_ERROR_HANDLE -12
 
 section .text
 
@@ -20,14 +32,19 @@ global _alloc
 global _assert
 
 section .data                                   ; Initialized data segment
-    Message        db "Hello from system.asm", 0Dh, 0Ah
-    MessageLength  EQU $-Message                   ; Address of this line ($) - address of Message
+    Message         db "Hello from system.asm %d %d", 0Dh, 0Ah
+    MessageLength   EQU $-Message                   ; Address of this line ($) - address of Message
+    Message2        db "Hello again", 0Dh, 0Ah
+    MessageLength2  EQU $-Message2                   ; Address of this line ($) - address of Message
+    fmt             db "Hello, number: %d %d", 0Dh, 0Ah
 
 section .bss                                    ; Uninitialized data segment
 
 alignb 8
-    StandardHandle resq 1
-    Written        resq 1
+    StdOutputHandle resq 1
+    StdErrorHandle  resq 1
+    StdInputHandle  resq 1
+    Written         resq 1
 
 section .text
 
@@ -51,19 +68,47 @@ _alloc:
     pop rbp
     ret
 
-_start:
-    sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
-    mov   ecx, -11                                 ; Std output
-    call  GetStdHandle
-    mov   qword [rel StandardHandle], RAX
+_print:
+    push  rbp
+    mov   rbp, rsp
     sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
-    mov   RCX, qword [rel StandardHandle]          ; 1st parameter
-    lea   RDX, [rel Message]                       ; 2nd parameter
+    mov   RCX, qword [StdOutputHandle]             ; 1st parameter
+    lea   RDX, [rax]                               ; 2nd parameter
     mov   R8, MessageLength                        ; 3rd parameter
     lea   R9, [rel Written]                        ; 4th parameter
     mov   qword [RSP + 32], 0                      ; 5th parameter
     call  WriteFile                                ; Output can be redirect to a file using >
-    ;; call  main
     add   RSP, 48                                  ; Remove the 48 bytes
+    ret
+
+_start:
+    sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
+
+    mov rcx, fmt         ; First argument: format string
+    mov rdx, 42          ; Second argument: number
+    mov r8,  45          ; Second argument: number
+    call printf          ; Call printf
+
+    mov   ecx, STD_OUTPUT_HANDLE
+    call  GetStdHandle
+    mov   qword [rel StdOutputHandle], RAX
+
+    mov   ecx, STD_ERROR_HANDLE
+    call  GetStdHandle
+    mov   qword [rel StdErrorHandle], RAX
+
+    mov   ecx, STD_INPUT_HANDLE
+    call  GetStdHandle
+    mov   qword [rel StdInputHandle], RAX
+
+    ;mov   rax, Message
+    ;call _print
+    ;add   rsp, 8
+
+    mov   rax, Message2
+    call _print
+    add   rsp, 8
+    
+    push  rax
     xor   ECX, ECX
     call  ExitProcess

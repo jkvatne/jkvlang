@@ -5,7 +5,7 @@
 set "SOURCE_DIR=."
 set "OBJECT_DIR=build"
 set "BIN_DIR=build"
-set "TARGET=system"
+set "TARGET=test_assembler"
 set "ASM_FLAGS=-f win64"
 set "LINK_FLAGS=/entry:_start /console"
 set "TOOL_DIR=."
@@ -26,7 +26,7 @@ echo Compiling %TARGET%.asm for x64...
 :: === Linking Process ===
 :: Generate executable with GoLink
 echo Linking %TARGET%.exe...
-%TOOL_DIR%\golink %LINK_FLAGS% "%OBJECT_DIR%\%TARGET%.obj" /fo "%BIN_DIR%\%TARGET%.exe" kernel32.dll || (
+%TOOL_DIR%\golink %LINK_FLAGS% "%OBJECT_DIR%\%TARGET%.obj" /fo "%BIN_DIR%\%TARGET%.exe" kernel32.dll msvcrt.dll || (
     echo [!] Linking failed for %TARGET%.obj
     exit /b 1
 )
@@ -38,5 +38,5 @@ echo x64 build successful!
 for %%F in ("%BIN_DIR%\%TARGET%.exe") do echo Binary size: %%~zF bytes
 echo -----------------------------------------------------
 echo Running %TARGET%.exe:
-"%BIN_DIR%\%TARGET%.exe"
+"%BIN_DIR%\%TARGET%.exe" arg1 arg2
 echo -----------------------------------------------------
