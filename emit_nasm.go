@@ -377,7 +377,9 @@ func EmitPushString(s *State, txt string) {
 }
 
 func EmitAssert(s *State) {
-	emit(s, "ASSERT", "", "", "")
+	emit(s, "push", strconv.Itoa(s.lineNum), "", "")
+	emit(s, "call", "_assert", "", "")
+	emit(s, "pop", "", "cx", "")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
@@ -393,8 +395,8 @@ func EmitJumpFalse(s *State, n int, comment string) {
 }
 
 func EmitAllocLocalVar(s *State, size int, comment string) {
-	emit(s, "xor", "rax", "rax", "Clear rax")
-	emit(s, "push", "rax", "", "New variable, "+comment)
+	emit(s, "xor", "rdx", "rdx", "Clear rax")
+	emit(s, "push", "rdx", "", "New variable, "+comment)
 }
 
 func EmitPushConst(s *State, value int64, comment string) {

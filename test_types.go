@@ -6,6 +6,9 @@ import (
 )
 
 func TestCommonType(t *testing.T) {
+	if len(TokenNames) != int(TOK_SIZE)+1 {
+		panic("Token names length must be equal to TOK_SIZE")
+	}
 	// Testing the CommonType() function
 	for t1 := TYP_U8; t1 <= TYP_F64; t1++ {
 		for t2 := TYP_U8; t2 <= TYP_F64; t2++ {
