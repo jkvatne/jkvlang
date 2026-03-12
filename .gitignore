@@ -1,8 +1,11 @@
 # tmp files
-/tmp/*
-/.shared/*
-/build/
-/.idea/
+tmp/
+temp/
+.shared/*
+build/
+.idea/
+bin/
+build/
 
 # intermediate files
 a.out
@@ -12,9 +15,9 @@ a.out
 # generated files
 *.exe
 *.tok
-*.asm
 *.var
 
 #private files
 .private/
 notes/
+private/

@@ -25,8 +25,6 @@ var (
 // CompileDir will compile all source files in the given directory
 // and put the object files in the outputPath
 func CompileDir(inputPath string, workDir string) error {
-	// Make sure output directory is empty
-	err := os.RemoveAll(workDir)
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("fatal error %s", err.Error())
@@ -43,6 +41,28 @@ func CompileDir(inputPath string, workDir string) error {
 		}
 	}
 	return err
+}
+
+// Assemble wil run the assembler on all *.asm files in the working directory
+func Assemble(workDir string) error {
+	entries, err := os.ReadDir(workDir)
+	if err != nil {
+		return fmt.Errorf("collecting asm files error %s", err.Error())
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.Contains(entry.Name(), ".asm") {
+			var args = []string{"-f", "win64"}
+			name := filepath.Join(workDir, strings.TrimSuffix(entry.Name(), ".asm"))
+			args = append(args, name+".asm", "-o", name+".obj")
+			out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
+			fmt.Println(string(out))
+			if err != nil {
+				return fmt.Errorf("assembly %s error: %s", name, err.Error())
+			}
+
+		}
+	}
+	return nil
 }
 
 // Link will link all obj files and generate an exe file
@@ -96,9 +116,32 @@ func main() {
 	var err error
 	flag.Parse()
 	fmt.Printf("jkv compiler version %s\n", Version)
+	wd, err := os.Getwd()
+	fmt.Printf("Currrent directory is %s\n", wd)
+
+	// Expand working directory path
+	*workDir, err = filepath.Abs(*workDir)
+	if err != nil {
+		fmt.Printf("could expand working directory " + err.Error())
+		os.Exit(1)
+	}
 
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)
+
+	// Make sure output directory is empty, except when only linking
+	if !*link {
+		err = os.RemoveAll(*workDir)
+		if err != nil {
+			fmt.Printf("could not remove old working directory " + err.Error())
+			os.Exit(1)
+		}
+	}
+	err = os.Mkdir(*workDir, os.ModePerm)
+	if err != nil {
+		fmt.Printf("could not create working directory " + err.Error())
+		os.Exit(1)
+	}
 
 	// Now do the actual compile/link/run as requested by flags
 	if *oneFile != "" {
@@ -110,6 +153,16 @@ func main() {
 			*link = true
 		}
 	}
+
+	// Assemble the files
+	if *link {
+		err = Assemble(*workDir)
+		if err != nil {
+			fmt.Printf("Assembler error " + err.Error())
+			os.Exit(1)
+		}
+	}
+
 	// Link object files
 	if *link {
 		err = Link(*workDir, *outputName)

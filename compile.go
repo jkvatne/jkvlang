@@ -20,7 +20,7 @@ func CompileFile(name string, workdir string) error {
 	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 
 	objectFile := filepath.Join(workdir, s.unitName+".asm")
-	s.outputFile, err = os.OpenFile(objectFile, os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	s.outputFile, err = os.Create(objectFile)
 	defer func(s *State) {
 		_ = CloseObjFile(s)
 	}(s)
