@@ -15,7 +15,6 @@ section .text
 
 extern GetStdHandle                             ; Import external symbols
 extern WriteFile                                ; Windows API functions, not decorated
-extern ExitProcess
 extern GetStdHandle
 extern WriteFile
 extern ExitProcess
@@ -32,11 +31,9 @@ global _alloc
 global _assert
 
 section .data                                   ; Initialized data segment
-    Message         db "Hello from system.asm %d %d", 0Dh, 0Ah
-    MessageLength   EQU $-Message                   ; Address of this line ($) - address of Message
-    Message2        db "Hello again", 0Dh, 0Ah, 00h
-    MessageLength2  EQU $-Message2                   ; Address of this line ($) - address of Message
-    fmt             db "Hello, number: %d %d", 0Dh, 0Ah
+    message         db "Message from WriteFile", 0Dh, 0Ah
+    messlen         EQU $-message                   ; Address of this line ($) - address of Message
+    startup_msg     db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
 
 section .bss                                    ; Uninitialized data segment
 
@@ -68,27 +65,16 @@ _alloc:
     pop rbp
     ret
 
-_print:
-    push  rbp
-    mov   rbp, rsp
-    sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
-    mov   RCX, qword [StdOutputHandle]             ; 1st parameter
-    lea   RDX, [rax]                               ; 2nd parameter
-    mov   R8, MessageLength                        ; 3rd parameter
-    lea   R9, [rel Written]                        ; 4th parameter
-    mov   qword [RSP + 32], 0                      ; 5th parameter
-    call  WriteFile                                ; Output can be redirect to a file using >
-    add   RSP, 48                                  ; Remove the 48 bytes
-    ret
-
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
-    mov rcx, fmt         ; First argument: format string
-    mov rdx, 42          ; Second argument: number
-    mov r8,  45          ; Second argument: number
-    mov r9,  Message2
-    call printf          ; Call printf
+    ; Print a startup message with integer parameters using the prinf from msvcrt.dll
+    ; Must link with msvcrt.dll
+    mov rcx, startup_msg  ; First argument: format string
+    mov rdx, 0            ; Second argument: number
+    mov r8,  0            ; Third argument: number
+    mov r9,  1            ; Forth argument: number
+    call printf           ; Call printf
 
     mov   ecx, STD_OUTPUT_HANDLE
     call  GetStdHandle
@@ -102,13 +88,14 @@ _start:
     call  GetStdHandle
     mov   qword [rel StdInputHandle], RAX
 
-    ;mov   rax, Message
-    ;call _print
-    ;add   rsp, 8
-
-    mov   rax, Message2
-    call _print
-    add   rsp, 8
+    sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
+    mov   RCX, qword [StdOutputHandle]             ; 1st parameter is the handle
+    lea   RDX, [message]                           ; 2nd parameter is a pointer to the text to be written
+    mov   R8, messlen                              ; 3rd parameter is the number of bytes to write
+    lea   R9, [rel Written]                        ; 4th parameter is a pointer to the variable receiving the number of bytes written.
+    mov   qword [RSP + 32], 0                      ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
+    call  WriteFile                                ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    add   RSP, 48                                  ; Remove the 48 bytes
     
     push  rax
     xor   ECX, ECX
