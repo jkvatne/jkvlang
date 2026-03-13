@@ -21,8 +21,11 @@ extern ExitProcess
 extern HeapAlloc
 extern printf
 extern GetCommandLineA
+extern GetCommandLineW
 extern GetEnvironmentStringsA
+extern GetEnvironmentStringsW
 extern CreateFileA
+extern CreateFileW
 extern CloseHandle
 extern GetProcessHeap
 
@@ -94,6 +97,33 @@ _printf:
     leave
     ret
 
+; _syscall will call any dll function that is reachable
+; The address of the function should be in r10, arg count in rax
+_syscall:
+    push rbp
+    inc rax
+    mov rbp, rsp
+    shl rax, 3
+    mov rcx, [rax+rbp]   ; First argument: format string
+    sub rax, 8
+    mov rdx, [rax+rbp]    ; Second argument
+    sub rax, 8
+    mov r8,  [rax+rbp]    ; Third argument
+    sub rax, 8
+    mov r9,  [rax+rbp]    ; Forth argument
+    sub rsp, 80           ; Reserve stack
+    sub rax, 8
+    mov rbx, [rax+rbp]
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 80           ; Reserve shadow space
+    mov [rsp+32], rbx     ; Fifth argument onto stack
+    sub rax, 8
+    mov rbx, [rax+rbp]
+    mov [rsp+40], rbx     ; Sixth argument onto stack
+    call [rdi]
+    leave
+    ret
+
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
@@ -128,7 +158,6 @@ _start:
     add   RSP, 48                                  ; Remove the 48 bytes
 
     ; Test using _prinf
-    ; lea rax, [testmessage]
     push testmessage            ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
@@ -137,6 +166,18 @@ _start:
     push 6                      ; 6th parameter
     mov rax, 6                  ; Number of parameters on stack
     call _printf
+    add sp, -8*6
+
+    ; Test using _syscall
+    push testmessage            ; 1st parameter
+    push 2                      ; 2nd parameter
+    push 3                      ; 3rd parameter
+    push 4                      ; 4th parameter
+    push 5                      ; 5th parameter
+    push 6                      ; 6th parameter
+    mov rax, 6                  ; Number of parameters on stack
+    mov rdi, printf
+    call _syscall
     add sp, -8*6
 
     ; Exit with error code 1
