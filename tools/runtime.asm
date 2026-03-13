@@ -87,11 +87,11 @@ read_file:
     mov  rdx, [rbp+24]            ; Data
     movq r8, [rbp+8]              ; len
     lea  r9, [bytes_read]         ; pointer to bytes read variable
-    sub rsp, 80                    ; Reserve stack
+    sub rsp, 80                   ; Reserve stack
     mov [rsp+32], 0
-    call ReadFile                  ; ReadFile(handle, &buffer, count, &bytesRead, &overlapped)
+    call ReadFile                 ; ReadFile(handle, &buffer, count, &bytesRead, &overlapped)
     pop rcx
-    add rsp, 80                    ; Restore stack
+    add rsp, 80                   ; Restore stack
     movq rax, [bytes_read]
     leave
     ret

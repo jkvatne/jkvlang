@@ -34,6 +34,7 @@ section .data                                   ; Initialized data segment
     message         db "Message from WriteFile", 0Dh, 0Ah
     messlen         EQU $-message                   ; Address of this line ($) - address of Message
     startup_msg     db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
+    testmessage     db "Message from _printf, should be numbers 1-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
 
 section .bss                                    ; Uninitialized data segment
 
@@ -65,6 +66,34 @@ _alloc:
     pop rbp
     ret
 
+; _printf is a function that can be called from the compiled code.
+; It assumes parameters are on the stack
+; rax contains the number of parameters
+_printf:
+    push rbp
+    inc rax
+    mov rbp, rsp
+    shl rax, 3
+    mov rcx, [rax+rbp]   ; First argument: format string
+    sub rax, 8
+    mov rdx, [rax+rbp]    ; Second argument
+    sub rax, 8
+    mov r8,  [rax+rbp]    ; Third argument
+    sub rax, 8
+    mov r9,  [rax+rbp]    ; Forth argument
+    sub rsp, 80           ; Reserve stack
+    sub rax, 8
+    mov rbx, [rax+rbp]
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 80           ; Reserve shadow space
+    mov [rsp+32], rbx     ; Fifth argument onto stack
+    sub rax, 8
+    mov rbx, [rax+rbp]
+    mov [rsp+40], rbx     ; Sixth argument onto stack
+    call printf
+    leave
+    ret
+
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
@@ -88,6 +117,7 @@ _start:
     call  GetStdHandle
     mov   qword [rel StdInputHandle], RAX
 
+    ; Test using WriteFile
     sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
     mov   RCX, qword [StdOutputHandle]             ; 1st parameter is the handle
     lea   RDX, [message]                           ; 2nd parameter is a pointer to the text to be written
@@ -96,7 +126,19 @@ _start:
     mov   qword [RSP + 32], 0                      ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
     call  WriteFile                                ; Call the WriteFile function found in kernel32.dll (must be linked to)
     add   RSP, 48                                  ; Remove the 48 bytes
-    
-    push  rax
-    xor   ECX, ECX
+
+    ; Test using _prinf
+    ; lea rax, [testmessage]
+    push testmessage            ; 1st parameter
+    push 2                      ; 2nd parameter
+    push 3                      ; 3rd parameter
+    push 4                      ; 4th parameter
+    push 5                      ; 5th parameter
+    push 6                      ; 6th parameter
+    mov rax, 6                  ; Number of parameters on stack
+    call _printf
+    add sp, -8*6
+
+    ; Exit with error code 1
+    mov   rcx, 123
     call  ExitProcess

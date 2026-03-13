@@ -39,4 +39,5 @@ for %%F in ("%BIN_DIR%\%TARGET%.exe") do echo Binary size: %%~zF bytes
 echo -----------------------------------------------------
 echo Running %TARGET%.exe:
 "%BIN_DIR%\%TARGET%.exe" arg1 arg2
+echo Exit code was %ERRORLEVEL%
 echo -----------------------------------------------------
