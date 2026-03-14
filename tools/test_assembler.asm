@@ -75,7 +75,7 @@ endassert:
 printax:
     push axmess
     push rax
-    mov rax, 2
+    mov rbx, 16
     mov rdi, printf
     call syscall
     add sp, 8*2
@@ -84,7 +84,7 @@ printax:
 printptr:
     push ptrmess
     push rax ; qword [heap]
-    mov rax, 2
+    mov rbx, 16
     mov rdi, printf
     call syscall
     add sp, 8*2
@@ -93,8 +93,8 @@ printptr:
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
-    mov rax, rsp
-    call printax
+    ;mov rax, rsp
+    ;call printax
 
     ; Print a startup message with integer parameters using the prinf from msvcrt.dll
     ; Must link with msvcrt.dll
@@ -139,10 +139,13 @@ _start:
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
-    mov rax, 4                  ; Number of parameters on stack
+    mov rbx, 4*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
     add sp, 8*4
+
+    mov rax, rsp
+    call printax
 
     ; Test using syscall
     push test5par              ; 1st parameter
@@ -150,7 +153,7 @@ _start:
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
     push 5                      ; 5th parameter
-    mov rax, 5                  ; Number of parameters on stack
+    mov rbx, 5*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
     add sp, 8*5
@@ -165,10 +168,10 @@ _start:
     push 4                      ; 4th parameter
     push 5                      ; 5th parameter
     push 6                      ; 6th parameter
-    mov rax, 6                  ; Number of parameters on stack
+    mov rbx, 6*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 8*6
+    add sp, 6*8
 
     mov rax, rsp
     call printax
@@ -179,11 +182,11 @@ _start:
     push 4                      ; 4th parameter
     push 5                      ; 5th parameter
     push 6                      ; 6th parameter
-    push 7                      ; 6th parameter
-    mov rax, 7                  ; Number of parameters on stack
+    push 7                      ; 7th parameter
+    mov rbx, 7*8                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 8*7
+    add sp, 7*8
 
     mov rax, rsp
     call printax
