@@ -22,11 +22,15 @@ echo Compiling %TARGET%.asm for x64...
     echo [!] Assembly failed for %TARGET%.asm
     exit /b 1
 )
+%TOOL_DIR%\nasm %ASM_FLAGS% "%SOURCE_DIR%\syscall.asm" -o "%OBJECT_DIR%\syscall.obj" || (
+    echo [!] Assembly failed for %TARGET%.asm
+    exit /b 1
+)
 
 :: === Linking Process ===
 :: Generate executable with GoLink
 echo Linking %TARGET%.exe...
-%TOOL_DIR%\golink %LINK_FLAGS% "%OBJECT_DIR%\%TARGET%.obj" /fo "%BIN_DIR%\%TARGET%.exe" kernel32.dll msvcrt.dll || (
+%TOOL_DIR%\golink %LINK_FLAGS% "%OBJECT_DIR%\%TARGET%.obj" /fo "%BIN_DIR%\%TARGET%.exe" "%BIN_DIR%\syscall.obj" kernel32.dll msvcrt.dll || (
     echo [!] Linking failed for %TARGET%.obj
     exit /b 1
 )

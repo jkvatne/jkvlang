@@ -28,8 +28,9 @@ extern CreateFileA
 extern CreateFileW
 extern CloseHandle
 extern GetProcessHeap
+extern syscall                                ; fraom syscall.asm
 
-global _start                                    ; Export symbols. The entry point
+global _start                                 ; Export symbols. The entry point
 global _alloc
 global _assert
 
@@ -41,6 +42,7 @@ section .data                                   ; Initialized data segment
     test5par        db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
     test6par        db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
     test7par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+    spmess          db "... rsp = 0x%X", 0Dh, 0Ah, 00h
 
 section .bss                                    ; Uninitialized data segment
 
@@ -72,115 +74,19 @@ _alloc:
     pop rbp
     ret
 
-; _printf is a function that can be called from the compiled code.
-; It assumes parameters are on the stack
-; rax contains the number of parameters
-_printf:
-    push rbp
-    inc rax
-    mov rbp, rsp
-    shl rax, 3
-    mov rcx, [rax+rbp]   ; First argument: format string
-    sub rax, 8
-    mov rdx, [rax+rbp]    ; Second argument
-    sub rax, 8
-    mov r8,  [rax+rbp]    ; Third argument
-    sub rax, 8
-    mov r9,  [rax+rbp]    ; Forth argument
-    sub rsp, 80           ; Reserve stack
-    sub rax, 8
-    mov rbx, [rax+rbp]
-    and rsp, -16          ; Align stack by clearing the 4 lsb
-    sub rsp, 80           ; Reserve shadow space
-    mov [rsp+32], rbx     ; Fifth argument onto stack
-    sub rax, 8
-    mov rbx, [rax+rbp]
-    mov [rsp+40], rbx     ; Sixth argument onto stack
-    call printf
-    leave
-    ret
-
-; _syscall will call any dll function that is reachable
-; The address of the function should be in r10, arg count in rax
-syscall1:
-    push rbp
-    inc rax
-    mov rbp, rsp
-    shl rax, 3
-    mov rcx, [rax+rbp]   ; First argument: format string
-    sub rax, 8
-    mov rdx, [rax+rbp]    ; Second argument
-    sub rax, 8
-    mov r8,  [rax+rbp]    ; Third argument
-    sub rax, 8
-    mov r9,  [rax+rbp]    ; Forth argument
-    sub rsp, 80           ; Reserve stack
-    sub rax, 8
-    mov rbx, [rax+rbp]
-    and rsp, -16          ; Align stack by clearing the 4 lsb
-    sub rsp, 80           ; Reserve shadow space
-    mov [rsp+32], rbx     ; Fifth argument onto stack
-    sub rax, 8
-    mov rbx, [rax+rbp]
-    mov [rsp+40], rbx     ; Sixth argument onto stack
-    call [rdi]
-    leave
-    ret
-
-; syscall will call any dll function that is reachable
-; The address of the function should be in r10, arg count in rax
-syscall:
-    push rbp
-    mov rbp, rsp          ; Setup new frame pointer
-
-    and rsp, -16          ; Align stack by clearing the 4 lsb
-    sub rsp, 80           ; Reserve space for arguments to the called function
-
-    dec rax
-    shl rax, 3
-
-    mov rcx, [rax+rbp+16]    ; cx = First argument: format string
-    sub rax, 8
-    jc docall
-
-    mov rdx, [rax+rbp+16]    ; dx = Second argument
-    sub rax, 8
-    jc docall
-
-    mov r8,  [rax+rbp+16]    ; r8 = Third argument
-    sub rax, 8
-    jc docall
-
-    mov r9,  [rax+rbp+16]    ; r9 = Forth argument
-    sub rax, 8
-    jc docall
-
-    mov rbx, [rax+rbp+16]    ; Fifth argument onto stack
-    mov [rsp+32], rbx
-    sub rax, 8
-    jc docall
-
-    mov rbx, [rax+rbp+16]
-    mov [rsp+40], rbx     ; Sixth argument onto stack
-    sub rax, 8
-    jc docall
-
-    mov rbx, [rax+rbp+16]
-    mov [rsp+48], rbx     ; Seventh argument onto stack
-    sub rax, 8
-    jc docall
-
-    mov rbx, [rax+rbp+16]
-    mov [rsp+56], rbx     ; Eight argument onto stack
-    sub rax, 8
-
-docall:
-    call [rdi]
-    leave
+printsp:
+    push spmess
+    push rsp
+    mov rax, 2
+    mov rdi, printf
+    call syscall
+    add sp, 8*2
     ret
 
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
+
+    call printsp
 
     ; Print a startup message with integer parameters using the prinf from msvcrt.dll
     ; Must link with msvcrt.dll
@@ -189,6 +95,8 @@ _start:
     mov r8,  0            ; Third argument: number
     mov r9,  1            ; Forth argument: number
     call printf           ; Call printf
+
+    call printsp
 
     mov   ecx, STD_OUTPUT_HANDLE
     call  GetStdHandle
@@ -202,6 +110,8 @@ _start:
     call  GetStdHandle
     mov   qword [rel StdInputHandle], RAX
 
+    call printsp
+
     ; Test using WriteFile
     sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
     mov   RCX, qword [StdOutputHandle]             ; 1st parameter is the handle
@@ -210,18 +120,8 @@ _start:
     lea   R9, [rel Written]                        ; 4th parameter is a pointer to the variable receiving the number of bytes written.
     mov   qword [RSP + 32], 0                      ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
     call  WriteFile                                ; Call the WriteFile function found in kernel32.dll (must be linked to)
-    add   RSP, 48                                  ; Remove the 48 bytes
-
-    ; Test using _prinf
-    push test6par               ; 1st parameter
-    push 2                      ; 2nd parameter
-    push 3                      ; 3rd parameter
-    push 4                      ; 4th parameter
-    push 5                      ; 5th parameter
-    push 6                      ; 6th parameter
-    mov rax, 6                  ; Number of parameters on stack
-    call _printf
-    add sp, -8*6
+    add   RSP, 16
+    call printsp
 
     ; Test using syscall
     push test4par              ; 1st parameter
@@ -231,7 +131,9 @@ _start:
     mov rax, 4                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, -8*4
+    add sp, 8*4
+
+    call printsp
 
     ; Test using syscall
     push test5par              ; 1st parameter
@@ -242,7 +144,9 @@ _start:
     mov rax, 5                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, -8*5
+    add sp, 8*5
+
+    call printsp
 
     ; Test using syscall
     push test6par              ; 1st parameter
@@ -254,7 +158,9 @@ _start:
     mov rax, 6                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, -8*6
+    add sp, 8*6
+
+    call printsp
 
     push test7par              ; 1st parameter
     push 2                      ; 2nd parameter
@@ -266,7 +172,9 @@ _start:
     mov rax, 7                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, -8*7
+    add sp, 8*7
+
+    call printsp
 
     ; Exit with error code 1
     mov   rcx, 123
