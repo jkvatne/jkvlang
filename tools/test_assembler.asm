@@ -37,7 +37,10 @@ section .data                                   ; Initialized data segment
     message         db "Message from WriteFile", 0Dh, 0Ah
     messlen         EQU $-message                   ; Address of this line ($) - address of Message
     startup_msg     db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
-    testmessage     db "Message from _printf, should be numbers 1-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+    test4par        db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
+    test5par        db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
+    test6par        db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+    test7par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
 
 section .bss                                    ; Uninitialized data segment
 
@@ -99,7 +102,7 @@ _printf:
 
 ; _syscall will call any dll function that is reachable
 ; The address of the function should be in r10, arg count in rax
-_syscall:
+syscall1:
     push rbp
     inc rax
     mov rbp, rsp
@@ -120,6 +123,58 @@ _syscall:
     sub rax, 8
     mov rbx, [rax+rbp]
     mov [rsp+40], rbx     ; Sixth argument onto stack
+    call [rdi]
+    leave
+    ret
+
+; syscall will call any dll function that is reachable
+; The address of the function should be in r10, arg count in rax
+syscall:
+    push rbp
+    mov rbp, rsp          ; Setup new frame pointer
+
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 80           ; Reserve space for arguments to the called function
+
+    dec rax
+    shl rax, 3
+
+    mov rcx, [rax+rbp+16]    ; cx = First argument: format string
+    sub rax, 8
+    jc docall
+
+    mov rdx, [rax+rbp+16]    ; dx = Second argument
+    sub rax, 8
+    jc docall
+
+    mov r8,  [rax+rbp+16]    ; r8 = Third argument
+    sub rax, 8
+    jc docall
+
+    mov r9,  [rax+rbp+16]    ; r9 = Forth argument
+    sub rax, 8
+    jc docall
+
+    mov rbx, [rax+rbp+16]    ; Fifth argument onto stack
+    mov [rsp+32], rbx
+    sub rax, 8
+    jc docall
+
+    mov rbx, [rax+rbp+16]
+    mov [rsp+40], rbx     ; Sixth argument onto stack
+    sub rax, 8
+    jc docall
+
+    mov rbx, [rax+rbp+16]
+    mov [rsp+48], rbx     ; Seventh argument onto stack
+    sub rax, 8
+    jc docall
+
+    mov rbx, [rax+rbp+16]
+    mov [rsp+56], rbx     ; Eight argument onto stack
+    sub rax, 8
+
+docall:
     call [rdi]
     leave
     ret
@@ -158,7 +213,7 @@ _start:
     add   RSP, 48                                  ; Remove the 48 bytes
 
     ; Test using _prinf
-    push testmessage            ; 1st parameter
+    push test6par               ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
@@ -168,17 +223,50 @@ _start:
     call _printf
     add sp, -8*6
 
-    ; Test using _syscall
-    push testmessage            ; 1st parameter
+    ; Test using syscall
+    push test4par              ; 1st parameter
+    push 2                      ; 2nd parameter
+    push 3                      ; 3rd parameter
+    push 4                      ; 4th parameter
+    mov rax, 4                  ; Number of parameters on stack
+    mov rdi, printf             ; Address to call
+    call syscall
+    add sp, -8*4
+
+    ; Test using syscall
+    push test5par              ; 1st parameter
+    push 2                      ; 2nd parameter
+    push 3                      ; 3rd parameter
+    push 4                      ; 4th parameter
+    push 5                      ; 5th parameter
+    mov rax, 5                  ; Number of parameters on stack
+    mov rdi, printf             ; Address to call
+    call syscall
+    add sp, -8*5
+
+    ; Test using syscall
+    push test6par              ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
     push 5                      ; 5th parameter
     push 6                      ; 6th parameter
     mov rax, 6                  ; Number of parameters on stack
-    mov rdi, printf
-    call _syscall
+    mov rdi, printf             ; Address to call
+    call syscall
     add sp, -8*6
+
+    push test7par              ; 1st parameter
+    push 2                      ; 2nd parameter
+    push 3                      ; 3rd parameter
+    push 4                      ; 4th parameter
+    push 5                      ; 5th parameter
+    push 6                      ; 6th parameter
+    push 7                      ; 6th parameter
+    mov rax, 7                  ; Number of parameters on stack
+    mov rdi, printf             ; Address to call
+    call syscall
+    add sp, -8*7
 
     ; Exit with error code 1
     mov   rcx, 123
