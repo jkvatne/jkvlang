@@ -3,10 +3,12 @@ section .text
 global syscall
 global malloc
 global mfree
+global assert
 
 extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
+
 
 ; malloc returns in rax a pointer to the allocated memory or null.
 ; One argument is needed, in rax, and that is the requested size in bytes.
@@ -44,7 +46,7 @@ mfree:
 
 
 ; syscall will call any dll function that is reachable
-; The address of the function should be in r10, arg count in rax
+; The address of the function should be in r10, arg count *8 in rcx
 syscall:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer

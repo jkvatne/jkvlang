@@ -55,8 +55,22 @@ alignb 8
 
 section .text
 
-; Assert will print error message if [sp] is zero (false)
-_assert:
+; assert will verify that the first arbument is true (not 0)
+; if ax is null, it will print an error message using printf,
+; with optional additional parameters.
+; The stack will contain <bool><message><arg1><arg2>..
+; rcx will contain the (number of arguments+1) * 8.
+assert:
+   add rcx, rsp
+   mov rax, [rcx]
+   or rax, rax
+   jnz endassert
+    mov rax, rcx
+    mov rdi, printf
+    call syscall
+
+endassert:
+    ret
 
 printax:
     push axmess
