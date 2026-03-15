@@ -3,13 +3,11 @@
 ; This is a file used to verify the assmembler setup and to test 
 ; calling system files.
 
-
-
-    
-    
 %define STD_INPUT_HANDLE -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE -12
+%define false 0
+%define true  1
 
 section .text
 
@@ -42,7 +40,9 @@ section .data                                   ; Initialized data segment
     test7par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
     axmess          db "... rax = 0x%X", 0Dh, 0Ah, 00h
     ptrmess         db "... ptr = 0x%X", 0Dh, 0Ah, 00h
-
+    sp_mess         db "...  sp = 0x%X", 0Dh, 0Ah, 00h
+    assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
+    assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
 section .bss                                    ; Uninitialized data segment
 
 alignb 8
@@ -55,22 +55,6 @@ alignb 8
 
 section .text
 
-; assert will verify that the first arbument is true (not 0)
-; if ax is null, it will print an error message using printf,
-; with optional additional parameters.
-; The stack will contain <bool><message><arg1><arg2>..
-; rcx will contain the (number of arguments+1) * 8.
-assert:
-   add rcx, rsp
-   mov rax, [rcx]
-   or rax, rax
-   jnz endassert
-    mov rax, rcx
-    mov rdi, printf
-    call syscall
-
-endassert:
-    ret
 
 printax:
     push axmess
@@ -90,11 +74,19 @@ printptr:
     add sp, 8*2
     ret
 
+print_sp:
+    push sp_mess
+    push rsp
+    mov rbx, 16
+    mov rdi, printf
+    call syscall
+    add sp, 8*2
+    ret
+
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
-    ;mov rax, rsp
-    ;call printax
+    call print_sp
 
     ; Print a startup message with integer parameters using the prinf from msvcrt.dll
     ; Must link with msvcrt.dll
@@ -104,8 +96,7 @@ _start:
     mov r9,  1            ; Forth argument: number
     call printf           ; Call printf
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     mov   ecx, STD_OUTPUT_HANDLE
     call  GetStdHandle
@@ -119,8 +110,7 @@ _start:
     call  GetStdHandle
     mov   qword [rel StdInputHandle], RAX
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     ; Test using WriteFile
     sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
@@ -131,8 +121,8 @@ _start:
     mov   qword [RSP + 32], 0                      ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
     call  WriteFile                                ; Call the WriteFile function found in kernel32.dll (must be linked to)
     add   RSP, 16
-    mov rax, rsp
-    call printax
+
+    call print_sp
 
     ; Test using syscall
     push test4par              ; 1st parameter
@@ -144,8 +134,7 @@ _start:
     call syscall
     add sp, 8*4
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     ; Test using syscall
     push test5par              ; 1st parameter
@@ -158,8 +147,7 @@ _start:
     call syscall
     add sp, 8*5
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     ; Test using syscall
     push test6par              ; 1st parameter
@@ -173,8 +161,7 @@ _start:
     call syscall
     add sp, 6*8
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     push test7par              ; 1st parameter
     push 2                      ; 2nd parameter
@@ -188,8 +175,7 @@ _start:
     call syscall
     add sp, 7*8
 
-    mov rax, rsp
-    call printax
+    call print_sp
 
     mov rax, 4096
     call malloc
@@ -208,6 +194,42 @@ _start:
     call mfree
     call printax
 
+    call print_sp
+
+    ; Test assert false
+    push false
+    push assert_false_mess
+    push 0
+    mov bx, 3*8
+    call assert
+    add sp, 3*8
+
+    call print_sp
+
+    ; Test assert true
+    push true
+    push assert_true_mess
+    push 1
+    mov bx, 3*8
+    call assert
+    add sp, 3*8
+
+    call print_sp
+
     ; Exit with error code 1
-    mov   rcx, 123
+    mov   rcx, 1234
     call  ExitProcess
+
+; assert will verify that the first arbument is true (not 0)
+; if ax is null, it will print an error message using printf,
+; with optional additional parameters.
+; The stack will contain <bool><message><arg1><arg2>..
+; rbx should contain the (number of arguments) * 8.
+assert:
+    mov rax, [rsp+24]
+    or rax, rax
+    jz L1
+    ret
+L1: mov rbx, 16
+    mov rdi, printf
+    jmp syscall
