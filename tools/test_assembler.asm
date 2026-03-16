@@ -27,38 +27,42 @@ extern ExitProcess
 extern WriteFile
 extern CloseHandle
 
-global _start                                 ; Export symbols. The entry point
+; Export symbols
+global _start          ; The entry point
 
-section .data                                   ; Initialized data segment
-    message         db "Message from WriteFile", 0Dh, 0Ah
-    startup_msg     db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
-    test4par        db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
-    test5par        db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
-    test6par        db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-    test8par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-    axmess          db "... rax = 0x%X", 0Dh, 0Ah, 00h
-    printbxmess     db "... rbx = 0x%X", 0Dh, 0Ah, 00h
-    sp_mess         db "...  sp = 0x%X", 0Dh, 0Ah, 00h
-    assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
-    assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
-    assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
-    write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
-    len1               EQU  $-write_file_message
-    write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
-    len2               EQU  $-write_message
-    file_name          db "testfile.txt", 00h
+;---------------------------------------------
+section .rodata        ;  Read only data
+;---------------------------------------------
 
+startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
+test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
+test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test8par           db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
+sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
+assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
+assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
+assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
+write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
+len1               EQU  $-write_file_message
+write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
+len2               EQU  $-write_message
+file_name          db "testfile.txt", 00h
 
-section .bss                                    ; Uninitialized data segment
+;---------------------------------------------
+section .bss          ; Uninitialized data segment
+;---------------------------------------------
 
 alignb 8
-    heap            resq 1
-    handle          resq 1
-    readback        resq 1
-    written         resq 1
+heap            resq 1
+handle          resq 1
 
+;---------------------------------------------
 section .text
+;---------------------------------------------
 
+; Print the contents of the rax register using printf
 print_ax:
     push axmess
     push rax
@@ -68,15 +72,7 @@ print_ax:
     add sp, 2*8
     ret
 
-print_bx:
-    push printbxmess
-    push rbx
-    mov rbx, 2*8
-    mov rdi, printf
-    call syscall
-    add sp, 2*8
-    ret
-
+; Print the contents of the rsp register using printf
 print_sp:
     push sp_mess
     push rsp
@@ -86,6 +82,7 @@ print_sp:
     add sp, 2*8
     ret
 
+; Primary entry point for exe file
 _start:
     sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
 
@@ -239,7 +236,7 @@ _start:
     push  CREATE_ALWAYS     ; dwCreationDisposition,
     push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
     push  0                 ;  hTemplateFile
-    mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll
     mov   rbx, 7*8
     call  syscall
     add   rsp, 7*8
@@ -248,26 +245,26 @@ _start:
     call  print_ax
     call  print_sp
 
-    ; Write Write
+    ; Write to file
     push qword [handle]
     push write_message
     push len2
     push 0
     push 0
-    mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    mov   rdi, WriteFile     ; Call the WriteFile function found in kernel32.dll
     mov   rbx, 5*8
     call  syscall
     add   rsp, 5*8
 
     ; Close file
     push rax
-    mov  rdi, CloseHandle
+    mov  rdi, CloseHandle   ; Call the CloseHandle function found in kernel32.dll
     mov  rbx, 1*8
     call syscall
     add  rsp, 1*8
 
     call print_sp
 
-    ; Exit with error code 1
+    ; Exit with error code 1234
     mov   rax, 1234
     call  exit

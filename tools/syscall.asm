@@ -17,7 +17,7 @@
 ; 12 r12   Preserved
 ; 13 r13   Preserved
 ; 14 r14   Preserved
-; 15 r15   Preserved
+; 15 r15   Preserved              Error pointer. 0 (nil) means ok.
 
 %define STD_INPUT_HANDLE -10
 %define STD_OUTPUT_HANDLE -11
