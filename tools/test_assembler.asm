@@ -10,7 +10,7 @@
 %define OPEN_EXISTING     3
 %define OPEN_ALWAYS       4
 %define TRUNCATE_EXISTING 5
-
+%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 ; Symbols imported from syscall.asm
 extern syscall
@@ -20,12 +20,15 @@ extern assert
 extern exit
 extern printf
 extern sysinit
+extern error
 
 extern StdOutputHandle
 extern CreateFileA
 extern ExitProcess
 extern WriteFile
 extern CloseHandle
+extern GetLastError
+extern FormatMessageA
 
 ; Export symbols
 global _start          ; The entry point
@@ -84,7 +87,10 @@ print_sp:
 
 ; Primary entry point for exe file
 _start:
-    sub   rsp, 40                                  ; Align the stack to a multiple of 16 bytes+32 bytes shadow
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
 
     call print_sp
 
@@ -93,7 +99,7 @@ _start:
     mov rcx, startup_msg  ; First argument: format string
     mov rdx, 0            ; Second argument: number
     mov r8,  0            ; Third argument: number
-    mov r9,  1            ; Forth argument: number
+    mov r9,  1            ; Fourth argument: number
     call printf           ; Call printf
 
     call print_sp
@@ -103,7 +109,7 @@ _start:
     call print_sp
 
     ; Test using syscall
-    push test4par              ; 1st parameter
+    push test4par               ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
@@ -262,6 +268,53 @@ _start:
     mov  rbx, 1*8
     call syscall
     add  rsp, 1*8
+
+    ; Test create file with error
+    push  0
+    push  qword 0xc0000000  ; dwDesiredAccess, here read+write
+    push  0                 ; dwShareMode, 0 = no sharing
+    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
+    push  CREATE_ALWAYS     ; dwCreationDisposition,
+    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
+    push  0                 ;  hTemplateFile
+    mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll
+    mov   rbx, 7*8
+    call  syscall
+    add   rsp, 7*8
+    mov  [handle], rax
+
+    add rax, 1
+    jnz create_was_ok
+
+    call GetLastError
+    call print_ax
+
+    ; Get text for error
+  	push FORMAT_MESSAGE_FROM_SYSTEM ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY
+  	push 0         ; modntdll.Handle(),
+  	push rax       ; Error no
+  	push 0         ; langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+  	push error     ; error string buffer
+  	push 300       ; Length of error string buffer
+  	push 0         ; Arguments
+    mov rdi, FormatMessageA
+    mov rbx, 7*8
+    call syscall
+    add rsp, 7*8
+    mov r15, error
+
+    ; Print error message
+    mov rcx, error        ; First argument: format string
+    call printf           ; Call printf
+
+create_was_ok:
+    ; Close file
+    push rax
+    mov  rdi, CloseHandle   ; Call the CloseHandle function found in kernel32.dll
+    mov  rbx, 1*8
+    call syscall
+    add  rsp, 1*8
+
 
     call print_sp
 

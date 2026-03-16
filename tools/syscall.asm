@@ -19,12 +19,24 @@
 ; 14 r14   Preserved
 ; 15 r15   Preserved              Error pointer. 0 (nil) means ok.
 
-%define STD_INPUT_HANDLE -10
+
+; Errors
+; CloseHandle  error=GetLastError when result=0
+; WriteFile    error=GetLastError when result=0
+; CreateFileA  error=GetLastError when result=-1
+; ReadFile     error=GetLastError when result=0
+; printf       error=GetLastError when result=-1 (or <0)
+
+%define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
-%define STD_ERROR_HANDLE -12
+%define STD_ERROR_HANDLE  -12
+%define MAX_ERROR_LEN     300
+%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 section .data
-    assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
+alignb 8
+assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
+error:          resb MAX_ERROR_LEN
 
 ; Exported symbols from syscall.asm
 global syscall
@@ -36,6 +48,7 @@ global sysinit
 global StdOutputHandle
 global StdErrorHandle
 global StdInputHandle
+global error
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -43,6 +56,8 @@ extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
 extern GetStdHandle
+extern GetLastError
+extern FormatMessageA
 
 ; Symbols from msvcrt.dll
 extern printf
@@ -110,7 +125,7 @@ mfree:
 syscall:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
-
+    mov r15, 0            ; Default to no error
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 80           ; Reserve space for arguments to the called function
 
@@ -191,3 +206,29 @@ sysinit:
     leave
     ret
 
+get_last_error:
+    call GetLastError
+    ; Get text for error
+  	push FORMAT_MESSAGE_FROM_SYSTEM ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY
+  	push 0         ; modntdll.Handle(),
+  	push rax       ; Error no
+  	push 0         ; langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+  	push error     ; error string buffer
+  	push 300       ; Length of error string buffer
+  	push 0         ; Arguments
+    mov rdi, FormatMessageA
+    mov rbx, 7*8
+    call syscall
+    add rsp, 7*8
+    mov r15, error
+
+
+
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
+    call GetLastError
+    mov rsp, rbp
+    pop rbp
+    ret                              ; Returns error code in rax

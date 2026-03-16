@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Version must be manualy updated.
+// Version must be manually updated.
 const Version string = "v0.0.2"
 
 var (
