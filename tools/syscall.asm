@@ -49,6 +49,7 @@ global StdOutputHandle
 global StdErrorHandle
 global StdInputHandle
 global error
+global get_win_error
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -206,9 +207,14 @@ sysinit:
     leave
     ret
 
-get_last_error:
+get_win_error:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
+    ; Get last windows error
     call GetLastError
-    ; Get text for error
+    ; Get text for errornumber in rax
   	push FORMAT_MESSAGE_FROM_SYSTEM ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY
   	push 0         ; modntdll.Handle(),
   	push rax       ; Error no
@@ -220,15 +226,10 @@ get_last_error:
     mov rbx, 7*8
     call syscall
     add rsp, 7*8
+    ; Set pointer to error message in r15
     mov r15, error
-
-
-
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
-    call GetLastError
+    ; call GetLastError   ; Check if FormatMessageA failed
+    ; Epilogue
     mov rsp, rbp
     pop rbp
-    ret                              ; Returns error code in rax
+    ret

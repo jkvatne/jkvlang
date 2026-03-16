@@ -21,7 +21,9 @@ extern exit
 extern printf
 extern sysinit
 extern error
+extern get_win_error
 
+; Symbols from kernel32
 extern StdOutputHandle
 extern CreateFileA
 extern ExitProcess
@@ -285,6 +287,8 @@ _start:
 
     add rax, 1
     jnz create_was_ok
+
+    call get_win_error
 
     call GetLastError
     call print_ax
