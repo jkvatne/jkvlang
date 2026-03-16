@@ -39,10 +39,12 @@ section .data                                   ; Initialized data segment
     test6par        db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
     test7par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
     axmess          db "... rax = 0x%X", 0Dh, 0Ah, 00h
+    printbxmess     db "... rbx = 0x%X", 0Dh, 0Ah, 00h
     ptrmess         db "... ptr = 0x%X", 0Dh, 0Ah, 00h
     sp_mess         db "...  sp = 0x%X", 0Dh, 0Ah, 00h
     assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
     assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
+    assert_args_mess  db "==== Assert false message, x=%d, y=%d",0Dh, 0Ah, 00h
 section .bss                                    ; Uninitialized data segment
 
 alignb 8
@@ -65,9 +67,9 @@ printax:
     add sp, 8*2
     ret
 
-printptr:
-    push ptrmess
-    push rax ; qword [heap]
+printbx:
+    push printbxmess
+    push rbx
     mov rbx, 16
     mov rdi, printf
     call syscall
@@ -180,7 +182,6 @@ _start:
     mov rax, 4096
     call malloc
     mov qword [heap], rax
-    call printptr
 
     ; Store value to heap
     mov rdi, [heap]
@@ -199,8 +200,8 @@ _start:
     ; Test assert false
     push false
     push assert_false_mess
-    push 0
-    mov bx, 3*8
+    push 100
+    mov rbx, 3*8
     call assert
     add sp, 3*8
 
@@ -209,12 +210,21 @@ _start:
     ; Test assert true
     push true
     push assert_true_mess
-    push 1
-    mov bx, 3*8
+    push 101
+    mov rbx, 3*8
     call assert
     add sp, 3*8
 
     call print_sp
+
+    ; Test assert with two arguments
+    push false
+    push assert_args_mess
+    push 100
+    push 101
+    mov rbx, 4*8
+    call assert
+    add sp, 4*8
 
     ; Exit with error code 1
     mov   rcx, 1234
@@ -223,13 +233,13 @@ _start:
 ; assert will verify that the first arbument is true (not 0)
 ; if ax is null, it will print an error message using printf,
 ; with optional additional parameters.
-; The stack will contain <bool><message><arg1><arg2>..
+; The stack will contain <bool><messageptr><arg1><arg2>..
 ; rbx should contain the (number of arguments) * 8.
 assert:
-    mov rax, [rsp+24]
-    or rax, rax
-    jz L1
-    ret
-L1: mov rbx, 16
-    mov rdi, printf
+    mov rax, [rsp+rbx]    ; Load the bool argument to be tested
+    or rax, rax           ; Set flags
+    jz L1                 ; Jump if the bool argument fwas false
+    ret                   ; Returns if assert(true)
+L1: sub rbx, 8            ; Remove the first (bool) argument
+    mov rdi, printf       ; Call the printf function in msvcrt.dll
     jmp syscall
