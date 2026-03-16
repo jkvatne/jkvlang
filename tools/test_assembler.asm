@@ -31,7 +31,6 @@ global _start                                 ; Export symbols. The entry point
 
 section .data                                   ; Initialized data segment
     message         db "Message from WriteFile", 0Dh, 0Ah
-    messlen         EQU $-message                   ; Address of this line ($) - address of Message
     startup_msg     db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
     test4par        db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
     test5par        db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
@@ -44,7 +43,9 @@ section .data                                   ; Initialized data segment
     assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
     assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
     write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
-    mess_len          EQU  $-write_file_message
+    len1               EQU  $-write_file_message
+    write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
+    len2               EQU  $-write_message
     file_name          db "testfile.txt", 00h
 
 
@@ -220,7 +221,7 @@ _start:
     ; Test using WriteFile
     push  qword [StdOutputHandle]        ; 1st parameter is the handle
     push  write_file_message             ; 2nd parameter is a pointer to the text to be written
-    push  mess_len                       ; 3rd parameter is the number of bytes to write
+    push  len1                           ; 3rd parameter is the number of bytes to write
     push  0                              ; 4th parameter is a pointer to the variable receiving the number of bytes written.
     push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
     mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
@@ -242,10 +243,21 @@ _start:
     mov   rbx, 7*8
     call  syscall
     add   rsp, 7*8
-    mov  [handle], ax
+    mov  [handle], rax
 
     call  print_ax
     call  print_sp
+
+    ; Write Write
+    push qword [handle]
+    push write_message
+    push len2
+    push 0
+    push 0
+    mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    mov   rbx, 5*8
+    call  syscall
+    add   rsp, 5*8
 
     ; Close file
     push rax
