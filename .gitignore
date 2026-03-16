@@ -5,7 +5,6 @@ temp/
 build/
 .idea/
 bin/
-build/
 
 # intermediate files
 a.out
@@ -21,3 +20,6 @@ a.out
 .private/
 notes/
 private/
+
+# test files
+testfile.txt
