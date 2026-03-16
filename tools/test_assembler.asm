@@ -7,14 +7,17 @@
 %define true  1
 
 ; Symbols imported from syscall.asm
-extern syscall                                ; fraom syscall.asm
+extern syscall
 extern malloc
 extern mfree
 extern assert
 extern exit
 extern printf
 extern sysinit
+extern StdOutputHandle
+
 extern ExitProcess
+extern WriteFile
 
 global _start                                 ; Export symbols. The entry point
 
@@ -25,19 +28,22 @@ section .data                                   ; Initialized data segment
     test4par        db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
     test5par        db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
     test6par        db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-    test7par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+    test8par        db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
     axmess          db "... rax = 0x%X", 0Dh, 0Ah, 00h
     printbxmess     db "... rbx = 0x%X", 0Dh, 0Ah, 00h
     sp_mess         db "...  sp = 0x%X", 0Dh, 0Ah, 00h
     assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
     assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
-    assert_args_mess  db "==== Assert false with two arguments, x=%d, y=%d",0Dh, 0Ah, 00h
+    assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
+    write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
+    mess_len          EQU  $-write_file_message
 
 section .bss                                    ; Uninitialized data segment
 
 alignb 8
     heap            resq 1
     readback        resq 1
+    written         resq 1
 
 section .text
 
@@ -126,17 +132,18 @@ _start:
 
     call print_sp
 
-    push test7par              ; 1st parameter
+    push test8par              ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
     push 5                      ; 5th parameter
     push 6                      ; 6th parameter
     push 7                      ; 7th parameter
-    mov rbx, 7*8                  ; Number of parameters on stack
+    push 8                      ; 7th parameter
+    mov rbx, 8*8                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 7*8
+    add sp, 8*8
 
     call print_sp
 
@@ -178,20 +185,37 @@ _start:
 
     call print_sp
 
-    ; Test assert with two arguments
+    ; Test assert with many arguments
     push false
     push assert_args_mess
-    push 100
-    push 101
-    mov rbx, 4*8
+    push 3
+    push 4
+    push 5
+    push 6
+    push 7
+    push 8
+    mov rbx, 8*8
     call assert
-    add sp, 4*8
+    add sp, 8*8
 
     ; Test assert with one arguments (no message)
     push false
     mov rbx, 8
     call assert
     add sp, 8
+
+    ; Test using WriteFile
+    push  qword [StdOutputHandle]        ; 1st parameter is the handle
+    push  write_file_message             ; 2nd parameter is a pointer to the text to be written
+    push  mess_len                       ; 3rd parameter is the number of bytes to write
+    push  0                              ; 4th parameter is a pointer to the variable receiving the number of bytes written.
+    push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
+    mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    mov   rbx, 8*5
+    call  syscall
+    add   RSP, 8*5
+
+    call  print_sp
 
     ; Exit with error code 1
     mov   rax, 1234

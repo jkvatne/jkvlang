@@ -24,7 +24,7 @@
 %define STD_ERROR_HANDLE -12
 
 section .data
-    assert_failed  db "Assert failed",0Dh, 0Ah, 00h
+    assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
 
 ; Exported symbols from syscall.asm
 global syscall
@@ -33,6 +33,9 @@ global mfree
 global assert
 global exit
 global sysinit
+global StdOutputHandle
+global StdErrorHandle
+global StdInputHandle
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -49,21 +52,8 @@ alignb 8
     StdOutputHandle resq 1
     StdErrorHandle  resq 1
     StdInputHandle  resq 1
-    written         resq 1
 
 section .text
-
-writefile:
-    ; Test using WriteFile
-    sub   RSP, 16                                  ; 5th parameter + align stack to a multiple of 16 bytes
-    mov   RCX, qword [StdOutputHandle]             ; 1st parameter is the handle
-    ;lea   RDX, [message]                           ; 2nd parameter is a pointer to the text to be written
-    ;mov   R8, messlen                              ; 3rd parameter is the number of bytes to write
-    lea   R9, [rel written]                        ; 4th parameter is a pointer to the variable receiving the number of bytes written.
-    mov   qword [RSP + 32], 0                      ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
-    ;call  WriteFile                                ; Call the WriteFile function found in kernel32.dll (must be linked to)
-    add   RSP, 16
-    ret
 
 ; assert will verify that the first arbument is true (not 0)
 ; if ax is null, it will print an error message using printf,
