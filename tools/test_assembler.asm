@@ -5,6 +5,12 @@
 
 %define false 0
 %define true  1
+%define CREATE_NEW        1
+%define CREATE_ALWAYS     2
+%define OPEN_EXISTING     3
+%define OPEN_ALWAYS       4
+%define TRUNCATE_EXISTING 5
+
 
 ; Symbols imported from syscall.asm
 extern syscall
@@ -14,10 +20,12 @@ extern assert
 extern exit
 extern printf
 extern sysinit
-extern StdOutputHandle
 
+extern StdOutputHandle
+extern CreateFileA
 extern ExitProcess
 extern WriteFile
+extern CloseHandle
 
 global _start                                 ; Export symbols. The entry point
 
@@ -37,41 +45,44 @@ section .data                                   ; Initialized data segment
     assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
     write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
     mess_len          EQU  $-write_file_message
+    file_name          db "testfile.txt", 00h
+
 
 section .bss                                    ; Uninitialized data segment
 
 alignb 8
     heap            resq 1
+    handle          resq 1
     readback        resq 1
     written         resq 1
 
 section .text
 
-printax:
+print_ax:
     push axmess
     push rax
-    mov rbx, 16
+    mov rbx, 2*8
     mov rdi, printf
     call syscall
-    add sp, 8*2
+    add sp, 2*8
     ret
 
-printbx:
+print_bx:
     push printbxmess
     push rbx
-    mov rbx, 16
+    mov rbx, 2*8
     mov rdi, printf
     call syscall
-    add sp, 8*2
+    add sp, 2*8
     ret
 
 print_sp:
     push sp_mess
     push rsp
-    mov rbx, 16
+    mov rbx, 2*8
     mov rdi, printf
     call syscall
-    add sp, 8*2
+    add sp, 2*8
     ret
 
 _start:
@@ -156,12 +167,12 @@ _start:
     mov qword [rdi], 0x123456
     ; Read back from heap
     mov rax, [rdi]
-    call printax
+    call print_ax
 
     ; Test mfree. Should give rax=1 after call to mfree
     mov rax, [heap]
     call mfree
-    call printax
+    call print_ax
 
     call print_sp
 
@@ -204,6 +215,8 @@ _start:
     call assert
     add sp, 8
 
+    call  print_sp
+
     ; Test using WriteFile
     push  qword [StdOutputHandle]        ; 1st parameter is the handle
     push  write_file_message             ; 2nd parameter is a pointer to the text to be written
@@ -211,11 +224,37 @@ _start:
     push  0                              ; 4th parameter is a pointer to the variable receiving the number of bytes written.
     push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
     mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
-    mov   rbx, 8*5
+    mov   rbx, 5*8
     call  syscall
-    add   RSP, 8*5
+    add   rsp, 5*8
 
     call  print_sp
+
+    ; Test create file
+    push  file_name,
+    push  qword 0xc0000000  ; dwDesiredAccess, here read+write
+    push  0                 ; dwShareMode, 0 = no sharing
+    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
+    push  CREATE_ALWAYS     ; dwCreationDisposition,
+    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
+    push  0                 ;  hTemplateFile
+    mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll (must be linked to)
+    mov   rbx, 7*8
+    call  syscall
+    add   rsp, 7*8
+    mov  [handle], ax
+
+    call  print_ax
+    call  print_sp
+
+    ; Close file
+    push rax
+    mov  rdi, CloseHandle
+    mov  rbx, 1*8
+    call syscall
+    add  rsp, 1*8
+
+    call print_sp
 
     ; Exit with error code 1
     mov   rax, 1234
