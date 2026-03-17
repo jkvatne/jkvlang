@@ -34,7 +34,7 @@
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 section .rodata
-assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
+assert_failed  db "Assert failed, but no message was included.",0Dh, 0Ah, 00h
 
 ; Exported symbols from syscall.asm
 global syscall

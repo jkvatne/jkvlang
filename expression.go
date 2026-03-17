@@ -91,8 +91,11 @@ func ParseArrayIndexes(s *State) error {
 }
 
 func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
-	argNo := 0
+	s.ArgCount = 0
+	s.ArgCode = make([]string, 0, 6)
 	for {
+		s.ArgCount++
+		s.ArgCode = append(s.ArgCode, "")
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -102,14 +105,19 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 		if err != nil {
 			return
 		}
-		argNo++
 		if value.HasValue {
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(s, value.StringLitNo)
 			} else if value.Typ.Pt.IsInteger() {
-				EmitPushConst(s, value.IntValue, "Argument "+strconv.Itoa(argNo))
+				EmitPushConst(s, value.IntValue, "")
+			} else if value.Typ.Pt == TYP_BOOL {
+				if value.BoolValue {
+					EmitPushConst(s, 1, "")
+				} else {
+					EmitPushConst(s, 0, "")
+				}
 			} else {
-				return nil, fmt.Errorf("unknown type: %s", value.Typ.Pt)
+				return nil, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
 			}
 		}
 		if s.token != TOK_COMMA {
@@ -122,7 +130,6 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 	}
 	// Skip the final ")"
 	nextToken(s)
-	s.ArgCount = argNo
 	return valueList, nil
 }
 

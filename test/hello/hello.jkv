@@ -2,5 +2,5 @@
 
 func main() {
     print("Hello from jkv again")
-    //assert(false) // , "Testing assert %d", 1234)
+    assert(false, "Testing assert %d", 1234)
  }

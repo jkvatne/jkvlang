@@ -19,28 +19,39 @@ const (
 var CommentIndent = 40
 var spaces = "                                                                                    "
 
+func Write(s *State, txt string) (int, error) {
+	if s.ArgCount == 0 {
+		return s.outputFile.WriteString(txt)
+	}
+	s.ArgCode[s.ArgCount-1] += txt
+	return len(txt), nil
+}
+
 func emit(s *State, op string, src string, dst string, comment string) {
-	var pos, n int
+	var pos int
+	var txt string
 	if s.noCode > 0 {
 		return
 	}
-	pos, _ = s.outputFile.WriteString("   " + op)
+	txt = "   " + op
+	pos = 3
 	if dst != "" {
-		n, _ = s.outputFile.WriteString(" " + dst)
-		pos += n
+		txt = txt + " " + dst
+		pos += 1 + len(dst)
 	}
 	if src != "" && dst != "" {
-		n, _ = s.outputFile.WriteString(",")
-		pos += n
+		txt = txt + ","
+		pos += 1
 	}
 	if src != "" {
-		n, _ = s.outputFile.WriteString(" " + src)
-		pos += n
+		txt = txt + " " + src
+		pos += 1 + len(src)
 	}
 	if comment != "" {
-		_, _ = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-pos)] + "; " + comment)
+		txt += spaces[0:max(0, CommentIndent-pos)] + "; " + comment
 	}
-	_, err := s.outputFile.WriteString("\n")
+	txt += "\n"
+	_, err := Write(s, txt)
 	if err != nil {
 		panic(err)
 	}
@@ -65,34 +76,35 @@ func EmitTextLabel(s *State, text string) {
 }
 
 func EmitSpComment(s *State) {
-	_, err := s.outputFile.WriteString("   ; Sp=" + strconv.Itoa(s.localSp) + "\n")
+	_, err := Write(s, "   ; Sp="+strconv.Itoa(s.localSp)+"\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := s.outputFile.WriteString("; " + comment + "\n")
+	_, err := Write(s, "; "+comment+"\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitBlankLine(s *State) {
-	_, err := s.outputFile.WriteString("\n")
+	_, err := Write(s, "\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitLineNo(s *State) {
-	_, err := s.outputFile.WriteString("   ; Line " + strconv.Itoa(s.lineNum) + "\n")
+	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+"\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitLabel(s *State, label int) {
+
 	n, err := s.outputFile.WriteString("L" + strconv.Itoa(label) + ":")
 	_, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; Line " + strconv.Itoa(s.lineNum) + "\n")
 
@@ -105,12 +117,20 @@ func EmitJump(s *State, n int, comment string) {
 	emit(s, "jmp", "L"+strconv.Itoa(n), "", comment)
 }
 
-func EmitCall(s *State, id string, argNo int) {
-	emit(s, "mov", strconv.Itoa((argNo-1)*8), "rbx", "")
+func EmitCall(s *State, id string, argCount int) {
+	s.ArgCount = 0
+	for i := len(s.ArgCode) - 1; i >= 0; i-- {
+		Write(s, s.ArgCode[i])
+		if i == 0 {
+			break
+		}
+		emit(s, "push", "rax", "", "Argument "+strconv.Itoa(i+1))
+	}
+	emit(s, "mov", strconv.Itoa((argCount-1)*8), "rbx", "")
 	emit(s, "call", id, "", "")
-	if argNo > 1 {
-		emit(s, "add", strconv.Itoa(8*(argNo-1)), "rsp", "Remove arguments")
-		s.localSp -= argNo - 1
+	if argCount > 1 {
+		emit(s, "add", strconv.Itoa(8*(argCount-1)), "rsp", "Remove arguments")
+		s.localSp -= argCount - 1
 	}
 }
 
@@ -138,9 +158,8 @@ func EmitFunction(s *State, id string) {
 	if err != nil {
 		panic(err)
 	}
-	// emit(s, "push", "rbp", "", "")
-	// emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
+	s.ArgCount = 0
 	EmitSpComment(s)
 	s.RaxIsTOS = false
 }
@@ -418,7 +437,9 @@ func EmitPushConst(s *State, value int64, comment string) {
 	} else {
 		emit(s, "mov", strconv.FormatInt(value, 10), "rax", comment)
 	}
-	s.RaxIsTOS = true
+	if s.ArgCount == 0 {
+		s.RaxIsTOS = true
+	}
 }
 
 func EmitPrologue(s *State) {
@@ -433,7 +454,6 @@ func EmitPrologue(s *State) {
 	emit(s, "extern", "print", "", "")
 	EmitBlankLine(s)
 	EmitTextLabel(s, "_start")
-	emit(s, "sub", "8", "rsp", "Allign to 16 byte")
 	emit(s, "call", "sysinit", "", "")
 	emit(s, "call", "main", "", "Call the main procedure")
 	emit(s, "xor", "eax", "eax", "Error code = 0")
@@ -452,7 +472,7 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 00h")
+	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 00h\n")
 }
 
 func EmitSection(s *State, section string) {

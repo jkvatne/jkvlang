@@ -28,6 +28,7 @@ type State struct {
 	LocalArgSize    int
 	LocalRetSize    int
 	ArgCount        int
+	ArgCode         []string
 }
 
 type Token int

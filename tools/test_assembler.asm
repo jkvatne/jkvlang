@@ -66,6 +66,7 @@ len1               EQU  $-write_file_message
 write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
 len2               EQU  $-write_message
 file_name          db "testfile.txt", 00h
+str1               db "!!!!!!!!!!!!!!!!!!!!!!! str1",0Dh,0Ah,00h
 
 ;---------------------------------------------
 section .text
@@ -225,11 +226,21 @@ _start:
     call assert
     add sp, 7*8
 
-    ; Test assert with one arguments (no message)
-    mov rax, false
+    ; Test assert fail with no message
+    mov rax, 0
     mov rbx,0
     call assert
     call  print_sp
+
+    ; Test assert as in hello.jkv
+    mov rax, 1234
+    push rax                                 ; Argument 3
+    mov rax, str1
+    push rax                                 ; Argument 2
+    mov rax, false
+    mov rbx, 16
+    call assert
+    add rsp, 16                             ; Remove arguments
 
     ; Test using WriteFile
     push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
