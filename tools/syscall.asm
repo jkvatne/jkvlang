@@ -112,14 +112,18 @@ mfree:
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
 assert:
+    push rbp
+    mov rbp, rsp          ; Setup new frame pointer
+
     or rax, rax             ; Set z-flag if rax is zero
     jz L1                   ; Jump if the bool argument was false
+    leave
     ret                     ; Returns if assert(true)
 L1:
-    mov rax, [rsp+8]
+    mov rax, [rsp+16]
     mov rdi, printf
-    mov rbx, 0
-    jmp syscall
+    sub rbx, 8
+    jmp syscall1
 
 ; print is the local version of fprintf
 ; Arg count should be in rbx
@@ -135,9 +139,10 @@ print:
 syscall:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
-    mov r15, 0            ; Default to no error
+syscall1:
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
+    mov r15, 0            ; Default to no error
 
     mov rcx, rax          ; cx = First argument: format string
     or rbx, rbx
