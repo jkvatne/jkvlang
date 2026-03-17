@@ -36,26 +36,6 @@ extern FormatMessageA
 global _start          ; The entry point
 
 ;---------------------------------------------
-section .rodata        ;  Read only data
-;---------------------------------------------
-
-startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
-test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
-test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
-test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-test8par           db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
-sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
-assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
-assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
-assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
-write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
-len1               EQU  $-write_file_message
-write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
-len2               EQU  $-write_message
-file_name          db "testfile.txt", 00h
-
-;---------------------------------------------
 section .bss          ; Uninitialized data segment
 ;---------------------------------------------
 
@@ -69,61 +49,59 @@ section .text
 
 ; Print the contents of the rax register using printf
 print_ax:
-    push axmess
-    push rax
-    mov rbx, 2*8
+    push rax            ; Value to be printed
+    mov rax, axmess
+    mov rbx, 1*8
     mov rdi, printf
     call syscall
-    add sp, 2*8
+    add sp, 1*8
     ret
 
 ; Print the contents of the rsp register using printf
 print_sp:
-    push sp_mess
-    push rsp
-    mov rbx, 2*8
-    mov rdi, printf
+    push rsp           ; Value to be printed
+    mov rax, sp_mess   ; Message at top of stack
+    mov rbx, 1*8       ; Stack size is 8 bytes
+    mov rdi, printf    ; system function to call
     call syscall
-    add sp, 2*8
+    add sp, 1*8
     ret
 
 ; Primary entry point for exe file
 _start:
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
+    push rbp                    ; Prologue: Save frame pointer
+    mov rbp, rsp                ; Prologue: Setup new frame pointer.
+    and rsp, -16                ; Align stack by clearing the 4 lsb
+    sub rsp, 32                 ; Reserve shadow space
 
     call print_sp
 
     ; Print a startup message with integer parameters using the prinf from msvcrt.dll
-    ; Must link with msvcrt.dll
-    mov rcx, startup_msg  ; First argument: format string
-    mov rdx, 0            ; Second argument: number
-    mov r8,  0            ; Third argument: number
-    mov r9,  1            ; Fourth argument: number
-    call printf           ; Call printf
-
-    call print_sp
+    ; This is a direct call, not using syscall.asm, must be linked with msvcrt.dll
+    mov rcx, startup_msg        ; First argument: format string
+    mov rdx, 0                  ; Second argument: number
+    mov r8,  0                  ; Third argument: number
+    mov r9,  1                  ; Fourth argument: number
+    call printf                 ; Call printf
 
     call sysinit
 
     call print_sp
 
     ; Test using syscall
-    push test4par               ; 1st parameter
+    mov rax, test4par            ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
-    mov rbx, 4*8                ; Number of parameters on stack
+    mov rbx, 3*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 8*4
+    add sp, 3*8
 
     call print_sp
 
     ; Test using syscall
-    push test5par              ; 1st parameter
+    mov rax, test5par               ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
@@ -136,7 +114,7 @@ _start:
     call print_sp
 
     ; Test using syscall
-    push test6par              ; 1st parameter
+    mov rax, test6par              ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
@@ -149,7 +127,7 @@ _start:
 
     call print_sp
 
-    push test8par              ; 1st parameter
+    mov rax, test8par              ; 1st parameter
     push 2                      ; 2nd parameter
     push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
@@ -183,43 +161,43 @@ _start:
     call print_sp
 
     ; Test assert false
-    push false
-    push assert_false_mess
-    push 100
-    mov rbx, 3*8
+    push 100                 ; Last parameter
+    push assert_false_mess   ; String
+    mov rax, false           ; Boolean in axr
+    mov rbx, 2*8
     call assert
-    add sp, 3*8
+    add sp, 2*8
 
     call print_sp
 
     ; Test assert true
-    push true
-    push assert_true_mess
     push 101
-    mov rbx, 3*8
+    push assert_true_mess
+    mov rax, true
+    mov rbx, 2*8
     call assert
-    add sp, 3*8
+    add sp, 2*8
 
     call print_sp
 
     ; Test assert with many arguments
-    push false
-    push assert_args_mess
     push 3
     push 4
     push 5
     push 6
     push 7
     push 8
-    mov rbx, 8*8
+    push assert_args_mess
+    mov rax, false
+    mov rbx, 7*8
     call assert
-    add sp, 8*8
+    add sp, 7*8
 
     ; Test assert with one arguments (no message)
-    push false
-    mov rbx, 8
+    mov rax, false
+    mov rbx,0
     call assert
-    add sp, 8
+    ;add sp, 0
 
     call  print_sp
 
@@ -238,7 +216,8 @@ _start:
 
     ; Test create file
     push  file_name,
-    push  qword 0xc0000000  ; dwDesiredAccess, here read+write
+    mov rdi, 0xc0000000
+    push  rdi                ; dwDesiredAccess, here read+write
     push  0                 ; dwShareMode, 0 = no sharing
     push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
     push  CREATE_ALWAYS     ; dwCreationDisposition,
@@ -273,7 +252,8 @@ _start:
 
     ; Test create file with error
     push  0
-    push  qword 0xc0000000  ; dwDesiredAccess, here read+write
+    mov rdi, 0xc0000000
+    push  rdi                ; dwDesiredAccess, here read+write
     push  0                 ; dwShareMode, 0 = no sharing
     push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
     push  CREATE_ALWAYS     ; dwCreationDisposition,
@@ -325,3 +305,24 @@ create_was_ok:
     ; Exit with error code 1234
     mov   rax, 1234
     call  exit
+
+
+;---------------------------------------------
+section .rodata        ;  Read only data
+;---------------------------------------------
+
+startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
+test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
+test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test8par           db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
+sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
+assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
+assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
+assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
+write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
+len1               EQU  $-write_file_message
+write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
+len2               EQU  $-write_message
+file_name          db "testfile.txt", 00h

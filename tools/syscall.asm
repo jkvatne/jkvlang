@@ -30,13 +30,12 @@
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
-%define MAX_ERROR_LEN     300
+%define MAX_ERROR_LEN     40*8
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 section .data
 alignb 8
 assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
-error:          resb MAX_ERROR_LEN
 
 ; Exported symbols from syscall.asm
 global syscall
@@ -50,6 +49,7 @@ global StdErrorHandle
 global StdInputHandle
 global error
 global get_win_error
+global print
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -68,23 +68,9 @@ alignb 8
     StdOutputHandle resq 1
     StdErrorHandle  resq 1
     StdInputHandle  resq 1
+    error           resb MAX_ERROR_LEN
 
 section .text
-
-; assert will verify that the first arbument is true (not 0)
-; if ax is null, it will print an error message using printf,
-; with optional additional parameters.
-; The stack will contain <bool><messageptr><arg1><arg2>..
-; rbx should contain the (number of arguments) * 8.
-assert:
-    mov rax, [rsp+rbx]      ; Load the bool argument to be tested
-    or rax, rax             ; Set flags
-    jz L1                   ; Jump if the bool argument fwas false
-    ret                     ; Returns if assert(true)
-L1: sub rbx, 8              ; Remove the first (bool) argument
-    mov rcx, assert_failed  ; Load default error message if assert has no message
-    mov rdi, printf         ; Call the printf function in msvcrt.dll
-    jmp syscall
 
 ; malloc returns in rax a pointer to the allocated memory or null.
 ; One argument is needed, in rax, and that is the requested size in bytes.
@@ -120,9 +106,29 @@ mfree:
     leave
     ret
 
+; assert will verify that the first arbument (rax) is true (not 0)
+; with optional additional parameters.
+; The stack will contain <messageptr><arg1><arg2>..
+; rbx should contain the size of the stack. (number of arguments-1) * 8.
+; rax is already the value to be tested
+assert:
+    or rax, rax             ; Set z-flag if rax is zero
+    jz L1                   ; Jump if the bool argument was false
+    ret                     ; Returns if assert(true)
+L1: mov rcx, assert_failed  ; Load default error message to be used if assert has no message
+    ; fallthrough to print
+
+; print is the local version of fprintf
+; Arg count should be in rbx
+; The last parameter in rax
+; All other parameters pushed on stack.
+print:
+    mov rdi, printf
+    ; fallthrough to syscall
 
 ; syscall will call any dll function that is reachable
 ; The address of the function should be in rdi, arg count *8 in rbx
+; rax is the first parameter
 syscall:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
@@ -133,8 +139,7 @@ syscall:
     or rbx, rbx
     jz docall
 
-    mov rcx, [rbx+rbp+8]    ; cx = First argument: format string
-    sub rbx, 8
+    mov rcx, rax          ; cx = First argument: format string
     jc docall
 
     mov rdx, [rbx+rbp+8]    ; dx = Second argument
