@@ -115,7 +115,7 @@ assert:
     or rax, rax             ; Set z-flag if rax is zero
     jz L1                   ; Jump if the bool argument was false
     ret                     ; Returns if assert(true)
-;L1:
+L1:
     mov rax, [rsp+8]
     mov rdi, printf
     mov rbx, 0
