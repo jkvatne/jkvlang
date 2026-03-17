@@ -119,8 +119,7 @@ L1:
     mov rax, [rsp+8]
     mov rdi, printf
     mov rbx, 0
-    call syscall
-    ret
+    jmp syscall
 
 ; print is the local version of fprintf
 ; Arg count should be in rbx
