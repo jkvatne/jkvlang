@@ -57,14 +57,6 @@ func EmitError(s *State, e error) {
 	}
 }
 
-func EmitSection(s *State, name string) {
-	name = strings.Trim(name, ".\n ")
-	_, err := s.outputFile.WriteString("section ." + name + "\n")
-	if err != nil {
-		panic(err)
-	}
-}
-
 func EmitTextLabel(s *State, text string) {
 	text = strings.Trim(text, ":\n ")
 	_, err := s.outputFile.WriteString(text + ":\n")
@@ -72,7 +64,7 @@ func EmitTextLabel(s *State, text string) {
 	}
 }
 
-func EmitSp(s *State) {
+func EmitSpComment(s *State) {
 	_, err := s.outputFile.WriteString("   ; Sp=" + strconv.Itoa(s.localSp) + "\n")
 	if err != nil {
 		panic(err)
@@ -80,7 +72,7 @@ func EmitSp(s *State) {
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := s.outputFile.WriteString("   ; " + comment + "\n")
+	_, err := s.outputFile.WriteString("; " + comment + "\n")
 	if err != nil {
 		panic(err)
 	}
@@ -126,14 +118,14 @@ func EmitReturn(s *State) {
 		for i := range len(s.currentFunc.returnTypes) {
 			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
 			s.localSp++
-			EmitSp(s)
+			EmitSpComment(s)
 		}
 	}
 	// Verify that the stack is now empty, except for the local arguments
 	if s.localSp != s.VarCount[0] {
 		slog.Warn(s.currentFunc.name+" returns with", "SP", s.VarCount[0])
 	}
-	EmitSp(s)
+	EmitSpComment(s)
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
@@ -148,7 +140,7 @@ func EmitFunction(s *State, id string) {
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
-	EmitSp(s)
+	EmitSpComment(s)
 	s.RaxIsTOS = false
 }
 
@@ -216,7 +208,7 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, instruction, "%rbx", "%rax", "")
 	}
 	s.localSp--
-	EmitSp(s)
+	EmitSpComment(s)
 }
 
 // EmitOpConst will evaluate tos=tos op <constant>
@@ -344,7 +336,7 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "1 Push TOS")
 		s.localSp++
-		EmitSp(s)
+		EmitSpComment(s)
 	}
 	s.RaxIsTOS = true
 	emit(s, MovOpcode(size), DataType(size)+BpRel(adr), "rax", comment)
@@ -357,7 +349,7 @@ func EmitStore(s *State, size int, adr int, comment string) {
 	emit(s, "add", "8", "rsp", "")
 	s.RaxIsTOS = false
 	s.localSp--
-	EmitSp(s)
+	EmitSpComment(s)
 }
 
 // EmitAddSp will drop the top "count" 64-bit words.
@@ -365,15 +357,21 @@ func EmitAddSp(s *State, count int, comment string) {
 	if count != 0 {
 		emit(s, "add", strconv.Itoa(-count*8), "rsp", comment)
 		s.localSp += count
-		EmitSp(s)
+		EmitSpComment(s)
 	}
 	s.RaxIsTOS = false
 }
 
-func EmitPushString(s *State, txt string) {
-	// emit(s, "   PUSH_STRING", txt)
+func EmitPushString(s *State, litno int) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "3 Push TOS")
+		s.localSp++
+		EmitSpComment(s)
+	}
+	emit(s, "mov", "str"+strconv.Itoa(litno), "rax", "Push pointer to literal string")
 	s.localSp++
-	EmitSp(s)
+	s.RaxIsTOS = true
+	EmitSpComment(s)
 }
 
 func EmitAssert(s *State) {
@@ -403,7 +401,7 @@ func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "2 Push TOS")
 		s.localSp++
-		EmitSp(s)
+		EmitSpComment(s)
 	}
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
@@ -414,20 +412,21 @@ func EmitPushConst(s *State, value int64, comment string) {
 }
 
 func EmitPrologue(s *State) {
-	EmitSection(s, "data")
-	EmitBlankLine(s)
 	EmitSection(s, "text")
 	emit(s, "global", "_start", "", "")
-	emit(s, "extern", "GetStdHandle", "", "")
-	emit(s, "extern", "WriteConsoleA", "", "")
-	emit(s, "extern", "WriteFile", "", "")
-	emit(s, "extern", "ExitProcess", "", "")
+	emit(s, "extern", "assert", "", "")
+	emit(s, "extern", "syscall", "", "")
+	emit(s, "extern", "exit", "", "")
+	emit(s, "extern", "malloc", "", "")
+	emit(s, "extern", "mfree", "", "")
+	emit(s, "extern", "sysinit", "", "")
 	EmitBlankLine(s)
 	EmitTextLabel(s, "_start")
 	emit(s, "sub", "8", "rsp", "Allign to 16 byte")
+	emit(s, "call", "sysinit", "", "")
 	emit(s, "call", "main", "", "Call the main procedure")
 	emit(s, "xor", "ecx", "ecx", "Error code = 0")
-	emit(s, "call", "ExitProcess", "", "")
+	emit(s, "call", "exit", "", "")
 	EmitBlankLine(s)
 }
 
@@ -439,4 +438,16 @@ func EmitPrintHello(s *State, format string) {
 	emit(s, "mov", "20", "r8", "3.arg - console handle")
 	emit(s, "xor", "r9", "r9", "4.arg - console handle")
 	emit(s, "mov", "0", "qword [3sp+32]", "5.arg - console handle")
+}
+
+func EmitLitteral(s *State, litName string, litValue string) {
+	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 00h")
+}
+
+func EmitSection(s *State, section string) {
+	section = strings.Trim(section, ".\n ")
+	_, err := s.outputFile.WriteString("\nsection ." + section + "\n\n")
+	if err != nil {
+		panic(err)
+	}
 }

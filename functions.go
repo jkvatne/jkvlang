@@ -17,7 +17,8 @@ func FuncInit() {
 	strArg := VarDef{Typ: &StringType, Name: "strarg"}
 	_, _ = AddFunc("print_int", []*VarDef{&intArg}, nil)
 	_, _ = AddFunc("println", []*VarDef{&strArg}, nil)
-	_, _ = AddFunc("printf", []*VarDef{&strArg}, nil)
+	_, _ = AddFunc("print", []*VarDef{&strArg}, nil)
+	_, _ = AddFunc("assert", []*VarDef{&strArg}, nil)
 }
 
 func AddFunc(id string, argList []*VarDef, returnList []*TypeDef) (*FuncDef, error) {

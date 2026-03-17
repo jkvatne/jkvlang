@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -12,6 +13,7 @@ func CompileFile(name string, workdir string) error {
 	slog.Info("Compiling", "filename", name, "workdir", workdir)
 	var err error
 	s := new(State)
+	LiteralInit()
 	s.lineNum = 1
 	s.text, err = os.ReadFile(name)
 	if err != nil {
@@ -25,6 +27,7 @@ func CompileFile(name string, workdir string) error {
 		_ = CloseObjFile(s)
 	}(s)
 	EmitComment(s, "File \""+objectFile+"\"\n")
+	EmitPrologue(s)
 
 	if err != nil {
 		return err
@@ -49,6 +52,11 @@ func CompileFile(name string, workdir string) error {
 			slog.Error("Unexpected", "token", s.tokenString)
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
+	}
+
+	EmitSection(s, "rodata")
+	for i, l := range LiteralDefs {
+		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}
 	if err != nil {
 		EmitError(s, err)

@@ -1,5 +1,6 @@
 // Hello.jkv should print a message on stdout.
 
 func main() {
-    printf("Hello from jkv\n")
+    // printf("Hello from jkv\n")
+    assert(false, "Testing assert %d", 123)
  }

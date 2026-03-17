@@ -116,6 +116,7 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 	}
 	// Skip the final ")"
 	nextToken(s)
+	s.ArgCount = argNo
 	return valueList, nil
 }
 
@@ -147,7 +148,6 @@ func ParseFunctionCall(s *State, id string) error {
 		if n > 1 {
 			EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 		}
-
 		// Parse the argument list and push each arg
 		values, err := ParseArgumentList(s)
 		EmitCall(s, id, len(values))
@@ -272,10 +272,11 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		value.HasValue = true
 		nextToken(s)
 	} else if s.token == TOK_STRING {
-		EmitPushString(s, s.tokenString)
+		litNo := AddLiteral(s.tokenString)
+		EmitPushString(s, litNo)
 		value.Typ = TypeDefs["String"]
 		value.StringValue = s.tokenString
-		value.HasValue = false
+		value.HasValue = true
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
 		for {

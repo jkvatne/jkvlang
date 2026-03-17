@@ -304,8 +304,8 @@ func nextToken(s *State) {
 					break
 				}
 				s.tokenString += string(ch1)
-				s.token = TOK_STRING
 			}
+			s.token = TOK_STRING
 		case ch1 == '&' && ch2 == '&':
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_LOG_AND
@@ -452,8 +452,8 @@ func nextToken(s *State) {
 				s.token = TOK_TYPE
 			case "struct":
 				s.token = TOK_STRUCT
-			case "assert":
-				s.token = TOK_ASSERT
+				// case "assert":
+				//	s.token = TOK_ASSERT
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK
@@ -482,7 +482,7 @@ func nextToken(s *State) {
 
 func Expect(s *State, token Token) error {
 	if s.token != token {
-		return fmt.Errorf("expected token %s, but got %s", token.Name(), s.tokenString)
+		return fmt.Errorf("expected token '%s' but got '%s'", token.Name(), s.tokenString)
 	}
 	nextToken(s)
 	return nil

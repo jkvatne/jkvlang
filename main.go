@@ -85,7 +85,9 @@ func Link(workDir string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
+	args = append(args, "C:/doc/compiler/tools/build/syscall.obj")
 	args = append(args, "kernel32.dll")
+	args = append(args, "msvcrt.dll")
 	// Print the arguments and the command
 	fmt.Println("Link command:")
 	fmt.Printf("../tools/golink.exe ")
@@ -103,9 +105,9 @@ func Link(workDir string, outputName string) error {
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
 	wd, err := os.Getwd()
-	fmt.Printf("Currrent directory is %s\n", wd)
-	fmt.Printf("Running the executable %s:\n", outputName)
-	out, err := exec.Command("./test.exe", "x").CombinedOutput()
+	fmt.Printf("Run: Currrent directory is %s\n", wd)
+	fmt.Printf("Run: Executable %s:\n", outputName)
+	out, err := exec.Command(outputName, "").CombinedOutput()
 	if err == nil {
 		println(string(out))
 	}
@@ -151,6 +153,8 @@ func main() {
 		err = CompileDir(*inputPath, *workDir)
 		if err == nil {
 			*link = true
+		} else {
+			fmt.Printf("Error compiling %s %s\n", *oneFile, err.Error())
 		}
 	}
 

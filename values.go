@@ -16,11 +16,29 @@ type ValueDef struct {
 }
 
 var (
-	False     = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
-	True      = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
-	NoValue   = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
-	ZeroValue = ValueDef{Typ: &PtrType, HasValue: true, IntValue: 0, FloatValue: 0, BoolValue: false}
+	False       = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
+	True        = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
+	NoValue     = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
+	ZeroValue   = ValueDef{Typ: &PtrType, HasValue: true, IntValue: 0, FloatValue: 0, BoolValue: false}
+	LiteralDefs []string
 )
+
+func LiteralInit() {
+	LiteralDefs = make([]string, 0, 20)
+}
+
+func AddLiteral(value string) int {
+	if value == "" {
+		return -1
+	}
+	for i, s := range LiteralDefs {
+		if s == value {
+			return i
+		}
+	}
+	LiteralDefs = append(LiteralDefs, value)
+	return len(LiteralDefs) - 1
+}
 
 func StringToValue(s string) (value ValueDef, err error) {
 	if strings.ContainsRune(s, '.') {

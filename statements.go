@@ -67,7 +67,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if !v.BoolValue {
 				return false, fmt.Errorf("assert failed")
 			}
-			EmitComment(s, "Assert succeeded")
+			EmitComment(s, "Compile time assert succeeded")
 		} else {
 			EmitAssert(s)
 		}
