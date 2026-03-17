@@ -112,9 +112,9 @@ mfree:
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
 assert:
-    ;or rax, rax             ; Set z-flag if rax is zero
-    ;jz L1                   ; Jump if the bool argument was false
-    ;ret                     ; Returns if assert(true)
+    or rax, rax             ; Set z-flag if rax is zero
+    jz L1                   ; Jump if the bool argument was false
+    ret                     ; Returns if assert(true)
 ;L1:
     mov rax, [rsp+8]
     mov rdi, printf
