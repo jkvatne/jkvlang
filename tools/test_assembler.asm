@@ -60,7 +60,7 @@ axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
 sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
 assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
 assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
-assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
+assert_args_mess   db "==== Assert false with arguments 3-10, %d, %d, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
 write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
 len1               EQU  $-write_file_message
 write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
@@ -194,12 +194,12 @@ _start:
 
 
     ; Test assert false
-    push 100                 ; Last parameter
+    push 103                 ; Last parameter
     push assert_false_mess   ; String
     mov rax, 0               ; Boolean in axr
-    ; mov rbx, 2*8
+    mov rbx, 2*8
     call assert
-    ;add sp, 2*8
+    add sp, 2*8
 
     call print_sp
 
@@ -213,18 +213,20 @@ _start:
 
     call print_sp
 
-    ; Test assert with many arguments
-    push 3
-    push 4
-    push 5
-    push 6
-    push 7
+    ; Test assert with 10 arguments
+    push 10
+    push 9
     push 8
+    push 7
+    push 6
+    push 5
+    push 4
+    push 3
     push assert_args_mess
     mov rax, false
-    mov rbx, 7*8
+    mov rbx, 9*8
     call assert
-    add sp, 7*8
+    add sp, 9*8
 
     ; Test assert fail with no message
     mov rax, 0

@@ -114,16 +114,62 @@ mfree:
 assert:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 96           ; Reserve space for arguments to the called function
 
-    or rax, rax             ; Set z-flag if rax is zero
-    jz L1                   ; Jump if the bool argument was false
+    or rax, rax           ; Set z-flag if rax is zero
+    jz L1                 ; Jump if the bool argument was false
     leave
-    ret                     ; Returns if assert(true)
+    ret                   ; Returns if assert(true)
 L1:
-    mov rax, [rsp+16]
     mov rdi, printf
+    mov rcx, [rbp+16]    ; rcx = First argument: format string
+
     sub rbx, 8
-    jmp syscall1
+    or rbx, rbx
+    jz docall
+
+    mov rdx, [rbp+24]    ; dx = Second argument
+    sub rbx, 8
+    jc docall
+
+    mov r8,  [rbp+32]    ; r8 = Third argument
+    sub rbx, 8
+    jc docall
+
+    mov r9,  [rbp+40]    ; r9 = Forth argument
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+48]    ; Fifth argument onto stack
+    mov [rsp+32], rsi
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+56]
+    mov [rsp+40], rsi     ; Sixth argument onto stack
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+64]
+    mov [rsp+48], rsi     ; Seventh argument onto stack
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+72]
+    mov [rsp+56], rsi     ; Eight argument onto stack
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+80]
+    mov [rsp+64], rsi     ; Nineth argument onto stack
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+88]
+    mov [rsp+72], rsi     ; Tenth argument onto stack
+    jmp docall
+
 
 ; print is the local version of fprintf
 ; Arg count should be in rbx
@@ -139,12 +185,11 @@ print:
 syscall:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
-syscall1:
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
     mov r15, 0            ; Default to no error
 
-    mov rcx, rax          ; cx = First argument: format string
+    mov rcx, rax          ; rcx = First argument: format string
     or rbx, rbx
     jz docall
 
