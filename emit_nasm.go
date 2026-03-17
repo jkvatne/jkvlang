@@ -472,7 +472,7 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 00h\n")
+	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 0Ah, 0Dh, 00h\n")
 }
 
 func EmitSection(s *State, section string) {
