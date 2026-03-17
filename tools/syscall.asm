@@ -136,11 +136,11 @@ syscall:
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
 
-    or rbx, rbx
-    jz docall
-
     mov rcx, rax          ; cx = First argument: format string
     jc docall
+
+    or rbx, rbx
+    jz docall
 
     mov rdx, [rbp+16]    ; dx = Second argument
     sub rbx, 8
@@ -187,7 +187,7 @@ docall:
     leave
     ret
 
-; exit have one parameter - the error code, found in ax
+; exit have one parameter - the error code, found in rax
 exit:
     push rbp                         ; Prologue: Save frame pointer
     mov rbp, rsp                     ; Prologue: Setup new frame pointer.
@@ -240,7 +240,7 @@ get_win_error:
     mov rbx, 6*8
     call syscall
     add rsp, 6*8
-    mov [error_len], ax
+    mov [error_len], ax   ; 16 bit word
     ; Set pointer to error message in r15
     mov r15, error
     ret

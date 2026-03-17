@@ -104,7 +104,13 @@ func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
 		}
 		argNo++
 		if value.HasValue {
-			EmitPushConst(s, value.IntValue, "Argument "+strconv.Itoa(argNo))
+			if value.Typ.Pt == TYP_STRING {
+				EmitPushStringLit(s, value.StringLitNo)
+			} else if value.Typ.Pt.IsInteger() {
+				EmitPushConst(s, value.IntValue, "Argument "+strconv.Itoa(argNo))
+			} else {
+				return nil, fmt.Errorf("unknown type: %s", value.Typ.Pt)
+			}
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -273,9 +279,9 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 		nextToken(s)
 	} else if s.token == TOK_STRING {
 		litNo := AddLiteral(s.tokenString)
-		EmitPushString(s, litNo)
 		value.Typ = TypeDefs["String"]
 		value.StringValue = s.tokenString
+		value.StringLitNo = litNo
 		value.HasValue = true
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {

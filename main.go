@@ -104,13 +104,9 @@ func Link(workDir string, outputName string) error {
 
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
-	wd, err := os.Getwd()
-	fmt.Printf("Run: Currrent directory is %s\n", wd)
-	fmt.Printf("Run: Executable %s:\n", outputName)
+	fmt.Printf("Running %s:\n", outputName)
 	out, err := exec.Command(outputName, "").CombinedOutput()
-	if err == nil {
-		println(string(out))
-	}
+	println(string(out))
 	return err
 }
 

@@ -487,7 +487,3 @@ func Expect(s *State, token Token) error {
 	nextToken(s)
 	return nil
 }
-
-func IsCompare(op Token) bool {
-	return op >= TOK_GE && op <= TOK_NE
-}

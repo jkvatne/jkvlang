@@ -10,7 +10,7 @@ import (
 )
 
 func CompileFile(name string, workdir string) error {
-	slog.Info("Compiling", "filename", name, "workdir", workdir)
+	// slog.Info("Compiling", "filename", name, "workdir", workdir)
 	var err error
 	s := new(State)
 	LiteralInit()

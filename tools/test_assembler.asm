@@ -5,12 +5,12 @@
 
 %define false 0
 %define true  1
-%define CREATE_NEW        1
+;%define CREATE_NEW        1
 %define CREATE_ALWAYS     2
-%define OPEN_EXISTING     3
-%define OPEN_ALWAYS       4
-%define TRUNCATE_EXISTING 5
-%define FORMAT_MESSAGE_FROM_SYSTEM  4096
+;%define OPEN_EXISTING     3
+;%define OPEN_ALWAYS       4
+;%define TRUNCATE_EXISTING 5
+;%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 ; Symbols imported from syscall.asm
 extern syscall
@@ -23,6 +23,7 @@ extern sysinit
 extern error
 extern error_len
 extern get_win_error
+extern print
 
 ; Symbols from kernel32
 extern StdOutputHandle
@@ -43,6 +44,28 @@ section .bss          ; Uninitialized data segment
 alignb 8
 heap            resq 1
 handle          resq 1
+
+;---------------------------------------------
+section .rodata        ;  Read only data
+;---------------------------------------------
+
+
+print_msg          db "Message from print", 0Dh, 0Ah, 00h
+startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
+test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
+test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test10par          db "Should be numbers 2-10 here: %d, %d, %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
+sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
+assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
+assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
+assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
+write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
+len1               EQU  $-write_file_message
+write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
+len2               EQU  $-write_message
+file_name          db "testfile.txt", 00h
 
 ;---------------------------------------------
 section .text
@@ -89,11 +112,16 @@ _start:
 
     call print_sp
 
+    ; Test using print
+    mov rax, print_msg          ; 1st parameter
+    mov rbx, 0
+    call print
+
     ; Test using syscall
     push 4                      ; 4th parameter
     push 3                      ; 3rd parameter
     push 2                      ; 2nd parameter
-    mov rax, test4par            ; 1st parameter
+    mov rax, test4par           ; 1st parameter
     mov rbx, 3*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
@@ -294,24 +322,3 @@ create_was_ok:
     mov   rax, 1234
     call  exit
 
-
-;---------------------------------------------
-section .rodata        ;  Read only data
-;---------------------------------------------
-
-startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
-ok_msg             db "OK", 0Dh, 0Ah, 00h
-test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
-test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
-test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-test10par          db "Should be numbers 2-10 here: %d, %d, %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
-sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
-assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h
-assert_false_mess  db "==== Assert false message, x=%d",0Dh, 0Ah, 00h
-assert_args_mess   db "==== Assert false with 8 arguments, %d, %d, %d, %d, %d, %d",0Dh, 0Ah, 00h
-write_file_message db "This is from WriteFile using StdOutputHandle", 0Dh, 0Ah, 00h
-len1               EQU  $-write_file_message
-write_message      db "This is from WriteFile using opened file", 0Dh, 0Ah, 00h
-len2               EQU  $-write_message
-file_name          db "testfile.txt", 00h

@@ -106,6 +106,7 @@ func EmitJump(s *State, n int, comment string) {
 }
 
 func EmitCall(s *State, id string, argNo int) {
+	emit(s, "mov", strconv.Itoa((argNo-1)*8), "rbx", "")
 	emit(s, "call", id, "", "")
 	if argNo > 1 {
 		emit(s, "add", strconv.Itoa(8*(argNo-1)), "rsp", "Remove arguments")
@@ -127,7 +128,7 @@ func EmitReturn(s *State) {
 	}
 	EmitSpComment(s)
 	// Function epilogue. Restore frame pointer and exit
-	emit(s, "leave", "", "", "")
+	// emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
@@ -137,8 +138,8 @@ func EmitFunction(s *State, id string) {
 	if err != nil {
 		panic(err)
 	}
-	emit(s, "push", "rbp", "", "")
-	emit(s, "mov", "rsp", "rbp", "")
+	// emit(s, "push", "rbp", "", "")
+	// emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
 	EmitSpComment(s)
 	s.RaxIsTOS = false
@@ -397,6 +398,15 @@ func EmitAllocLocalVar(s *State, size int, comment string) {
 	emit(s, "push", "rdx", "", "New variable, "+comment)
 }
 
+func EmitPushStringLit(s *State, lit int) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "2 Push TOS")
+		s.localSp++
+		EmitSpComment(s)
+	}
+	emit(s, "mov", "str"+strconv.Itoa(lit), "rax", "")
+}
+
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "2 Push TOS")
@@ -420,12 +430,13 @@ func EmitPrologue(s *State) {
 	emit(s, "extern", "malloc", "", "")
 	emit(s, "extern", "mfree", "", "")
 	emit(s, "extern", "sysinit", "", "")
+	emit(s, "extern", "print", "", "")
 	EmitBlankLine(s)
 	EmitTextLabel(s, "_start")
 	emit(s, "sub", "8", "rsp", "Allign to 16 byte")
 	emit(s, "call", "sysinit", "", "")
 	emit(s, "call", "main", "", "Call the main procedure")
-	emit(s, "xor", "ecx", "ecx", "Error code = 0")
+	emit(s, "xor", "eax", "eax", "Error code = 0")
 	emit(s, "call", "exit", "", "")
 	EmitBlankLine(s)
 }
