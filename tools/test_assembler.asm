@@ -196,17 +196,17 @@ _start:
     ; Test assert false
     push 100                 ; Last parameter
     push assert_false_mess   ; String
-    mov rax, false           ; Boolean in axr
-    mov rbx, 2*8
+    mov rax, 0               ; Boolean in axr
+    ; mov rbx, 2*8
     call assert
-    add sp, 2*8
+    ;add sp, 2*8
 
     call print_sp
 
     ; Test assert true
     push 101
     push assert_true_mess
-    mov rax, true
+    mov rax, 1
     mov rbx, 2*8
     call assert
     add sp, 2*8

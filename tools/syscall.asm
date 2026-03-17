@@ -112,11 +112,15 @@ mfree:
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
 assert:
-    or rax, rax             ; Set z-flag if rax is zero
-    jz L1                   ; Jump if the bool argument was false
-    ret                     ; Returns if assert(true)
-L1: mov rcx, assert_failed  ; Load default error message to be used if assert has no message
-    ; fallthrough to print
+    ;or rax, rax             ; Set z-flag if rax is zero
+    ;jz L1                   ; Jump if the bool argument was false
+    ;ret                     ; Returns if assert(true)
+;L1:
+    mov rax, [rsp+8]
+    mov rdi, printf
+    mov rbx, 0
+    call syscall
+    ret
 
 ; print is the local version of fprintf
 ; Arg count should be in rbx
@@ -137,8 +141,6 @@ syscall:
     sub rsp, 96           ; Reserve space for arguments to the called function
 
     mov rcx, rax          ; cx = First argument: format string
-    jc docall
-
     or rbx, rbx
     jz docall
 
