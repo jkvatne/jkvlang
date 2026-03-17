@@ -143,11 +143,11 @@ func EmitReturn(s *State) {
 			EmitSpComment(s)
 		}
 	}
-	// Verify that the stack is now empty, except for the local arguments
-	if s.localSp != s.VarCount[0] {
-		slog.Warn(s.currentFunc.name+" returns with", "SP", s.localSp)
+	// Remove local variables
+	if s.localSp > 0 {
+		emit(s, "add", strconv.Itoa(s.localSp*8), "rsp", "")
+		s.localSp -= s.localSp
 	}
-	EmitSpComment(s)
 	// Function epilogue. Restore frame pointer and exit
 	// emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
@@ -414,7 +414,7 @@ func EmitJumpFalse(s *State, n int, comment string) {
 }
 
 func EmitAllocLocalVar(s *State, size int, comment string) {
-	emit(s, "xor", "rdx", "rdx", "Clear rax")
+	emit(s, "xor", "rdx", "rdx", "")
 	emit(s, "push", "rdx", "", "New variable, "+comment)
 }
 

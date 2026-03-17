@@ -3,4 +3,7 @@
 func main() {
     print("Hello from jkv again")
     assert(false, "Testing assert %d", 1234)
- }
+    assert(true, "Should not be printed")
+    x = 1+2
+    assert(x==3, "Assert that 1+2=3")
+   }
