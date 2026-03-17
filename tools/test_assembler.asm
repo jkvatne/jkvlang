@@ -21,6 +21,7 @@ extern exit
 extern printf
 extern sysinit
 extern error
+extern error_len
 extern get_win_error
 
 ; Symbols from kernel32
@@ -89,10 +90,10 @@ _start:
     call print_sp
 
     ; Test using syscall
-    mov rax, test4par            ; 1st parameter
-    push 2                      ; 2nd parameter
-    push 3                      ; 3rd parameter
     push 4                      ; 4th parameter
+    push 3                      ; 3rd parameter
+    push 2                      ; 2nd parameter
+    mov rax, test4par            ; 1st parameter
     mov rbx, 3*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
@@ -101,44 +102,46 @@ _start:
     call print_sp
 
     ; Test using syscall
-    mov rax, test5par               ; 1st parameter
-    push 2                      ; 2nd parameter
-    push 3                      ; 3rd parameter
-    push 4                      ; 4th parameter
     push 5                      ; 5th parameter
-    mov rbx, 5*8                ; Number of parameters on stack
+    push 4                      ; 4th parameter
+    push 3                      ; 3rd parameter
+    push 2                      ; 2nd parameter
+    mov rax, test5par           ; 1st parameter
+    mov rbx, 4*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 8*5
+    add sp, 4*8
 
     call print_sp
 
     ; Test using syscall
-    mov rax, test6par              ; 1st parameter
-    push 2                      ; 2nd parameter
-    push 3                      ; 3rd parameter
-    push 4                      ; 4th parameter
-    push 5                      ; 5th parameter
     push 6                      ; 6th parameter
-    mov rbx, 6*8                ; Number of parameters on stack
+    push 5                      ; 5th parameter
+    push 4                      ; 4th parameter
+    push 3                      ; 3rd parameter
+    push 2                      ; 2nd parameter
+    mov rax, test6par           ; 1st parameter
+    mov rbx, 5*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 6*8
+    add sp, 5*8
 
     call print_sp
 
-    mov rax, test8par              ; 1st parameter
-    push 2                      ; 2nd parameter
-    push 3                      ; 3rd parameter
-    push 4                      ; 4th parameter
-    push 5                      ; 5th parameter
-    push 6                      ; 6th parameter
+    push 10                     ; 10th parameter
+    push 9                      ; 9th parameter
+    push 8                      ; 8th parameter
     push 7                      ; 7th parameter
-    push 8                      ; 7th parameter
-    mov rbx, 8*8                  ; Number of parameters on stack
+    push 6                      ; 6th parameter
+    push 5                      ; 5th parameter
+    push 4                      ; 4th parameter
+    push 3                      ; 3rd parameter
+    push 2                      ; 2nd parameter
+    mov rax, test10par           ; 1st parameter
+    mov rbx, 9*8                  ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
-    add sp, 8*8
+    add sp, 9*8
 
     call print_sp
 
@@ -159,6 +162,7 @@ _start:
     call print_ax
 
     call print_sp
+
 
     ; Test assert false
     push 100                 ; Last parameter
@@ -197,72 +201,69 @@ _start:
     mov rax, false
     mov rbx,0
     call assert
-    ;add sp, 0
-
     call  print_sp
 
     ; Test using WriteFile
-    push  qword [StdOutputHandle]        ; 1st parameter is the handle
-    push  write_file_message             ; 2nd parameter is a pointer to the text to be written
-    push  len1                           ; 3rd parameter is the number of bytes to write
-    push  0                              ; 4th parameter is a pointer to the variable receiving the number of bytes written.
     push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).
+    push  0                              ; 4th parameter is a pointer to the variable receiving the number of bytes written.
+    push  len1                           ; 3rd parameter is the number of bytes to write
+    push  write_file_message             ; 2nd parameter is a pointer to the text to be written
+    mov rax,  qword [StdOutputHandle]        ; 1st parameter is the handle
     mov   rdi, WriteFile                 ; Call the WriteFile function found in kernel32.dll (must be linked to)
-    mov   rbx, 5*8
+    mov   rbx, 4*8
     call  syscall
-    add   rsp, 5*8
+    add   rsp, 4*8
 
     call  print_sp
 
     ; Test create file
-    push  file_name,
-    mov rdi, 0xc0000000
-    push  rdi                ; dwDesiredAccess, here read+write
-    push  0                 ; dwShareMode, 0 = no sharing
-    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
-    push  CREATE_ALWAYS     ; dwCreationDisposition,
-    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
     push  0                 ;  hTemplateFile
+    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
+    push  CREATE_ALWAYS     ; dwCreationDisposition,
+    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
+    push  0                 ; dwShareMode, 0 = no sharing
+    mov rdi, 0xc0000000
+    push  rdi               ; dwDesiredAccess, here read+write
+    mov rax, file_name
     mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll
-    mov   rbx, 7*8
+    mov   rbx, 6*8
     call  syscall
-    add   rsp, 7*8
+    add   rsp, 6*8
     mov  [handle], rax
 
     call  print_ax
     call  print_sp
 
     ; Write to file
-    push qword [handle]
-    push write_message
+    push 0
+    push 0
     push len2
-    push 0
-    push 0
+    push write_message
+    mov rax, qword [handle]
     mov   rdi, WriteFile     ; Call the WriteFile function found in kernel32.dll
-    mov   rbx, 5*8
+    mov   rbx, 4*8
     call  syscall
-    add   rsp, 5*8
+    add   rsp, 4*8
 
     ; Close file
-    push rax
+    mov rax, qword [handle]
     mov  rdi, CloseHandle   ; Call the CloseHandle function found in kernel32.dll
-    mov  rbx, 1*8
+    mov  rbx, 0
     call syscall
-    add  rsp, 1*8
 
-    ; Test create file with error
-    push  0
-    mov rdi, 0xc0000000
-    push  rdi                ; dwDesiredAccess, here read+write
-    push  0                 ; dwShareMode, 0 = no sharing
-    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
-    push  CREATE_ALWAYS     ; dwCreationDisposition,
-    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
+    ; Test create file with error (filename=nil)
     push  0                 ;  hTemplateFile
+    push  0x80              ; dwFlagsAndAttributes, 0x80 is normal attributes
+    push  CREATE_ALWAYS     ; dwCreationDisposition,
+    push  0                 ; lpSecurityAttributes, 0 = no sharing and default security
+    push  0                 ; dwShareMode, 0 = no sharing
+    mov rdi, 0xc0000000
+    push  rdi               ; dwDesiredAccess, here read+write
+    mov rax, 0
     mov   rdi, CreateFileA  ; Call the WriteFile function found in kernel32.dll
-    mov   rbx, 7*8
+    mov   rbx, 6*8
     call  syscall
-    add   rsp, 7*8
+    add   rsp, 6*8
     mov  [handle], rax
 
     add rax, 1
@@ -270,26 +271,13 @@ _start:
 
     call get_win_error
 
-    call GetLastError
-    call print_ax
-
-    ; Get text for error
-  	push FORMAT_MESSAGE_FROM_SYSTEM ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY
-  	push 0         ; modntdll.Handle(),
-  	push rax       ; Error no
-  	push 0         ; langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-  	push error     ; error string buffer
-  	push 300       ; Length of error string buffer
-  	push 0         ; Arguments
-    mov rdi, FormatMessageA
-    mov rbx, 7*8
-    call syscall
-    add rsp, 7*8
-    mov r15, error
 
     ; Print error message
     mov rcx, error        ; First argument: format string
     call printf           ; Call printf
+
+    mov ax, [error_len]
+    call print_ax
 
 create_was_ok:
     ; Close file
@@ -312,10 +300,11 @@ section .rodata        ;  Read only data
 ;---------------------------------------------
 
 startup_msg        db "Startup code version %d.%d.%d", 0Dh, 0Ah, 00h
+ok_msg             db "OK", 0Dh, 0Ah, 00h
 test4par           db "Should be numbers 2-4 here: %d, %d, %d", 0Dh, 0Ah, 00h
 test5par           db "Should be numbers 2-5 here: %d, %d, %d, %d", 0Dh, 0Ah, 00h
 test6par           db "Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
-test8par           db "Should be numbers 2-7 here: %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
+test10par          db "Should be numbers 2-10 here: %d, %d, %d, %d, %d, %d, %d, %d, %d", 0Dh, 0Ah, 00h
 axmess             db "... rax = 0x%X", 0Dh, 0Ah, 00h
 sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
 assert_true_mess   db "==== Assert true message, x=%d",0Dh, 0Ah, 00h

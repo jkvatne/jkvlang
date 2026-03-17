@@ -33,8 +33,7 @@
 %define MAX_ERROR_LEN     40*8
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
-section .data
-alignb 8
+section .rodata
 assert_failed  db "Assert failed without message",0Dh, 0Ah, 00h
 
 ; Exported symbols from syscall.asm
@@ -68,6 +67,7 @@ alignb 8
     StdOutputHandle resq 1
     StdErrorHandle  resq 1
     StdInputHandle  resq 1
+    error_len       resw 1              ; 16 bit string length
     error           resb MAX_ERROR_LEN
 
 section .text
@@ -134,7 +134,7 @@ syscall:
     mov rbp, rsp          ; Setup new frame pointer
     mov r15, 0            ; Default to no error
     and rsp, -16          ; Align stack by clearing the 4 lsb
-    sub rsp, 80           ; Reserve space for arguments to the called function
+    sub rsp, 96           ; Reserve space for arguments to the called function
 
     or rbx, rbx
     jz docall
@@ -142,36 +142,45 @@ syscall:
     mov rcx, rax          ; cx = First argument: format string
     jc docall
 
-    mov rdx, [rbx+rbp+8]    ; dx = Second argument
+    mov rdx, [rbp+16]    ; dx = Second argument
     sub rbx, 8
     jc docall
 
-    mov r8,  [rbx+rbp+8]    ; r8 = Third argument
+    mov r8,  [rbp+24]    ; r8 = Third argument
     sub rbx, 8
     jc docall
 
-    mov r9,  [rbx+rbp+8]    ; r9 = Forth argument
+    mov r9,  [rbp+32]    ; r9 = Forth argument
     sub rbx, 8
     jc docall
 
-    mov rsi, [rbx+rbp+8]    ; Fifth argument onto stack
+    mov rsi, [rbp+40]    ; Fifth argument onto stack
     mov [rsp+32], rsi
     sub rbx, 8
     jc docall
 
-    mov rsi, [rbx+rbp+8]
+    mov rsi, [rbp+48]
     mov [rsp+40], rsi     ; Sixth argument onto stack
     sub rbx, 8
     jc docall
 
-    mov rsi, [rbx+rbp+8]
+    mov rsi, [rbp+56]
     mov [rsp+48], rsi     ; Seventh argument onto stack
     sub rbx, 8
     jc docall
 
-    mov rsi, [rbx+rbp+8]
+    mov rsi, [rbp+64]
     mov [rsp+56], rsi     ; Eight argument onto stack
     sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+72]
+    mov [rsp+64], rsi     ; Nineth argument onto stack
+    sub rbx, 8
+    jc docall
+
+    mov rsi, [rbp+80]
+    mov [rsp+72], rsi     ; Tenth argument onto stack
 
 docall:
     call [rdi]
@@ -209,32 +218,29 @@ sysinit:
     call  GetStdHandle
     mov   [rel StdInputHandle], rax
 
+    mov qword [error], 0
+    mov [error_len], word 0
     leave
     ret
 
+; get_win_error will call GetLastError and convert it to a string
+; The string is in the global variable error.
+; Also, a pointer to the error string is put into r15
 get_win_error:
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
-    ; Get last windows error
+    ; Get last windows error into rax
     call GetLastError
-    ; Get text for errornumber in rax
-  	push FORMAT_MESSAGE_FROM_SYSTEM ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY
-  	push 0         ; modntdll.Handle(),
-  	push rax       ; Error no
-  	push 0         ; langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
-  	push error     ; error string buffer
-  	push 300       ; Length of error string buffer
-  	push 0         ; Arguments
+  	push 0         ; Arg 7: arguments. Not used
+  	push 300       ; Arg 6: Length of error string buffer
+  	push error     ; Arg 5: error string buffer
+  	push 0         ; Arg 4: langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+  	push rax       ; Arg 3: Error no
+  	push 0         ; Arg 2: modntdll.Handle(),
+  	mov rax, FORMAT_MESSAGE_FROM_SYSTEM | 0xFF ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY ; 0xFF means no crlf
     mov rdi, FormatMessageA
-    mov rbx, 7*8
+    mov rbx, 6*8
     call syscall
-    add rsp, 7*8
+    add rsp, 6*8
+    mov [error_len], ax
     ; Set pointer to error message in r15
     mov r15, error
-    ; call GetLastError   ; Check if FormatMessageA failed
-    ; Epilogue
-    mov rsp, rbp
-    pop rbp
     ret
