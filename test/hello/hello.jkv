@@ -1,4 +1,8 @@
-// Hello.jkv should print a message on stdout.
+
+func f(a Bool, c I32) I32 {
+    if a ? c+=1 : c+=2
+    return c
+}
 
 func main() {
     print("Hello from jkv again")
@@ -6,4 +10,6 @@ func main() {
     assert(true, "Should not be printed")
     x = 1+2
     assert(x==3, "Assert that 1+2=3")
-   }
+    z = f(true, 1)
+    assert(z==2, "Testing f()"
+}
