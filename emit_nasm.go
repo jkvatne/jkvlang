@@ -125,6 +125,7 @@ func EmitCall(s *State, id string, argCount int) {
 			break
 		}
 		emit(s, "push", "rax", "", "Argument "+strconv.Itoa(i+1))
+		s.localSp++
 	}
 	emit(s, "mov", strconv.Itoa((argCount-1)*8), "rbx", "")
 	emit(s, "call", id, "", "")
@@ -144,7 +145,7 @@ func EmitReturn(s *State) {
 	}
 	// Verify that the stack is now empty, except for the local arguments
 	if s.localSp != s.VarCount[0] {
-		slog.Warn(s.currentFunc.name+" returns with", "SP", s.VarCount[0])
+		slog.Warn(s.currentFunc.name+" returns with", "SP", s.localSp)
 	}
 	EmitSpComment(s)
 	// Function epilogue. Restore frame pointer and exit
