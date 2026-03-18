@@ -11,5 +11,5 @@ func main() {
     x = 1+2
     assert(x==3, "Assert that 1+2=3")
     z = f(true, 1)
-    assert(z==2, "Testing f()"
+    assert(z==2, "Testing f()")
 }

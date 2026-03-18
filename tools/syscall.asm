@@ -118,10 +118,10 @@ assert:
     sub rsp, 96           ; Reserve space for arguments to the called function
 
     or rax, rax           ; Set z-flag if rax is zero
-    jz L1                 ; Jump if the bool argument was false
+    jz _L1                 ; Jump if the bool argument was false
     leave
     ret                   ; Returns if assert(true)
-L1:
+_L1:
     mov rdi, printf
     mov rcx, [rbp+16]    ; rcx = First argument: format string
 

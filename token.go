@@ -27,8 +27,10 @@ type State struct {
 	RaxIsTOS        bool
 	LocalArgSize    int
 	LocalRetSize    int
+	ParCount        int
 	ArgCount        int
 	ArgCode         []string
+	currentLine     string
 }
 
 type Token int
@@ -182,6 +184,13 @@ func nextChar(s *State) (uint8, uint8) {
 	if s.AtLineEnd {
 		s.AtLineEnd = false
 		s.lineNum++
+		s.currentLine = ""
+		for i := s.p; i < len(s.text); i++ {
+			if s.text[i] == '\n' {
+				break
+			}
+			s.currentLine += string(s.text[i])
+		}
 	}
 	if eof(s) {
 		return 0, 0

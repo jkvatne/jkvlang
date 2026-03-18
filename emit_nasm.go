@@ -20,35 +20,30 @@ var CommentIndent = 40
 var spaces = "                                                                                    "
 
 func Write(s *State, txt string) (int, error) {
-	if s.ArgCount == 0 {
+	if s.ParCount == 0 {
 		return s.outputFile.WriteString(txt)
 	}
-	s.ArgCode[s.ArgCount-1] += txt
+	s.ArgCode[s.ParCount-1] += txt
 	return len(txt), nil
 }
 
 func emit(s *State, op string, src string, dst string, comment string) {
-	var pos int
 	var txt string
 	if s.noCode > 0 {
 		return
 	}
 	txt = "   " + op
-	pos = 3
 	if dst != "" {
 		txt = txt + " " + dst
-		pos += 1 + len(dst)
 	}
 	if src != "" && dst != "" {
 		txt = txt + ","
-		pos += 1
 	}
 	if src != "" {
 		txt = txt + " " + src
-		pos += 1 + len(src)
 	}
 	if comment != "" {
-		txt += spaces[0:max(0, CommentIndent-pos)] + "; " + comment
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment
 	}
 	txt += "\n"
 	_, err := Write(s, txt)
@@ -76,10 +71,7 @@ func EmitTextLabel(s *State, text string) {
 }
 
 func EmitSpComment(s *State) {
-	_, err := Write(s, "   ; Sp="+strconv.Itoa(s.localSp)+"\n")
-	if err != nil {
-		panic(err)
-	}
+	// _, _ := Write(s, "   ; Sp="+strconv.Itoa(s.localSp)+"\n")
 }
 
 func EmitComment(s *State, comment string) {
@@ -97,41 +89,35 @@ func EmitBlankLine(s *State) {
 }
 
 func EmitLineNo(s *State) {
-	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+"\n")
+	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitLabel(s *State, label int) {
-
-	n, err := s.outputFile.WriteString("L" + strconv.Itoa(label) + ":")
-	_, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; Line " + strconv.Itoa(s.lineNum) + "\n")
-
-	if err != nil {
-		panic(err)
-	}
+	_, _ = s.outputFile.WriteString("L" + strconv.Itoa(label) + ":\n")
+	// _, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; Line " + strconv.Itoa(s.lineNum) + "\n")
 }
 
 func EmitJump(s *State, n int, comment string) {
 	emit(s, "jmp", "L"+strconv.Itoa(n), "", comment)
 }
 
-func EmitCall(s *State, id string, argCount int) {
-	s.ArgCount = 0
+func EmitCall(s *State, id string, nPar int) {
 	for i := len(s.ArgCode) - 1; i >= 0; i-- {
-		Write(s, s.ArgCode[i])
+		_, _ = Write(s, s.ArgCode[i])
 		if i == 0 {
 			break
 		}
 		emit(s, "push", "rax", "", "Argument "+strconv.Itoa(i+1))
 		s.localSp++
 	}
-	emit(s, "mov", strconv.Itoa((argCount-1)*8), "rbx", "")
+	emit(s, "mov", strconv.Itoa((nPar-1)*8), "rbx", "")
 	emit(s, "call", id, "", "")
-	if argCount > 1 {
-		emit(s, "add", strconv.Itoa(8*(argCount-1)), "rsp", "Remove arguments")
-		s.localSp -= argCount - 1
+	if nPar > 1 {
+		emit(s, "add", strconv.Itoa(8*(nPar-1)), "rsp", "Remove arguments")
+		s.localSp -= nPar - 1
 	}
 }
 
@@ -155,7 +141,7 @@ func EmitReturn(s *State) {
 
 func EmitFunction(s *State, id string) {
 	n, err := s.outputFile.WriteString("\n" + id + ":")
-	_, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + " ; Line " + strconv.Itoa(s.lineNum) + "\n")
+	_, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "\n")
 	if err != nil {
 		panic(err)
 	}
@@ -249,9 +235,9 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 		emit(s, "mov", sval, "rbx", "")
 	} else if op == TOK_EQ {
 		emit(s, "cmp", sval, "rax", "Compare and set flags")
-		emit(s, "cmovz", "1", "[rsp]", "Set TOS if zero")
-		// emit(s, "pushf", "", "", "Push flags")
-		// emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
+		// emit(s, "cmovz", "1", "[rsp]", "Set TOS if zero")
+		emit(s, "pushf", "", "", "Push flags")
+		emit(s, "and", ZeroFlag, "qword [rsp]", "Mask zero flag")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {

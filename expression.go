@@ -37,7 +37,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
-func ParseFormalArgList(s *State) ([]*VarDef, error) {
+func ParseFormalParList(s *State) ([]*VarDef, error) {
 	var argList []*VarDef
 	for {
 		if s.token == TOK_RPAR {
@@ -90,7 +90,7 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
-func ParseArgumentList(s *State) (valueList []ValueDef, err error) {
+func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
 	s.ArgCount = 0
 	s.ArgCode = make([]string, 0, 6)
 	for {
@@ -162,7 +162,7 @@ func ParseFunctionCall(s *State, id string) error {
 			EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 		}
 		// Parse the argument list and push each arg
-		values, err := ParseArgumentList(s)
+		values, err := ParseActualArgList(s)
 		EmitCall(s, id, len(values))
 		// The function call should be alone, so just continue
 		return err
@@ -593,14 +593,13 @@ func ParseFunctionDefinition(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
-	s.ArgCount = 0
 	s.VarCount = [16]int{}
 	s.level = 0
-	argList, err := ParseFormalArgList(s)
+	parList, err := ParseFormalParList(s)
 	if err != nil {
 		return err
 	}
-	s.RaxIsTOS = len(argList) > 0
+	s.RaxIsTOS = len(parList) > 0
 	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
 	if !s.found(TOK_LBRACE) {
@@ -623,7 +622,7 @@ func ParseFunctionDefinition(s *State) error {
 		}
 	}
 	var f *FuncDef
-	f, err = AddFunc(fun, argList, returnList)
+	f, err = AddFunc(fun, parList, returnList)
 	s.currentFunc = f
 	if err != nil {
 		return err
