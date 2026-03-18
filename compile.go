@@ -43,7 +43,7 @@ func CompileFile(name string, workdir string) error {
 	// Global variables are not allowed!
 	for s.token != TOK_EOF && err == nil {
 		if s.token == TOK_FUNC {
-			err = ParseFunctionDefinition(s)
+			err = ParseFuncDef(s)
 		} else if s.token == TOK_CONST {
 			err = ParseConsts(s)
 		} else if s.token == TOK_TYPE {

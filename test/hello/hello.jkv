@@ -5,11 +5,13 @@ func f(a Bool, c I32) I32 {
 }
 
 func main() {
-    assert(false, "Testing assert %d", 1234)
     print("Hello from jkv again")
-    assert(true, "Should not be printed")
-    x = 1+2
-    assert(x==3, "Assert that 1+2=3")
-    // z = f(true, 1)
+    // z = f(true, 5)
+    //assert(f(false, 2)==3, "Testing f(false,2)==%d inside assert",3)
+    assert(false, "Testing assert %d", 1234)
+    x = 1
+    x = x - 1
+    // assert(x==3, "Assert that 1+2=3")
     // assert(z==2, "Testing f()")
+    assert(x + 1, "Should not be printed")
 }

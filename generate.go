@@ -145,12 +145,12 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) err
 		if CanAssignConst(lvalue.Typ.Pt, value) {
 			if value.HasValue && op == TOK_ASSIGN {
 				lvalue.Value = value
-			} else {
-				err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
-				if err != nil {
-					return err
-				}
 			}
+			err := EmitOpAssign(s, op, -8-lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+			if err != nil {
+				return err
+			}
+
 		} else {
 			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 		}

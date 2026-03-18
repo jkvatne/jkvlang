@@ -93,6 +93,7 @@ func ParseArrayIndexes(s *State) error {
 func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
 	s.ArgCount = 0
 	s.ArgCode = make([]string, 0, 6)
+	s.RaxIsTOS = false
 	for {
 		s.ArgCount++
 		s.ArgCode = append(s.ArgCode, "")
@@ -153,7 +154,9 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-func ParseFunctionCall(s *State, id string) error {
+// ParseFuncCall indicates a function call that stands alone as a separate statement
+// It can not return anything
+func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) {
 	f := FuncDefs[id]
 	if f != nil {
 		// Make space for return values
@@ -162,19 +165,22 @@ func ParseFunctionCall(s *State, id string) error {
 			EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 		}
 		// Parse the argument list and push each arg
-		values, err := ParseActualArgList(s)
+		values, _ := ParseActualArgList(s)
 		EmitCall(s, id, len(values))
-		// The function call should be alone, so just continue
-		return err
+		if !returnSomething || len(f.returnTypes) == 0 {
+			// The function call should be alone, so just continue
+			return NoValue, nil
+		}
+		return ValueDef{Typ: f.returnTypes[0]}, nil
 	}
-	return fmt.Errorf("expected a function name, got: %s", id)
+	return NoValue, fmt.Errorf("expected a function name, got: %s", id)
 }
 
 // ParseAssignOrCall - this might be the start of a lvalue list or a function call
 func ParseAssignOrCall(s *State, id string) error {
 	if s.found(TOK_LPAR) {
 		// This is a function call
-		err := ParseFunctionCall(s, id)
+		_, err := ParseFuncCall(s, id, false)
 		if err != nil {
 			return err
 		}
@@ -254,8 +260,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		return NoValue, err
 	} else if s.found(TOK_LPAR) {
 		// It is a function call
-		err = ParseFunctionCall(s, id)
-		return NoValue, err
+		return ParseFuncCall(s, id, true)
 	}
 	return NoValue, fmt.Errorf("unrecognized variable or function call")
 }
@@ -425,7 +430,7 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 			if !s.found(TOK_LPAR) {
 				return nil, fmt.Errorf("expected ( after function, found: %s", s.tokenString)
 			}
-			err = ParseFunctionCall(s, id)
+			_, err = ParseFuncCall(s, id, true)
 			if err != nil {
 				return nil, err
 			}
@@ -580,7 +585,7 @@ func ParseIf(s *State) error {
 	return nil
 }
 
-func ParseFunctionDefinition(s *State) error {
+func ParseFuncDef(s *State) error {
 	nextToken(s)
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)

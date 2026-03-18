@@ -96,15 +96,16 @@ func EmitLineNo(s *State) {
 }
 
 func EmitLabel(s *State, label int) {
-	_, _ = s.outputFile.WriteString("L" + strconv.Itoa(label) + ":\n")
+	_, _ = s.outputFile.WriteString(".L" + strconv.Itoa(label) + ":\n")
 	// _, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; Line " + strconv.Itoa(s.lineNum) + "\n")
 }
 
 func EmitJump(s *State, n int, comment string) {
-	emit(s, "jmp", "L"+strconv.Itoa(n), "", comment)
+	emit(s, "jmp", ".L"+strconv.Itoa(n), "", comment)
 }
 
 func EmitCall(s *State, id string, nPar int) {
+	s.ArgCount = 0
 	for i := len(s.ArgCode) - 1; i >= 0; i-- {
 		_, _ = Write(s, s.ArgCode[i])
 		if i == 0 {
@@ -135,16 +136,15 @@ func EmitReturn(s *State) {
 		s.localSp -= s.localSp
 	}
 	// Function epilogue. Restore frame pointer and exit
-	// emit(s, "leave", "", "", "")
+	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
 func EmitFunction(s *State, id string) {
-	n, err := s.outputFile.WriteString("\n" + id + ":")
-	_, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "\n")
-	if err != nil {
-		panic(err)
-	}
+	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
+	// Function prologue. Set up new frame pointer.
+	emit(s, "push", "rbp", "", "")
+	emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
 	s.ArgCount = 0
 	EmitSpComment(s)
@@ -394,7 +394,7 @@ func EmitJumpFalse(s *State, n int, comment string) {
 		panic("TOS not in AX")
 	}
 	emit(s, "or", "rax", "rax", "Set zero flag if rax is zero")
-	emit(s, "jz", "L"+strconv.Itoa(n), "", "Jump if zero flag is set")
+	emit(s, "jz", ".L"+strconv.Itoa(n), "", "Jump if zero flag is set")
 	// Implicit pop of TOS
 	s.RaxIsTOS = false
 }
@@ -415,7 +415,7 @@ func EmitPushStringLit(s *State, lit int) {
 
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "2 Push TOS")
+		emit(s, "push", "rax", "", "3 Push TOS")
 		s.localSp++
 		EmitSpComment(s)
 	}
