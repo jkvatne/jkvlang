@@ -38,44 +38,44 @@ func ParseType(s *State) (*TypeDef, error) {
 }
 
 func ParseFormalParList(s *State) ([]*VarDef, error) {
-	var argList []*VarDef
+	var parList []*VarDef
 	for {
 		if s.token == TOK_RPAR {
 			break
 		}
 		if s.token != TOK_ID {
-			return argList, fmt.Errorf("expected argument name but got %s", s.tokenString)
+			return parList, fmt.Errorf("expected argument name but got %s", s.tokenString)
 		}
 		id := s.tokenString
 		nextToken(s)
 		typ, err := ParseType(s)
 		if err != nil {
-			return argList, err
+			return parList, err
 		}
 		if typ == nil {
-			return argList, fmt.Errorf("expected argument type but got nil")
+			return parList, fmt.Errorf("expected argument type but got nil")
 		}
 		// Add argument as local variable
-		v := AddLocalArg(s, id, typ)
-		argList = append(argList, v)
+		v := AddLocalPar(s, id, typ)
+		parList = append(parList, v)
 		if s.token == TOK_RPAR {
 			break
 		}
 		if s.token != TOK_COMMA {
-			return argList, fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
+			return parList, fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
 		}
 		nextToken(s)
 	}
-	l := len(argList)
+	l := len(parList)
 	if l > 0 {
 		// Adjust offset for last variable to be the first local variable
-		argList[l-1].Offset = -8
+		parList[l-1].Offset = -8
 	}
 	if s.token != TOK_RPAR {
-		return argList, fmt.Errorf("expected ')' but got %s", s.tokenString)
+		return parList, fmt.Errorf("expected ')' but got %s", s.tokenString)
 	}
 	nextToken(s)
-	return argList, nil
+	return parList, nil
 }
 
 func ParseArrayIndexes(s *State) error {

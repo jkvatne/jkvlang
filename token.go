@@ -25,7 +25,7 @@ type State struct {
 	VarCount        [16]int
 	level           int
 	RaxIsTOS        bool
-	LocalArgSize    int
+	LocalParSize    int
 	LocalRetSize    int
 	ParCount        int
 	ArgCount        int

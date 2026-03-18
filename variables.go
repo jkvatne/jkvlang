@@ -10,7 +10,7 @@ type VarDef struct {
 	Name    string
 	Offset  int
 	IsConst bool
-	ArgNo   int
+	ParNo   int // Used for local parameters
 }
 
 var VarDefs map[string]*VarDef
@@ -27,12 +27,14 @@ func (v *VarDef) SetType(t *TypeDef) {
 	v.Value.Typ = t
 }
 
-func AddLocalArg(s *State, name string, typ *TypeDef) *VarDef {
+// AddLocalPar is called from ParseFormalParList
+// The name "par" should be used only for formal parameters
+func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, IsConst: false}
-	s.ArgCount++
-	s.LocalArgSize += 8
-	v.Offset = s.LocalArgSize + 8
-	v.ArgNo = s.ArgCount
+	s.ParCount++
+	s.LocalParSize += 8
+	v.Offset = s.LocalParSize + 8
+	v.ParNo = s.ParCount
 	v.Value.Typ = typ
 	VarDefs[name] = v
 	return v

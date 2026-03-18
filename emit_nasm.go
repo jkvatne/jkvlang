@@ -20,10 +20,10 @@ var CommentIndent = 40
 var spaces = "                                                                                    "
 
 func Write(s *State, txt string) (int, error) {
-	if s.ParCount == 0 {
+	if s.ArgCount == 0 {
 		return s.outputFile.WriteString(txt)
 	}
-	s.ArgCode[s.ParCount-1] += txt
+	s.ArgCode[s.ArgCount-1] += txt
 	return len(txt), nil
 }
 
