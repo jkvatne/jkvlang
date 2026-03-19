@@ -165,6 +165,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	}
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := s.ArgCount
+	s.RaxIsTOS = true
 	// Parse the argument list and push each arg
 	values, _ := ParseActualArgList(s)
 	// Now output the generated code for each argument, in reverse order

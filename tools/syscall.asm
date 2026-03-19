@@ -124,7 +124,7 @@ assert:
     ret                   ; Returns if assert(true)
 _L1:
     mov rcx, [rbp+16]    ; rcx = First argument: format string
-
+    add rcx, 4
     sub rbx, 8
     or rbx, rbx
     jz docallassert
@@ -184,6 +184,7 @@ docallassert:
 ; The last parameter in rax
 ; All other parameters pushed on stack.
 print:
+    add rax, 4
     mov rdi, printf
     ; fallthrough to syscall
 

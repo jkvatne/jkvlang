@@ -1,22 +1,28 @@
 
+func out(s String) {
+  print(s)
+}
+
 func f(a Bool, c I32) I32 {
     if a ? c+=2 : c+=1
     return c
 }
 
+
 func main() {
-    print("Welcome from jkv\\n\\n")
+    // out("Testing out()\n")
+    print("Welcome from jkv!\n\n")
     x = 1
     x = x + 2
-    assert(x==3, "should not be printed, assert(x==3)")
-    assert(x==1, "intentionally failed assert(x==3)")
+    assert(x==3, "Should not be printed, assert(x==3)")
+    assert(x==1, "Intentionally failed assert(x==3)")
     assert(x, "Should not be printed, assert(x+1)")
-    assert(f(false, 2)==99, "intentionally failed assert(f(false,2)==104)")
-    assert(f(false, 2)==3, "should not be printed assert(f(false,2)==4)")
+    assert(f(false, 2)==99, "Intentionally failed assert(f(false,2)==104)")
+    assert(f(false, 2)==3, "Should not be printed assert(f(false,2)==4)")
     z = f(true, 5)
-    print("z=%d", z)
-    assert(z==990, "intentionally failed assert, assert(z==990)")
-    assert(z==7, "should not be printed, assert(z==%d)", z)
-    assert(false, "intentionally failed assert, assert(false),  with parameter 1234: %d", 1234)
+    print("z=%d\n", z)
+    assert(z==990, "Intentionally failed assert, assert(z==990)")
+    assert(z==7, "Should not be printed, assert(z==%d)", z)
+    assert(false, "Intentionally failed assert, assert(false),  with parameter 1234: %d", 1234)
     print("Goodbye from jkv")
 }

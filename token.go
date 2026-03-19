@@ -301,13 +301,6 @@ func nextToken(s *State) {
 			s.tokenString = ""
 			for {
 				ch1, ch2 = nextChar(s)
-				if ch1 == '\\' {
-					ch1, ch2 = nextChar(s)
-					if ch1 == 'n' {
-						s.tokenString += string('\n')
-						continue
-					}
-				}
 				if ch1 == '"' {
 					break
 				}
