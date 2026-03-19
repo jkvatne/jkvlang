@@ -34,7 +34,7 @@
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 section .rodata
-assert_failed  db "Assert failed, but no message was included.",0Dh, 0Ah, 00h
+crlf_str  db 0Dh, 0Ah, 00h
 
 ; Exported symbols from syscall.asm
 global syscall
@@ -111,6 +111,7 @@ mfree:
 ; The stack will contain <messageptr><arg1><arg2>..
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
+; NB: Assert will append CRLF after the message.
 assert:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
@@ -122,54 +123,61 @@ assert:
     leave
     ret                   ; Returns if assert(true)
 _L1:
-    mov rdi, printf
     mov rcx, [rbp+16]    ; rcx = First argument: format string
 
     sub rbx, 8
     or rbx, rbx
-    jz docall
+    jz docallassert
 
     mov rdx, [rbp+24]    ; dx = Second argument
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov r8,  [rbp+32]    ; r8 = Third argument
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov r9,  [rbp+40]    ; r9 = Forth argument
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+48]    ; Fifth argument onto stack
     mov [rsp+32], rsi
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+56]
     mov [rsp+40], rsi     ; Sixth argument onto stack
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+64]
     mov [rsp+48], rsi     ; Seventh argument onto stack
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+72]
     mov [rsp+56], rsi     ; Eight argument onto stack
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+80]
     mov [rsp+64], rsi     ; Nineth argument onto stack
     sub rbx, 8
-    jc docall
+    jc docallassert
 
     mov rsi, [rbp+88]
     mov [rsp+72], rsi     ; Tenth argument onto stack
-    jmp docall
+    jmp docallassert
 
+docallassert:
+    call printf
+
+    mov rcx, crlf_str
+    call printf
+
+    leave
+    ret
 
 ; print is the local version of fprintf
 ; Arg count should be in rbx

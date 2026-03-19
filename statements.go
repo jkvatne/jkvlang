@@ -56,21 +56,6 @@ func ParseStatement(s *State) (returned bool, err error) {
 		err = ParseIf(s)
 	} else if s.token == TOK_FOR {
 		nextToken(s)
-	} else if s.token == TOK_ASSERT {
-		nextToken(s)
-		var v ValueDef
-		v, err = ParseExpression(s)
-		if err != nil {
-			return false, err
-		}
-		if v.HasValue {
-			if !v.BoolValue {
-				return false, fmt.Errorf("assert failed")
-			}
-			EmitComment(s, "Compile time assert succeeded")
-		} else {
-			EmitAssert(s)
-		}
 	} else if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()

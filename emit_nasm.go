@@ -384,6 +384,7 @@ func EmitAssert(s *State) {
 	emit(s, "push", strconv.Itoa(s.lineNum), "", "")
 	emit(s, "call", "_assert", "", "")
 	emit(s, "pop", "", "cx", "")
+	emit(s, "call", "crlf", "", "")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
@@ -460,7 +461,7 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = s.outputFile.WriteString(litName + " db \"" + litValue + "\", 0Ah, 0Dh, 00h\n")
+	_, _ = s.outputFile.WriteString(litName + " db `" + litValue + "`, 00h\n")
 }
 
 func EmitSection(s *State, section string) {

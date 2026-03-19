@@ -91,7 +91,6 @@ const (
 	TOK_MIN
 	TOK_ABS
 	TOK_TYPE
-	TOK_ASSERT
 	TOK_TRUE
 	TOK_FALSE
 	TOK_INVALID
@@ -156,7 +155,6 @@ var TokenNames = [...]string{
 	TOK_MAX:         "max",
 	TOK_ABS:         "abs",
 	TOK_TYPE:        "type",
-	TOK_ASSERT:      "assert",
 	TOK_TRUE:        "true",
 	TOK_FALSE:       "false",
 	TOK_INVALID:     "INVALID",
@@ -462,8 +460,6 @@ func nextToken(s *State) {
 				s.token = TOK_TYPE
 			case "struct":
 				s.token = TOK_STRUCT
-				// case "assert":
-				//	s.token = TOK_ASSERT
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK
