@@ -32,8 +32,11 @@ func (v *VarDef) SetType(t *TypeDef) {
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, IsConst: false}
 	s.ParCount++
-	s.LocalParSize += 8
-	v.Offset = s.LocalParSize + 8
+	if s.ParCount == 1 {
+		v.Offset = -8
+	} else {
+		v.Offset = s.ParCount * 8
+	}
 	v.ParNo = s.ParCount
 	v.Value.Typ = typ
 	VarDefs[name] = v
@@ -47,6 +50,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}}
 		VarDefs[id] = v
 		s.VarCount[s.level]++
+		v.Offset = -8 - s.VarCount[s.level]*8 // First local variable is at rbp-16, the next at rpb-24
 	}
 	return v
 }

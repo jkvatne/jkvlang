@@ -19,8 +19,8 @@ const (
 var CommentIndent = 40
 var spaces = "                                                                                    "
 
-func Write(s *State, txt string) (int, error) {
-	if s.ArgCount == 0 {
+func Write(s *State, txt string, force bool) (int, error) {
+	if s.ArgCount == 0 || force {
 		return s.outputFile.WriteString(txt)
 	}
 	s.ArgCode[s.ArgCount-1] += txt
@@ -46,7 +46,7 @@ func emit(s *State, op string, src string, dst string, comment string) {
 		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment
 	}
 	txt += "\n"
-	_, err := Write(s, txt)
+	_, err := Write(s, txt, false)
 	if err != nil {
 		panic(err)
 	}
@@ -75,21 +75,21 @@ func EmitSpComment(s *State) {
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := Write(s, "; "+comment+"\n")
+	_, err := Write(s, "; "+comment+"\n", false)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitBlankLine(s *State) {
-	_, err := Write(s, "\n")
+	_, err := Write(s, "\n", false)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitLineNo(s *State) {
-	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"\n")
+	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"\n", false)
 	if err != nil {
 		panic(err)
 	}
@@ -104,16 +104,15 @@ func EmitJump(s *State, n int, comment string) {
 	emit(s, "jmp", ".L"+strconv.Itoa(n), "", comment)
 }
 
+func EmitCode(s *State, code string) {
+	_, _ = Write(s, code, true)
+}
+
+func EmitPushTos(s *State, argNo int, funcName string, force bool) {
+	_, _ = Write(s, "   push rax                             ; Push argument "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
+}
+
 func EmitCall(s *State, id string, nPar int) {
-	s.ArgCount = 0
-	for i := len(s.ArgCode) - 1; i >= 0; i-- {
-		_, _ = Write(s, s.ArgCode[i])
-		if i == 0 {
-			break
-		}
-		emit(s, "push", "rax", "", "Argument "+strconv.Itoa(i+1))
-		s.localSp++
-	}
 	emit(s, "mov", strconv.Itoa((nPar-1)*8), "rbx", "")
 	emit(s, "call", id, "", "")
 	if nPar > 1 {
@@ -146,7 +145,6 @@ func EmitFunction(s *State, id string) {
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
-	s.ArgCount = 0
 	EmitSpComment(s)
 	s.RaxIsTOS = false
 }
@@ -232,12 +230,11 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rdx", "rax", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
-		emit(s, "mov", sval, "rbx", "")
+		emit(s, "mov", sval, "rax", "")
 	} else if op == TOK_EQ {
 		emit(s, "cmp", sval, "rax", "Compare and set flags")
-		// emit(s, "cmovz", "1", "[rsp]", "Set TOS if zero")
-		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", ZeroFlag, "qword [rsp]", "Mask zero flag")
+		emit(s, "lahf", "", "", "Load flags into AH")
+		emit(s, "and", "0x4000", "rax", "Mask zero flag")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
@@ -284,13 +281,16 @@ func Abs[T Number](x T) T {
 }
 
 func BpRel(offset int) string {
+	// We need to use the abs value in order to allways have either + or - in the instruction.
+	// Bp can never be zero.
 	ofs := strconv.Itoa(Abs(offset))
 	if offset < 0 {
-		ofs = "-" + ofs
+		return "[rbp-" + ofs + "]"
+	} else if offset > 0 {
+		return "[rbp+" + ofs + "]"
 	} else {
-		ofs = "+" + ofs
+		panic("Bp relative addressing with zero offset")
 	}
-	return "[rbp" + ofs + "]"
 }
 
 func DataType(size int) string {
@@ -350,10 +350,9 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 }
 
 // EmitStore will save the Top of Stack (AX) into a local variable of given size.
-// It will then increment the stack pointer
+// It will then clear RaxIssTos, effectively doing a pop
 func EmitStore(s *State, size int, adr int, comment string) {
 	emit(s, "mov", AxRegName(size), BpRel(adr), comment)
-	emit(s, "add", "8", "rsp", "")
 	s.RaxIsTOS = false
 	s.localSp--
 	EmitSpComment(s)
@@ -399,9 +398,11 @@ func EmitJumpFalse(s *State, n int, comment string) {
 	s.RaxIsTOS = false
 }
 
+// TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, size int, comment string) {
 	emit(s, "xor", "rdx", "rdx", "")
 	emit(s, "push", "rdx", "", "New variable, "+comment)
+	s.localSp++
 }
 
 func EmitPushStringLit(s *State, lit int) {

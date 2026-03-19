@@ -66,11 +66,6 @@ func ParseFormalParList(s *State) ([]*VarDef, error) {
 		}
 		nextToken(s)
 	}
-	l := len(parList)
-	if l > 0 {
-		// Adjust offset for last variable to be the first local variable
-		parList[l-1].Offset = -8
-	}
 	if s.token != TOK_RPAR {
 		return parList, fmt.Errorf("expected ')' but got %s", s.tokenString)
 	}
@@ -91,12 +86,13 @@ func ParseArrayIndexes(s *State) error {
 }
 
 func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
-	s.ArgCount = 0
-	s.ArgCode = make([]string, 0, 6)
 	s.RaxIsTOS = false
 	for {
 		s.ArgCount++
-		s.ArgCode = append(s.ArgCode, "")
+		if s.ArgCount > len(s.ArgCode) {
+			s.ArgCode = append(s.ArgCode, "")
+		}
+		s.ArgCode[s.ArgCount-1] = ""
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -140,6 +136,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		if lvalue == nil {
 			// We don't yet know the type, so just use nil as type
 			lvalue = AddLocalVar(s, id, nil, false)
+			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
 		}
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {
@@ -154,32 +151,55 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-// ParseFuncCall indicates a function call that stands alone as a separate statement
-// It can not return anything
+// ParseFuncCall parses a function call and its arguments
+// This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) {
 	f := FuncDefs[id]
-	if f != nil {
-		// Make space for return values
-		n := len(f.returnTypes)
-		if n > 1 {
-			EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
-		}
-		// Parse the argument list and push each arg
-		values, _ := ParseActualArgList(s)
-		EmitCall(s, id, len(values))
-		if !returnSomething || len(f.returnTypes) == 0 {
-			// The function call should be alone, so just continue
-			return NoValue, nil
-		}
-		return ValueDef{Typ: f.returnTypes[0]}, nil
+	if f == nil {
+		return NoValue, fmt.Errorf("expected a function name, got: %s", id)
 	}
-	return NoValue, fmt.Errorf("expected a function name, got: %s", id)
+	// Make space for return values
+	n := len(f.returnTypes)
+	if n > 1 {
+		EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
+	}
+	// Save the starting point for arguments. Needed for nested function calls
+	startArgNo := s.ArgCount
+	// Parse the argument list and push each arg
+	values, _ := ParseActualArgList(s)
+	// Now output the generated code for each argument, in reverse order
+	i := len(s.ArgCode) - 1
+	txt := ""
+	for {
+		txt += s.ArgCode[i]
+		if i == startArgNo {
+			break
+		}
+		txt += "   push rax                             ; Push argument " + strconv.Itoa(i-startArgNo) + " of " + id + "\n"
+		s.localSp++
+		i--
+	}
+	if startArgNo == 0 {
+		// If this is a top level call, output txt
+		EmitCode(s, txt)
+	} else {
+		// If it is a nested call, save the code
+		s.ArgCode[startArgNo-1] = txt
+	}
+
+	s.ArgCount = startArgNo
+	EmitCall(s, id, len(values))
+	if !returnSomething || len(f.returnTypes) == 0 {
+		// The function call should be alone, so just continue
+		return NoValue, nil
+	}
+	return ValueDef{Typ: f.returnTypes[0]}, nil
 }
 
 // ParseAssignOrCall - this might be the start of a lvalue list or a function call
 func ParseAssignOrCall(s *State, id string) error {
 	if s.found(TOK_LPAR) {
-		// This is a function call
+		// This is a function call that does not use any returned values (a procedure call)
 		_, err := ParseFuncCall(s, id, false)
 		if err != nil {
 			return err
@@ -250,7 +270,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		if v.Typ.Pt == TYP_NONE {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.Value.HasValue {
+		if !v.Value.HasValue && !s.RaxIsTOS {
 			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
 		return v.Value, err
@@ -259,7 +279,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		err = ParseArrayIndexes(s)
 		return NoValue, err
 	} else if s.found(TOK_LPAR) {
-		// It is a function call
+		// It is a function call that should return values
 		return ParseFuncCall(s, id, true)
 	}
 	return NoValue, fmt.Errorf("unrecognized variable or function call")
@@ -465,6 +485,9 @@ func StartCond(s *State, value *ValueDef, cond bool) {
 func EndCond(s *State, value *ValueDef, cond bool) {
 	if value.HasValue && (value.BoolValue != cond) {
 		s.noCode--
+		if s.noCode < 0 {
+			panic("negative noCode")
+		}
 	}
 }
 
@@ -598,7 +621,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
-	s.VarCount = [16]int{}
+	s.VarCount = [32]int{}
 	s.level = 0
 	parList, err := ParseFormalParList(s)
 	if err != nil {

@@ -1,17 +1,21 @@
 
 func f(a Bool, c I32) I32 {
-    if a ? c+=1 : c+=2
+    if a ? c+=2 : c+=1
     return c
 }
 
 func main() {
-    print("Hello from jkv again")
-    // z = f(true, 5)
-    //assert(f(false, 2)==3, "Testing f(false,2)==%d inside assert",3)
-    assert(false, "Testing assert %d", 1234)
+    print("Welcome from jkv")
     x = 1
-    x = x - 1
-    // assert(x==3, "Assert that 1+2=3")
-    // assert(z==2, "Testing f()")
-    assert(x + 1, "Should not be printed")
+    x = x + 2
+    assert(x==3, "should not be printed, assert(x==3)")
+    assert(x==1, "intentionally failed assert(x==3)")
+    assert(x, "Should not be printed, assert(x+1)")
+    assert(f(false, 2)==99, "intentionally failed assert(f(false,2)==104)")
+    assert(f(false, 2)==3, "should not be printed assert(f(false,2)==4)")
+    z = f(true, 5)
+    assert(z==990, "intentionally failed assert, assert(z==990)")
+    assert(z==7, "should not be printed, assert(z==%d)", z)
+    assert(false, "intentionally failed assert, assert(false),  with parameter 1234: %d", 1234)
+    print("Goodbye from jkv")
 }

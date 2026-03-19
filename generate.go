@@ -77,20 +77,28 @@ func constOpConst(op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 	case TOK_OR:
 		result.IntValue = val1.IntValue | val2.IntValue
 	case TOK_LOG_OR:
+		result.Typ = &BoolType
 		result.BoolValue = val1.BoolValue || val2.BoolValue
 	case TOK_LOG_AND:
+		result.Typ = &BoolType
 		result.BoolValue = val1.BoolValue && val2.BoolValue
 	case TOK_EQ:
+		result.Typ = &BoolType
 		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
 	case TOK_NE:
+		result.Typ = &BoolType
 		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
 	case TOK_LT:
+		result.Typ = &BoolType
 		result.BoolValue = val1.FloatValue < val2.FloatValue
 	case TOK_LE:
+		result.Typ = &BoolType
 		result.BoolValue = val1.FloatValue <= val2.FloatValue
 	case TOK_GT:
+		result.Typ = &BoolType
 		result.BoolValue = val1.FloatValue > val2.FloatValue
 	case TOK_GE:
+		result.Typ = &BoolType
 		result.BoolValue = val1.FloatValue >= val2.FloatValue
 	default:
 		// Invalid operand
@@ -128,9 +136,8 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) err
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
 		// Local variables are at negative offset. The first on -8.
-		VarDefs[lvalue.Name].Offset = -s.localSp * 8
 		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
-		s.localSp++
+		VarDefs[lvalue.Name].Offset = -s.localSp * 8
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -146,7 +153,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) err
 			if value.HasValue && op == TOK_ASSIGN {
 				lvalue.Value = value
 			}
-			err := EmitOpAssign(s, op, -8-lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 			if err != nil {
 				return err
 			}
