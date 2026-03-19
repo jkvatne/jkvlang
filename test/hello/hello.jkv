@@ -10,7 +10,7 @@ func f(a Bool, c I32) I32 {
 
 
 func main() {
-    // out("Testing out()\n")
+    out("Testing out()\n")
     print("Welcome from jkv!\n\n")
     x = 1
     x = x + 2

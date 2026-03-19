@@ -320,6 +320,9 @@ func AxRegName(size int) string {
 }
 
 func MovOpcode(size int) string {
+	if size == 8 {
+		return "mov"
+	}
 	if size == 1 {
 		// Zero extend bytes
 		return "movzx"
