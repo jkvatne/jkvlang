@@ -44,6 +44,7 @@ func CompileDir(inputPath string, workDir string) error {
 }
 
 // Assemble wil run the assembler on all *.asm files in the working directory
+// And also the syscall.asm from /tools
 func Assemble(workDir string) error {
 	entries, err := os.ReadDir(workDir)
 	if err != nil {
@@ -59,9 +60,15 @@ func Assemble(workDir string) error {
 			if err != nil {
 				return fmt.Errorf("assembly %s error: %s", name, err.Error())
 			}
-
 		}
 	}
+	var args = []string{"-f", "win64", "-o syscall.obj", "../tools/syscall.asm"}
+	out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
+	fmt.Println(string(out))
+	if err != nil {
+		return fmt.Errorf("assembly of syscall.asm, error: %s", err.Error())
+	}
+
 	return nil
 }
 
@@ -85,7 +92,7 @@ func Link(workDir string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
-	args = append(args, "C:/doc/compiler/tools/build/syscall.obj")
+	args = append(args, "syscall.obj")
 	args = append(args, "kernel32.dll")
 	args = append(args, "msvcrt.dll")
 	// Print the arguments and the command
