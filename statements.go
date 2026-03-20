@@ -90,6 +90,7 @@ func ParseStatements(s *State) error {
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
 		}
+		s.RaxIsTOS = false
 	}
 	return nil
 }

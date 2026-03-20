@@ -87,7 +87,6 @@ func ParseArrayIndexes(s *State) error {
 }
 
 func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
-	s.RaxIsTOS = false
 	for {
 		s.ArgCount++
 		if s.ArgCount > len(s.ArgCode) {
@@ -166,7 +165,6 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	}
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := s.ArgCount
-	s.RaxIsTOS = true
 	// Parse the argument list and push each arg
 	values, _ := ParseActualArgList(s)
 	// Now output the generated code for each argument, in reverse order
@@ -630,7 +628,7 @@ func ParseFuncDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	s.RaxIsTOS = len(parList) > 0
+	s.RaxIsTOS = len(parList) > 1
 	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
 	if !s.found(TOK_LBRACE) {
@@ -659,6 +657,7 @@ func ParseFuncDef(s *State) error {
 		return err
 	}
 	// Now parse all the statements in the function
+	s.RaxIsTOS = len(parList) > 0
 	err = ParseStatements(s)
 	if err != nil {
 		return err

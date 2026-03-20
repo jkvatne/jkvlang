@@ -70,10 +70,6 @@ func EmitTextLabel(s *State, text string) {
 	}
 }
 
-func EmitSpComment(s *State) {
-	// _, _ := Write(s, "   ; Sp="+strconv.Itoa(s.localSp)+"\n")
-}
-
 func EmitComment(s *State, comment string) {
 	_, err := Write(s, "; "+comment+"\n", false)
 	if err != nil {
@@ -126,7 +122,6 @@ func EmitReturn(s *State) {
 		for i := range len(s.currentFunc.returnTypes) {
 			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
 			s.localSp++
-			EmitSpComment(s)
 		}
 	}
 	// Remove local variables
@@ -145,7 +140,6 @@ func EmitFunction(s *State, id string) {
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rsp", "rbp", "")
 	s.localSp = 0
-	EmitSpComment(s)
 	s.RaxIsTOS = false
 }
 
@@ -213,7 +207,6 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, instruction, "%rbx", "%rax", "")
 	}
 	s.localSp--
-	EmitSpComment(s)
 }
 
 // EmitOpConst will evaluate tos=tos op <constant>
@@ -346,7 +339,6 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "1 Push TOS")
 		s.localSp++
-		EmitSpComment(s)
 	}
 	s.RaxIsTOS = true
 	emit(s, MovOpcode(size), DataType(size)+BpRel(adr), "rax", comment)
@@ -358,7 +350,6 @@ func EmitStore(s *State, size int, adr int, comment string) {
 	emit(s, "mov", AxRegName(size), BpRel(adr), comment)
 	s.RaxIsTOS = false
 	s.localSp--
-	EmitSpComment(s)
 }
 
 // EmitAddSp will drop the top "count" 64-bit words.
@@ -366,21 +357,18 @@ func EmitAddSp(s *State, count int, comment string) {
 	if count != 0 {
 		emit(s, "add", strconv.Itoa(-count*8), "rsp", comment)
 		s.localSp += count
-		EmitSpComment(s)
 	}
 	s.RaxIsTOS = false
 }
 
 func EmitPushString(s *State, litno int) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "3 Push TOS")
+		emit(s, "push", "rax", "", "EmitPushString() Push TOS")
 		s.localSp++
-		EmitSpComment(s)
 	}
 	emit(s, "mov", "str"+strconv.Itoa(litno), "rax", "Push pointer to literal string")
 	s.localSp++
 	s.RaxIsTOS = true
-	EmitSpComment(s)
 }
 
 func EmitAssert(s *State) {
@@ -413,16 +401,14 @@ func EmitPushStringLit(s *State, lit int) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "2 Push TOS")
 		s.localSp++
-		EmitSpComment(s)
 	}
 	emit(s, "mov", "str"+strconv.Itoa(lit), "rax", "")
 }
 
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "3 Push TOS")
+		emit(s, "push", "rax", "", "EmitPushConst() Push TOS")
 		s.localSp++
-		EmitSpComment(s)
 	}
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
