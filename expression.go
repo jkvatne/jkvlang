@@ -87,9 +87,6 @@ func ParseArrayIndexes(s *State) error {
 }
 
 func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
-	if s.RaxIsTOS {
-		emit(s, "mov", "rax", "[rbp-8]", "Store arg 1")
-	}
 	s.RaxIsTOS = false
 	for {
 		s.ArgCount++
@@ -180,7 +177,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 		if i == startArgNo {
 			break
 		}
-		txt += "   push rax                             ; Push argument " + strconv.Itoa(i-startArgNo) + " of " + id + "\n"
+		txt += "   push rax                             ; Push argument " + strconv.Itoa(i-startArgNo+1) + " of " + id + "\n"
 		s.localSp++
 		i--
 	}
@@ -190,6 +187,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	} else {
 		// If it is a nested call, save the code
 		s.ArgCode[startArgNo-1] = txt
+		s.ArgCode = s.ArgCode[0:startArgNo]
 	}
 
 	s.ArgCount = startArgNo

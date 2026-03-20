@@ -109,7 +109,7 @@ func EmitCode(s *State, code string) {
 }
 
 func EmitPushTos(s *State, argNo int, funcName string, force bool) {
-	_, _ = Write(s, "   push rax                             ; Push argument "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
+	_, _ = Write(s, "   push rax                             ; Push TOS "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
 }
 
 func EmitCall(s *State, id string, nPar int) {

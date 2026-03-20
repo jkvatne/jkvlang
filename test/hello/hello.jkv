@@ -8,10 +8,16 @@ func f(a Bool, c I32) I32 {
     return c
 }
 
+func g(a Bool, c I32) I32 {
+    if a ? c+=2 : c+=1
+    return c
+}
 
 func main() {
-    out("Testing out()\n")
     print("Welcome from jkv!\n")
+    assert(f(true, g(false,2))==5, "Should not be printed assert(f(true,2)==3)")
+    assert(f(true, g(false,2))==111, "Intentionally fail assert(f(true,2)==111)")
+    out("Testing out()\n")
     x = 1
     x = x + 2
     assert(x==3, "Should not be printed, assert(x==3)")
