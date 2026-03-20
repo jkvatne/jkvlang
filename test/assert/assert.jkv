@@ -14,8 +14,8 @@ func g(a Bool, c I32) I32 {
 }
 
 func main() {
-    print("Welcome from jkv!\n")
     out("Testing out()\n")
+    print("Welcome from jkv!\n")
     z = f(true, 5)
     assert(z==7, "Should not be printed, assert(z==%d)", z)
     print("z=%d;  Should be 7\n", z)
