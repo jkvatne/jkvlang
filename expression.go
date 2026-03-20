@@ -39,6 +39,7 @@ func ParseType(s *State) (*TypeDef, error) {
 
 func ParseFormalParList(s *State) ([]*VarDef, error) {
 	var parList []*VarDef
+	s.ParCount = 0
 	for {
 		if s.token == TOK_RPAR {
 			break

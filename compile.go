@@ -56,6 +56,7 @@ func CompileFile(name string, workdir string) error {
 	}
 
 	EmitSection(s, "rodata")
+	EmitCode(s, "alignb 8\n")
 	for i, l := range LiteralDefs {
 		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}

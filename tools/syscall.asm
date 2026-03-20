@@ -127,50 +127,50 @@ _L1:
     add rcx, 4
     sub rbx, 8
     or rbx, rbx
-    jz docallassert
+    jz _L2
 
     mov rdx, [rbp+24]    ; dx = Second argument
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov r8,  [rbp+32]    ; r8 = Third argument
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov r9,  [rbp+40]    ; r9 = Forth argument
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+48]    ; Fifth argument onto stack
     mov [rsp+32], rsi
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+56]
     mov [rsp+40], rsi     ; Sixth argument onto stack
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+64]
     mov [rsp+48], rsi     ; Seventh argument onto stack
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+72]
     mov [rsp+56], rsi     ; Eight argument onto stack
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+80]
     mov [rsp+64], rsi     ; Nineth argument onto stack
     sub rbx, 8
-    jc docallassert
+    jc _L2
 
     mov rsi, [rbp+88]
     mov [rsp+72], rsi     ; Tenth argument onto stack
-    jmp docallassert
+    jmp _L2
 
-docallassert:
+_L2:
     call printf
 
     mov rcx, crlf_str
@@ -200,49 +200,49 @@ syscall:
 
     mov rcx, rax          ; rcx = First argument: format string
     or rbx, rbx
-    jz docall
+    jz _L3
 
     mov rdx, [rbp+16]    ; dx = Second argument
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov r8,  [rbp+24]    ; r8 = Third argument
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov r9,  [rbp+32]    ; r9 = Forth argument
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+40]    ; Fifth argument onto stack
     mov [rsp+32], rsi
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+48]
     mov [rsp+40], rsi     ; Sixth argument onto stack
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+56]
     mov [rsp+48], rsi     ; Seventh argument onto stack
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+64]
     mov [rsp+56], rsi     ; Eight argument onto stack
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+72]
     mov [rsp+64], rsi     ; Nineth argument onto stack
     sub rbx, 8
-    jc docall
+    jc _L3
 
     mov rsi, [rbp+80]
     mov [rsp+72], rsi     ; Tenth argument onto stack
 
-docall:
+_L3:
     call [rdi]
     leave
     ret
