@@ -461,3 +461,37 @@ func EmitSection(s *State, section string) {
 		panic(err)
 	}
 }
+
+// EmitAlloc will allocate a memory area of given length and return a pointer in rax
+func EmitAlloc(s *State, len int) {
+	_, _ = Write(s, "   push rax\n", false)
+	// Allocate result string and assign pointer to di
+	_, _ = Write(s, "   push 50\n", false)
+	_, _ = Write(s, "   call malloc\n", false)
+}
+
+// EmitConcat will concatenate the two strings at the top of the stack
+func EmitConcat(s *State) {
+	_, _ = Write(s, "   ; String concatenation. First allocate string", false)
+	_, _ = Write(s, "   push rax\n", false)
+	_, _ = Write(s, "   push 50\n", false)
+	_, _ = Write(s, "   call malloc\n", false)
+	_, _ = Write(s, "   ; Skip string length and set up destination in rdi\n", false)
+	_, _ = Write(s, "   mov rdi, rax\n", false)
+	_, _ = Write(s, "   add rdi, 4\n", false)
+	_, _ = Write(s, "   ; Set si to point to first string and skip size\n", false)
+	_, _ = Write(s, "   mov rsi,[rsp+8]\n", false)
+	_, _ = Write(s, "   add rsi, 4\n", false)
+	_, _ = Write(s, "   ; Set count and direction flag\n", false)
+	_, _ = Write(s, "   mov rcx, 3\n", false)
+	_, _ = Write(s, "   cld\n", false)
+	_, _ = Write(s, "   ; Do copy\n", false)
+	_, _ = Write(s, "   rep movsb\n", false) // Str1 size
+	_, _ = Write(s, "   ; Copy second string\n", false)
+	_, _ = Write(s, "   pop rsi\n", false)    // pop next on stack into RBX")
+	_, _ = Write(s, "   add rsi, 4\n", false) // Skip size field
+	_, _ = Write(s, "   mov rcx, 3\n", false) // Str	2 size
+	_, _ = Write(s, "   rep movsb\n", false)  // Str1 size
+	_, _ = Write(s, "   ; now AX should point to the string. Set resulting length\n", false)
+	_, _ = Write(s, "   mov dword [rax], 6\n", false)
+}

@@ -301,7 +301,7 @@ func nextToken(s *State) {
 			s.tokenString = ""
 			for {
 				ch1, ch2 = nextChar(s)
-				if ch1 == '"' {
+				if ch1 == '"' || ch1 == 0 {
 					break
 				}
 				s.tokenString += string(ch1)

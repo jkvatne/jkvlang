@@ -7,7 +7,7 @@ set "OBJECT_DIR=build"
 set "BIN_DIR=build"
 set "TARGET=test_assembler"
 set "ASM_FLAGS=-f win64"
-set "LINK_FLAGS=/entry:_start /console"
+set "LINK_FLAGS=/entry:_start /console /debug:coff"
 set "TOOL_DIR=."
 
 :: === Directory Preparation ===

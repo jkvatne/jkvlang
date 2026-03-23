@@ -27,6 +27,8 @@
 ; ReadFile     error=GetLastError when result=0
 ; printf       error=GetLastError when result=-1 (or <0)
 
+ default rel
+
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
@@ -291,7 +293,8 @@ get_win_error:
     call GetLastError
   	push 0         ; Arg 7: arguments. Not used
   	push 300       ; Arg 6: Length of error string buffer
-  	push error     ; Arg 5: error string buffer
+    mov rsi, error
+  	push rsi       ; Arg 5: error string buffer
   	push 0         ; Arg 4: langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
   	push rax       ; Arg 3: Error no
   	push 0         ; Arg 2: modntdll.Handle(),

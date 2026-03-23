@@ -274,7 +274,7 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		if v.Typ.Pt == TYP_NONE {
 			return NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.Value.HasValue && !s.RaxIsTOS {
+		if !v.Value.HasValue && !s.RaxIsTOS || v.Offset != -8 {
 			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
 		return v.Value, err
@@ -366,16 +366,32 @@ func ParseSumTerm(s *State) (ValueDef, error) {
 	if err != nil {
 		return NoValue, err
 	}
-	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
-		op := s.token
-		nextToken(s)
-		value2, err := ParseProd(s)
-		if err != nil {
-			return NoValue, err
+	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
+		// Concatenation of two strings
+		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+			nextToken(s)
+			_value2, err := ParseProd(s)
+			if err != nil {
+				return NoValue, err
+			}
+			if _value2.Typ.Pt != TYP_STRING {
+				return NoValue, fmt.Errorf("String can only be concatenated with another string")
+			}
+			EmitConcat(s)
+			s.localSp--
 		}
-		value1, err = GenerateOp(s, op, value1, value2)
-		if err != nil {
-			return NoValue, err
+	} else {
+		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+			op := s.token
+			nextToken(s)
+			value2, err := ParseProd(s)
+			if err != nil {
+				return NoValue, err
+			}
+			value1, err = GenerateOp(s, op, value1, value2)
+			if err != nil {
+				return NoValue, err
+			}
 		}
 	}
 	return value1, nil
@@ -464,6 +480,9 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 			}
 		} else {
 			v, err = ParseExpression(s)
+			if err != nil {
+				return nil, err
+			}
 			results = append(results, v)
 		}
 		if !s.found(TOK_COMMA) {

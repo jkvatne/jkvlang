@@ -82,6 +82,7 @@ func Link(workDir string, outputName string) error {
 	var args = []string{"/fo", outputName}
 	args = append(args, "/entry=_start")
 	args = append(args, "/console")
+	args = append(args, "/debug=dbg")
 	// Add all object files to argument list
 	entries, err := os.ReadDir(workDir)
 	if err != nil {

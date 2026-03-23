@@ -127,11 +127,14 @@ func tosOpNos(s *State, op Token, val1, val2 ValueDef) (ValueDef, error) {
 	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 		EmitFloatOp(s, op)
 		return val1, nil
+	} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		EmitConcat(s)
+		return val1, nil
 	}
-	return NoValue, fmt.Errorf("opertion %s not implemented", op.Name())
+	return NoValue, fmt.Errorf("operation %s not implemented", op.Name())
 }
 
-func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) error {
+func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
@@ -152,8 +155,9 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) err
 		if CanAssignConst(lvalue.Typ.Pt, value) {
 			if value.HasValue && op == TOK_ASSIGN {
 				lvalue.Value = value
+			} else {
+				err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 			}
-			err := EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 			if err != nil {
 				return err
 			}
