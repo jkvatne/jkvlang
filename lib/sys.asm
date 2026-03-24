@@ -69,7 +69,7 @@ sysinit:
     
 main:       
    mov rbp, rsp; for correct debugging
-   ; call sysinit
+   call sysinit
    
    xor rax, rax                     ; Error code = 0
    ret
@@ -85,3 +85,72 @@ exit:
     call ExitProcess
     leave
     ret   
+    
+    
+; print is the local version of fprintf
+; Arg count should be in rbx
+; The last parameter in rax
+; All other parameters pushed on stack.
+print:
+    add rax, 4
+    mov rdi, printf
+    ; fallthrough to syscall
+
+; syscall will call any dll function that is reachable
+; The address of the function should be in rdi, arg count *8 in rbx
+; rax is the first parameter
+syscall:
+    push rbp
+    mov rbp, rsp          ; Setup new frame pointer
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 96           ; Reserve space for arguments to the called function
+    mov r15, 0            ; Default to no error
+
+    mov rcx, rax          ; rcx = First argument: format string
+    or rbx, rbx
+    jz _L3
+
+    mov rdx, [rbp+16]    ; dx = Second argument
+    sub rbx, 8
+    jc _L3
+
+    mov r8,  [rbp+24]    ; r8 = Third argument
+    sub rbx, 8
+    jc _L3
+
+    mov r9,  [rbp+32]    ; r9 = Forth argument
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+40]    ; Fifth argument onto stack
+    mov [rsp+32], rsi
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+48]
+    mov [rsp+40], rsi     ; Sixth argument onto stack
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+56]
+    mov [rsp+48], rsi     ; Seventh argument onto stack
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+64]
+    mov [rsp+56], rsi     ; Eight argument onto stack
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+72]
+    mov [rsp+64], rsi     ; Nineth argument onto stack
+    sub rbx, 8
+    jc _L3
+
+    mov rsi, [rbp+80]
+    mov [rsp+72], rsi     ; Tenth argument onto stack
+
+_L3:
+    call [rdi]
+    leave
+    ret
