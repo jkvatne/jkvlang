@@ -28,7 +28,7 @@
 ; printf       error=GetLastError when result=-1 (or <0)
 
  default rel
-
+                
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12

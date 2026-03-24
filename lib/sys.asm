@@ -1,7 +1,8 @@
+; %include "C:/doc/compiler/lib/test.asm"
 
-global main
-global malloc
-global mfree
+global _start
+global _alloc
+global _free
 global assert
 global exit
 global sysinit
@@ -9,9 +10,9 @@ global StdOutputHandle
 global StdErrorHandle
 global StdInputHandle
 global error
-global get_win_error
+global _win_error
 global print
-
+global syscall
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -24,24 +25,48 @@ extern FormatMessageA
 
 ; Symbols from msvcrt.dll
 extern printf
+
+
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
 %define MAX_ERROR_LEN     40*8
+%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 section .rodata
-    crlf_str  db 0Dh, 0Ah, 00h
+crlf_str  db 0Dh, 0Ah, 00h
+sp_mess            db "...  sp = 0x%X", 0Dh, 0Ah, 00h
 
 section .bss
-    alignb 8
-    StdOutputHandle resq 1
-    StdErrorHandle  resq 1
-    StdInputHandle  resq 1
-    error_len       resq 1              ; 16 bit string length
-    error           resq MAX_ERROR_LEN
-
+alignb 8
+StdOutputHandle resq 1
+StdErrorHandle  resq 1
+StdInputHandle  resq 1
+error_len       resq 1              ; 16 bit string length
+error           resq MAX_ERROR_LEN
 
 section .text
+
+_start:       
+   mov rbp, rsp; for correct debugging
+   call sysinit
+   call print_sp
+    
+   mov rax, 1
+   call exit
+   xor rax, rax                     ; Error code = 0
+   ret
+   
+; Print the contents of the rsp register using printf
+print_sp:
+    push rsp           ; Value to be printed
+    mov rax, sp_mess   ; Message at top of stack
+    mov rbx, 1*8       ; Stack size is 8 bytes
+    mov rdi, printf    ; system function to call
+    call syscall
+    add sp, 1*8
+    ret
+
 sysinit:
     ; sysinit will initialize the console handles
     push rbp                         ; Prologue: Save frame pointer
@@ -67,14 +92,6 @@ sysinit:
     leave   
     ret
     
-main:       
-   mov rbp, rsp; for correct debugging
-   call sysinit
-   
-   xor rax, rax                     ; Error code = 0
-   ret
-   
-
 ; exit have one parameter - the error code, found in rax
 exit:
     push rbp                         ; Prologue: Save frame pointer
@@ -151,7 +168,7 @@ syscall:
     mov [rsp+72], rsi     ; Tenth argument onto stack
 
 _L3:
-    call [rdi]
+    call [rel rdi]
     leave
     ret
 
@@ -230,7 +247,7 @@ _L2:
     ret
 
 
-; malloc returns in rax a pointer to the allocated memory or null.
+; _alloc returns in rax a pointer to the allocated memory or null.
 ; One argument is needed, in rax, and that is the requested size in bytes.
 ; Returns the pointer in rax
 _alloc:
@@ -247,7 +264,7 @@ _alloc:
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
 
-; free will free the memory pointed to by rax.
+; _free will free the memory pointed to by rax.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
 ; No return value.
 _free:
@@ -262,4 +279,28 @@ _free:
     mov r8, rdi                      ; Argument 3, move memory pointer into r8
     call HeapFree
     leave
+    ret
+
+
+; _win_error will call GetLastError and convert it to a string
+; The string is in the global variable error.
+; Also, a pointer to the error string is put into r15
+_win_error:
+    ; Get last windows error into rax
+    call GetLastError
+    push 0         ; Arg 7: arguments. Not used
+    push 300       ; Arg 6: Length of error string buffer
+    mov rsi, error
+    push rsi       ; Arg 5: error string buffer
+    push 0         ; Arg 4: langID(LANG_ENGLISH, SUBLANG_ENGLISH_US),
+    push rax       ; Arg 3: Error no
+    push 0         ; Arg 2: modntdll.Handle(),
+    mov rax, FORMAT_MESSAGE_FROM_SYSTEM | 0xFF ; |FORMAT_MESSAGE_FROM_HMODULE|FORMAT_MESSAGE_ARGUMENT_ARRAY ; 0xFF means no crlf
+    mov rdi, FormatMessageA
+    mov rbx, 6*8
+    call syscall
+    add rsp, 6*8
+    mov [error_len], ax   ; 16 bit word
+    ; Set pointer to error message in r15
+    mov r15, error
     ret
