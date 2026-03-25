@@ -1,0 +1,25 @@
+
+Link options:  /entry:_start /console /debug:coff /fo:program.exe   program.obj kernel32.dll msvcrt.dll
+LInk path:     C:/Doc/compiler/tools/golink.exe 
+Asm options:   -f win64 $SOURCE$ -l $LSTOUTPUT$ -o program.obj
+asm path:       C:/Program Files (x86)/SASM/NASM/nasm.exe
+
+The following executes but does not single step:
+-f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
+/entry:_start /console /debug:coff /fo:$PROGRAM$ $PROGRAM.OBJ$ kernel32.dll msvcrt.dll
+C:/Program Files (x86)/SASM/NASM/nasm.exe
+C:/Doc/compiler/tools/golink.exe
+program.obj
+
+Original, ok with no code:
+-f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
+$PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64
+C:/Program Files (x86)/SASM/NASM/nasm.exe
+C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exeprogram.o
+
+Running ok:
+-f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
+$PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64 -lkernel32 -lmsvcrt
+C:/Program Files (x86)/SASM/NASM/nasm.exe
+C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
+program.o
