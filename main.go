@@ -17,7 +17,7 @@ var (
 	workDir    = flag.String("build", "./build", "Path to intermediate files during build")
 	run        = flag.Bool("run", false, "Set true to run after compile")
 	link       = flag.Bool("link", false, "Set true to just do linking")
-	outputName = flag.String("o", "my_program", "Output filename of exectutable")
+	outputName = flag.String("o", "program.exe", "Output filename of exectutable")
 	inputPath  = flag.String("src", "./", "Source directory")
 	oneFile    = flag.String("file", "", "Compile a single file")
 )
@@ -149,35 +149,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Now do the actual compile/link/run as requested by flags
+	// Now compile the source files into asm files
 	if *oneFile != "" {
 		fmt.Printf("=== Compiling %s ===\n", oneFile)
 		err = CompileFile(*oneFile, *workDir)
-	} else if !*link {
+	} else {
 		err = CompileDir(*inputPath, *workDir)
-		if err == nil {
-			*link = true
-		} else {
-			fmt.Printf("Error compiling %s %s\n", *oneFile, err.Error())
-		}
-	}
-
-	// Assemble the files
-	if *link {
-		err = Assemble(*workDir)
 		if err != nil {
-			fmt.Printf("Assembler error " + err.Error())
+			fmt.Printf("Error compiling %s %s\n", *oneFile, err.Error())
 			os.Exit(1)
 		}
 	}
 
-	// Link object files
+	// Assemble/link the files
 	if *link {
+		err = Assemble(*workDir)
+		if err != nil {
+			fmt.Printf("Assembler error " + err.Error())
+			os.Exit(2)
+		}
 		err = Link(*workDir, *outputName)
+		if err != nil {
+			fmt.Printf("LInker error " + err.Error())
+			os.Exit(3)
+		}
 	}
 
 	// Run the exe file if -run is present and linking is ok
-	if err == nil && *run {
+	if *link && *run {
 		err = Run(*outputName)
 		if err != nil {
 			fmt.Printf("%v\n", err)
