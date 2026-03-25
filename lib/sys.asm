@@ -1,4 +1,4 @@
-
+%include "c:\doc\compiler\lib\sysinit.asm"
 
 ; Symbols from kernel32
 extern ExitProcess
@@ -17,9 +17,6 @@ extern CloseHandle
 ; Symbols from msvcrt.dll
 extern printf
 
-%define STD_INPUT_HANDLE  -10
-%define STD_OUTPUT_HANDLE -11
-%define STD_ERROR_HANDLE  -12
 %define MAX_ERROR_LEN     40*8
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 %define CREATE_ALWAYS     2
@@ -30,9 +27,6 @@ extern printf
 section .bss
 ;-------------
 alignb 8
-StdOutputHandle resq 1
-StdErrorHandle  resq 1
-StdInputHandle  resq 1
 error_len       resq 1              ; 16 bit string length
 error           resq MAX_ERROR_LEN
 heap            resq 1
@@ -72,13 +66,6 @@ section .text
 global main
 main:       
     mov rbp, rsp; for correct debugging
-    call sysinit
-   
-    push rsp           ; Value to be printed
-    mov rax, start_sp  ; Message at top of stack
-    mov rbx, 8         ; Stack size is 8 bytes
-    call print         ; system function to call
-    add sp, 8
 
     ; Print a startup message with integer parameters using the prinf from msvcrt.dll
     ; This is a direct call, must be linked with msvcrt.dll
@@ -89,6 +76,12 @@ main:
     call printf                 ; Call printf
 
     call sysinit
+   
+    push rsp                    ; Value to be printed
+    mov rax, start_sp           ; Message at top of stack
+    mov rbx, 8                  ; Stack size is 8 bytes
+    call print                  ; system function to call
+    add sp, 8
 
     ; Test using print
     mov rax, print_msg          ; 1st parameter
@@ -241,8 +234,6 @@ main:
     add   rsp, 6*8
     mov  [handle], rax
 
-    ;call  print_ax
-
     ; Write to file
     push 0
     push 0
@@ -306,31 +297,6 @@ create_was_ok:
     ; Exit with error code 1234
     mov   rax, 1234
     call  exit
-
-sysinit:
-    ; sysinit will initialize the console handles
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
-
-    ; Load the handle for standard output
-    mov   ecx, STD_OUTPUT_HANDLE
-    call  GetStdHandle
-    mov   [rel StdOutputHandle], rax
-
-    mov   ecx, STD_ERROR_HANDLE
-    call  GetStdHandle
-    mov   [rel StdErrorHandle], rax
-
-    mov   ecx, STD_INPUT_HANDLE
-    call  GetStdHandle
-    mov   [rel StdInputHandle], rax
-
-    mov qword [error], 0
-    mov [error_len], word 0
-    leave   
-    ret
 
     ; exit have one parameter - the error code, found in rax
 exit:
