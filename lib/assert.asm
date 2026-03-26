@@ -18,8 +18,8 @@ section .text
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
 ; NB: Assert will append CRLF after the message.
-global assert
-assert:
+global _assert
+_assert:
     push rbp
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb
