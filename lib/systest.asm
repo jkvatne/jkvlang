@@ -12,11 +12,7 @@ extern ExitProcess
 extern WriteFile
 extern CloseHandle
 
-extern _print
-
 %define CREATE_ALWAYS   2
-%define false           0
-%define true            1
 
 ;-------------
 section .bss
@@ -30,13 +26,9 @@ section .rodata
 ;-------------
 print_msg          db "........Message from print", 0Ah, 00h
 startup_msg        db "Startup code version %d.%d.%d", 0Ah, 00h
-test4par           db "........Should be numbers 2-4 here: %d, %d, %d", 0Ah, 00h
-test5par           db "........Should be numbers 2-5 here: %d, %d, %d, %d", 0Ah, 00h
-test6par           db "........Should be numbers 2-6 here: %d, %d, %d, %d, %d", 0Ah, 00h
 test10par          db "........Should be numbers 2-10 here: %d, %d, %d, %d, %d, %d, %d, %d, %d", 0Ah, 00h
 free_result        db "........Free got %d, expected 1.", 0Ah, 00h
 heap_readback      db "........Readback from heap, expected 0x1234, got %0X", 0Ah, 00h
-axmess             db "........rax = 0x%X", 0Ah, 00h
 start_sp           db "........RSP at start = 0x%X", 0Ah, 00h
 end_sp             db "........RSP at end = 0x%X", 0Ah, 00h
 assert_true_mess   db "........Assert true message, x=%d", 00h
@@ -47,8 +39,6 @@ len1               EQU  $-write_file_message
 write_message      db "........This is from WriteFile using opened file", 0Ah, 00h
 len2               EQU  $-write_message
 file_name          db "testfile.txt", 00h
-str1               db "str1",0Dh,0Ah,00h
-
 
 ;-------------
 section .text
@@ -141,7 +131,7 @@ main:
     push 4
     push 3
     push assert_args_mess
-    mov rax, false
+    mov rax, 0
     mov rbx, 9*8
     call _assert
     add sp, 9*8
@@ -150,17 +140,6 @@ main:
     mov rax, 0
     mov rbx,0
     call _assert
-
-    ; Test assert as in hello.jkv
-    mov   rax, 1234
-    push  rax                                 ; Argument 3
-    mov   rax, str1
-    push  rax                                 ; Argument 2
-    mov   rax, false
-    mov   rbx, 16
-    call  _assert
-    add   rsp, 16                             ; Remove arguments
-
 
     ; Test using WriteFile
     push  0                              ; 5th parameter is a pointer to the lpOverlapped structure (or nil).

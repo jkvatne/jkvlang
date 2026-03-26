@@ -20,8 +20,8 @@ sysinit:
     ; sysinit will initialize the console handles
     push rbp                         ; Prologue: Save frame pointer
     mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
+    and rsp, -16                     ; Prologue: Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Prologue: Reserve shadow space
 
     ; Load the handle for standard output
     mov   ecx, STD_OUTPUT_HANDLE

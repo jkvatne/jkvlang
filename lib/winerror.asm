@@ -1,5 +1,5 @@
-%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
+%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 ; Symbols from kernel32
 extern GetLastError

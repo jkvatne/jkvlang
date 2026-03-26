@@ -5,8 +5,8 @@ extern printf
 ;-------------
 section .rodata
 ;-------------
-crlf_str  db 0Ah, 00h
-assert_mess        db "Assert failed", 00h
+crlf_str       db 0Ah, 00h
+assert_mess    db "Assert failed", 00h
 
 ;-------------
 section .text
@@ -17,7 +17,7 @@ section .text
 ; The stack will contain <messageptr><arg1><arg2>..
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
 ; rax is already the value to be tested
-; NB: Assert will append CRLF after the message.
+; NB: Assert will append LF after the message.
 global _assert
 _assert:
     push rbp
