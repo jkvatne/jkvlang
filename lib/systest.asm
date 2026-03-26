@@ -24,15 +24,15 @@ handle          resq 1
 ;-------------
 section .rodata
 ;-------------
-print_msg          db "........Message from print", 0Ah, 00h
+print_msg          db "........", 0Ah, "Message from print", 0Ah, 00h
 startup_msg        db "Startup code version %d.%d.%d", 0Ah, 00h
 test10par          db "........Should be numbers 2-10 here: %d, %d, %d, %d, %d, %d, %d, %d, %d", 0Ah, 00h
 free_result        db "........Free got %d, expected 1.", 0Ah, 00h
 heap_readback      db "........Readback from heap, expected 0x1234, got %0X", 0Ah, 00h
 start_sp           db "........RSP at start = 0x%X", 0Ah, 00h
 end_sp             db "........RSP at end = 0x%X", 0Ah, 00h
-assert_true_mess   db "........Assert true message, x=%d", 00h
-assert_false_mess  db "........Assert false message, x=%d", 00h
+assert_true_mess   db 19h, 0, 0, 0, 0, 0, 0, 0, "Assert true message, x=%d", 00h
+assert_false_mess  db 1Ah, 0, 0, 0, 0, 0, 0, 0, "Assert false message, x=%d", 00h
 assert_args_mess   db "........Assert false with arguments 3-10, %d, %d, %d, %d, %d, %d, %d, %d", 00h
 write_file_message db "This is from WriteFile using StdOutputHandle", 0Ah, 00h
 len1               EQU  $-write_file_message
@@ -47,16 +47,53 @@ section .text
 global main
 main:       
     mov rbp, rsp; for correct debugging
-    call print_startup_message   
-    call sysinit
-   
-    ; Test the library's _printf() function found in printf.asm
+
+    ; Print starting rsp
     push rsp                    ; Value to be printed
     mov rax, start_sp           ; Message at top of stack
     mov rbx, 8                  ; Stack size is 8 bytes
     call _printf                ; system function to call
     add sp, 8                   ; Restore stack
 
+    call print_startup_message   
+    call sysinit
+   
+   
+    ; Test concatenation of two strings: assert_true_mess and assert_false_mess
+    mov r12, [assert_true_mess]   ; Get length of string 1
+    add r13, [assert_false_mess]  ; Get length of string 2
+    mov rax, r12
+    add rax, r13
+    add rax, 32                   ; Add some spare length
+    call _alloc                   ; Allocate new string
+    mov r14, rax                  ; Save new string pointer
+    mov rdi, rax                  ; Destination is the allocated string
+    add rdi, 8
+
+    mov rsi, assert_true_mess 
+    add rsi, 8
+    mov rcx, r12                  ; String 1 length
+    cld
+    rep movsb                     ; Copy string 1
+
+    mov rsi, assert_false_mess 
+    add rsi, 8
+    mov rcx, r13                  ; String 2 length
+    cld
+    rep movsb                     ; Copy string 2
+  
+    mov rax, r12
+    add rax, r13
+    mov [r14], rax               ; Save new string length
+    
+    ; Print the resulting string
+    mov rcx, r14
+    add rcx, 8
+    mov rdx, 1
+    mov r8, 2
+    call printf
+    
+       
     ; Test using _printf()
     mov rax, print_msg          ; 1st parameter
     mov rbx, 0                  ; Stack size is zero, only rax is used for format string
@@ -221,6 +258,7 @@ create_was_ok:
     mov  rbx, 8            ; Stack size is 8 bytes
     call _printf           ; system function to call
     add  sp, 8
+
 
     ; Exit with error code 1234
     mov  rax, 1234

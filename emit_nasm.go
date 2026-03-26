@@ -9,6 +9,26 @@ import (
 	"strings"
 )
 
+/*
+; Register Windows ABI           JKV ABI
+; 0  rax   Return value          Return value
+; 1  rcx   First argument
+; 2  rdx   Second argument
+; 3  rbx   Preserved             Size of arguments on stack (bytes)
+; 4  rsp   Stack pointer
+; 5  rbp   Preserved
+; 6  rsi   Preserved
+; 7  rdi   Preserved             Function called for syscall
+; 8  r8    Third argument
+; 9  r9    Forth argument
+; 10 r10   Used in syscall
+; 11 r11   Used in syscall
+; 12 r12   Preserved
+; 13 r13   Preserved
+; 14 r14   Preserved
+; 15 r15   Preserved              Error pointer. 0 (nil) means ok.
+*/
+
 const (
 	CarryFlag    = "0x01" // Bit 0
 	ZeroFlag     = "0x40" // Bit 6
@@ -420,25 +440,6 @@ func EmitPushConst(s *State, value int64, comment string) {
 	}
 }
 
-func EmitPrologue(s *State) {
-	EmitSection(s, "text")
-	emit(s, "global", "_start", "", "")
-	emit(s, "extern", "assert", "", "")
-	emit(s, "extern", "syscall", "", "")
-	emit(s, "extern", "exit", "", "")
-	emit(s, "extern", "malloc", "", "")
-	emit(s, "extern", "mfree", "", "")
-	emit(s, "extern", "sysinit", "", "")
-	emit(s, "extern", "print", "", "")
-	EmitBlankLine(s)
-	EmitTextLabel(s, "_start")
-	emit(s, "call", "sysinit", "", "")
-	emit(s, "call", "main", "", "Call the main procedure")
-	emit(s, "xor", "eax", "eax", "Error code = 0")
-	emit(s, "call", "exit", "", "")
-	EmitBlankLine(s)
-}
-
 func EmitPrintHello(s *State, format string) {
 	emit(s, "mov", "-11", "ecx", "STD_OUTPUT_HANDLE (.11)")
 	emit(s, "call", "GetStdHandle", "", "Handle returned in rax")
@@ -475,7 +476,7 @@ func EmitConcat(s *State) {
 	_, _ = Write(s, "   ; String concatenation. First allocate string", false)
 	_, _ = Write(s, "   push rax\n", false)
 	_, _ = Write(s, "   push 50\n", false)
-	_, _ = Write(s, "   call malloc\n", false)
+	_, _ = Write(s, "   call _alloc\n", false)
 	_, _ = Write(s, "   ; Skip string length and set up destination in rdi\n", false)
 	_, _ = Write(s, "   mov rdi, rax\n", false)
 	_, _ = Write(s, "   add rdi, 4\n", false)
@@ -494,4 +495,28 @@ func EmitConcat(s *State) {
 	_, _ = Write(s, "   rep movsb\n", false)  // Str1 size
 	_, _ = Write(s, "   ; now AX should point to the string. Set resulting length\n", false)
 	_, _ = Write(s, "   mov dword [rax], 6\n", false)
+}
+
+func includeFile(s *State, txt string) {
+	_, _ = Write(s, "%include \""+path+txt+"\"", false)
+}
+
+func EmitPrologue(s *State) {
+	includeFile(s, "syscall.asm")
+	includeFile(s, "sysinit.asm")
+	includeFile(s, "winerror.asm")
+	includeFile(s, "assert.asm")
+	includeFile(s, "alloc.asm")
+	includeFile(s, "exit.asm")
+	includeFile(s, "printf.asm")
+
+	EmitSection(s, "text")
+	emit(s, "global", "main", "", "")
+	EmitBlankLine(s)
+	EmitTextLabel(s, "main")
+	emit(s, "call", "sysinit", "", "")
+	emit(s, "call", "_main", "", "Call the main procedure")
+	emit(s, "xor", "eax", "eax", "Error code = 0")
+	emit(s, "call", "exit", "", "")
+	EmitBlankLine(s)
 }
