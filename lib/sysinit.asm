@@ -37,6 +37,5 @@ sysinit:
     mov   [rel StdInputHandle], rax
 
     mov qword [error], 0
-    mov [error_len], word 0
     leave   
     ret

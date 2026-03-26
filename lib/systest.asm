@@ -1,9 +1,9 @@
+%include "c:\doc\compiler\lib\syscall.asm"
 %include "c:\doc\compiler\lib\sysinit.asm"
 %include "c:\doc\compiler\lib\winerror.asm"
 %include "c:\doc\compiler\lib\assert.asm"
 %include "c:\doc\compiler\lib\alloc.asm"
 %include "c:\doc\compiler\lib\exit.asm"
-%include "c:\doc\compiler\lib\syscall.asm"
 %include "c:\doc\compiler\lib\printf.asm"
 
 ; Symbols from kernel32
@@ -14,9 +14,9 @@ extern CloseHandle
 
 extern _print
 
-%define CREATE_ALWAYS     2
-%define false 0
-%define true  1
+%define CREATE_ALWAYS   2
+%define false           0
+%define true            1
 
 ;-------------
 section .bss
@@ -28,7 +28,7 @@ handle          resq 1
 ;-------------
 section .rodata
 ;-------------
-print_msg          db "Message from print", 0Ah, 00h
+print_msg          db "........Message from print", 0Ah, 00h
 startup_msg        db "Startup code version %d.%d.%d", 0Ah, 00h
 test4par           db "........Should be numbers 2-4 here: %d, %d, %d", 0Ah, 00h
 test5par           db "........Should be numbers 2-5 here: %d, %d, %d, %d", 0Ah, 00h
@@ -67,32 +67,10 @@ main:
     call _printf                ; system function to call
     add sp, 8                   ; Restore stack
 
-    ; Test using print
+    ; Test using _printf()
     mov rax, print_msg          ; 1st parameter
-    sub rax, 4                  ; Correct for length here
     mov rbx, 0                  ; Stack size is zero, only rax is used for format string
     call _printf
-
-    ; Test using syscall directly, printing 4 parameters
-    push 4                      ; 4th parameter
-    push 3                      ; 3rd parameter
-    push 2                      ; 2nd parameter
-    mov rax, test4par           ; 1st parameter
-    mov rbx, 3*8                ; Number of parameters on stack
-    mov rdi, printf             ; Address to call
-    call syscall
-    add sp, 3*8
-
-    ; Test using syscall directly, printing 5 parameters
-    push 5                      ; 5th parameter
-    push 4                      ; 4th parameter
-    push 3                      ; 3rd parameter
-    push 2                      ; 2nd parameter
-    mov rax, test5par           ; 1st parameter
-    mov rbx, 4*8                ; Number of parameters on stack
-    mov rdi, printf             ; Address to call
-    call syscall
-    add sp, 4*8
 
     ; Test using syscall directly, printing 10 parameters
     push 10                     ; 10th parameter
@@ -105,6 +83,7 @@ main:
     push 3                      ; 3rd parameter
     push 2                      ; 2nd parameter
     mov rax, test10par          ; 1st parameter
+    add rax, 8
     mov rbx, 9*8                ; Number of parameters on stack
     mov rdi, printf             ; Address to call
     call syscall
@@ -246,8 +225,8 @@ main:
     call  _win_error
 
     ; Print error message
-    mov   rcx, error         ; First argument: format string
-    call  printf             ; Call printf
+    mov   rax, error         ; First argument: format string
+    call  _println           ; Call println
 
 create_was_ok:
 

@@ -76,7 +76,7 @@ _assert:
     jc .L2
 
     mov rsi, [rbp+80]
-    mov [rsp+64], rsi     ; Nineth argument onto stack
+    mov [rsp+64], rsi     ; Ninth argument onto stack
     sub rbx, 8
     jc .L2
 
