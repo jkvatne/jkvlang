@@ -13,6 +13,8 @@ func CompileFile(name string, workdir string) error {
 	// slog.Info("Compiling", "filename", name, "workdir", workdir)
 	var err error
 	s := new(State)
+	s.LibPath, err = filepath.Abs("../lib/")
+	s.LibPath += string(os.PathSeparator)
 	s.ArgCode = make([]string, 0, 64)
 	LiteralInit()
 	s.lineNum = 1

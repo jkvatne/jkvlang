@@ -2,5 +2,5 @@ func main() {
     s = "HelloHello"
     t = "World....."
     v = s + t
-    print(v)
+    println(v)
 }

@@ -8,6 +8,7 @@ import (
 )
 
 type State struct {
+	LibPath         string
 	unitName        string   // The name of the current unit without extension
 	outputFile      *os.File // File where the assembly is put
 	text            []byte   // The whole current file being compiled

@@ -153,11 +153,14 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) (er
 	// If the value is known (a compile time constant)
 	if value.HasValue {
 		if CanAssignConst(lvalue.Typ.Pt, value) {
-			if value.HasValue && op == TOK_ASSIGN {
-				lvalue.Value = value
-			} else {
+			if lvalue.Typ.Pt == TYP_STRING {
+				err = EmitOpAssignString(s, lvalue.Offset, value.StringLitNo)
+			} else if lvalue.Typ.Pt.IsInteger() {
 				err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+			} else {
+				panic("Unimplemented assignment")
 			}
+
 			if err != nil {
 				return err
 			}

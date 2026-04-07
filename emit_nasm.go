@@ -159,6 +159,9 @@ func EmitFunction(s *State, id string) {
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rsp", "rbp", "")
+	if id == "main" {
+		emit(s, "call", "sysinit", "", "")
+	}
 	s.localSp = 0
 	s.RaxIsTOS = false
 }
@@ -276,6 +279,11 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 	} else {
 		emit(s, instr, strconv.FormatInt(value, 10), DataType(size)+BpRel(adr), comment)
 	}
+	return nil
+}
+
+func EmitOpAssignString(s *State, offset int, litno int) error {
+	emit(s, "mov", "str"+strconv.Itoa(litno), DataType(8)+BpRel(offset), "")
 	return nil
 }
 
@@ -451,7 +459,7 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = s.outputFile.WriteString(litName + " dd " + strconv.Itoa(len(litValue)) + "\n")
+	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.Itoa(len(litValue)) + "\n")
 	_, _ = s.outputFile.WriteString("     db `" + litValue + "`, 00h\n")
 }
 
@@ -471,34 +479,53 @@ func EmitAlloc(s *State, len int) {
 	_, _ = Write(s, "   call malloc\n", false)
 }
 
+func out(s *State, str string) {
+	_, _ = Write(s, "   "+str+"\n", false)
+}
+
 // EmitConcat will concatenate the two strings at the top of the stack
+// First string pointer in rax, second string pointer in [rsp]
 func EmitConcat(s *State) {
-	_, _ = Write(s, "   ; String concatenation. First allocate string", false)
-	_, _ = Write(s, "   push rax\n", false)
-	_, _ = Write(s, "   push 50\n", false)
-	_, _ = Write(s, "   call _alloc\n", false)
-	_, _ = Write(s, "   ; Skip string length and set up destination in rdi\n", false)
-	_, _ = Write(s, "   mov rdi, rax\n", false)
-	_, _ = Write(s, "   add rdi, 4\n", false)
-	_, _ = Write(s, "   ; Set si to point to first string and skip size\n", false)
-	_, _ = Write(s, "   mov rsi,[rsp+8]\n", false)
-	_, _ = Write(s, "   add rsi, 4\n", false)
-	_, _ = Write(s, "   ; Set count and direction flag\n", false)
-	_, _ = Write(s, "   mov rcx, 3\n", false)
-	_, _ = Write(s, "   cld\n", false)
-	_, _ = Write(s, "   ; Do copy\n", false)
-	_, _ = Write(s, "   rep movsb\n", false) // Str1 size
-	_, _ = Write(s, "   ; Copy second string\n", false)
-	_, _ = Write(s, "   pop rsi\n", false)    // pop next on stack into RBX")
-	_, _ = Write(s, "   add rsi, 4\n", false) // Skip size field
-	_, _ = Write(s, "   mov rcx, 3\n", false) // Str	2 size
-	_, _ = Write(s, "   rep movsb\n", false)  // Str1 size
-	_, _ = Write(s, "   ; now AX should point to the string. Set resulting length\n", false)
-	_, _ = Write(s, "   mov dword [rax], 6\n", false)
+	// Get string 1 sizes/ptr into r12, r13
+	out(s, "mov r12d, dword [rax]")
+	out(s, "mov r13, rax")
+	out(s, "add r13, 8")
+	// Get string 2 size/ptr into r14, r15
+	out(s, "mov rax, [rsp]")
+	out(s, "mov r14d, dword [rax]")
+	out(s, "add r15, rax")
+	out(s, "add r15, 8")
+	// Calculate new size to allocate, including 32 extra bytes
+	out(s, "mov rax, r12")
+	out(s, "add rax, r14")
+	out(s, "add rax, 32")
+	// Allocate string
+	out(s, "call _alloc")
+	// Save pointer in rdx and rdi for later use
+	out(s, "mov rdx, rax")
+	out(s, "mov rdi, rax")
+	// Save new length
+	out(s, "mov rax, r12")
+	out(s, "add rax, r14")
+	out(s, "mov [rdi], rax")
+	out(s, "add rdi, 8")
+	// Copy string 1
+	out(s, "mov rsi,r13") // Pointer to string 1
+	out(s, "mov rcx, r12")
+	out(s, "cld")
+	out(s, "rep movsb")
+	// Copy string 2
+	out(s, "mov rsi, r15") // Pointer to string 2
+	out(s, "mov rcx, r14") // Count is from r14
+	out(s, "rep movsb")    // Do copy
+	// Now AX should point to the string
+	out(s, "mov rax, rdx")
+	// Remove the top of stack. New TOS is the pointer in rax
+	out(s, "add rsp, 8")
 }
 
 func includeFile(s *State, txt string) {
-	_, _ = Write(s, "%include \""+path+txt+"\"", false)
+	_, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n", false)
 }
 
 func EmitPrologue(s *State) {
@@ -509,14 +536,8 @@ func EmitPrologue(s *State) {
 	includeFile(s, "alloc.asm")
 	includeFile(s, "exit.asm")
 	includeFile(s, "printf.asm")
-
 	EmitSection(s, "text")
 	emit(s, "global", "main", "", "")
 	EmitBlankLine(s)
-	EmitTextLabel(s, "main")
-	emit(s, "call", "sysinit", "", "")
-	emit(s, "call", "_main", "", "Call the main procedure")
-	emit(s, "xor", "eax", "eax", "Error code = 0")
-	emit(s, "call", "exit", "", "")
 	EmitBlankLine(s)
 }

@@ -62,7 +62,15 @@ extern FormatMessageA
 ; Symbols from msvcrt.dll
 extern printf
 
+;------------
+section .data
+;------------
+next32: dq 1234567890     ; 32 bits seed
+next64  dq 1234567890     ; 64 bit seed. (Initial seed should be set using current time for better results)
+
+;------------
 section .bss
+;------------
 alignb 8
     StdOutputHandle resq 1
     StdErrorHandle  resq 1
@@ -70,7 +78,9 @@ alignb 8
     error_len       resq 1              ; 16 bit string length
     error           resq MAX_ERROR_LEN
 
+;------------
 section .text
+;------------
 
 ; malloc returns in rax a pointer to the allocated memory or null.
 ; One argument is needed, in rax, and that is the requested size in bytes.
@@ -303,4 +313,31 @@ get_win_error:
     mov [error_len], ax   ; 16 bit word
     ; Set pointer to error message in r15
     mov r15, error
+    ret
+
+; Generate a 32 bit quasi-random integer
+; Warning: This generates a deterministic quasi-random sequence with a fixed seed
+; It can be used for tests where a repeatable squence is needed
+global qrand
+qrand:
+    mov eax, [next32]
+    imul eax, 1103515245 ; Common multiplier (used by glibc)
+    add eax, 12345       ; Common increment
+    mov [next32], eax      ; Save new seed for next time
+    ret
+
+    ; --- 64-bit RDRAND implementation ---
+global rand64:
+rand64:
+    rdrand rax          ; Try to generate a 64-bit random number into RAX
+    jnc get_random_64   ; The Carry Flag (CF) is 0 if the generator was not ready; retry if so.
+    ret                 ; RAX now contains a valid 64-bit random number
+
+global qrand64:
+qrand64:
+    mov rax, [next64]              ; Load current seed
+    mov rdx, 6364136223846793005   ; Multiplier 'a'
+    mul rdx                        ; RAX = seed * a (lower 64 bits of result)
+    add rax, 1442695040888963407   ; Add increment 'c'
+    mov [next64], rax              ; Update seed for next call
     ret

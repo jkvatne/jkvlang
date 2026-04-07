@@ -7,27 +7,27 @@ type FuncDef struct {
 	returnTypes []*TypeDef
 	parameters  []*VarDef
 	stackSize   int
+	builtin     bool
 }
 
 var FuncDefs map[string]*FuncDef
 
 func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
-	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
-	_, _ = AddFunc("print_int", []*VarDef{&intPar}, nil)
-	_, _ = AddFunc("println", []*VarDef{&strPar}, nil)
-	_, _ = AddFunc("print", []*VarDef{&strPar}, nil)
-	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil)
+	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true)
 }
 
-func AddFunc(id string, parList []*VarDef, returnList []*TypeDef) (*FuncDef, error) {
+func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool) (*FuncDef, error) {
 	f := FuncDefs[id]
 	if f != nil {
 		return nil, fmt.Errorf("function %s already defined", id)
 	}
 	// New function
-	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList}
+	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList, builtin: builtin}
 	FuncDefs[id] = f
 	// Calculate siz
 	f.stackSize = len(parList) + len(returnList)

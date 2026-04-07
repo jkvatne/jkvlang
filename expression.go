@@ -192,6 +192,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	}
 
 	s.ArgCount = startArgNo
+	if f.builtin {
+		id = "_" + id
+	}
 	EmitCall(s, id, len(values))
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
@@ -673,7 +676,7 @@ func ParseFuncDef(s *State) error {
 		}
 	}
 	var f *FuncDef
-	f, err = AddFunc(fun, parList, returnList)
+	f, err = AddFunc(fun, parList, returnList, false)
 	s.currentFunc = f
 	if err != nil {
 		return err
