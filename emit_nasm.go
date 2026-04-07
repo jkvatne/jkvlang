@@ -47,7 +47,7 @@ func Write(s *State, txt string, force bool) (int, error) {
 	return len(txt), nil
 }
 
-func emit(s *State, op string, src string, dst string, comment string) {
+func emit(s *State, op string, dst string, src string, comment string) {
 	var txt string
 	if s.noCode > 0 {
 		return
@@ -129,10 +129,10 @@ func EmitPushTos(s *State, argNo int, funcName string, force bool) {
 }
 
 func EmitCall(s *State, id string, nPar int) {
-	emit(s, "mov", strconv.Itoa((nPar-1)*8), "rbx", "")
+	emit(s, "mov", "rbx", strconv.Itoa((nPar-1)*8), "")
 	emit(s, "call", id, "", "")
 	if nPar > 1 {
-		emit(s, "add", strconv.Itoa(8*(nPar-1)), "rsp", "Remove arguments")
+		emit(s, "add", "rsp", strconv.Itoa(8*(nPar-1)), "Remove arguments")
 		s.localSp -= nPar - 1
 	}
 }
@@ -146,7 +146,7 @@ func EmitReturn(s *State) {
 	}
 	// Remove local variables
 	if s.localSp > 0 {
-		emit(s, "add", strconv.Itoa(s.localSp*8), "rsp", "")
+		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
 	// Function epilogue. Restore frame pointer and exit
@@ -158,7 +158,7 @@ func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
-	emit(s, "mov", "rsp", "rbp", "")
+	emit(s, "mov", "rbp", "rsp", "")
 	if id == "main" {
 		emit(s, "call", "sysinit", "", "")
 	}
@@ -190,7 +190,7 @@ func EmitFloatOp(s *State, op Token) {
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
 func EmitIntegerOp(s *State, op Token) {
 	if op == TOK_DIV {
-		emit(s, "xchg", "rax", "rbx", "Exchange RAX and RBX since we calculate NOS/TOS")
+		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
@@ -198,36 +198,36 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rdx", "rax", "Move reminder to AX (top of stack)")
+		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_EQ {
 		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
+		emit(s, "and", "[rsp]", ZeroFlag, "Mask zero flag")
 	} else if op == TOK_NE {
 		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", ZeroFlag, "[rsp]", "Mask zero flag")
-		emit(s, "xor", ZeroFlag, "[rsp]", "Invert zero flag")
+		emit(s, "and", "[rsp]", ZeroFlag, "Mask zero flag")
+		emit(s, "xor", "[rsp]", ZeroFlag, "Invert zero flag")
 	} else if op == TOK_GT {
 		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", SignFlag, "[rsp]", "Mask zero flag")
+		emit(s, "and", "[rsp]", SignFlag, "Mask zero flag")
 	} else if op == TOK_LE {
 		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rbx", "rax", "Compare and set flags")
+		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", SignFlag, "[rsp]", "Mask sign flag")
-		emit(s, "xor", SignFlag, "[rsp]", "Invert sign flag")
+		emit(s, "and", "[rsp]", SignFlag, "Mask sign flag")
+		emit(s, "xor", "[rsp]", SignFlag, "Invert sign flag")
 	} else {
-		emit(s, "pop", "%rbx", "", "")
+		emit(s, "pop", "rbx", "", "")
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
-		emit(s, instruction, "%rbx", "%rax", "")
+		emit(s, instruction, "rax", "rbx", "")
 	}
 	s.localSp--
 }
@@ -238,25 +238,25 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", sval, "rbx", "Get divisor from stack into RBX")
+		emit(s, "mov", "rbx", sval, "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", sval, "rbx", "RBX=constant divisor")
+		emit(s, "mov", "rbx", sval, "RBX=constant divisor")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rdx", "rax", "Move reminder to AX (top of stack)")
+		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
-		emit(s, "mov", sval, "rax", "")
+		emit(s, "mov", "rax", sval, "")
 	} else if op == TOK_EQ {
-		emit(s, "cmp", sval, "rax", "Compare and set flags")
+		emit(s, "cmp", "rax", sval, "Compare and set flags")
 		emit(s, "lahf", "", "", "Load flags into AH")
-		emit(s, "and", "0x4000", "rax", "Mask zero flag")
+		emit(s, "and", "rax", "0x4000", "Mask zero flag")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
 			return fmt.Errorf("invalid operation %s", op.Name())
 		}
-		emit(s, instr, "$"+strconv.FormatInt(value, 10), "rax", comment)
+		emit(s, instr, "rax", "$"+strconv.FormatInt(value, 10), comment)
 	}
 	return nil
 }
@@ -273,17 +273,17 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
 	}
 	if instr == "imul" {
-		emit(s, "mov", strconv.FormatInt(value, 10), "rax", "")
-		emit(s, "movzx", DataType(size)+BpRel(adr), "rbx", comment)
+		emit(s, "mov", "rax", strconv.FormatInt(value, 10), "")
+		emit(s, "movzx", "rbx", DataType(size)+BpRel(adr), comment)
 		emit(s, "imul", "rbx", "", "")
 	} else {
-		emit(s, instr, strconv.FormatInt(value, 10), DataType(size)+BpRel(adr), comment)
+		emit(s, instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
 	}
 	return nil
 }
 
 func EmitOpAssignString(s *State, offset int, litno int) error {
-	emit(s, "mov", "str"+strconv.Itoa(litno), DataType(8)+BpRel(offset), "")
+	emit(s, "mov", DataType(8)+BpRel(offset), "str"+strconv.Itoa(litno), "")
 	return nil
 }
 
@@ -359,7 +359,7 @@ func MovOpcode(size int) string {
 // EmitStoreConst will store a constant of given size into a local variable at [BP+offset]
 func EmitStoreConst(s *State, size int, value int64, offset int, comment string) {
 	num := strconv.FormatInt(value, 10)
-	emit(s, "mov", num, DataType(size)+BpRel(offset), "")
+	emit(s, "mov", DataType(size)+BpRel(offset), num, "")
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)
@@ -369,13 +369,13 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 		s.localSp++
 	}
 	s.RaxIsTOS = true
-	emit(s, MovOpcode(size), DataType(size)+BpRel(adr), "rax", comment)
+	emit(s, MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 }
 
 // EmitStore will save the Top of Stack (AX) into a local variable of given size.
 // It will then clear RaxIssTos, effectively doing a pop
 func EmitStore(s *State, size int, adr int, comment string) {
-	emit(s, "mov", AxRegName(size), BpRel(adr), comment)
+	emit(s, "mov", BpRel(adr), AxRegName(size), comment)
 	s.RaxIsTOS = false
 	s.localSp--
 }
@@ -383,7 +383,7 @@ func EmitStore(s *State, size int, adr int, comment string) {
 // EmitAddSp will drop the top "count" 64-bit words.
 func EmitAddSp(s *State, count int, comment string) {
 	if count != 0 {
-		emit(s, "add", strconv.Itoa(-count*8), "rsp", comment)
+		emit(s, "add", "rsp", strconv.Itoa(-count*8), comment)
 		s.localSp += count
 	}
 	s.RaxIsTOS = false
@@ -394,7 +394,7 @@ func EmitPushString(s *State, litno int) {
 		emit(s, "push", "rax", "", "EmitPushString() Push TOS")
 		s.localSp++
 	}
-	emit(s, "mov", "str"+strconv.Itoa(litno), "rax", "Push pointer to literal string")
+	emit(s, "mov", "rax", "str"+strconv.Itoa(litno), "Push pointer to literal string")
 	s.localSp++
 	s.RaxIsTOS = true
 }
@@ -402,7 +402,7 @@ func EmitPushString(s *State, litno int) {
 func EmitAssert(s *State) {
 	emit(s, "push", strconv.Itoa(s.lineNum), "", "")
 	emit(s, "call", "_assert", "", "")
-	emit(s, "pop", "", "cx", "")
+	emit(s, "pop", "cx", "", "")
 	emit(s, "call", "crlf", "", "")
 }
 
@@ -430,7 +430,7 @@ func EmitPushStringLit(s *State, lit int) {
 		emit(s, "push", "rax", "", "2 Push TOS")
 		s.localSp++
 	}
-	emit(s, "mov", "str"+strconv.Itoa(lit), "rax", "")
+	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), "")
 }
 
 func EmitPushConst(s *State, value int64, comment string) {
@@ -441,7 +441,7 @@ func EmitPushConst(s *State, value int64, comment string) {
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
 	} else {
-		emit(s, "mov", strconv.FormatInt(value, 10), "rax", comment)
+		emit(s, "mov", "rax", strconv.FormatInt(value, 10), comment)
 	}
 	if s.ArgCount == 0 {
 		s.RaxIsTOS = true
@@ -449,13 +449,13 @@ func EmitPushConst(s *State, value int64, comment string) {
 }
 
 func EmitPrintHello(s *State, format string) {
-	emit(s, "mov", "-11", "ecx", "STD_OUTPUT_HANDLE (.11)")
+	emit(s, "mov", "ecx", "-11", "STD_OUTPUT_HANDLE (.11)")
 	emit(s, "call", "GetStdHandle", "", "Handle returned in rax")
-	emit(s, "mov", "rax", "rcx", "1.arg - console handle")
-	emit(s, "mov", "[rel msg]", "rdx", "2.arg - pointer to message")
-	emit(s, "mov", "20", "r8", "3.arg - console handle")
+	emit(s, "mov", "rcx", "rax", "1.arg - console handle")
+	emit(s, "mov", "rdx", "[rel msg]", "2.arg - pointer to message")
+	emit(s, "mov", "r8", "20", "3.arg - console handle")
 	emit(s, "xor", "r9", "r9", "4.arg - console handle")
-	emit(s, "mov", "0", "qword [3sp+32]", "5.arg - console handle")
+	emit(s, "mov", "qword [3sp+32]", "0", "5.arg - console handle")
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
@@ -486,42 +486,42 @@ func out(s *State, str string) {
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in rax, second string pointer in [rsp]
 func EmitConcat(s *State) {
-	// Get string 1 sizes/ptr into r12, r13
-	out(s, "mov r12d, dword [rax]")
-	out(s, "mov r13, rax")
-	out(s, "add r13, 8")
-	// Get string 2 size/ptr into r14, r15
-	out(s, "mov rax, [rsp]")
-	out(s, "mov r14d, dword [rax]")
-	out(s, "add r15, rax")
-	out(s, "add r15, 8")
+	// Get string 1 sizes/ptr into r14, r15
+	emit(s, "mov", "r14d", "dword [rax]", " Get string 1 sizes/ptr into r14, r15")
+	emit(s, "mov", "r15", "rax", "")
+	emit(s, "add", "r15", "8", "")
+	// Get string 2 sizes/ptr into r12, r13
+	emit(s, "mov", "rax", "[rsp]", " Get string 2 sizes/ptr into r12, r13")
+	emit(s, "mov", "r12d", "dword [rax]", "")
+	emit(s, "mov", "r13", "rax", "")
+	emit(s, "add", "r13", "8", "")
 	// Calculate new size to allocate, including 32 extra bytes
-	out(s, "mov rax, r12")
-	out(s, "add rax, r14")
-	out(s, "add rax, 32")
+	emit(s, "mov", "rax", "r12", " Calculate new size to allocate, including 32 extra bytes")
+	emit(s, "add", "rax", "r14", "")
+	emit(s, "add", "rax", "32", "")
 	// Allocate string
-	out(s, "call _alloc")
+	emit(s, "call", "_alloc", "", "Allocate new string")
 	// Save pointer in rdx and rdi for later use
-	out(s, "mov rdx, rax")
-	out(s, "mov rdi, rax")
+	emit(s, "mov", "rdx", "rax", "Save pointer in rdx and rdi for later use")
+	emit(s, "mov", "rdi", "rax", "")
 	// Save new length
-	out(s, "mov rax, r12")
-	out(s, "add rax, r14")
-	out(s, "mov [rdi], rax")
-	out(s, "add rdi, 8")
+	emit(s, "mov", "rax", "r12", "Save new length")
+	emit(s, "add", "rax", "r14", "")
+	emit(s, "mov", "[rdi]", "rax", "")
+	emit(s, "add", "rdi", "8", "")
 	// Copy string 1
-	out(s, "mov rsi,r13") // Pointer to string 1
-	out(s, "mov rcx, r12")
-	out(s, "cld")
-	out(s, "rep movsb")
+	emit(s, "mov", "rsi", "r13", "Copy string 1")
+	emit(s, "mov", "rcx", "r12", "")
+	emit(s, "cld", "", "", "")
+	emit(s, "rep", "movsb", "", "")
 	// Copy string 2
-	out(s, "mov rsi, r15") // Pointer to string 2
-	out(s, "mov rcx, r14") // Count is from r14
-	out(s, "rep movsb")    // Do copy
+	emit(s, "mov", "rsi", "r15", "Copy string 2")
+	emit(s, "mov", "rcx", "r14", "")
+	emit(s, "rep", "movsb", "", "")
 	// Now AX should point to the string
-	out(s, "mov rax, rdx")
+	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax
-	out(s, "add rsp, 8")
+	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 }
 
 func includeFile(s *State, txt string) {
