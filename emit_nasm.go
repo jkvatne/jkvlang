@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -153,13 +154,20 @@ func EmitReturn(s *State) {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
+	if s.currentFunc.name == "main" {
+		emit(s, "mov", "rax", "0", "")
+	}
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
 func EmitFunction(s *State, id string) {
+	if id == "main" {
+		EmitTextLabel(s, "global main")
+	}
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
+
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
@@ -428,7 +436,7 @@ func EmitJumpFalse(s *State, n int, comment string) {
 		panic("TOS not in AX")
 	}
 	emit(s, "or", "al", "al", "Set zero flag if rax is zero")
-	emit(s, "jz", ".L"+strconv.Itoa(n), "", "Jump if zero flag is set")
+	emit(s, "jz", ".L"+strconv.Itoa(n), "", comment)
 	// Implicit pop of TOS
 	s.RaxIsTOS = false
 }
@@ -551,18 +559,24 @@ func EmitConcat(s *State) {
 	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 }
 
-func includeFile(s *State, txt string) {
-	_, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n", false)
+func includeFile(s *State, txt string) error {
+	// _, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n", false)
+	str, err := os.ReadFile(s.LibPath + txt)
+	_, _ = Write(s, string(str), false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func EmitPrologue(s *State) {
-	includeFile(s, "syscall.asm")
 	includeFile(s, "sysinit.asm")
-	includeFile(s, "winerror.asm")
+	includeFile(s, "syscall.asm")
 	includeFile(s, "assert.asm")
-	includeFile(s, "alloc.asm")
-	includeFile(s, "exit.asm")
 	includeFile(s, "printf.asm")
+	// includeFile(s, "winerror.asm")
+	// includeFile(s, "alloc.asm")
+	// includeFile(s, "exit.asm")
 	EmitSection(s, "text")
 	emit(s, "global", "main", "", "")
 	EmitBlankLine(s)

@@ -36,6 +36,6 @@ sysinit:
     call  GetStdHandle
     mov   [rel StdInputHandle], rax
 
-    mov qword [error], 0
+    ; mov qword [error], 0
     leave   
     ret

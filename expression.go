@@ -569,7 +569,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 			EmitLabel(s, L1, "")
 		}
 		// Parse stm2 in if cond ? stm1 : stm2
-		err = ParseBlock(s, value.IsFalse())
+		_, err = ParseStatement(s)
 		if err != nil {
 			return err
 		}

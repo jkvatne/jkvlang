@@ -21,6 +21,8 @@ var (
 	outputName = flag.String("o", "program.exe", "Output filename of exectutable")
 	inputPath  = flag.String("src", "./", "Source directory")
 	oneFile    = flag.String("file", "", "Compile a single file")
+	debug      = flag.Bool("debug", false, "Enable debug mode")
+	UseGcc     = flag.Bool("gcc", true, "Use gcc")
 )
 
 // CompileDir will compile all source files in the given directory
@@ -63,12 +65,12 @@ func Assemble(workDir string) error {
 			}
 		}
 	}
-	var args = []string{"-f", "win64", "-o syscall.obj", "../tools/syscall.asm"}
-	out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
-	fmt.Println(string(out))
-	if err != nil {
-		return fmt.Errorf("assembly of syscall.asm, error: %s", err.Error())
-	}
+	// var args = []string{"-f", "win64", "-o syscall.obj", "../tools/syscall.asm"}
+	// out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
+	// fmt.Println(string(out))
+	// if err != nil {
+	//	return fmt.Errorf("assembly of syscall.asm, error: %s", err.Error())
+	// }
 
 	return nil
 }
@@ -80,34 +82,63 @@ func Link(workDir string, outputName string) error {
 		outputName += ".exe"
 	}
 	// Calculate all arguments to the linker
-	var args = []string{"/fo", outputName}
-	args = append(args, "/entry=main")
-	args = append(args, "/console")
-	args = append(args, "/debug=dbg")
-	// Add all object files to argument list
-	entries, err := os.ReadDir(workDir)
-	if err != nil {
-		return fmt.Errorf("collecting obj files error %s", err.Error())
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
-			args = append(args, filepath.Join(workDir, entry.Name()))
+	var args []string
+	if *UseGcc {
+		// Add all object files to argument list
+		entries, err := os.ReadDir(workDir)
+		if err != nil {
+			return fmt.Errorf("collecting obj files error %s", err.Error())
 		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
+				args = append(args, filepath.Join(workDir, entry.Name()))
+			}
+		}
+		args = append(args, "-o")
+		args = append(args, "program.exe")
+		args = append(args, "-m64")
+		args = append(args, "-lkernel32")
+		args = append(args, "-lmsvcrt")
+		// outp, err := exec.Command("C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe", args...).CombinedOutput()
+		outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
+
+		fmt.Println(string(outp))
+		if err != nil {
+			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
+		}
+	} else {
+		args = append(args, "/fo")
+		args = append(args, outputName)
+		args = append(args, "/entry=main")
+		args = append(args, "/console")
+		if *debug {
+			args = append(args, "/debug=dbg")
+		}
+		// Add all object files to argument list
+		entries, err := os.ReadDir(workDir)
+		if err != nil {
+			return fmt.Errorf("collecting obj files error %s", err.Error())
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
+				args = append(args, filepath.Join(workDir, entry.Name()))
+			}
+		}
+		args = append(args, "-g")
+		args = append(args, "kernel32.dll")
+		args = append(args, "msvcrt.dll")
+		// Print the arguments and the command
+		fmt.Println("Link command:")
+		fmt.Printf("../tools/golink.exe ")
+		for _, s := range args {
+			fmt.Printf(" %s", s)
+		}
+		fmt.Printf("\n")
+		// Now start the linker
+		outp, err := exec.Command("../tools/golink.exe", args...).CombinedOutput()
+		fmt.Println(string(outp))
 	}
-	args = append(args, "kernel32.dll")
-	args = append(args, "msvcrt.dll")
-	// Print the arguments and the command
-	fmt.Println("Link command:")
-	fmt.Printf("../tools/golink.exe ")
-	for _, s := range args {
-		fmt.Printf(" %s", s)
-	}
-	fmt.Printf("\n")
-	// Now start the linker
-	out, err := exec.Command("../tools/golink.exe", args...).CombinedOutput()
-	// Print linker output
-	fmt.Println(string(out))
-	return err
+	return nil
 }
 
 // Run will start execution of the exe file made by the link step

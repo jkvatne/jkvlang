@@ -33,7 +33,7 @@ _win_error:
     mov rax, FORMAT_MESSAGE_FROM_SYSTEM | 0xFF    ; 0xFF means no crlf
     mov rdi, FormatMessageA
     mov rbx, 6*8
-    call syscall                                  ; Call the FormatMessageA function in kernel32
+    call _syscall                                  ; Call the FormatMessageA function in kernel32
     add rsp, 6*8
     mov [error], rax                              ; Length of message is a 16 bit word
     ; Set pointer to error message in r15

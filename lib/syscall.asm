@@ -5,7 +5,7 @@ section .text
 ; syscall will call any dll function that is reachable
 ; The address of the function should be in rdi, arg count *8 in rbx
 ; rax is the first parameter
-syscall:
+_syscall:
     push rbp              ; Save old frame pointer  
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb

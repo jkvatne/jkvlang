@@ -2,14 +2,13 @@
 ;-------------
 section .rodata
 ;-------------
-crlf               db 0Dh,0Ah,00h
+crlf               db 41h, 0Dh,0Ah,00h
 
 ;-------------
 section .text
 ;-------------
 
 extern printf
-extern syscall
 
 ; _printf is the local version of printf from msvcrt.dll
 ; The first parameter should be in rax (the format string)
@@ -19,14 +18,13 @@ global _printf
 _printf:
     add rax, 8
     mov rdi, printf
-    ; fallthrough to syscall
-    jmp syscall
-    
+    jmp _syscall
+
+global _println
 _println:
     add rax, 8
     mov rdi, printf
-    ; fallthrough to syscall
-    call syscall
-
+    call _syscall
+    mov rdi, printf
     mov rax, crlf
-    jmp syscall
+    jmp _syscall

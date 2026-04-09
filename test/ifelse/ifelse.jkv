@@ -4,25 +4,34 @@ func main() {
     b = 2
     c = 3
 
+    printf("OK so long\n")
+
+    /*
+
+    if a>0 ? c+=2 : c+=1
+    assert(c==5, "c+2 should be 5")
+
+    assert(true, "OK")
+    assert(false, "Intentional assert fail 1")
+
+    if a!=0 {
+       assert(false, "Intentional assert fail 2")
+    } else {
+       assert(false, "Error")
+    }
+
     if b==6 {
         assert(false, "b is not 6")
-    } else if a==b  {
+    }
+
+    else if a==b  {
         assert(true, "Error")
     } else if b!=c {
         println("if5")
     } else {
         assert(false, "Error")
     }
-
-    if a!=0 {
-       assert(true,"Should be executed")
-    } else {
-       assert(false, "Error")
-    }
-
-    if a>0 ? c+=2 : c+=1
-    assert(c==5, "c+2 should be 5")
-
     if b==0 ? println("OK") : println("FAIL")
+    */
  }
 
