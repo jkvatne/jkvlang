@@ -86,7 +86,7 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
-func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
+func ParseActualArgList(s *State) (valueList []*ValueDef, err error) {
 	for {
 		s.ArgCount++
 		if s.ArgCount > len(s.ArgCode) {
@@ -96,7 +96,7 @@ func ParseActualArgList(s *State) (valueList []ValueDef, err error) {
 		if s.token == TOK_RPAR {
 			break
 		}
-		var value ValueDef
+		var value *ValueDef
 		value, err = ParseExpression(s)
 		valueList = append(valueList, value)
 		if err != nil {
@@ -153,10 +153,10 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
-func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) {
+func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error) {
 	f := FuncDefs[id]
 	if f == nil {
-		return NoValue, fmt.Errorf("expected a function name, got: %s", id)
+		return &NoValue, fmt.Errorf("expected a function name, got: %s", id)
 	}
 	// Make space for return values
 	n := len(f.returnTypes)
@@ -168,7 +168,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	// Parse the argument list and push each arg
 	values, err := ParseActualArgList(s)
 	if err != nil {
-		return NoValue, err
+		return &NoValue, err
 	}
 	// Now output the generated code for each argument, in reverse order
 	i := len(s.ArgCode) - 1
@@ -198,9 +198,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (ValueDef, error) 
 	EmitCall(s, id, len(values))
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
-		return NoValue, nil
+		return &NoValue, nil
 	}
-	return ValueDef{Typ: f.returnTypes[0]}, nil
+	return &ValueDef{Typ: f.returnTypes[0]}, nil
 }
 
 // ParseAssignOrCall - this might be the start of a lvalue list or a function call
@@ -261,7 +261,7 @@ func ParseAssignOrCall(s *State, id string) error {
 
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when en ID is encountered in an expression
-func ParseVarOrFunc(s *State) (value ValueDef, err error) {
+func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	// We now have s.token == TOK_ID
 	id := s.tokenString
 	nextToken(s)
@@ -269,31 +269,32 @@ func ParseVarOrFunc(s *State) (value ValueDef, err error) {
 		// It is  a simple variable
 		v, ok := VarDefs[id]
 		if !ok {
-			return NoValue, fmt.Errorf("did not find variable \"%s\"", id)
+			return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
 		}
 		if v.Typ == nil {
-			return NoValue, fmt.Errorf("no type for \"%s\"", id)
+			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
 		if v.Typ.Pt == TYP_NONE {
-			return NoValue, fmt.Errorf("no type for \"%s\"", id)
+			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
 		if !v.Value.HasValue && !s.RaxIsTOS || v.Offset != -8 {
 			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
-		return v.Value, err
+		return &v.Value, err
 	} else if s.token == TOK_LBRACK {
 		// It is an array
 		err = ParseArrayIndexes(s)
-		return NoValue, err
+		return &NoValue, err
 	} else if s.found(TOK_LPAR) {
 		// It is a function call that should return values
 		return ParseFuncCall(s, id, true)
 	}
-	return NoValue, fmt.Errorf("unrecognized variable or function call")
+	return &NoValue, fmt.Errorf("unrecognized variable or function call")
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
-func ParseUnary(s *State) (value ValueDef, err error) {
+func ParseUnary(s *State) (value *ValueDef, err error) {
+	value = &ValueDef{}
 	if s.token == TOK_ID {
 		// An id can be either a variable or a function call
 		value, err = ParseVarOrFunc(s)
@@ -305,10 +306,10 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
 		if err != nil {
-			return NoValue, err
+			return &NoValue, err
 		}
 		if value.Typ == nil {
-			return NoValue, fmt.Errorf("missing integer type")
+			return &NoValue, fmt.Errorf("missing integer type")
 		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
@@ -332,24 +333,24 @@ func ParseUnary(s *State) (value ValueDef, err error) {
 			}
 		}
 	} else if s.token == TOK_TRUE {
-		value = True
+		value = &True
 		nextToken(s)
 	} else if s.token == TOK_FALSE {
-		value = False
+		value = &False
 		nextToken(s)
 	} else {
 		slog.Error("Unexpected", "token", s.tokenString)
-		return NoValue, fmt.Errorf("unexpected token %s", s.tokenString)
+		return &NoValue, fmt.Errorf("unexpected token %s", s.tokenString)
 	}
 	return value, err
 }
 
-func ParseProd(s *State) (value ValueDef, err error) {
+func ParseProd(s *State) (value *ValueDef, err error) {
 	value, err = ParseUnary(s)
 	if err != nil {
 		return value, err
 	}
-	var value2 ValueDef
+	var value2 *ValueDef
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
 		op := s.token
 		nextToken(s)
@@ -358,16 +359,16 @@ func ParseProd(s *State) (value ValueDef, err error) {
 			value, err = GenerateOp(s, op, value, value2)
 		}
 		if err != nil {
-			return NoValue, err
+			return &NoValue, err
 		}
 	}
 	return value, nil
 }
 
-func ParseSumTerm(s *State) (ValueDef, error) {
+func ParseSumTerm(s *State) (*ValueDef, error) {
 	value1, err := ParseProd(s)
 	if err != nil {
-		return NoValue, err
+		return &NoValue, err
 	}
 	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
 		// Concatenation of two strings
@@ -375,10 +376,10 @@ func ParseSumTerm(s *State) (ValueDef, error) {
 			nextToken(s)
 			_value2, err := ParseProd(s)
 			if err != nil {
-				return NoValue, err
+				return &NoValue, err
 			}
 			if _value2.Typ.Pt != TYP_STRING {
-				return NoValue, fmt.Errorf("String can only be concatenated with another string")
+				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s)
 			s.localSp--
@@ -389,26 +390,26 @@ func ParseSumTerm(s *State) (ValueDef, error) {
 			nextToken(s)
 			value2, err := ParseProd(s)
 			if err != nil {
-				return NoValue, err
+				return &NoValue, err
 			}
 			value1, err = GenerateOp(s, op, value1, value2)
 			if err != nil {
-				return NoValue, err
+				return &NoValue, err
 			}
 		}
 	}
 	return value1, nil
 }
 
-func ParseCompareTerm(s *State) (ValueDef, error) {
-	var value1, value2, result ValueDef
+func ParseCompareTerm(s *State) (*ValueDef, error) {
+	var value1, value2 *ValueDef
 	var err error
 	value1, err = ParseSumTerm(s)
 	if err != nil {
-		return NoValue, err
+		return &NoValue, err
 	}
 	if value1.Typ == nil {
-		return NoValue, fmt.Errorf("internal error, no type")
+		return &NoValue, fmt.Errorf("internal error, no type")
 	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
@@ -418,52 +419,60 @@ func ParseCompareTerm(s *State) (ValueDef, error) {
 	nextToken(s)
 	value2, err = ParseSumTerm(s)
 	if err != nil {
-		return NoValue, err
+		return &NoValue, err
 	}
-	result.Typ = TypeDefs["Bool"]
 	return GenerateOp(s, op, value1, value2)
 }
 
-func ParseExpression(s *State) (result ValueDef, err error) {
-	var value2 ValueDef
+func ParseExpression(s *State) (result *ValueDef, err error) {
+	var value2 *ValueDef
 	result, err = ParseCompareTerm(s)
 	if err != nil {
-		return NoValue, err
+		return &NoValue, err
 	}
 	if result.Typ == nil {
-		return NoValue, fmt.Errorf("expression type is nil - internal error")
+		return &NoValue, fmt.Errorf("expression type is nil - internal error")
 	}
+	endlbl := 0
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+		if endlbl == 0 {
+			endlbl = NewLabel(s)
+		}
+		op := s.token
 		if result.Typ.Pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
+			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		nextToken(s)
+		if op == TOK_LOG_OR {
+			EmitJumpTrue(s, endlbl, "")
+		} else if op == TOK_LOG_AND {
+			EmitJumpFalse(s, endlbl, "")
+		}
 		value2, err = ParseCompareTerm(s)
 		if err != nil {
-			return NoValue, err
+			return &NoValue, err
 		}
 		if value2.Typ == nil {
-			return NoValue, fmt.Errorf("value2.typ is nil")
+			return &NoValue, fmt.Errorf("value2.typ is nil")
 		}
 		if value2.Typ.Pt != TYP_BOOL {
-			return NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
-		}
-		_, err = GenerateOp(s, s.token, result, value2)
-		if err != nil {
-			return NoValue, err
+			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 	}
+	if endlbl != 0 {
+		EmitLabel(s, endlbl, "")
+	}
 	if result.Typ == nil {
-		return NoValue, fmt.Errorf("value.type is nil - internal error")
+		return &NoValue, fmt.Errorf("value.type is nil - internal error")
 	}
 	return result, nil
 }
 
 // ParseExpressions will parse either a comma separated list of values,
 // or a function call returning potentially many values.
-func ParseExpressions(s *State) (results []ValueDef, err error) {
-	var v ValueDef
-	results = make([]ValueDef, 0, 3)
+func ParseExpressions(s *State) (results []*ValueDef, err error) {
+	var v *ValueDef
+	results = make([]*ValueDef, 0, 3)
 	// expectRpar := s.found(TOK_LPAR)
 	for {
 		id := s.tokenString
@@ -478,7 +487,7 @@ func ParseExpressions(s *State) (results []ValueDef, err error) {
 				return nil, err
 			}
 			for _, t := range f.returnTypes {
-				v = ValueDef{Typ: t}
+				v = &ValueDef{Typ: t}
 				results = append(results, v)
 			}
 		} else {
@@ -500,6 +509,7 @@ func NewLabel(s *State) int {
 	return s.labelNo
 }
 
+/*
 // StartCond will increment noCode if the value is a constant equal to cond
 func StartCond(s *State, value *ValueDef, cond bool) {
 	if value.HasValue && (value.BoolValue != cond) {
@@ -516,10 +526,150 @@ func EndCond(s *State, value *ValueDef, cond bool) {
 		}
 	}
 }
+*/
+
+func ParseBlock(s *State, isTrue bool) error {
+	if isTrue {
+		s.noCode++
+	}
+	EnterBlock(s)
+	err := ParseStatements(s)
+	if err != nil {
+		return err
+	}
+	ExitBlock(s)
+	if isTrue {
+		s.noCode--
+		if s.noCode < 0 {
+			panic("negative noCode")
+		}
+	}
+	return nil
+}
+
+// ParseColonQmark will parse the code after ?
+func ParseColonQmark(s *State, value *ValueDef) (err error) {
+	L1, L2 := 0, 0
+	nextToken(s)
+	if !value.HasValue {
+		L1 = NewLabel(s)
+		EmitJumpFalse(s, L1, "Skip block 1 if false")
+	}
+
+	// Parse stm1 in if cond ? stm1 : stm2
+	err = ParseBlock(s, value.IsTrue())
+	if err != nil {
+		return err
+	}
+
+	if s.found(TOK_COLON) {
+		if !s.hasReturned && !value.HasValue {
+			L2 = NewLabel(s)
+			EmitJump(s, L2, "")
+			EmitLabel(s, L1, "")
+		}
+		// Parse stm2 in if cond ? stm1 : stm2
+		err = ParseBlock(s, value.IsFalse())
+		if err != nil {
+			return err
+		}
+		if !s.hasReturned && !value.HasValue {
+			EmitLabel(s, L2, "")
+		}
+	} else {
+		if !s.hasReturned && !value.HasValue {
+			EmitLabel(s, L1, "")
+		}
+	}
+	return nil
+}
+
+// ParseIfElse will parse the code after "if cond {"
+func ParseIfElse(s *State, value *ValueDef) (err error) {
+	L1, L2 := 0, 0
+	nextToken(s)
+	if !value.HasValue {
+		L1 = NewLabel(s)
+		EmitJumpFalse(s, L1, "Skip block 1 if false")
+	}
+
+	// Parse stm1 in "if cond { stm1 } ..."
+	err = ParseBlock(s, value.IsTrue())
+	if err != nil {
+		return err
+	}
+
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
+	}
+
+	for s.found(TOK_ELSE) {
+		if !s.hasReturned && !value.HasValue {
+			L2 = NewLabel(s)
+			EmitJump(s, L2, "Skip else block")
+		}
+		EmitLabel(s, L1, "")
+		L1 = 0
+		if s.token == TOK_IF {
+			nextToken(s)
+			value, err = ParseExpression(s)
+			if err != nil {
+				return err
+			}
+			if value.Typ.Pt != TYP_BOOL {
+				return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
+			}
+			L1 = NewLabel(s)
+			EmitJumpFalse(s, L1, "jump if condition was false")
+			if s.token != TOK_LBRACE {
+				return fmt.Errorf("expected { after if but got %s", s.tokenString)
+			}
+			nextToken(s)
+			// Parsing 'else if' statements
+			err = ParseBlock(s, value.IsFalse())
+			if err != nil {
+				return err
+			}
+			if !s.hasReturned {
+				EmitJump(s, L2, "jump to end of else block")
+			}
+			if s.token != TOK_RBRACE {
+				return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
+			}
+			if L2 != 0 {
+				EmitLabel(s, L2, "Skipped else block")
+				L2 = 0
+			}
+			nextToken(s)
+		} else if s.token == TOK_LBRACE {
+			nextToken(s)
+			// Else without if
+			err = ParseBlock(s, value.IsFalse())
+			if err != nil {
+				return err
+			}
+			if s.token != TOK_RBRACE {
+				return fmt.Errorf("expected } after else clause, but got %s", s.tokenString)
+			}
+			nextToken(s)
+		} else {
+			// Else without {
+			return fmt.Errorf("expected { after else but got %s", s.tokenString)
+		}
+	}
+	if L1 != 0 {
+		EmitLabel(s, L1, "")
+	}
+	if L2 != 0 {
+		EmitLabel(s, L2, "")
+	}
+	return nil
+}
 
 func ParseIf(s *State) error {
-	endLabelUsed := false
 	nextToken(s)
+
+	// Parse the if condition
 	value, err := ParseExpression(s)
 	if err != nil {
 		return err
@@ -527,111 +677,15 @@ func ParseIf(s *State) error {
 	if value.Typ.Pt != TYP_BOOL {
 		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 	}
-	endLabel := NewLabel(s)
-	elseLabel := NewLabel(s)
-	if !value.HasValue {
-		EmitJumpFalse(s, elseLabel, "")
-	}
 
 	if s.token == TOK_COLON || s.token == TOK_QMARK {
-		nextToken(s)
-		StartCond(s, &value, true)
-		// Parse stm1 in if cond ? stm1 : stm2
-		err = ParseStatements(s)
-		if err != nil {
-			return err
-		}
-		EndCond(s, &value, true)
-		if !s.hasReturned {
-			EmitJump(s, endLabel, "")
-			endLabelUsed = true
-		}
-		if s.token == TOK_COLON {
-			nextToken(s)
-			EmitLabel(s, elseLabel)
-			StartCond(s, &value, false)
-			_, err = ParseStatement(s)
-			if err != nil {
-				return err
-			}
-			EndCond(s, &value, false)
-		}
-
+		return ParseColonQmark(s, value)
 	} else if s.token == TOK_LBRACE {
-		nextToken(s)
-		StartCond(s, &value, true)
-		EnterBlock(s)
-		err = ParseStatements(s)
-		ExitBlock(s)
-		if err != nil {
-			return err
-		}
-		EndCond(s, &value, true)
-		if !s.hasReturned && !value.HasValue {
-			EmitJump(s, endLabel, "")
-			endLabelUsed = true
-		}
-		if s.token != TOK_RBRACE {
-			return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
-		}
-		nextToken(s)
-		for s.token == TOK_ELSE {
-			EmitLabel(s, elseLabel)
-			nextToken(s)
-			if s.token == TOK_IF {
-				nextToken(s)
-				value, err = ParseExpression(s)
-				if err != nil {
-					return err
-				}
-				if value.Typ.Pt != TYP_BOOL {
-					return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
-				}
-				elseLabel = NewLabel(s)
-				EmitJumpFalse(s, elseLabel, "")
-				if s.token != TOK_LBRACE {
-					return fmt.Errorf("expected { after if but got %s", s.tokenString)
-				}
-				nextToken(s)
-				// Parsing 'else if' statements
-				StartCond(s, &value, true)
-				EnterBlock(s)
-				err = ParseStatements(s)
-				ExitBlock(s)
-				if err != nil {
-					return err
-				}
-				EndCond(s, &value, true)
-				if !s.hasReturned {
-					endLabelUsed = true
-					EmitJump(s, endLabel, "")
-				}
-				if s.token != TOK_RBRACE {
-					return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
-				}
-				ExitBlock(s)
-				nextToken(s)
-			} else if s.token == TOK_LBRACE {
-				nextToken(s)
-				// Else without if
-				StartCond(s, &value, false)
-				EnterBlock(s)
-				err = ParseStatements(s)
-				ExitBlock(s)
-				EndCond(s, &value, false)
-				nextToken(s)
-			} else {
-				// Else without {
-				return fmt.Errorf("expected { after else but got %s", s.tokenString)
-			}
-		}
+		return ParseIfElse(s, value)
 	} else {
-		return fmt.Errorf("expected { or :  but got %s", s.tokenString)
+		return fmt.Errorf("Expected {, got %s", s.token.Name())
 	}
-	if endLabelUsed {
-		EmitLabel(s, endLabel)
-	}
-	return nil
+
 }
 
 func ParseFuncDef(s *State) error {

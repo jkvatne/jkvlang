@@ -117,12 +117,12 @@ var TokenNames = [...]string{
 	TOK_STRING:      "string",
 	TOK_ID:          "ID",
 	TOK_EOF:         "EOF",
-	TOK_LBRACE:      "[]",
-	TOK_RBRACE:      "]",
+	TOK_LBRACE:      "{",
+	TOK_RBRACE:      "}",
 	TOK_LPAR:        "(",
 	TOK_RPAR:        ")",
-	TOK_LBRACK:      "{",
-	TOK_RBRACK:      "}",
+	TOK_LBRACK:      "[",
+	TOK_RBRACK:      "]",
 	TOK_COMMA:       ",",
 	TOK_ASSIGN:      "=",
 	TOK_GE:          ">=",
@@ -173,6 +173,18 @@ func isAlfa(ch uint8) bool {
 
 func (t Token) Name() string {
 	return TokenNames[t]
+}
+
+func (t Token) IsCompare() bool {
+	return t == TOK_EQ || t == TOK_NE || t == TOK_GT || t == TOK_LE || t == TOK_LT || t == TOK_GE
+}
+
+func (t Token) IsAritmetic() bool {
+	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT || t == TOK_INV_DIV || t == TOK_INV_MINUS
+}
+
+func (t Token) IsLogic() bool {
+	return t == TOK_AND || t == TOK_OR || t == TOK_MULT
 }
 
 func isAlfaNum(ch uint8) bool {
@@ -472,7 +484,7 @@ func nextToken(s *State) {
 			s.tokenString = "|"
 		case ch1 == '}':
 			s.token = TOK_RBRACE
-			s.tokenString = "]"
+			s.tokenString = "}"
 		default:
 			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", ch1))
 		}

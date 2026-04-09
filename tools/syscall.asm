@@ -330,7 +330,7 @@ qrand:
 global rand64:
 rand64:
     rdrand rax          ; Try to generate a 64-bit random number into RAX
-    jnc get_random_64   ; The Carry Flag (CF) is 0 if the generator was not ready; retry if so.
+    jnc rand64          ; The Carry Flag (CF) is 0 if the generator was not ready; retry if so.
     ret                 ; RAX now contains a valid 64-bit random number
 
 global qrand64:
@@ -338,6 +338,7 @@ qrand64:
     mov rax, [next64]              ; Load current seed
     mov rdx, 6364136223846793005   ; Multiplier 'a'
     mul rdx                        ; RAX = seed * a (lower 64 bits of result)
-    add rax, 1442695040888963407   ; Add increment 'c'
+    mov rdx, 1442695040888963407   ; Add increment 'c'
+    add rax,rdx
     mov [next64], rax              ; Update seed for next call
     ret

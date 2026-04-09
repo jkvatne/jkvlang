@@ -141,7 +141,7 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 // CanAssignConst : Given a constant value, can we assign it to the dst variable?
 // A F64 can accept anything. An F32 value can accept everything except F64.
 // For integers, it depends on the value.
-func CanAssignConst(dst PrimaryType, value ValueDef) bool {
+func CanAssignConst(dst PrimaryType, value *ValueDef) bool {
 	if dst == value.Typ.Pt {
 		return true
 	}

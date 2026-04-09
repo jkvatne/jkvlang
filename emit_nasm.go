@@ -111,9 +111,13 @@ func EmitLineNo(s *State) {
 	}
 }
 
-func EmitLabel(s *State, label int) {
-	_, _ = s.outputFile.WriteString(".L" + strconv.Itoa(label) + ":\n")
-	// _, err = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; Line " + strconv.Itoa(s.lineNum) + "\n")
+func LabelName(label int) string {
+	return ".L" + strconv.Itoa(label)
+}
+
+func EmitLabel(s *State, label int, comment string) {
+	n, _ := s.outputFile.WriteString(".L" + strconv.Itoa(label) + ":")
+	_, _ = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; " + comment + "\n")
 }
 
 func EmitJump(s *State, n int, comment string) {
@@ -183,7 +187,44 @@ var TokenOp = map[Token]string{
 // EmitFloatOp will generate a stack operation on the top two stack entries, like fadd or fsub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (MMX0)
 func EmitFloatOp(s *State, op Token) {
+	panic("EmitFloatOp not implemented")
+}
 
+func EmitCompareFloats(s *State, op Token) {
+	panic("EmitCompareFloats not implemented")
+}
+
+func EmitSetCompareResult(s *State, op Token) error {
+	if op == TOK_EQ {
+		emit(s, "sete", "al", "", "")
+	} else if op == TOK_GT {
+		emit(s, "setg", "al", "", "")
+	} else if op == TOK_NE {
+		emit(s, "setne", "al", "", "")
+	} else if op == TOK_GE {
+		emit(s, "setge", "al", "", "")
+	} else if op == TOK_LT {
+		emit(s, "setl", "al", "", "")
+	} else if op == TOK_LE {
+		emit(s, "setle", "al", "", "")
+	} else {
+		return fmt.Errorf("EmitCompareResult: invalid token %v", op)
+	}
+	return nil
+}
+
+// EmitCompareIntegers will compare the top two stack entries
+func EmitCompareIntegers(s *State, op Token) error {
+	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
+	return EmitSetCompareResult(s, op)
+}
+
+// EmitCompareIntConst will compare top of stack with a constant
+func EmitCompareIntConst(s *State, op Token, value int64) error {
+	sval := strconv.FormatInt(value, 10)
+	emit(s, "cmp", "rax", sval, "Compare and set flags")
+	return EmitSetCompareResult(s, op)
 }
 
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
@@ -199,28 +240,6 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
-	} else if op == TOK_EQ {
-		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", "[rsp]", ZeroFlag, "Mask zero flag")
-	} else if op == TOK_NE {
-		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", "[rsp]", ZeroFlag, "Mask zero flag")
-		emit(s, "xor", "[rsp]", ZeroFlag, "Invert zero flag")
-	} else if op == TOK_GT {
-		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", "[rsp]", SignFlag, "Mask zero flag")
-	} else if op == TOK_LE {
-		emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-		emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-		emit(s, "pushf", "", "", "Push flags")
-		emit(s, "and", "[rsp]", SignFlag, "Mask sign flag")
-		emit(s, "xor", "[rsp]", SignFlag, "Invert sign flag")
 	} else {
 		emit(s, "pop", "rbx", "", "")
 		instruction := TokenOp[op]
@@ -247,10 +266,6 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
 		emit(s, "mov", "rax", sval, "")
-	} else if op == TOK_EQ {
-		emit(s, "cmp", "rax", sval, "Compare and set flags")
-		emit(s, "lahf", "", "", "Load flags into AH")
-		emit(s, "and", "rax", "0x4000", "Mask zero flag")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
@@ -412,8 +427,20 @@ func EmitJumpFalse(s *State, n int, comment string) {
 	if !s.RaxIsTOS {
 		panic("TOS not in AX")
 	}
-	emit(s, "or", "rax", "rax", "Set zero flag if rax is zero")
+	emit(s, "or", "al", "al", "Set zero flag if rax is zero")
 	emit(s, "jz", ".L"+strconv.Itoa(n), "", "Jump if zero flag is set")
+	// Implicit pop of TOS
+	s.RaxIsTOS = false
+}
+
+// EmitJumpTrue will emit an instruction to jump if top of stack is false.
+// Top of stack is typically already in AX
+func EmitJumpTrue(s *State, n int, comment string) {
+	if !s.RaxIsTOS {
+		panic("TOS not in AX")
+	}
+	emit(s, "or", "al", "al", "Set zero flag if rax is zero")
+	emit(s, "jnz", ".L"+strconv.Itoa(n), "", "Jump if zero flag is set")
 	// Implicit pop of TOS
 	s.RaxIsTOS = false
 }

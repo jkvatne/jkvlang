@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -15,8 +16,8 @@ const Version string = "v0.0.2"
 
 var (
 	workDir    = flag.String("build", "./build", "Path to intermediate files during build")
-	run        = flag.Bool("run", false, "Set true to run after compile")
-	link       = flag.Bool("link", false, "Set true to just do linking")
+	run        = flag.Bool("run", true, "Set true to run after compile")
+	link       = flag.Bool("link", true, "Set true to just do linking")
 	outputName = flag.String("o", "program.exe", "Output filename of exectutable")
 	inputPath  = flag.String("src", "./", "Source directory")
 	oneFile    = flag.String("file", "", "Compile a single file")
@@ -80,7 +81,7 @@ func Link(workDir string, outputName string) error {
 	}
 	// Calculate all arguments to the linker
 	var args = []string{"/fo", outputName}
-	args = append(args, "/entry=_start")
+	args = append(args, "/entry=main")
 	args = append(args, "/console")
 	args = append(args, "/debug=dbg")
 	// Add all object files to argument list
@@ -93,7 +94,6 @@ func Link(workDir string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
-	args = append(args, "syscall.obj")
 	args = append(args, "kernel32.dll")
 	args = append(args, "msvcrt.dll")
 	// Print the arguments and the command
@@ -112,8 +112,9 @@ func Link(workDir string, outputName string) error {
 
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
-	fmt.Printf("Running %s:\n", outputName)
-	out, err := exec.Command(outputName, "").CombinedOutput()
+	cwd, _ := os.Getwd()
+	fmt.Printf("Running \"%s\" in \"%s\"\n", outputName, cwd)
+	out, err := exec.Command(path.Join(cwd, outputName), "").CombinedOutput()
 	println(string(out))
 	return err
 }
@@ -135,13 +136,11 @@ func main() {
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)
 
-	// Make sure output directory is empty, except when only linking
-	if !*link {
-		err = os.RemoveAll(*workDir)
-		if err != nil {
-			fmt.Printf("could not remove old working directory " + err.Error())
-			os.Exit(1)
-		}
+	// Make sure output directory is empty
+	err = os.RemoveAll(*workDir)
+	if err != nil {
+		fmt.Printf("could not remove old working directory " + err.Error())
+		os.Exit(1)
 	}
 	err = os.Mkdir(*workDir, os.ModePerm)
 	if err != nil {
@@ -176,7 +175,7 @@ func main() {
 	}
 
 	// Run the exe file if -run is present and linking is ok
-	if *link && *run {
+	if *run {
 		err = Run(*outputName)
 		if err != nil {
 			fmt.Printf("%v\n", err)

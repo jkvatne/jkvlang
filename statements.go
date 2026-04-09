@@ -92,5 +92,6 @@ func ParseStatements(s *State) error {
 		}
 		s.RaxIsTOS = false
 	}
+	EmitLineNo(s)
 	return nil
 }

@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 // GenerateOp will handle the infix operations +,-,*,/,%,|,&,^,<,>,<=,>=,==,!=
 // Integer operands are promoted to the smallest size that can accomondate both.
 // F.ex. I16 op U16 results in an I32
-func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
+func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	// Convert int values to float in case of mixed types.
 	if val1.Typ.Pt != TYP_F64 && val1.Typ.Pt != TYP_F32 {
 		val1.FloatValue = float64(val1.IntValue)
@@ -18,7 +19,7 @@ func GenerateOp(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, err
 	}
 	// For user defined types, both must be identical, or one operand must be a basic type.
 	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
-		return NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
+		return &NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 	}
 	if val1.HasValue && val2.HasValue {
 		// If both operands are constant. Evaluate at compile time.
@@ -55,7 +56,7 @@ func Inverse(op Token) Token {
 
 // constOpConst will calculate the result of the operation on the two constant values
 // and return the constant result.
-func constOpConst(op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
+func constOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var result ValueDef
 	result.Typ = widest(val1, val2).Typ
 	result.HasValue = true
@@ -102,39 +103,79 @@ func constOpConst(op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
 		result.BoolValue = val1.FloatValue >= val2.FloatValue
 	default:
 		// Invalid operand
-		return NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
+		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
 	}
-	return result, nil
+	return &result, nil
 }
 
-func tosOpConst(s *State, op Token, val1 ValueDef, val2 ValueDef) (ValueDef, error) {
-	if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+// tosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
+func tosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+	if op.IsCompare() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+		err := EmitCompareIntConst(s, op, val2.IntValue)
+		return &ValueDef{Typ: &BoolType}, err
+	} else if op.IsAritmetic() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 		err := EmitOpIntConst(s, op, val2.IntValue, "")
-		return ValueDef{Typ: val1.Typ}, err
-	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
+		return &ValueDef{Typ: val1.Typ}, err
+	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
 		err := EmitOpFloatConst(s, op, val2.FloatValue, "")
-		return ValueDef{Typ: val1.Typ}, err
-	} else {
-		return NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
+		return &ValueDef{Typ: val1.Typ}, err
+	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		// The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
+		// First check lengths
+		emit(s, "cmp", "word [rax]", strconv.Itoa(len(val2.StringValue)), "Compare string lengths")
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rsi", "str"+strconv.Itoa(val2.StringLitNo), "")
+		emit(s, "mov", "rdi", "rax", "")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return &ValueDef{Typ: &BoolType}, nil
 	}
-
+	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
 }
 
-func tosOpNos(s *State, op Token, val1, val2 ValueDef) (ValueDef, error) {
-	if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+	if op.IsCompare() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+		err := EmitCompareIntegers(s, op)
+		return &ValueDef{Typ: &BoolType}, err
+	} else if op.IsAritmetic() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 		EmitIntegerOp(s, op)
 		return val1, nil
-	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 		EmitFloatOp(s, op)
 		return val1, nil
-	} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+	} else if op.IsCompare() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+		EmitCompareFloats(s, op)
+		return &ValueDef{Typ: &BoolType}, nil
+	} else if op == TOK_PLUS && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		EmitConcat(s)
 		return val1, nil
+	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "mov", "rdi", "rax", "Save tos")
+		emit(s, "mov", "rsi", "[rsp]", "Get nos")
+		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+		emit(s, "mov", "ecx", "[rsp]", "Get nos length")
+		emit(s, "add", "rsi", "4", "Start of string 1")
+		emit(s, "add", "rdi", "4", "Start of string 2")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return &ValueDef{Typ: &BoolType}, nil
 	}
-	return NoValue, fmt.Errorf("operation %s not implemented", op.Name())
+	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())
 }
 
-func GenertateAssignment(s *State, op Token, lvalue *VarDef, value ValueDef) (err error) {
+func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)

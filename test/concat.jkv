@@ -1,12 +1,6 @@
 func main() {
     s = "Hello "
     t = "World "
-    if s==t {
-        println("Failed")
-    }
-    if s=="Hello " {
-        println("Should print")
-    }
     u = "and goodby!"
     v = s + t + u
     println(v)

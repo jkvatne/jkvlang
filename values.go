@@ -23,6 +23,14 @@ var (
 	LiteralDefs []string
 )
 
+func (v *ValueDef) IsTrue() bool {
+	return v.HasValue && v.BoolValue
+}
+
+func (v *ValueDef) IsFalse() bool {
+	return v.HasValue && !v.BoolValue
+}
+
 func LiteralInit() {
 	LiteralDefs = make([]string, 0, 20)
 }
@@ -40,12 +48,13 @@ func AddLiteral(value string) int {
 	return len(LiteralDefs) - 1
 }
 
-func StringToValue(s string) (value ValueDef, err error) {
+func StringToValue(s string) (value *ValueDef, err error) {
+	value = &ValueDef{}
 	if strings.ContainsRune(s, '.') {
 		var num float64
 		num, err = strconv.ParseFloat(s, 64)
 		if err != nil {
-			return NoValue, err
+			return &NoValue, err
 		}
 		value.Typ.Pt = TYP_F64
 		value.FloatValue = num
@@ -71,10 +80,10 @@ func StringToValue(s string) (value ValueDef, err error) {
 			return value, nil
 		}
 	}
-	return NoValue, fmt.Errorf("not a value: %s", s)
+	return &NoValue, fmt.Errorf("not a value: %s", s)
 }
 
-func widest(v1 ValueDef, v2 ValueDef) ValueDef {
+func widest(v1 *ValueDef, v2 *ValueDef) *ValueDef {
 	if v1.Typ.Pt > v2.Typ.Pt {
 		return v1
 	}

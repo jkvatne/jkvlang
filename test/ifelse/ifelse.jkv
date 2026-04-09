@@ -1,0 +1,28 @@
+
+func main() {
+    a = 1
+    b = 2
+    c = 3
+
+    if b==6 {
+        assert(false, "b is not 6")
+    } else if a==b  {
+        assert(true, "Error")
+    } else if b!=c {
+        println("if5")
+    } else {
+        assert(false, "Error")
+    }
+
+    if a!=0 {
+       assert(true,"Should be executed")
+    } else {
+       assert(false, "Error")
+    }
+
+    if a>0 ? c+=2 : c+=1
+    assert(c==5, "c+2 should be 5")
+
+    if b==0 ? println("OK") : println("FAIL")
+ }
+
