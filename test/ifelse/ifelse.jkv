@@ -3,35 +3,35 @@ func main() {
     a = 1
     b = 2
     c = 3
+    assert(false, "Intentional assert fail 1")
+    assert(true, "Should not be printed")
 
-    printf("OK so long\n")
-
-    /*
+    printf(" 1. Starting tests of if/else\n")
 
     if a>0 ? c+=2 : c+=1
     assert(c==5, "c+2 should be 5")
 
-    assert(true, "OK")
-    assert(false, "Intentional assert fail 1")
-
-    if a!=0 {
-       assert(false, "Intentional assert fail 2")
+    if a==1 {
+       printf(" 2. Selecting first if block\n")
     } else {
-       assert(false, "Error")
+       assert(false, "Error, should select first block")
+    }
+
+    if a!=1 {
+       assert(false, "Error, should select else block")
+    } else {
+       printf(" 3. Selecting else block\n")
     }
 
     if b==6 {
-        assert(false, "b is not 6")
-    }
-
-    else if a==b  {
-        assert(true, "Error")
+        assert(false, "Error, b is not 6")
+    } else if a==b  {
+        assert(false, "Error, a is not equal to b")
     } else if b!=c {
-        println("if5")
+        printf(" 4. Ok, b!=c\n")
     } else {
-        assert(false, "Error")
+        assert(false, "Error, else should not be selected")
     }
-    if b==0 ? println("OK") : println("FAIL")
-    */
+    printf(" 5. Ended multiple else statements")
  }
 
