@@ -94,13 +94,11 @@ func Link(workDir string, outputName string) error {
 				args = append(args, filepath.Join(workDir, entry.Name()))
 			}
 		}
-		args = append(args, "-o")
-		args = append(args, "program.exe")
-		args = append(args, "-m64")
-		args = append(args, "-lkernel32")
-		args = append(args, "-lmsvcrt")
-		// outp, err := exec.Command("C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe", args...).CombinedOutput()
-		outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
+		args = append(args, "-o", "program.exe", "-m64", "-lkernel32", "-lmsvcrt")
+		// C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
+		// C:/w64devkit/bin/gcc.exe
+		// OK outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
+		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
 
 		fmt.Println(string(outp))
 		if err != nil {
@@ -200,7 +198,7 @@ func main() {
 		}
 		err = Link(*workDir, *outputName)
 		if err != nil {
-			fmt.Printf("LInker error " + err.Error())
+			fmt.Printf(err.Error())
 			os.Exit(3)
 		}
 	}

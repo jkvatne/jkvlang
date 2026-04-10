@@ -154,6 +154,7 @@ func EmitReturn(s *State) {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
+	// Return exit code from main
 	if s.currentFunc.name == "main" {
 		emit(s, "mov", "rax", "0", "")
 	}
