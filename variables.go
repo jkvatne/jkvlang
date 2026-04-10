@@ -17,6 +17,7 @@ var VarDefs map[string]*VarDef
 
 func VarInit() {
 	VarDefs = make(map[string]*VarDef)
+	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Value: ValueDef{Typ: &I64Type}}
 }
 
 func (v *VarDef) Size() int {

@@ -184,7 +184,7 @@ func main() {
 	} else {
 		err = CompileDir(*inputPath, *workDir)
 		if err != nil {
-			fmt.Printf("Error compiling %s %s\n", *oneFile, err.Error())
+			fmt.Printf("%s%s\n", *oneFile, err.Error())
 			os.Exit(1)
 		}
 	}

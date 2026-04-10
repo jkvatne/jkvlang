@@ -278,7 +278,11 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
 		if !v.Value.HasValue && !s.RaxIsTOS || v.Offset != -8 {
-			EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
+			if v.Name == "err" {
+				emit(s, "mov", "rax", "r15", "Load err")
+			} else {
+				EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
+			}
 		}
 		return &v.Value, err
 	} else if s.token == TOK_LBRACK {

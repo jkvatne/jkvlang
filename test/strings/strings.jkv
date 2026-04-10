@@ -1,16 +1,21 @@
 func main() {
-    println("Starting string tests")
-    /*
+    printf("Starting string tests\n")
+    printf("1. err=%d\n", err)
     s = "Hello "
     t = "World "
+    v = s + t
+    printf("2. err=%d\n", err)
+    println(v)
+    printf("3. err=%d\n", err)
+    /*
+    u = "and goodby!"
     if s==t {
         println("Failed")
     }
     if s=="Hello " {
         println("Should print")
     }
-    u = "and goodby!"
-    v = s + t + u
     println(v)
     */
+    println("Ending string tests")
 }

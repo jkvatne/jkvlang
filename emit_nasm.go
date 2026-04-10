@@ -166,7 +166,7 @@ func EmitReturn(s *State) {
 
 func EmitFunction(s *State, id string) {
 	if id == "main" {
-		EmitTextLabel(s, "global main")
+		// EmitTextLabel(s, "global main")
 	}
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 
@@ -522,11 +522,12 @@ func out(s *State, str string) {
 
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in rax, second string pointer in [rsp]
+// It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
 func EmitConcat(s *State) {
-	// Get string 1 sizes/ptr into r14, r15
-	emit(s, "mov", "r14d", "dword [rax]", " Get string 1 sizes/ptr into r14, r15")
-	emit(s, "mov", "r15", "rax", "")
-	emit(s, "add", "r15", "8", "")
+	// Get string 1 sizes/ptr into r14, rbx
+	emit(s, "mov", "r14d", "dword [rax]", " Get string 1 sizes/ptr into r14, rbx")
+	emit(s, "mov", "rbx", "rax", "")
+	emit(s, "add", "rbx", "8", "")
 	// Get string 2 sizes/ptr into r12, r13
 	emit(s, "mov", "rax", "[rsp]", " Get string 2 sizes/ptr into r12, r13")
 	emit(s, "mov", "r12d", "dword [rax]", "")
@@ -552,7 +553,7 @@ func EmitConcat(s *State) {
 	emit(s, "cld", "", "", "")
 	emit(s, "rep", "movsb", "", "")
 	// Copy string 2
-	emit(s, "mov", "rsi", "r15", "Copy string 2")
+	emit(s, "mov", "rsi", "rbx", "Copy string 2")
 	emit(s, "mov", "rcx", "r14", "")
 	emit(s, "rep", "movsb", "", "")
 	// Now AX should point to the string
