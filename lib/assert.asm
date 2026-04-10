@@ -5,12 +5,24 @@ extern printf
 ;-------------
 section .rodata
 ;-------------
-crlf_str       db 0Ah, 00h
-assert_mess    db "Assert failed", 00h
+crlf_str               db 0Ah, 00h
+default_assert_mess    db "Assert failed", 00h
+sp_mess                dq 11
+                       db "...rsp=0x%X", 0Ah, 00h
 
 ;-------------
 section .text
 ;-------------
+
+global _printsp
+_printsp:
+    push rsp                    ; Value to be printed
+    mov rax, sp_mess            ; Message at top of stack
+    mov rbx, 8                  ; Stack size is 8 bytes
+    call _printf                ; system function to call
+    add sp, 8
+    ret
+
 
 ; assert will verify that the first arbument (rax) is true (not 0)
 ; with optional additional parameters.
@@ -34,7 +46,7 @@ _assert:
     or bx, bx             ; Check if bx=0 (no string given)
     jnz .L5 
     mov bx, 8
-    mov rcx, assert_mess    
+    mov rcx, default_assert_mess
     jmp .L4
 .L5:    
 

@@ -154,24 +154,30 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	} else if op == TOK_PLUS && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		EmitConcat(s)
 		return val1, nil
-	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+	} else if (op == TOK_EQ || op == TOK_NE) && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		lbl := NewLabel(s)
 		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "mov", "rdi", "rax", "Save tos")
 		emit(s, "mov", "rsi", "[rsp]", "Get nos")
 		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+		if op == TOK_EQ {
+			emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+		} else {
+			emit(s, "je", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+		}
 		emit(s, "mov", "eax", "[rsp]", "Get nos prt")
 		emit(s, "mov", "ecx", "[rax]", "Get nos length")
 		emit(s, "add", "rsi", "4", "Start of string 1")
 		emit(s, "add", "rdi", "4", "Start of string 2")
 		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		if op == TOK_EQ {
+			emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		} else {
+			emit(s, "je", LabelName(lbl), "", "If equal, jump to end")
+		}
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 		EmitLabel(s, lbl, "unequal")
-		emit(s, "pop", "rax", "", "Remove NOS")
-		s.localSp--
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return &ValueDef{Typ: &BoolType}, nil
 	}

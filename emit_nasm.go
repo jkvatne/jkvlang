@@ -154,27 +154,27 @@ func EmitReturn(s *State) {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
-	// Function epilogue. Restore frame pointer and exit
-	emit(s, "leave", "", "", "")
 	// Return exit code from main
 	if s.currentFunc.name == "main" {
+		EmitPrintSp(s)
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
 	}
+	// Function epilogue. Restore frame pointer and exit
+	emit(s, "leave", "", "", "")
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
 func EmitFunction(s *State, id string) {
-	if id == "main" {
-		// EmitTextLabel(s, "global main")
-	}
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
 	if id == "main" {
+		EmitPrintSp(s)
 		emit(s, "call", "_sysinit", "", "")
+		EmitPrintSp(s)
 	}
 	s.localSp = 0
 	s.RaxIsTOS = false
@@ -591,4 +591,10 @@ func EmitPrologue(s *State) {
 	emit(s, "global", "main", "", "")
 	EmitBlankLine(s)
 	EmitBlankLine(s)
+}
+
+func EmitPrintSp(s *State) {
+	if *PrintSp {
+		emit(s, "call", "_printsp", "", "")
+	}
 }

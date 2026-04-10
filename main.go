@@ -23,6 +23,7 @@ var (
 	oneFile    = flag.String("file", "", "Compile a single file")
 	debug      = flag.Bool("debug", false, "Enable debug mode")
 	UseGcc     = flag.Bool("gcc", true, "Use gcc")
+	PrintSp    = flag.Bool("sp", true, "Print program SP")
 )
 
 // CompileDir will compile all source files in the given directory

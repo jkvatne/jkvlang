@@ -78,6 +78,7 @@ func ParseStatements(s *State) error {
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		EmitLineNo(s)
 		returned, err := ParseStatement(s)
+		EmitPrintSp(s)
 		if err != nil {
 			return err
 		}

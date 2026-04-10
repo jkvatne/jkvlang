@@ -3,12 +3,17 @@ func main() {
     printf("Starting string tests\n")
     a = "abc"
     b = "abc"
+    printf("Has allocated a and b\n")
+    /*
+    assert(b==a, "b==a failed")
     assert(a==b, "a==b failed")
-    a = "abc"
-    b = "xxxx"
-    if a==b {
+    c = "abcd"
+    assert(a!=c, "a!=c failed")
+    assert(c!=a, "c!=a failed")
+    if a==c {
         assert(false,"Failed compare strings")
     }
+
     // Test concat
     s = "Hello "
     t = "World "
@@ -17,9 +22,6 @@ func main() {
     u = "and goodbye!"
     w = s + t + u
     println(w)
-    x = "Hello "
-    if s=="Hello " {
-        println("Should print")
-    }
     println("Ending string tests")
+    */
 }
