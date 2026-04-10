@@ -1,4 +1,9 @@
+
 func main() {
+    a = "abc"
+    b = "abc"
+    assert(a==b, "a==b failed")
+/*
     printf("Starting string tests\n")
     printf("1. err=%d\n", err)
     s = "Hello "
@@ -6,16 +11,19 @@ func main() {
     v = s + t
     printf("2. err=%d\n", err)
     println(v)
-    printf("3. err=%d\n", err)
-    /*
     u = "and goodby!"
+    w = s + t + u
+    println(w)
+    printf("3. err=%d\n", err)
+    x = "Hello "
+
     if s==t {
-        println("Failed")
+        assert(false,"Failed compare strings")
     }
+
     if s=="Hello " {
         println("Should print")
     }
-    println(v)
-    */
     println("Ending string tests")
+*/
 }

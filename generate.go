@@ -162,14 +162,16 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
-		emit(s, "mov", "ecx", "[rsp]", "Get nos length")
+		emit(s, "mov", "eax", "[rsp]", "Get nos prt")
+		emit(s, "mov", "ecx", "[rax]", "Get nos length")
 		emit(s, "add", "rsi", "4", "Start of string 1")
 		emit(s, "add", "rdi", "4", "Start of string 2")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
-		EmitLabel(s, lbl, "")
+		EmitLabel(s, lbl, "unequal")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		emit(s, "add", "rsp", "8", "Remove NOS")
 		return &ValueDef{Typ: &BoolType}, nil
 	}
 	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())

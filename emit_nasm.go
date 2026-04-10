@@ -117,8 +117,8 @@ func LabelName(label int) string {
 }
 
 func EmitLabel(s *State, label int, comment string) {
-	n, _ := s.outputFile.WriteString(".L" + strconv.Itoa(label) + ":")
-	_, _ = s.outputFile.WriteString(spaces[0:max(0, CommentIndent-n)] + "; " + comment + "\n")
+	n, _ := Write(s, ".L"+strconv.Itoa(label)+":", false)
+	_, _ = Write(s, spaces[0:max(0, CommentIndent-n)]+"; "+comment+"\n", false)
 }
 
 func EmitJump(s *State, n int, comment string) {
