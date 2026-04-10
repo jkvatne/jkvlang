@@ -170,8 +170,9 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 		EmitLabel(s, lbl, "unequal")
+		emit(s, "pop", "rax", "", "Remove NOS")
+		s.localSp--
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		emit(s, "add", "rsp", "8", "Remove NOS")
 		return &ValueDef{Typ: &BoolType}, nil
 	}
 	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())
@@ -183,6 +184,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 		lvalue.SetType(value.Typ)
 		// Local variables are at negative offset. The first on -8.
 		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
+		// fmt.Printf("%d %d\n", -s.localSp*8, lvalue.Offset)
 		VarDefs[lvalue.Name].Offset = -s.localSp * 8
 	}
 	if lvalue.Typ == nil {

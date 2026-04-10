@@ -146,7 +146,7 @@ func EmitReturn(s *State) {
 	if !s.RaxIsTOS || s.LocalRetSize > 1 {
 		for i := range len(s.currentFunc.returnTypes) {
 			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
-			s.localSp++
+			s.localSp--
 		}
 	}
 	// Remove local variables
@@ -226,6 +226,7 @@ func EmitSetCompareResult(s *State, op Token) error {
 // EmitCompareIntegers will compare the top two stack entries
 func EmitCompareIntegers(s *State, op Token) error {
 	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
+	s.localSp--
 	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 	return EmitSetCompareResult(s, op)
 }
@@ -244,14 +245,17 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
+		s.localSp--
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
+		s.localSp--
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
 		emit(s, "pop", "rbx", "", "")
+		s.localSp--
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
@@ -426,8 +430,10 @@ func EmitPushString(s *State, litno int) {
 
 func EmitAssert(s *State) {
 	emit(s, "push", strconv.Itoa(s.lineNum), "", "")
+	s.localSp++
 	emit(s, "call", "_assert", "", "")
 	emit(s, "pop", "cx", "", "")
+	s.localSp--
 	emit(s, "call", "crlf", "", "")
 }
 
@@ -556,10 +562,11 @@ func EmitConcat(s *State) {
 	emit(s, "mov", "rsi", "rbx", "Copy string 2")
 	emit(s, "mov", "rcx", "r14", "")
 	emit(s, "rep", "movsb", "", "")
+	// Remove the top of stack. New TOS is the pointer in rax
+	emit(s, "pop", "rax", "", "Remove the top of stack. New TOS is the pointer in rax")
+	s.localSp--
 	// Now AX should point to the string
 	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
-	// Remove the top of stack. New TOS is the pointer in rax
-	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 }
 
 func includeFile(s *State, txt string) error {

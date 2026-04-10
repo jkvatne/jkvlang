@@ -1,29 +1,25 @@
 
 func main() {
+    printf("Starting string tests\n")
     a = "abc"
     b = "abc"
     assert(a==b, "a==b failed")
-/*
-    printf("Starting string tests\n")
-    printf("1. err=%d\n", err)
+    a = "abc"
+    b = "xxxx"
+    if a==b {
+        assert(false,"Failed compare strings")
+    }
+    // Test concat
     s = "Hello "
     t = "World "
     v = s + t
-    printf("2. err=%d\n", err)
     println(v)
-    u = "and goodby!"
+    u = "and goodbye!"
     w = s + t + u
     println(w)
-    printf("3. err=%d\n", err)
     x = "Hello "
-
-    if s==t {
-        assert(false,"Failed compare strings")
-    }
-
     if s=="Hello " {
         println("Should print")
     }
     println("Ending string tests")
-*/
 }
