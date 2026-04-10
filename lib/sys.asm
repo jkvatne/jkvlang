@@ -188,7 +188,7 @@ main:
     mov rbx,0
     call assert
 
-    ; Test assert as in hello.jkv
+    ; Test assert as in strings.jkv
     mov rax, 1234
     push rax                                 ; Argument 3
     mov rax, str1

@@ -234,7 +234,7 @@ _start:
     call assert
     call  print_sp
 
-    ; Test assert as in hello.jkv
+    ; Test assert as in strings.jkv
     mov rax, 1234
     push rax                                 ; Argument 3
     mov rax, str1

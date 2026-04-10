@@ -158,9 +158,8 @@ func EmitReturn(s *State) {
 	emit(s, "leave", "", "", "")
 	// Return exit code from main
 	if s.currentFunc.name == "main" {
-		emit(s, "mov", "rcx", "r15", "Get error code")
-		emit(s, "sub", "rsp", "8", "Dummy needed for allignment")
-		emit(s, "call", "ExitProcess", "", "")
+		emit(s, "mov", "rax", "r15", "Get error code")
+		emit(s, "call", "_exit", "", "")
 	}
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
@@ -175,7 +174,7 @@ func EmitFunction(s *State, id string) {
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
 	if id == "main" {
-		emit(s, "call", "sysinit", "", "")
+		emit(s, "call", "_sysinit", "", "")
 	}
 	s.localSp = 0
 	s.RaxIsTOS = false
@@ -578,8 +577,8 @@ func EmitPrologue(s *State) {
 	includeFile(s, "assert.asm")
 	includeFile(s, "printf.asm")
 	// includeFile(s, "winerror.asm")
-	// includeFile(s, "alloc.asm")
-	// includeFile(s, "exit.asm")
+	includeFile(s, "alloc.asm")
+	includeFile(s, "exit.asm")
 	EmitSection(s, "text")
 	emit(s, "global", "main", "", "")
 	EmitBlankLine(s)

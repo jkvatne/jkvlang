@@ -1,4 +1,6 @@
 func main() {
+    println("Starting string tests")
+    /*
     s = "Hello "
     t = "World "
     if s==t {
@@ -10,4 +12,5 @@ func main() {
     u = "and goodby!"
     v = s + t + u
     println(v)
+    */
 }

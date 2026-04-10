@@ -17,10 +17,8 @@ section .text
 extern GetStdHandle
 extern ExitProcess
 
-_exit:
-    call ExitProcess
-
-sysinit:
+global _sysinit
+_sysinit:
     ; sysinit will initialize the console handles
     push rbp                         ; Prologue: Save frame pointer
     mov rbp, rsp                     ; Prologue: Setup new frame pointer.

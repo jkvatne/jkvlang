@@ -2,7 +2,7 @@
 ;-------------
 section .rodata
 ;-------------
-crlf               db 41h, 0Dh,0Ah,00h
+crlf               db 0Dh,0Ah,00h
 
 ;-------------
 section .text
@@ -28,3 +28,4 @@ _println:
     mov rdi, printf
     mov rax, crlf
     jmp _syscall
+
