@@ -15,6 +15,10 @@ section .text
 ;-------------
 
 extern GetStdHandle
+extern ExitProcess
+
+_exit:
+    call ExitProcess
 
 sysinit:
     ; sysinit will initialize the console handles
@@ -36,6 +40,8 @@ sysinit:
     call  GetStdHandle
     mov   [rel StdInputHandle], rax
 
-    ; mov qword [error], 0
+    ; Initialize the error code
+    mov  r15, 0
+
     leave   
     ret

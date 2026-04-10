@@ -3,11 +3,9 @@ func main() {
     a = 1
     b = 2
     c = 3
-    assert(false, "Intentional assert fail 1")
-    assert(true, "Should not be printed")
-
     printf(" 1. Starting tests of if/else\n")
 
+    assert(true, "Should not be printed")
     if a>0 ? c+=2 : c+=1
     assert(c==5, "c+2 should be 5")
 

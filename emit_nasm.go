@@ -154,12 +154,14 @@ func EmitReturn(s *State) {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
-	// Return exit code from main
-	if s.currentFunc.name == "main" {
-		emit(s, "mov", "rax", "0", "")
-	}
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
+	// Return exit code from main
+	if s.currentFunc.name == "main" {
+		emit(s, "mov", "rcx", "r15", "Get error code")
+		emit(s, "sub", "rsp", "8", "Dummy needed for allignment")
+		emit(s, "call", "ExitProcess", "", "")
+	}
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 

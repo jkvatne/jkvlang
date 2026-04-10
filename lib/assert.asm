@@ -26,11 +26,12 @@ _assert:
     sub rsp, 96           ; Reserve space for arguments to the called function
 
     or rax, rax           ; Set z-flag if rax is zero
-    jz .L1                 ; Jump if the bool argument was false
+    jz .L1                ; Jump if the bool argument was false
     leave
     ret                   ; Returns if assert(true)
 .L1:
-    or bx, bx            ; Check if bx=0 (no string given)
+    mov r15, 99           ; Set error code - assert failed
+    or bx, bx             ; Check if bx=0 (no string given)
     jnz .L5 
     mov bx, 8
     mov rcx, assert_mess    
