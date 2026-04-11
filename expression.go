@@ -387,7 +387,6 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s)
-			s.localSp--
 		}
 	} else {
 		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
