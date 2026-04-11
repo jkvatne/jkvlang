@@ -160,23 +160,32 @@ func EmitReturn(s *State) {
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
 	}
+	// Verify localsp is zero
+	if s.localSp != 0 {
+		panic("s.localSp != 0")
+	}
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
+	s.localSp--
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
 func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
-
+	if s.localSp != 0 {
+		panic("localSp is not 0")
+	}
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
+	s.localSp = 1
 	emit(s, "mov", "rbp", "rsp", "")
+	emit(s, "push", "rax", "", "Allocate space for first parameter")
+	s.localSp++
 	if id == "main" {
 		EmitPrintSp(s)
 		emit(s, "call", "_sysinit", "", "")
 		EmitPrintSp(s)
 	}
-	s.localSp = 0
 	s.RaxIsTOS = false
 }
 
@@ -412,7 +421,7 @@ func EmitStore(s *State, size int, adr int, comment string) {
 // EmitAddSp will drop the top "count" 64-bit words.
 func EmitAddSp(s *State, count int, comment string) {
 	if count != 0 {
-		emit(s, "add", "rsp", strconv.Itoa(-count*8), comment)
+		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
 		s.localSp += count
 	}
 	s.RaxIsTOS = false
@@ -426,15 +435,6 @@ func EmitPushString(s *State, litno int) {
 	emit(s, "mov", "rax", "str"+strconv.Itoa(litno), "Push pointer to literal string")
 	s.localSp++
 	s.RaxIsTOS = true
-}
-
-func EmitAssert(s *State) {
-	emit(s, "push", strconv.Itoa(s.lineNum), "", "")
-	s.localSp++
-	emit(s, "call", "_assert", "", "")
-	emit(s, "pop", "cx", "", "")
-	s.localSp--
-	emit(s, "call", "crlf", "", "")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.

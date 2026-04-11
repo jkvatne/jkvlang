@@ -29,7 +29,7 @@ func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool) 
 	// New function
 	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList, builtin: builtin}
 	FuncDefs[id] = f
-	// Calculate siz
+	// Calculate size
 	f.stackSize = len(parList) + len(returnList)
 	return f, nil
 }

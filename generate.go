@@ -154,29 +154,43 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	} else if op == TOK_PLUS && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		EmitConcat(s)
 		return val1, nil
-	} else if (op == TOK_EQ || op == TOK_NE) && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		// Compare two strings, one in rax, and one on top of stack, and drop top of stack
 		lbl := NewLabel(s)
 		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "mov", "rdi", "rax", "Save tos")
 		emit(s, "mov", "rsi", "[rsp]", "Get nos")
 		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 		emit(s, "repe", "cmpsb", "", "")
-		if op == TOK_EQ {
-			emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
-		} else {
-			emit(s, "je", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
-		}
-		emit(s, "mov", "eax", "[rsp]", "Get nos prt")
+		emit(s, "pop", "rax", "", "Get nos ptr")
+		s.localSp--
+		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
 		emit(s, "mov", "ecx", "[rax]", "Get nos length")
 		emit(s, "add", "rsi", "4", "Start of string 1")
 		emit(s, "add", "rdi", "4", "Start of string 2")
 		emit(s, "repe", "cmpsb", "", "")
-		if op == TOK_EQ {
-			emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		} else {
-			emit(s, "je", LabelName(lbl), "", "If equal, jump to end")
-		}
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "unequal")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return &ValueDef{Typ: &BoolType}, nil
+	} else if op == TOK_NE && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		// Compare two strings, one in rax, and one on top of stack, and drop top of stack
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "1", "Initialize result to true")
+		emit(s, "mov", "rdi", "rax", "Save tos")
+		emit(s, "mov", "rsi", "[rsp]", "Get nos")
+		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "pop", "rax", "", "Get nos ptr")
+		s.localSp--
+		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+		emit(s, "mov", "ecx", "[rax]", "Get nos length")
+		emit(s, "add", "rsi", "4", "Start of string 1")
+		emit(s, "add", "rdi", "4", "Start of string 2")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=true")
 		EmitLabel(s, lbl, "unequal")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return &ValueDef{Typ: &BoolType}, nil
@@ -188,10 +202,10 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
-		// Local variables are at negative offset. The first on -8.
-		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
-		// fmt.Printf("%d %d\n", -s.localSp*8, lvalue.Offset)
+		old := VarDefs[lvalue.Name].Offset
 		VarDefs[lvalue.Name].Offset = -s.localSp * 8
+		fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
+		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")

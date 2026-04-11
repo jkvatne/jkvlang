@@ -88,6 +88,7 @@ func ParseArrayIndexes(s *State) error {
 
 func ParseActualArgList(s *State) (valueList []*ValueDef, err error) {
 	for {
+		s.RaxIsTOS = false
 		s.ArgCount++
 		if s.ArgCount > len(s.ArgCode) {
 			s.ArgCode = append(s.ArgCode, "")

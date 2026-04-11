@@ -34,6 +34,7 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, IsConst: false}
 	s.ParCount++
 	if s.ParCount == 1 {
+		// The first parameter is actualy in rax. It can be stored in BP-8 if needed
 		v.Offset = -8
 	} else {
 		v.Offset = s.ParCount * 8
@@ -52,6 +53,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		VarDefs[id] = v
 		s.VarCount[s.level]++
 		v.Offset = -8 - s.VarCount[s.level]*8 // First local variable is at rbp-16, the next at rpb-24
+		fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 	}
 	return v
 }

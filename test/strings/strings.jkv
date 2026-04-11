@@ -4,16 +4,19 @@ func main() {
     a = "abc"
     b = "abc"
     printf("Has allocated a and b\n")
-    /*
-    assert(b==a, "b==a failed")
     assert(a==b, "a==b failed")
-    c = "abcd"
+    assert(b==a, "b==a failed")
+    c = "abcs"
     assert(a!=c, "a!=c failed")
     assert(c!=a, "c!=a failed")
+    c = "abx"
+    assert(a!=c, "a!=c failed")
+    c = "ab"
+    assert(a!=c, "a!=c failed")
     if a==c {
         assert(false,"Failed compare strings")
     }
-
+/*
     // Test concat
     s = "Hello "
     t = "World "
