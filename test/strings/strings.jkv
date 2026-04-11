@@ -16,7 +16,7 @@ func main() {
     if a==c {
         assert(false,"Failed compare strings")
     }
-/*
+
     // Test concat
     s = "Hello "
     t = "World "
@@ -25,6 +25,6 @@ func main() {
     u = "and goodbye!"
     w = s + t + u
     println(w)
+    assert(w=="Hello World and goodbye!", "s+t+u failed")
     println("Ending string tests")
-    */
 }
