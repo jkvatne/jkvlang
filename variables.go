@@ -53,7 +53,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		VarDefs[id] = v
 		s.VarCount[s.level]++
 		v.Offset = -8 - s.VarCount[s.level]*8 // First local variable is at rbp-16, the next at rpb-24
-		fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
+		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 	}
 	return v
 }

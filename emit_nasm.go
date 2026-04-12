@@ -166,7 +166,6 @@ func EmitReturn(s *State) {
 	}
 	// Function epilogue. Restore frame pointer and exit
 	emit(s, "leave", "", "", "")
-	s.localSp--
 	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 

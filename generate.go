@@ -202,9 +202,9 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
-		old := VarDefs[lvalue.Name].Offset
+		// old := VarDefs[lvalue.Name].Offset
 		VarDefs[lvalue.Name].Offset = -s.localSp * 8
-		fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
+		// fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
 		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
 	}
 	if lvalue.Typ == nil {
