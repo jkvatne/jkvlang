@@ -1,34 +1,40 @@
-/*
 func f0(s String) String {
-    return "pre "+s
+    return "f0 "+s
 }
 
 func f1(s String) String {
-    t = "pre "
+    t = "f1 "
     u = t+s
     return u
 }
 
 func f2(s String) String {
-    t = " post"
+    t = " f2"
     return s+t
 }
-*/
+
+func f3(s String, t String) String {
+  return s+t
+}
 
 func main() {
     printf("Starting string tests\n")
+
+    // Test concatenation of variable and constant
     s = "xyz"
-    u = "1pre=" + s
-    println(u)
-/*
+    u = "pre-" + s
+    assert(u=="pre-xyz")
+    v = s+"-post"
+    assert(v=="xyz-post")
+    w = "pre-"+"post"
+    assert(w=="pre-post")
 
-    v = s+" post"
-    println(v)
+    // Test calling functions with string parameters
+    assert(f0("xyz")=="f0 xyz")
+    assert(f1("xyz")=="f1 xyz")
+    assert(f2("xyz")=="xyz f2")
 
-    println(f0("xyz"))
-    println(f1("xyz"))
-    println(f2("xyz"))
-
+    // Test string compare
     a = "abc"
     assert(a=="abc", "Failed a==abc")
     b = "abc"
@@ -56,5 +62,5 @@ func main() {
     println(w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     println("Ending string tests")
-*/
+
 }
