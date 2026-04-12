@@ -305,6 +305,20 @@ func EmitOpFloatConst(s *State, op Token, value float64, comment string) error {
 	return fmt.Errorf("float operation not implemented")
 }
 
+func AxName(size int) string {
+	if size == 1 {
+		return "al"
+	} else if size == 2 {
+		return "ax"
+	} else if size == 4 {
+		return "eax"
+	} else if size == 8 {
+		return "rax"
+	} else {
+		panic("AxName with invalid size")
+	}
+}
+
 // EmitOpAssign will set variable at <adr> to <adr> op <value>
 func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment string) error {
 	instr := TokenOp[op]
@@ -315,6 +329,9 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 		emit(s, "mov", "rax", strconv.FormatInt(value, 10), "")
 		emit(s, "movzx", "rbx", DataType(size)+BpRel(adr), comment)
 		emit(s, "imul", "rbx", "", "")
+		// Move result to local variable at BpRel(adr)
+		emit(s, "mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
+
 	} else {
 		emit(s, instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
 	}
@@ -413,8 +430,8 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 
 // EmitStore will save the Top of Stack (AX) into a local variable of given size.
 // It will then clear RaxIssTos, effectively doing a pop
-func EmitStore(s *State, size int, adr int, comment string) {
-	emit(s, "mov", BpRel(adr), AxRegName(size), comment)
+func EmitStore(s *State, opcode string, size int, adr int, comment string) {
+	emit(s, opcode, BpRel(adr), AxRegName(size), comment)
 	s.RaxIsTOS = false
 	s.localSp--
 }

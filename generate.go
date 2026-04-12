@@ -235,7 +235,8 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 		}
 	} else {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
-		EmitStore(s, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
+		instr := TokenOp[op]
+		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
 	}
 	return nil
 }

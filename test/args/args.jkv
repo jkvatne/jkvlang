@@ -1,0 +1,31 @@
+
+func f2() I32 {
+    z=3
+    z*=8
+    z+=4     // = 28
+    s = 24
+    s = s/6  // = 4
+    return s+z  // = 32
+}
+
+func f1(a Bool, c I32) I32 {
+    one = 1
+    two = 2
+    if a ? c+=one : c+=two
+    return c
+}
+
+func test_f1()  {
+    r = f1(true, 30)
+    assert(r==31)
+}
+
+func main() {
+    printf("f2()=%d\n", f2())
+    assert(f2()==32)
+    printf("f1()=%d\n", f1(true,5))
+    assert(f1(true, 5)==6)
+    test_f1()
+}
+
+
