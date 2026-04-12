@@ -278,7 +278,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		if v.Typ.Pt == TYP_NONE {
 			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
-		if !v.Value.HasValue && !s.RaxIsTOS || v.Offset != -8 {
+		if !v.Value.HasValue {
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
 			} else {
@@ -376,18 +376,36 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 		return &NoValue, err
 	}
 	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
-		// Concatenation of two strings
-		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+		if value1.HasValue {
+			if s.RaxIsTOS {
+				emit(s, "push", "rax", "", "")
+				s.localSp++
+			}
+			// Push constant string
+			emit(s, "mov", "rax", "str"+strconv.Itoa(value1.StringLitNo), "")
+			s.RaxIsTOS = true
+		}
+		// Concatenation of two or more strings
+		for s.token == TOK_PLUS {
 			nextToken(s)
-			_value2, err := ParseProd(s)
+			value2, err := ParseProd(s)
 			if err != nil {
 				return &NoValue, err
 			}
-			if _value2.Typ.Pt != TYP_STRING {
+			if value2.HasValue {
+				if s.RaxIsTOS {
+					emit(s, "push", "rax", "", "")
+					s.localSp++
+				}
+				// Push constant string
+				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "")
+			}
+			if value2.Typ.Pt != TYP_STRING {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s)
 		}
+		return &ValueDef{Typ: &StringType}, nil
 	} else {
 		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 			op := s.token
@@ -401,8 +419,8 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, err
 			}
 		}
+		return value1, nil
 	}
-	return value1, nil
 }
 
 func ParseCompareTerm(s *State) (*ValueDef, error) {

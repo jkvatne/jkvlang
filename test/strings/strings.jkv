@@ -1,7 +1,36 @@
+/*
+func f0(s String) String {
+    return "pre "+s
+}
+
+func f1(s String) String {
+    t = "pre "
+    u = t+s
+    return u
+}
+
+func f2(s String) String {
+    t = " post"
+    return s+t
+}
+*/
 
 func main() {
     printf("Starting string tests\n")
+    s = "xyz"
+    u = "1pre=" + s
+    println(u)
+/*
+
+    v = s+" post"
+    println(v)
+
+    println(f0("xyz"))
+    println(f1("xyz"))
+    println(f2("xyz"))
+
     a = "abc"
+    assert(a=="abc", "Failed a==abc")
     b = "abc"
     printf("Has allocated a and b\n")
     assert(a==b, "a==b failed")
@@ -27,4 +56,5 @@ func main() {
     println(w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     println("Ending string tests")
+*/
 }

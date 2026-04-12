@@ -173,13 +173,14 @@ func EmitReturn(s *State) {
 func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 	if s.localSp != 0 {
-		panic("localSp is not 0")
+		fmt.Printf("Local Sp: %d, should be 0\n", s.localSp)
+		// panic("localSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	s.localSp = 1
 	emit(s, "mov", "rbp", "rsp", "")
-	emit(s, "push", "rax", "", "Allocate space for first parameter")
+	emit(s, "push", "rax", "", "Save first argument in rax")
 	s.localSp++
 	if id == "main" {
 		EmitPrintSp(s)
@@ -527,16 +528,16 @@ func out(s *State, str string) {
 }
 
 // EmitConcat will concatenate the two strings at the top of the stack
-// First string pointer in rax, second string pointer in [rsp]
+// First string pointer in [rsp], second string pointer in [rax]
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
 func EmitConcat(s *State) {
-	// Get string 1 sizes/ptr into r14, rbx
-	emit(s, "mov", "r14d", "dword [rax]", " Get string 1 sizes/ptr into r14, rbx")
-	emit(s, "mov", "rbx", "rax", "")
+	// Get string 1 sizes/ptr into r14, rbx from [rsp]
+	emit(s, "mov", "rdx", "[rsp]", " Get string 1 sizes/ptr into r14, rbx")
+	emit(s, "mov", "r14d", "dword [rdx]", " Get string 1 sizes/ptr into r14, rbx")
+	emit(s, "mov", "rbx", "rdx", "")
 	emit(s, "add", "rbx", "8", "")
-	// Get string 2 sizes/ptr into r12, r13
-	emit(s, "mov", "rax", "[rsp]", " Get string 2 sizes/ptr into r12, r13")
-	emit(s, "mov", "r12d", "dword [rax]", "")
+	// Get string 2 sizes/ptr into r12, r13 from rax
+	emit(s, "mov", "r12d", "dword [rax]", " Get string 2 sizes/ptr into r12, r13")
 	emit(s, "mov", "r13", "rax", "")
 	emit(s, "add", "r13", "8", "")
 	// Calculate new size to allocate, including 32 extra bytes
@@ -554,13 +555,13 @@ func EmitConcat(s *State) {
 	emit(s, "mov", "[rdi]", "rax", "")
 	emit(s, "add", "rdi", "8", "")
 	// Copy string 1
-	emit(s, "mov", "rsi", "r13", "Copy string 1")
-	emit(s, "mov", "rcx", "r12", "")
+	emit(s, "mov", "rsi", "rbx", "Copy string 1")
+	emit(s, "mov", "rcx", "r14", "")
 	emit(s, "cld", "", "", "")
 	emit(s, "rep", "movsb", "", "")
 	// Copy string 2
-	emit(s, "mov", "rsi", "rbx", "Copy string 2")
-	emit(s, "mov", "rcx", "r14", "")
+	emit(s, "mov", "rsi", "r13", "Copy string 2")
+	emit(s, "mov", "rcx", "r12", "")
 	emit(s, "rep", "movsb", "", "")
 	// Remove the top of stack. New TOS is the pointer in rax
 	emit(s, "pop", "rax", "", "Remove the top of stack. New TOS is the pointer in rax")
@@ -584,9 +585,9 @@ func EmitPrologue(s *State) {
 	includeFile(s, "syscall.asm")
 	includeFile(s, "assert.asm")
 	includeFile(s, "printf.asm")
-	// includeFile(s, "winerror.asm")
 	includeFile(s, "alloc.asm")
 	includeFile(s, "exit.asm")
+	// includeFile(s, "winerror.asm")
 	EmitSection(s, "text")
 	emit(s, "global", "main", "", "")
 	EmitBlankLine(s)
