@@ -17,18 +17,22 @@ const Version string = "v0.0.2"
 var (
 	workDir    = flag.String("build", "./build", "Path to intermediate files during build")
 	run        = flag.Bool("run", true, "Set true to run after compile")
+	test       = flag.Bool("test", false, "Set true to run after compile")
 	link       = flag.Bool("link", true, "Set true to just do linking")
 	outputName = flag.String("o", "program.exe", "Output filename of exectutable")
 	inputPath  = flag.String("src", "./", "Source directory")
 	oneFile    = flag.String("file", "", "Compile a single file")
 	debug      = flag.Bool("debug", false, "Enable debug mode")
 	UseGcc     = flag.Bool("gcc", true, "Use gcc")
-	PrintSp    = flag.Bool("sp", true, "Print program SP")
+	PrintSp    = flag.Bool("sp", false, "Print program SP")
 )
 
 // CompileDir will compile all source files in the given directory
 // and put the object files in the outputPath
 func CompileDir(inputPath string, workDir string) error {
+	// Make sure output directory is empty
+	_ = os.RemoveAll(workDir)
+	err := os.Mkdir(workDir, os.ModePerm)
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("fatal error %s", err.Error())
@@ -36,12 +40,52 @@ func CompileDir(inputPath string, workDir string) error {
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := filepath.Join(inputPath, entry.Name())
-			fmt.Printf("=== Compiling %s ===\n", name)
+			// fmt.Printf("Compiling %s\n", name)
 			err = CompileFile(name, workDir)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("File %s compiled ok\n", name)
+		}
+	}
+	// Assemble/link the files
+	if *link {
+		err = Assemble(workDir)
+		if err != nil {
+			fmt.Printf("Assembler error " + err.Error())
+			os.Exit(2)
+		}
+		err = Link(workDir, *outputName)
+		if err != nil {
+			fmt.Printf(err.Error())
+			os.Exit(3)
+		}
+	}
+
+	// Run the exe file if -run is present and linking is ok
+	if *run {
+		err = Run(*outputName)
+	}
+	return err
+}
+
+func CompileTests(inputPath string, workDir string) error {
+	entries, err := os.ReadDir(inputPath)
+	if err != nil {
+		return fmt.Errorf("fatal error %s", err.Error())
+	}
+	for _, entry := range entries {
+		// For each subdirectory in the test directory
+		if entry.IsDir() {
+			name := filepath.Join(inputPath, entry.Name())
+			if name != "build" {
+				fmt.Printf("=== Compiling %s ===\n", name)
+				err = CompileDir(name, workDir)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("File %s compiled ok\n", name)
+			}
 		}
 	}
 	return err
@@ -60,7 +104,9 @@ func Assemble(workDir string) error {
 			name := filepath.Join(workDir, strings.TrimSuffix(entry.Name(), ".asm"))
 			args = append(args, name+".asm", "-o", name+".obj")
 			out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
-			fmt.Println(string(out))
+			if len(out) > 0 {
+				fmt.Println(string(out))
+			}
 			if err != nil {
 				return fmt.Errorf("assembly %s error: %s", name, err.Error())
 			}
@@ -100,8 +146,9 @@ func Link(workDir string, outputName string) error {
 		// C:/w64devkit/bin/gcc.exe
 		// OK outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
 		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
-
-		fmt.Println(string(outp))
+		if len(outp) > 0 {
+			fmt.Println(string(outp))
+		}
 		if err != nil {
 			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
 		}
@@ -152,9 +199,8 @@ func Run(outputName string) error {
 func main() {
 	var err error
 	flag.Parse()
-	fmt.Printf("jkv compiler version %s\n", Version)
 	wd, err := os.Getwd()
-	fmt.Printf("Currrent directory is %s\n", wd)
+	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)
 
 	// Expand working directory path
 	*workDir, err = filepath.Abs(*workDir)
@@ -182,33 +228,14 @@ func main() {
 	if *oneFile != "" {
 		fmt.Printf("=== Compiling %s ===\n", oneFile)
 		err = CompileFile(*oneFile, *workDir)
+	} else if *test {
+		err = CompileTests(*inputPath, *workDir)
 	} else {
 		err = CompileDir(*inputPath, *workDir)
-		if err != nil {
-			fmt.Printf("%s%s\n", *oneFile, err.Error())
-			os.Exit(1)
-		}
+	}
+	if err != nil {
+		fmt.Printf("%s%s\n", *oneFile, err.Error())
+		os.Exit(1)
 	}
 
-	// Assemble/link the files
-	if *link {
-		err = Assemble(*workDir)
-		if err != nil {
-			fmt.Printf("Assembler error " + err.Error())
-			os.Exit(2)
-		}
-		err = Link(*workDir, *outputName)
-		if err != nil {
-			fmt.Printf(err.Error())
-			os.Exit(3)
-		}
-	}
-
-	// Run the exe file if -run is present and linking is ok
-	if *run {
-		err = Run(*outputName)
-		if err != nil {
-			fmt.Printf("%v\n", err)
-		}
-	}
 }
