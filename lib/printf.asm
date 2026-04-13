@@ -20,12 +20,3 @@ _printf:
     mov rdi, printf
     jmp _syscall
 
-global _println
-_println:
-    add rax, 8
-    mov rdi, printf
-    call _syscall
-    mov rdi, printf
-    mov rax, crlf
-    jmp _syscall
-
