@@ -33,6 +33,7 @@ type State struct {
 	ArgCode         []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	ForceEmit       bool     // Set when outputing ArgCode
 	CommentLevel    int
+	XmmSp           int // Stack pointer into SSE registers
 }
 
 type Token int

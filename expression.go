@@ -117,11 +117,16 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				} else {
 					EmitPushConst(s, 0, "")
 				}
+			} else if value.Typ.Pt == TYP_F64 {
+				EmitPushFloat(s, value.FloatLitNo)
 			} else {
 				return nil, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
+				emit(s, "mov", "rax", "XMM0", "")
 			}
 		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING {
 			EmitSkipLenCap(s)
+		} else if f.name == "printf" && (value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32) {
+			emit(s, "mov", "rax", "XMM0", "")
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -323,8 +328,10 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
+		floatLitNo := AddFloatLiteral(s.tokenFloatValue)
 		value.Typ = TypeDefs["F64"]
 		value.FloatValue = s.tokenFloatValue
+		value.FloatLitNo = floatLitNo
 		value.HasValue = true
 		nextToken(s)
 	} else if s.token == TOK_STRING {

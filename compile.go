@@ -59,6 +59,9 @@ func CompileFile(name string, workdir string) error {
 		EmitCode(s, "alignb 8\n")
 		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}
+	for i, l := range FloatLiteralDefs {
+		EmitFloatLitteral(s, "flt"+strconv.Itoa(i), l)
+	}
 	if err != nil {
 		return fmt.Errorf("%s:%d %v", name, s.lineNum, err)
 	}

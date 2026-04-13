@@ -1,0 +1,14 @@
+/*
+func foo(a F32, b F64) F32 {
+    return (a+b)*(a-b)
+}
+
+func main () {
+  w5 = foo(1.23, 3.45)
+  assert w5==-10.3896
+}
+*/
+
+func main() {
+  printf("Float=%f\n", 1.234)
+}

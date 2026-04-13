@@ -146,7 +146,7 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		EmitIntegerOp(s, op)
 		return val1, nil
 	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		EmitFloatOp(s, op)
+		EmitF64Op(s, op)
 		return val1, nil
 	} else if op.IsCompare() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 		EmitCompareFloats(s, op)

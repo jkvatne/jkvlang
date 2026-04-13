@@ -203,10 +203,32 @@ var TokenOp = map[Token]string{
 	TOK_MULT_ASGN:  "imul",
 }
 
+func xmm(sp int) string {
+	return "xmm" + strconv.Itoa(sp)
+}
+
 // EmitFloatOp will generate a stack operation on the top two stack entries, like fadd or fsub
-// The stack pointer will be incremented (pop), and the result will now be on top of the stack (MMX0)
-func EmitFloatOp(s *State, op Token) {
-	panic("EmitFloatOp not implemented")
+// The stack pointer will be incremented (pop), and the result will now be on top of the stack (xmm0)
+// Assumes TOS is in xmm+sp and NOS in xmm+sp-1
+func EmitF64Op(s *State, op Token) {
+	if s.XmmSp < 2 {
+		panic("EmitF64OP requires two values on the floating point stack")
+	}
+	if op == TOK_PLUS {
+		emit(s, "addsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Add the two top xmm stack values")
+	} else {
+		panic("EmitFloatOp not implemented")
+	}
+	s.XmmSp--
+}
+
+func EmitPushFloat(s *State, litNo int) {
+	emit(s, "movsd", "xmm"+strconv.Itoa(s.XmmSp), "[flt"+strconv.Itoa(litNo)+"]", "Load float value frm string variable")
+	emit(s, "movq", "rax", "xmm"+strconv.Itoa(s.XmmSp), "")
+	s.XmmSp++
+	if s.XmmSp > 8 {
+		panic("Floating point stack overflow")
+	}
 }
 
 func EmitCompareFloats(s *State, op Token) {
@@ -525,6 +547,10 @@ func EmitPrintHello(s *State, format string) {
 func EmitLitteral(s *State, litName string, litValue string) {
 	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.Itoa(len(litValue)) + "\n")
 	_, _ = s.outputFile.WriteString("     db `" + litValue + "`, 00h\n")
+}
+
+func EmitFloatLitteral(s *State, litName string, litValue float64) {
+	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.FormatFloat(litValue, 'g', 11, 64))
 }
 
 func EmitSection(s *State, section string) {

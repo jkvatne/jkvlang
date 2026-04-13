@@ -14,13 +14,15 @@ type ValueDef struct {
 	BoolValue   bool
 	StringValue string
 	StringLitNo int
+	FloatLitNo  int
 }
 
 var (
-	False       = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
-	True        = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
-	NoValue     = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
-	LiteralDefs []string
+	False            = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
+	True             = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
+	NoValue          = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
+	LiteralDefs      []string
+	FloatLiteralDefs []float64
 )
 
 func (v *ValueDef) IsTrue() bool {
@@ -33,6 +35,17 @@ func (v *ValueDef) IsFalse() bool {
 
 func LiteralInit() {
 	LiteralDefs = make([]string, 0, 20)
+	FloatLiteralDefs = make([]float64, 0, 20)
+}
+
+func AddFloatLiteral(value float64) int {
+	for i, s := range FloatLiteralDefs {
+		if s == value {
+			return i
+		}
+	}
+	FloatLiteralDefs = append(FloatLiteralDefs, value)
+	return len(FloatLiteralDefs) - 1
 }
 
 func AddLiteral(value string) int {

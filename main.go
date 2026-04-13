@@ -62,6 +62,10 @@ func CompileDir(inputPath string, workDir string) error {
 			os.Exit(3)
 		}
 	}
+	if *run {
+		// Run the exe file if -run is present and linking is ok
+		err = Run(outputName)
+	}
 	return nil
 }
 

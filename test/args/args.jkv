@@ -25,5 +25,3 @@ func main() {
     assert(g(true, 5)==7)
     test_g()
 }
-
-

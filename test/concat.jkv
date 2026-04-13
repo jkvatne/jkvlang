@@ -1,7 +1,0 @@
-func main() {
-    s = "Hello "
-    t = "World "
-    u = "and goodby!"
-    v = s + t + u
-    println(v)
-}
