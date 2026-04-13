@@ -8,24 +8,22 @@ func f2() I32 {
     return s+z  // = 32
 }
 
-func f1(a Bool, c I32) I32 {
-    one = 1
-    two = 2
-    if a ? c+=one : c+=two
+func g(a Bool, c I32) I32 {
+    if a ? c+=2 : c+=1
     return c
 }
 
-func test_f1()  {
-    r = f1(true, 30)
-    assert(r==31)
+func test_g()  {
+    r = g(true, 30)
+    assert(r==32)
 }
 
 func main() {
     printf("f2()=%d\n", f2())
     assert(f2()==32)
-    printf("f1()=%d\n", f1(true,5))
-    assert(f1(true, 5)==6)
-    test_f1()
+    printf("g(true,5)=%d\n", g(true,5))
+    assert(g(true, 5)==7)
+    test_g()
 }
 
 
