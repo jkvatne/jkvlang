@@ -222,6 +222,8 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 				err = EmitOpAssignString(s, lvalue.Offset, value.StringLitNo)
 			} else if lvalue.Typ.Pt.IsInteger() {
 				err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+			} else if lvalue.Typ.Pt == TYP_F64 {
+				err = EmitOpAssignFloat(s, op, lvalue.Offset, value.FloatLitNo, "")
 			} else {
 				panic("Unimplemented assignment")
 			}

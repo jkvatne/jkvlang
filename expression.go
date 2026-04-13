@@ -87,7 +87,7 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
-func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error) {
+func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
 	// For each actual argument in the argument list
 	for {
 		s.RaxIsTOS = false
@@ -101,9 +101,12 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		}
 		var value *ValueDef
 		value, err = ParseExpression(s)
-		valueList = append(valueList, value)
 		if err != nil {
 			return
+		}
+		valueList = append(valueList, value)
+		if value.Typ.Pt == TYP_F64 {
+			floatParCount++
 		}
 		if value.HasValue {
 			// First parameter is a literal
@@ -120,13 +123,13 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			} else if value.Typ.Pt == TYP_F64 {
 				EmitPushFloat(s, value.FloatLitNo)
 			} else {
-				return nil, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
-				emit(s, "mov", "rax", "XMM0", "")
+				return nil, 0, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
+				emit(s, "movq", "rax", "xmm0", "")
 			}
 		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING {
 			EmitSkipLenCap(s)
 		} else if f.name == "printf" && (value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32) {
-			emit(s, "mov", "rax", "XMM0", "")
+			emit(s, "movq", "rax", "xmm0", "")
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -134,11 +137,11 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		nextToken(s)
 	}
 	if s.token != TOK_RPAR {
-		return nil, fmt.Errorf("expected right parenthesis but got %s", s.tokenString)
+		return nil, 0, fmt.Errorf("expected right parenthesis but got %s", s.tokenString)
 	}
 	// Skip the final ")"
 	nextToken(s)
-	return valueList, nil
+	return valueList, floatParCount, nil
 }
 
 func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
@@ -177,7 +180,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := s.ArgCount
 	// Parse the argument list and push each arg
-	values, err := ParseActualArgList(s, f)
+	values, floatParCount, err := ParseActualArgList(s, f)
 	if err != nil {
 		return &NoValue, err
 	}
@@ -207,6 +210,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 		id = "_" + id
 	}
 	EmitCall(s, id, len(values))
+	s.XmmSp -= floatParCount
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		return &NoValue, nil
@@ -291,6 +295,9 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		if !v.Value.HasValue {
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
+			} else if v.Value.Typ.Pt == TYP_F64 {
+				// emit(s, "movq", "xmm0", "","")
+				EmitLoadFloat64(s, 8, v.Offset, "")
 			} else {
 				EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 			}

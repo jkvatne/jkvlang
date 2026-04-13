@@ -340,6 +340,17 @@ func AxName(size int) string {
 	}
 }
 
+// Assign constant float value to variable
+func EmitOpAssignFloat(s *State, op Token, adr int, litNo int, comment string) error {
+	if op == TOK_ASSIGN {
+		emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "")
+		emit(s, "mov", "[rbp+"+strconv.Itoa(adr)+"]", "rax", "")
+	} else {
+		panic("Float assign operation not implemented")
+	}
+	return nil
+}
+
 // EmitOpAssign will set variable at <adr> to <adr> op <value>
 func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment string) error {
 	instr := TokenOp[op]
@@ -437,6 +448,11 @@ func MovOpcode(size int) string {
 func EmitStoreConst(s *State, size int, value int64, offset int, comment string) {
 	num := strconv.FormatInt(value, 10)
 	emit(s, "mov", DataType(size)+BpRel(offset), num, "")
+}
+
+func EmitLoadFloat64(s *State, size int, adr int, comment string) {
+	emit(s, "movq", xmm(s.XmmSp), "[rbp+"+strconv.Itoa(adr)+"]", "")
+	s.XmmSp++
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)
