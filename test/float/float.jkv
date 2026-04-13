@@ -10,7 +10,15 @@ func main () {
 */
 
 func main() {
-  printf("Float=%f\n", 1.234)
+  // 3. Add two floats
   a = 1.234
+  b = 2.345
+  c = a + b
+  printf("c=%f\n", c)
+/*
+  // 1. Print a float litteral
+  printf("Float=%f\n", 1.234)
+  // 2. Print a single float variable
   printf("a=%f\n", a)
+  */
 }

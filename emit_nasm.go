@@ -415,19 +415,6 @@ func DataType(size int) string {
 	}
 }
 
-func AxRegName(size int) string {
-	switch Abs(size) {
-	case 1:
-		return "al"
-	case 2:
-		return "rax"
-	case 4:
-		return "eax"
-	default:
-		return "rax"
-	}
-}
-
 func MovOpcode(size int) string {
 	if size == 8 {
 		return "mov"
@@ -468,9 +455,14 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 // EmitStore will save the Top of Stack (AX) into a local variable of given size.
 // It will then clear RaxIssTos, effectively doing a pop
 func EmitStore(s *State, opcode string, size int, adr int, comment string) {
-	emit(s, opcode, BpRel(adr), AxRegName(size), comment)
+	emit(s, opcode, BpRel(adr), AxName(size), comment)
 	s.RaxIsTOS = false
 	s.localSp--
+}
+
+func EmitStoreF64(s *State, adr int, comment string) {
+	s.XmmSp--
+	emit(s, "movq", BpRel(adr), xmm(s.XmmSp), comment)
 }
 
 // EmitAddSp will drop the top "count" 64-bit words.
@@ -566,7 +558,7 @@ func EmitLitteral(s *State, litName string, litValue string) {
 }
 
 func EmitFloatLitteral(s *State, litName string, litValue float64) {
-	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.FormatFloat(litValue, 'g', 11, 64))
+	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.FormatFloat(litValue, 'g', 11, 64) + "\n")
 }
 
 func EmitSection(s *State, section string) {

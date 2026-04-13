@@ -235,10 +235,14 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 		} else {
 			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 		}
-	} else {
+	} else if value.Typ.Pt.IsInteger() {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		instr := TokenOp[op]
 		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
+	} else if value.Typ.Pt == TYP_F64 {
+		EmitStoreF64(s, lvalue.Offset, "Assign F64 to "+lvalue.Name)
+	} else {
+		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
 	return nil
 }
