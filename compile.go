@@ -58,8 +58,9 @@ func CompileFile(name string, workdir string) error {
 	}
 
 	EmitSection(s, "rodata")
-	EmitCode(s, "alignb 8\n")
 	for i, l := range LiteralDefs {
+		// ALl strings must be aligned to qword
+		EmitCode(s, "alignb 8\n")
 		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}
 	if err != nil {
