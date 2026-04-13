@@ -32,6 +32,7 @@ type State struct {
 	ArgCount        int      // The current actual argument beeing evaluated. Points into ArgCode below
 	ArgCode         []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	ForceEmit       bool     // Set when outputing ArgCode
+	CommentLevel    int
 }
 
 type Token int
@@ -375,13 +376,13 @@ func nextToken(s *State) {
 			continue
 		case ch1 == '/' && ch2 == '*':
 			// Skip /* */ comment
-			level := 1
-			for !eof(s) && level > 0 {
+			s.CommentLevel = 1
+			for !eof(s) && s.CommentLevel > 0 {
 				ch1, ch2 = nextChar(s)
 				if ch1 == '/' && ch2 == '*' {
-					level++
+					s.CommentLevel++
 				} else if ch1 == '*' && ch2 == '/' {
-					level--
+					s.CommentLevel--
 				}
 			}
 			ch1, ch2 = nextChar(s)

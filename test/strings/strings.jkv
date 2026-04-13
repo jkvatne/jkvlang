@@ -1,4 +1,4 @@
-/*
+
 func f0(s String) String {
     return "f0 "+s
 }
@@ -17,14 +17,13 @@ func f2(s String) String {
 func f3(s String, t String) String {
   return s+t
 }
-*/
+
 func main() {
     // Test concat
     s = "Hello "
     t = "World "
     v = s + t
     printf("v=%s\n", v)
-/*
     printf("Starting string tests\n")
 
     // Test concatenation of variable and constant
@@ -68,5 +67,4 @@ func main() {
     printf("w=%s\n", w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     printf("Ending string tests\n")
-*/
 }

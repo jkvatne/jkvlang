@@ -38,9 +38,6 @@ func CompileFile(name string, workdir string) error {
 	InitTypes()
 	FuncInit()
 	nextToken(s)
-	if s.token == TOK_EOF {
-		return fmt.Errorf("no program content in file")
-	}
 
 	// Top level statements can only be func, const or type.
 	// Global variables are not allowed!
@@ -56,7 +53,6 @@ func CompileFile(name string, workdir string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}
-
 	EmitSection(s, "rodata")
 	for i, l := range LiteralDefs {
 		// ALl strings must be aligned to qword
@@ -64,8 +60,10 @@ func CompileFile(name string, workdir string) error {
 		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}
 	if err != nil {
-		EmitError(s, err)
 		return fmt.Errorf("%s:%d %v", name, s.lineNum, err)
+	}
+	if s.CommentLevel > 0 {
+		return fmt.Errorf("Missing end of comment")
 	}
 	return nil
 }

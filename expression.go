@@ -37,6 +37,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
+// ParseFormalParList parses the function definition and retrurns a list of formal parameters
 func ParseFormalParList(s *State) ([]*VarDef, error) {
 	var parList []*VarDef
 	s.ParCount = 0
@@ -56,7 +57,7 @@ func ParseFormalParList(s *State) ([]*VarDef, error) {
 		if typ == nil {
 			return parList, fmt.Errorf("expected argument type but got nil")
 		}
-		// Add argument as local variable
+		// Add argument with its implied type, storing it as a local variable
 		v := AddLocalPar(s, id, typ)
 		parList = append(parList, v)
 		if s.token == TOK_RPAR {
@@ -86,7 +87,8 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
-func ParseActualArgList(s *State) (valueList []*ValueDef, err error) {
+func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error) {
+	// For each actual argument in the argument list
 	for {
 		s.RaxIsTOS = false
 		s.ArgCount++
@@ -104,6 +106,7 @@ func ParseActualArgList(s *State) (valueList []*ValueDef, err error) {
 			return
 		}
 		if value.HasValue {
+			// First parameter is a literal
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(s, value.StringLitNo)
 			} else if value.Typ.Pt.IsInteger() {
@@ -117,6 +120,8 @@ func ParseActualArgList(s *State) (valueList []*ValueDef, err error) {
 			} else {
 				return nil, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
 			}
+		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING {
+			EmitSkipLenCap(s)
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -167,7 +172,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := s.ArgCount
 	// Parse the argument list and push each arg
-	values, err := ParseActualArgList(s)
+	values, err := ParseActualArgList(s, f)
 	if err != nil {
 		return &NoValue, err
 	}

@@ -493,6 +493,10 @@ func EmitPushStringLit(s *State, lit int) {
 	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), "")
 }
 
+func EmitSkipLenCap(s *State) {
+	emit(s, "add", "rax", "8", "Load string value frm string variable")
+}
+
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "EmitPushConst() Push TOS")
