@@ -216,8 +216,17 @@ func EmitF64Op(s *State, op Token) {
 	}
 	if op == TOK_PLUS {
 		emit(s, "addsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Add the two top xmm stack values")
+	} else if op == TOK_MINUS {
+		emit(s, "subsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Subtract the two top xmm stack values")
+	} else if op == TOK_MULT {
+		emit(s, "mulsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Multiply the two top xmm stack values")
+	} else if op == TOK_DIV {
+		emit(s, "divsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Divide the two top xmm stack values")
+	} else if op == TOK_INV_DIV {
+		emit(s, "divsd", xmm(s.XmmSp-1), xmm(s.XmmSp-2), "Divide the two top xmm stack values inverted")
+		emit(s, "movq", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "")
 	} else {
-		panic("EmitFloatOp not implemented")
+		panic("EmitFloatOp not implemented for " + op.Name())
 	}
 	s.XmmSp--
 	if s.XmmSp < 0 {
@@ -256,6 +265,7 @@ func EmitCompareFloats(s *State, op Token) {
 	}
 	emit(s, "mov", "rax", "0", "Return false if we did not jump")
 	EmitLabel(s, lbl, "")
+	s.RaxIsTOS = true
 	s.XmmSp -= 2
 	if s.XmmSp < 0 {
 		panic("Floating point stack underflow")

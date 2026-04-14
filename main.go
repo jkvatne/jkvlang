@@ -232,6 +232,12 @@ func Run(outputName string) error {
 
 func main() {
 	var err error
+	x := 1.1
+	y := 2.2
+	z := 3.3
+	w := 1.0/y + (x+y/z)*(z*z*(x+y))
+	fmt.Printf("%f\n", w)
+
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)
