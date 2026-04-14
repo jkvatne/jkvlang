@@ -220,6 +220,9 @@ func EmitF64Op(s *State, op Token) {
 		panic("EmitFloatOp not implemented")
 	}
 	s.XmmSp--
+	if s.XmmSp < 0 {
+		panic("Floating point stack underflow")
+	}
 }
 
 func EmitPushFloat(s *State, litNo int) {
@@ -232,7 +235,33 @@ func EmitPushFloat(s *State, litNo int) {
 }
 
 func EmitCompareFloats(s *State, op Token) {
-	panic("EmitCompareFloats not implemented")
+	// Compare two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
+	if op == TOK_EQ {
+		// emit(s, "movq", "xmm1", "[rsp]", "Load NOS into xmm1")
+		emit(s, "ucomisd", xmm(s.XmmSp-1), xmm(s.XmmSp-2), "Compare two floats equal")
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Floats was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+	} else if op == TOK_NE {
+		// Compare two floats. TOS is in xmm0. NOS is in [rsp]
+		// emit(s, "movq", "xmm1", "[rsp]", "Load NOS into xmm1")
+		emit(s, "ucomisd", "xmm0", "xmm1", "Comare two floats not equal")
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "1", "Initialize result to true")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "0", "Floats was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+	} else {
+		panic("EmitCompareFloats not implemented")
+	}
+	s.XmmSp -= 2
+	if s.XmmSp < 0 {
+		panic("Floating point stack underflow")
+	}
 }
 
 func EmitSetCompareResult(s *State, op Token) error {
@@ -321,11 +350,6 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 	return nil
 }
 
-// EmitOpFloatConst will evaluate tos=tos op <constant>
-func EmitOpFloatConst(s *State, op Token, value float64, comment string) error {
-	return fmt.Errorf("float operation not implemented")
-}
-
 func AxName(size int) string {
 	if size == 1 {
 		return "al"
@@ -344,7 +368,7 @@ func AxName(size int) string {
 func EmitOpAssignFloat(s *State, op Token, adr int, litNo int, comment string) error {
 	if op == TOK_ASSIGN {
 		emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "")
-		emit(s, "mov", "[rbp+"+strconv.Itoa(adr)+"]", "rax", "")
+		emit(s, "mov", BpRel(adr), "rax", "")
 	} else {
 		panic("Float assign operation not implemented")
 	}
@@ -438,7 +462,7 @@ func EmitStoreConst(s *State, size int, value int64, offset int, comment string)
 }
 
 func EmitLoadFloat64(s *State, size int, adr int, comment string) {
-	emit(s, "movq", xmm(s.XmmSp), "[rbp+"+strconv.Itoa(adr)+"]", "")
+	emit(s, "movq", xmm(s.XmmSp), BpRel(adr), comment)
 	s.XmmSp++
 }
 
@@ -462,6 +486,9 @@ func EmitStore(s *State, opcode string, size int, adr int, comment string) {
 
 func EmitStoreF64(s *State, adr int, comment string) {
 	s.XmmSp--
+	if s.XmmSp < 0 {
+		panic("Floating point stack underflow")
+	}
 	emit(s, "movq", BpRel(adr), xmm(s.XmmSp), comment)
 }
 
@@ -510,8 +537,9 @@ func EmitJumpTrue(s *State, n int, comment string) {
 
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, size int, comment string) {
-	emit(s, "xor", "rdx", "rdx", "")
-	emit(s, "push", "rdx", "", "New variable, "+comment)
+	// emit(s, "xor", "rdx", "rdx", "")
+	// emit(s, "push", "rdx", "", "New variable, "+comment)
+	emit(s, "sub", "rsp", "8", comment)
 	s.localSp++
 }
 
@@ -558,7 +586,15 @@ func EmitLitteral(s *State, litName string, litValue string) {
 }
 
 func EmitFloatLitteral(s *State, litName string, litValue float64) {
-	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.FormatFloat(litValue, 'g', 11, 64) + "\n")
+	value := strconv.FormatFloat(litValue, 'g', 11, 64)
+	if !strings.Contains(value, ".") {
+		if strings.Contains(value, "e") || strings.Contains(value, "E") {
+			value = strings.Replace(value, "e", ".0e", 1)
+		} else {
+			value = value + ".0"
+		}
+	}
+	_, _ = s.outputFile.WriteString(litName + " dq " + value + "\n")
 }
 
 func EmitSection(s *State, section string) {

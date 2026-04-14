@@ -117,8 +117,13 @@ func tosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		err := EmitOpIntConst(s, op, val2.IntValue, "")
 		return &ValueDef{Typ: val1.Typ}, err
 	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
-		err := EmitOpFloatConst(s, op, val2.FloatValue, "")
-		return &ValueDef{Typ: val1.Typ}, err
+		// Move constant value to sp+1
+		if s.XmmSp > 6 {
+			panic("Floating point stack overflow")
+		}
+		EmitPushFloat(s, val2.FloatLitNo)
+		EmitF64Op(s, op)
+		return &ValueDef{Typ: val1.Typ}, nil
 	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		// The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 		// First check lengths
@@ -131,6 +136,30 @@ func tosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return &ValueDef{Typ: &BoolType}, nil
+	} else if op == TOK_EQ && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+		// Compare float in TOS (xmm<sp>) with constant. First load constant into xmm<sp+1>
+		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm1")
+		emit(s, "ucomisd", xmm(s.XmmSp), xmm(s.XmmSp-1), "Compare float with constant")
+		s.XmmSp -= 1
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Floats was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return &ValueDef{Typ: &BoolType}, nil
+	} else if op == TOK_NE && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+		// Compare float in TOS (xmm<sp>) with constant. First load constant into xmm<sp+1>
+		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm1")
+		emit(s, "ucomisd", xmm(s.XmmSp), xmm(s.XmmSp-1), "Compare float with constant")
+		s.XmmSp -= 1
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "1", "Initialize result to true")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "0", "Floats was equal, set rax=false")
 		EmitLabel(s, lbl, "")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return &ValueDef{Typ: &BoolType}, nil
@@ -157,13 +186,13 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 		// Compare two strings, one in rax, and one on top of stack, and drop top of stack
 		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "mov", "rdi", "rax", "Save tos")
 		emit(s, "mov", "rsi", "[rsp]", "Get nos")
 		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "pop", "rax", "", "Get nos ptr")
 		s.localSp--
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
 		emit(s, "mov", "ecx", "[rax]", "Get nos length")
 		emit(s, "add", "rsi", "4", "Start of string 1")
@@ -190,7 +219,7 @@ func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		emit(s, "add", "rdi", "4", "Start of string 2")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=true")
+		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
 		EmitLabel(s, lbl, "unequal")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return &ValueDef{Typ: &BoolType}, nil

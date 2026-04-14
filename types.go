@@ -33,7 +33,7 @@ var PrimaryTypeNames = [...]string{
 
 var PrimaryTypeSizes = [...]int{
 	0, 1, 1, 2, 2, 4, 4, 4, 8, 4,
-	4, 8, 4, 4, 4, 4, 4, 4}
+	8, 8, 8, 8, 8, 8, 8, 8}
 
 type TypeDef struct {
 	Pt       PrimaryType

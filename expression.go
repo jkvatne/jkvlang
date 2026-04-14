@@ -293,11 +293,12 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
 		if !v.Value.HasValue {
+			// THis is a local variable, not a known constant
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
 			} else if v.Value.Typ.Pt == TYP_F64 {
-				// emit(s, "movq", "xmm0", "","")
-				EmitLoadFloat64(s, 8, v.Offset, "")
+				// Load value into xmm<sp>
+				EmitLoadFloat64(s, 8, v.Offset, "Load float "+v.Name)
 			} else {
 				EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 			}
