@@ -139,29 +139,11 @@ func tosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		EmitLabel(s, lbl, "")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return &ValueDef{Typ: &BoolType}, nil
-	} else if op == TOK_EQ && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		// Compare float in TOS (xmm<sp>) with constant. First load constant into xmm<sp+1>
-		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm1")
-		emit(s, "ucomisd", xmm(s.XmmSp), xmm(s.XmmSp-1), "Compare float with constant")
-		s.XmmSp -= 1
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "1", "Floats was equal, set rax=true")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		return &ValueDef{Typ: &BoolType}, nil
-	} else if op == TOK_NE && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		// Compare float in TOS (xmm<sp>) with constant. First load constant into xmm<sp+1>
-		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm1")
-		emit(s, "ucomisd", xmm(s.XmmSp), xmm(s.XmmSp-1), "Compare float with constant")
-		s.XmmSp -= 1
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "1", "Initialize result to true")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "0", "Floats was equal, set rax=false")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+	} else if op.IsCompare() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+		// First push constant into xmm<sp+1>
+		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm<sp>")
+		s.XmmSp++
+		EmitCompareFloats(s, op)
 		return &ValueDef{Typ: &BoolType}, nil
 	}
 	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
@@ -234,7 +216,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 		// old := VarDefs[lvalue.Name].Offset
 		VarDefs[lvalue.Name].Offset = -s.localSp * 8
 		// fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
-		EmitAllocLocalVar(s, lvalue.Size(), lvalue.Name)
+		EmitAllocLocalVar(s, lvalue.Size(), "Allocate local variable "+lvalue.Name)
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")

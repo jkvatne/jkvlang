@@ -41,10 +41,11 @@ func ParseReturn(s *State) error {
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
-	if s.XmmSp != 0 {
-		fmt.Printf("XmmSp=%d\n", s.XmmSp)
+	if s.XmmSp != 0 || s.localSp > 1 {
+		fmt.Printf("XmmSp=%d  localSp=%d\n", s.XmmSp, s.localSp)
 	}
 	s.XmmSp = 0
+	s.localSp = 1
 	if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()

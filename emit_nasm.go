@@ -106,7 +106,7 @@ func EmitBlankLine(s *State) {
 }
 
 func EmitLineNo(s *State) {
-	_, err := Write(s, "   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"\n", false)
+	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"\n", false)
 	if err != nil {
 		panic(err)
 	}
@@ -234,30 +234,28 @@ func EmitPushFloat(s *State, litNo int) {
 	}
 }
 
+// EmitCompareFloats compares two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
 func EmitCompareFloats(s *State, op Token) {
-	// Compare two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
+	lbl := NewLabel(s)
+	emit(s, "ucomisd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Compare two floats equal")
+	emit(s, "mov", "rax", "1", "Default to true")
 	if op == TOK_EQ {
-		// emit(s, "movq", "xmm1", "[rsp]", "Load NOS into xmm1")
-		emit(s, "ucomisd", xmm(s.XmmSp-1), xmm(s.XmmSp-2), "Compare two floats equal")
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "1", "Floats was equal, set rax=true")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		emit(s, "je", LabelName(lbl), "", "")
 	} else if op == TOK_NE {
-		// Compare two floats. TOS is in xmm0. NOS is in [rsp]
-		// emit(s, "movq", "xmm1", "[rsp]", "Load NOS into xmm1")
-		emit(s, "ucomisd", "xmm0", "xmm1", "Comare two floats not equal")
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "1", "Initialize result to true")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "0", "Floats was equal, set rax=true")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		emit(s, "jne", LabelName(lbl), "", "")
+	} else if op == TOK_GT {
+		emit(s, "jg", LabelName(lbl), "", "")
+	} else if op == TOK_LE {
+		emit(s, "jg", LabelName(lbl), "", "")
+	} else if op == TOK_GE {
+		emit(s, "jge", LabelName(lbl), "", "")
+	} else if op == TOK_LT {
+		emit(s, "jge", LabelName(lbl), "", "")
 	} else {
 		panic("EmitCompareFloats not implemented")
 	}
+	emit(s, "mov", "rax", "0", "Return false if we did not jump")
+	EmitLabel(s, lbl, "")
 	s.XmmSp -= 2
 	if s.XmmSp < 0 {
 		panic("Floating point stack underflow")
@@ -463,6 +461,7 @@ func EmitStoreConst(s *State, size int, value int64, offset int, comment string)
 
 func EmitLoadFloat64(s *State, size int, adr int, comment string) {
 	emit(s, "movq", xmm(s.XmmSp), BpRel(adr), comment)
+	emit(s, "mov", "rax", BpRel(adr), comment)
 	s.XmmSp++
 }
 

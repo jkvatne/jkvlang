@@ -124,12 +124,11 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 				EmitPushFloat(s, value.FloatLitNo)
 			} else {
 				return nil, 0, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
-				emit(s, "movq", "rax", "xmm0", "")
 			}
 		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING {
 			EmitSkipLenCap(s)
 		} else if f.name == "printf" && (value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32) {
-			emit(s, "movq", "rax", "xmm0", "")
+			emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -179,6 +178,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	}
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := s.ArgCount
+	s.ArgCode = s.ArgCode[0:s.ArgCount]
 	// Parse the argument list and push each arg
 	values, floatParCount, err := ParseActualArgList(s, f)
 	if err != nil {
