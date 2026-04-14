@@ -233,7 +233,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 				err = EmitOpAssignString(s, lvalue.Offset, value.StringLitNo)
 			} else if lvalue.Typ.Pt.IsInteger() {
 				if lvalue.Name == "err" {
-					emit(s, "mov", "r15", "rax", "Set tos to r15 = error value")
+					emit(s, "mov", "r15", strconv.Itoa(int(value.IntValue)), "Set tos to r15 = error value")
 				} else {
 					err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}

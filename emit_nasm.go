@@ -154,19 +154,20 @@ func EmitReturn(s *State) {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp -= s.localSp
 	}
+	// Verify localsp is zero
+	if s.localSp != 0 {
+		panic("s.localSp != 0")
+	}
 	// Return exit code from main
 	if s.currentFunc.name == "main" {
 		EmitPrintSp(s)
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
+	} else {
+		// Function epilogue. Restore frame pointer and exit
+		emit(s, "leave", "", "", "")
+		emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 	}
-	// Verify localsp is zero
-	if s.localSp != 0 {
-		panic("s.localSp != 0")
-	}
-	// Function epilogue. Restore frame pointer and exit
-	emit(s, "leave", "", "", "")
-	emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 }
 
 func EmitFunction(s *State, id string) {
