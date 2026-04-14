@@ -9,30 +9,29 @@ func ParseReturn(s *State) error {
 	f := s.currentFunc
 	// requireRpar := s.found(TOK_LPAR)
 	i := 0
-	for {
-		v, err := ParseExpression(s)
-		if err != nil {
-			return err
+	if len(f.returnTypes) > 0 {
+		for {
+			v, err := ParseExpression(s)
+			if err != nil {
+				return err
+			}
+			if len(f.returnTypes) <= i && len(f.returnTypes) > 0 {
+				return fmt.Errorf("too many return values")
+			}
+			if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
+				return fmt.Errorf("returns wrong type")
+			}
+			if v.HasValue {
+				EmitPushConst(s, v.IntValue, "Return value "+strconv.Itoa(i))
+			}
+			if !s.found(TOK_COMMA) {
+				break
+			}
+			i++
 		}
-		if len(f.returnTypes) <= i {
-			return fmt.Errorf("too many return values")
+		if len(f.returnTypes) == 0 {
+			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 		}
-		if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
-			return fmt.Errorf("returns wrong type")
-		}
-		if v.HasValue {
-			EmitPushConst(s, v.IntValue, "Return value "+strconv.Itoa(i))
-		}
-		if !s.found(TOK_COMMA) {
-			break
-		}
-		i++
-	}
-	// if requireRpar && !s.found(TOK_RPAR) {
-	//	return errors.New("expected )")
-	// }
-	if len(f.returnTypes) == 0 {
-		return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 	}
 	EmitReturn(s)
 	return nil
@@ -41,8 +40,8 @@ func ParseReturn(s *State) error {
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
-	if s.XmmSp != 0 || s.localSp > 1 {
-		fmt.Printf("XmmSp=%d  localSp=%d\n", s.XmmSp, s.localSp)
+	if s.XmmSp != 0 || s.localSp > 2 {
+		fmt.Printf("Line no %d: XmmSp=%d  localSp=%d\n", s.lineNum, s.XmmSp, s.localSp)
 	}
 	s.XmmSp = 0
 	s.localSp = 1

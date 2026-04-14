@@ -177,7 +177,7 @@ func EmitFunction(s *State, id string) {
 	}
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
-	s.localSp = 1
+	s.localSp++
 	emit(s, "mov", "rbp", "rsp", "")
 	emit(s, "push", "rax", "", "Save first argument in rax")
 	s.localSp++
@@ -536,8 +536,6 @@ func EmitJumpTrue(s *State, n int, comment string) {
 
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, size int, comment string) {
-	// emit(s, "xor", "rdx", "rdx", "")
-	// emit(s, "push", "rdx", "", "New variable, "+comment)
 	emit(s, "sub", "rsp", "8", comment)
 	s.localSp++
 }

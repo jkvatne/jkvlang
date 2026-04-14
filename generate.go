@@ -214,7 +214,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
 		// old := VarDefs[lvalue.Name].Offset
-		VarDefs[lvalue.Name].Offset = -s.localSp * 8
+		VarDefs[lvalue.Name].Offset = -s.VarCount * 8
 		// fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
 		EmitAllocLocalVar(s, lvalue.Size(), "Allocate local variable "+lvalue.Name)
 	}
@@ -232,7 +232,11 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 			if lvalue.Typ.Pt == TYP_STRING {
 				err = EmitOpAssignString(s, lvalue.Offset, value.StringLitNo)
 			} else if lvalue.Typ.Pt.IsInteger() {
-				err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+				if lvalue.Name == "err" {
+					emit(s, "mov", "r15", "rax", "Set tos to r15 = error value")
+				} else {
+					err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+				}
 			} else if lvalue.Typ.Pt == TYP_F64 {
 				err = EmitOpAssignFloat(s, op, lvalue.Offset, value.FloatLitNo, "")
 			} else {

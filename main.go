@@ -224,7 +224,9 @@ func Run(outputName string) error {
 	fmt.Printf("Running \"%s\" in \"%s\"\n", outputName+".exe", cwd)
 	out, err := exec.Command(path.Join(cwd, outputName+".exe"), "").CombinedOutput()
 	fmt.Println(string(out))
-	fmt.Printf("The exit code was %d\n", err.(*exec.ExitError).ExitCode())
+	if err != nil {
+		fmt.Printf("The exit code was %d\n", err.(*exec.ExitError).ExitCode())
+	}
 	return err
 }
 

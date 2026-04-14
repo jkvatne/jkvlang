@@ -20,9 +20,8 @@ type State struct {
 	tokenString     string   // The current token as a string
 	tokenFloatValue float64  // The current token as a float (if it is a number)
 	labelNo         int      // The current label number in this file, to make all local labels unique.
-	level           int      // The current level. Keeps track of scope. Max 32 deep nesting is allowed
 	noCode          int      // Used to skip code generation in constant if/else statements.
-	VarCount        [32]int  // The number of local variables in each level.
+	VarCount        int      // The number of local variables in each level.
 	hasReturned     bool     // Used to avoid jumps after return statement and checking for dead code
 	localSp         int      // Tracks the stack pointer. Used to pop arguments and verify correct code
 	RaxIsTOS        bool     // False if there is no value in rax. Normally rax is top of stack.

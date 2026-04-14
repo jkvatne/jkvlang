@@ -51,20 +51,11 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		// New variable.
 		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}}
 		VarDefs[id] = v
-		s.VarCount[s.level]++
-		v.Offset = -8 - s.VarCount[s.level]*8 // First local variable is at rbp-16, the next at rpb-24
-		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
+		s.VarCount++
+		v.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24
+		fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 	}
 	return v
-}
-
-func EnterBlock(s *State) {
-	s.level++
-}
-
-func ExitBlock(s *State) {
-	EmitAddSp(s, s.VarCount[s.level], "")
-	s.level--
 }
 
 // ParseVars parses a parenthesis var declaration

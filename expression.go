@@ -296,6 +296,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			// THis is a local variable, not a known constant
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
+				s.RaxIsTOS = true
 			} else if v.Value.Typ.Pt == TYP_F64 {
 				// Load value into xmm<sp>
 				EmitLoadFloat64(s, 8, v.Offset, "Load float "+v.Name)
@@ -574,12 +575,10 @@ func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
 		s.noCode++
 	}
-	EnterBlock(s)
 	err := ParseStatements(s)
 	if err != nil {
 		return err
 	}
-	ExitBlock(s)
 	if isTrue {
 		s.noCode--
 		if s.noCode < 0 {
@@ -589,17 +588,16 @@ func ParseBlock(s *State, isTrue bool) error {
 	return nil
 }
 
-// ParseColonQmark will parse the code after ?
+// ParseColonQmark will parse the code after '?' or ':'
 func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
-	nextToken(s)
 	if !value.HasValue {
 		L1 = NewLabel(s)
 		EmitJumpFalse(s, L1, "Skip block 1 if false")
 	}
 
 	// Parse stm1 in if cond ? stm1 : stm2
-	err = ParseBlock(s, value.IsTrue())
+	_, err = ParseStatement(s)
 	if err != nil {
 		return err
 	}
@@ -618,11 +616,8 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		if !s.hasReturned && !value.HasValue {
 			EmitLabel(s, L2, "")
 		}
-	} else {
-		if !s.hasReturned && !value.HasValue {
-			EmitLabel(s, L1, "")
-		}
 	}
+	EmitLabel(s, L1, "")
 	return nil
 }
 
@@ -720,7 +715,7 @@ func ParseIf(s *State) error {
 		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 	}
 
-	if s.token == TOK_COLON || s.token == TOK_QMARK {
+	if s.found(TOK_COLON) || s.found(TOK_QMARK) {
 		return ParseColonQmark(s, value)
 	} else if s.token == TOK_LBRACE {
 		return ParseIfElse(s, value)
@@ -743,8 +738,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
-	s.VarCount = [32]int{}
-	s.level = 0
+	s.VarCount = 0
 	parList, err := ParseFormalParList(s)
 	if err != nil {
 		return err
