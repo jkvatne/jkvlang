@@ -140,10 +140,14 @@ func EmitPushTos(s *State, argNo int, funcName string, force bool) {
 }
 
 func EmitCall(s *State, id string, nPar int) {
-	emit(s, "mov", "rbx", strconv.Itoa((nPar-1)*8), "")
+	if nPar > 1 {
+		emit(s, "mov", "rbx", strconv.Itoa((nPar-1)*8), "")
+	} else {
+		emit(s, "xor", "rbx", "rbx", "")
+	}
 	emit(s, "call", id, "", "")
 	if nPar > 1 {
-		emit(s, "add", "rsp", strconv.Itoa(8*(nPar-1)), "Remove arguments")
+		emit(s, "add", "rsp", strconv.Itoa((nPar-1)*8), "Remove arguments")
 		s.localSp -= nPar - 1
 	}
 }
@@ -151,7 +155,7 @@ func EmitCall(s *State, id string, nPar int) {
 func EmitReturn(s *State) {
 	if !s.RaxIsTOS || s.LocalRetSize > 1 {
 		for i := range len(s.currentFunc.returnTypes) {
-			emit(s, "pop", "rax", "", "Return value "+strconv.Itoa(i))
+			emit(s, "pop", "rax", "", "Return value no "+strconv.Itoa(i))
 			s.localSp--
 		}
 	}

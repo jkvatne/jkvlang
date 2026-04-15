@@ -164,6 +164,9 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "")
+	}
 	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
 	if len(s.ArgCode) == 0 {
 		s.ArgCode = append(s.ArgCode, "")
@@ -231,6 +234,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 		// The function call should be alone, so just continue
 		return &NoValue, nil
 	}
+	s.RaxIsTOS = true
 	return &ValueDef{Typ: f.returnTypes[0]}, nil
 }
 
