@@ -112,11 +112,11 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	// For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 	for {
 		s.RaxIsTOS = false
+		s.ArgCode = append(s.ArgCode, "")
 		// A new argument. Append "" to the ArgCode slice
 		if s.token == TOK_RPAR {
 			break
 		}
-		s.ArgCode = append(s.ArgCode, "")
 		var value *ValueDef
 		value, err = ParseExpression(s)
 		if err != nil {
@@ -204,13 +204,15 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	txt := ""
 	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
 		txt += s.ArgCode[i]
-		if values[i-startArgNo].Typ.Pt == TYP_F64 {
-			txt += "   movq rax, xmm0\n"
+		if len(values) > 0 {
+			if values[i-startArgNo].Typ.Pt == TYP_F64 {
+				txt += "   movq rax, xmm0\n"
+			}
+			if i > startArgNo {
+				txt += "   push rax\n"
+			}
+			s.localSp++
 		}
-		if i > startArgNo {
-			txt += "   push rax\n"
-		}
-		s.localSp++
 	}
 	s.ArgCode[startArgNo] = txt
 	s.ArgCode = s.ArgCode[0 : startArgNo+1]
@@ -621,7 +623,6 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		if !s.hasReturned && !value.HasValue {
 			L2 = NewLabel(s)
 			EmitJump(s, L2, "")
-			EmitLabel(s, L1, "")
 		}
 		// Parse stm2 in if cond ? stm1 : stm2
 		_, err = ParseStatement(s)

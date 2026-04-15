@@ -6,23 +6,8 @@ func g(x I32, y I32) I32 {
    return x*y
 }
 
-func main() {
-  w = f(3, g(4,5))
-  assert(w==23)
-  printf("w=%d\n",w)
-  w = g(1,2)
-  assert(w==2)
-  printf("w=%d\n",w)
-}
-
-/*
 func f2() I32 {
-    z=3
-    z*=8
-    z+=4     // = 28
-    s = 24
-    s = s/6  // = 4
-    return s+z  // = 32
+    return f(2,3)+g(4,5)
 }
 
 func gg(a Bool, c I32) I32 {
@@ -37,10 +22,15 @@ func test_g()  {
 }
 
 func main() {
-    printf("gg(true,5)=%d\n", gg(true,6))
     printf("f2()=%d\n", f2())
+    w = f(3, g(4,5))
+    assert(w==23)
+    printf("w=%d\n",w)
+    w = g(1,2)
+    assert(w==2)
+    printf("w=%d\n",w)
+    printf("gg(true,5)=%d\n", gg(true,6))
     assert(f2()==32)
-    assert(g(true, 5)==7)
+    assert(gg(true, 5)==7)
     test_g()
 }
-*/

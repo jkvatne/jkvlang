@@ -41,7 +41,7 @@ func ParseReturn(s *State) error {
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
 	if s.XmmSp != 0 || s.localSp > 2 {
-		fmt.Printf("Line no %d: XmmSp=%d  localSp=%d\n", s.lineNum, s.XmmSp, s.localSp)
+		// fmt.Printf("Line no %d: XmmSp=%d  localSp=%d\n", s.lineNum, s.XmmSp, s.localSp)
 	}
 	s.XmmSp = 0
 	s.localSp = 1
