@@ -1,0 +1,9 @@
+
+
+func f(s String) {
+    printf(s)
+}
+
+func main() {
+    f("........Hello"+" world\n")
+}

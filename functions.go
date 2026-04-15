@@ -9,6 +9,7 @@ type FuncDef struct {
 	floatParCount int
 	stackSize     int
 	builtin       bool
+	returnLbl     int
 }
 
 var FuncDefs map[string]*FuncDef

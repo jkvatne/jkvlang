@@ -702,7 +702,7 @@ func EmitConcat(s *State) {
 	emit(s, "mov", "rcx", "r12", "")
 	emit(s, "rep", "movsb", "", "")
 	// Remove the top of stack. New TOS is the pointer in rax
-	emit(s, "pop", "rax", "", "Remove the top of stack. New TOS is the pointer in rax")
+	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	s.localSp--
 	// Now AX should point to the string
 	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
@@ -851,4 +851,10 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
 	EmitLabel(s, lbl, "unequal")
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+}
+
+func EmitFree(s *State, adr int) {
+	// Call free if variable is on heap
+	emit(s, "mov", "rax", BpRel(adr), "Free")
+	emit(s, "call", "_free", "", "")
 }

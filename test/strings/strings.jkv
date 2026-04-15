@@ -5,8 +5,7 @@ func f0(s String) String {
 
 func f1(s String) String {
     t = "f1 "
-    u = t+s
-    return u
+    return t+s
 }
 
 func f2(s String) String {

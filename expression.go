@@ -108,8 +108,9 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
+// ParseActualArgList
+// For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
-	// For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 	for {
 		s.RaxIsTOS = false
 		s.ArgCode = append(s.ArgCode, "")
@@ -788,6 +789,7 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, parList, returnList, false)
+	f.returnLbl = NewLabel(s)
 	s.currentFunc = f
 	if err != nil {
 		return err
@@ -805,9 +807,14 @@ func ParseFuncDef(s *State) error {
 	if !s.hasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
-	if !s.hasReturned {
-		EmitReturn(s)
+	EmitLabel(s, f.returnLbl, "")
+	// Free arguments on the heap
+	for i, v := range f.parameters {
+		if v.Typ.Pt == TYP_STRING {
+			EmitFree(s, i*8-8)
+		}
 	}
+	EmitReturn(s)
 	nextToken(s)
 	s.currentFunc = nil
 	return nil
