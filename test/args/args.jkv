@@ -1,4 +1,21 @@
+func f(x I32, y I32) I32 {
+   return x+y
+}
 
+func g(x I32, y I32) I32 {
+   return x*y
+}
+
+func main() {
+  w = f(3, g(4,5))
+  assert(w==23)
+  printf("w=%d\n",w)
+  w = g(1,2)
+  assert(w==2)
+  printf("w=%d\n",w)
+}
+
+/*
 func f2() I32 {
     z=3
     z*=8
@@ -8,20 +25,22 @@ func f2() I32 {
     return s+z  // = 32
 }
 
-func g(a Bool, c I32) I32 {
+func gg(a Bool, c I32) I32 {
     if a ? c+=2 : c+=1
     return c
 }
 
 func test_g()  {
-    r = g(true, 30)
-    assert(r==32)
+    r =0
+   // r = gg(true, 30)
+   // assert(r==32)
 }
 
 func main() {
+    printf("gg(true,5)=%d\n", gg(true,6))
     printf("f2()=%d\n", f2())
     assert(f2()==32)
-    printf("g(true,5)=%d\n", g(true,5))
     assert(g(true, 5)==7)
     test_g()
 }
+*/

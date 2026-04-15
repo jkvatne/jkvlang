@@ -30,9 +30,9 @@ type State struct {
 	LocalRetSize    int      // The number of return values from the current function
 	ArgCount        int      // The current actual argument beeing evaluated. Points into ArgCode below
 	ArgCode         []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
-	ForceEmit       bool     // Set when outputing ArgCode
 	CommentLevel    int
 	XmmSp           int // Stack pointer into SSE registers
+	nesting         int
 }
 
 type Token int

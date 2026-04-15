@@ -24,6 +24,7 @@ func main() {
     t = "World "
     v = s + t
     printf("v=%s\n", v)
+    assert(v=="HellosWorld ")
     printf("Starting string tests\n")
 
     // Test concatenation of variable and constant

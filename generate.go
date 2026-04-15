@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 )
 
@@ -23,190 +22,83 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 	}
 	if val1.HasValue && val2.HasValue {
 		// If both operands are constant. Evaluate at compile time.
-		return constOpConst(op, val1, val2)
+		return EmitConstOpConst(op, val1, val2)
 	} else if val1.HasValue {
 		// The left side is a constant. Do the inverse operation
-		return tosOpConst(s, Inverse(op), val2, val1)
+		return GenerateTosOpConst(s, Inverse(op), val2, val1)
 	} else if val2.HasValue {
 		// The right side is a constant. Do the operation on top of stack
-		return tosOpConst(s, op, val1, val2)
+		return GenerateTosOpConst(s, op, val1, val2)
 	} else {
-		return tosOpNos(s, op, val1, val2)
+		return EmitTosOpNos(s, op, val1, val2)
 	}
 }
-
-func Inverse(op Token) Token {
-	switch op {
-	case TOK_LT:
-		return TOK_GT
-	case TOK_LE:
-		return TOK_GE
-	case TOK_GT:
-		return TOK_LT
-	case TOK_GE:
-		return TOK_LE
-	case TOK_MINUS:
-		return TOK_INV_MINUS
-	case TOK_DIV:
-		return TOK_INV_DIV
-	default:
-		return op
-	}
-}
-
-// constOpConst will calculate the result of the operation on the two constant values
-// and return the constant result.
-func constOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	var result ValueDef
-	result.Typ = widest(val1, val2).Typ
-	result.HasValue = true
-	switch op {
-	case TOK_PLUS:
-		result.IntValue = val1.IntValue + val2.IntValue
-		result.FloatValue = val1.FloatValue + val2.FloatValue
-	case TOK_MINUS:
-		result.IntValue = val1.IntValue - val2.IntValue
-		result.FloatValue = val1.FloatValue - val2.FloatValue
-	case TOK_MULT:
-		result.IntValue = val1.IntValue * val2.IntValue
-		result.FloatValue = val1.FloatValue * val2.FloatValue
-	case TOK_DIV:
-		result.IntValue = val1.IntValue / val2.IntValue
-		result.FloatValue = val1.FloatValue / val2.FloatValue
-	case TOK_AND:
-		result.IntValue = val1.IntValue & val2.IntValue
-	case TOK_OR:
-		result.IntValue = val1.IntValue | val2.IntValue
-	case TOK_LOG_OR:
-		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue || val2.BoolValue
-	case TOK_LOG_AND:
-		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue && val2.BoolValue
-	case TOK_EQ:
-		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
-	case TOK_NE:
-		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
-	case TOK_LT:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue < val2.FloatValue
-	case TOK_LE:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue <= val2.FloatValue
-	case TOK_GT:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue > val2.FloatValue
-	case TOK_GE:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue >= val2.FloatValue
-	default:
-		// Invalid operand
-		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
-	}
-	return &result, nil
-}
-
-// tosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
-func tosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	if op.IsCompare() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-		err := EmitCompareIntConst(s, op, val2.IntValue)
-		return &ValueDef{Typ: &BoolType}, err
-	} else if op.IsAritmetic() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-		err := EmitOpIntConst(s, op, val2.IntValue, "")
-		return &ValueDef{Typ: val1.Typ}, err
-	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
-		// Move constant value to sp+1
-		if s.XmmSp > 6 {
-			panic("Floating point stack overflow")
+func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+	if op.IsCompare() {
+		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+			err := EmitCompareIntegers(s, op)
+			return &ValueDef{Typ: &BoolType}, err
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+			EmitCompareFloats(s, op)
+			return &ValueDef{Typ: &BoolType}, nil
+		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+			if op == TOK_EQ {
+				EmitCompareStringsEq(s)
+				return &ValueDef{Typ: &BoolType}, nil
+			} else if op == TOK_NE {
+				EmitCompareStringsNe(s)
+				return &ValueDef{Typ: &BoolType}, nil
+			}
 		}
-		EmitPushFloat(s, val2.FloatLitNo)
-		EmitF64Op(s, op)
-		return &ValueDef{Typ: val1.Typ}, nil
-	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-		// The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
-		// First check lengths
-		emit(s, "cmp", "word [rax]", strconv.Itoa(len(val2.StringValue)), "Compare string lengths")
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rsi", "str"+strconv.Itoa(val2.StringLitNo), "")
-		emit(s, "mov", "rdi", "rax", "")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		return &ValueDef{Typ: &BoolType}, nil
-	} else if op.IsCompare() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		// First push constant into xmm<sp+1>
-		emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm<sp>")
-		s.XmmSp++
-		EmitCompareFloats(s, op)
-		return &ValueDef{Typ: &BoolType}, nil
-	}
-	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
-}
-
-func tosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	if op.IsCompare() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-		err := EmitCompareIntegers(s, op)
-		return &ValueDef{Typ: &BoolType}, err
-	} else if op.IsAritmetic() && val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-		EmitIntegerOp(s, op)
-		return val1, nil
-	} else if op.IsAritmetic() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		EmitF64Op(s, op)
-		return val1, nil
-	} else if op.IsCompare() && val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-		EmitCompareFloats(s, op)
-		return &ValueDef{Typ: &BoolType}, nil
-	} else if op == TOK_PLUS && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-		EmitConcat(s)
-		return val1, nil
-	} else if op == TOK_EQ && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-		// Compare two strings, one in rax, and one on top of stack, and drop top of stack
-		lbl := NewLabel(s)
-		emit(s, "mov", "rdi", "rax", "Save tos")
-		emit(s, "mov", "rsi", "[rsp]", "Get nos")
-		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "pop", "rax", "", "Get nos ptr")
-		s.localSp--
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
-		emit(s, "mov", "ecx", "[rax]", "Get nos length")
-		emit(s, "add", "rsi", "4", "Start of string 1")
-		emit(s, "add", "rdi", "4", "Start of string 2")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
-		EmitLabel(s, lbl, "unequal")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		return &ValueDef{Typ: &BoolType}, nil
-	} else if op == TOK_NE && val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-		// Compare two strings, one in rax, and one on top of stack, and drop top of stack
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "1", "Initialize result to true")
-		emit(s, "mov", "rdi", "rax", "Save tos")
-		emit(s, "mov", "rsi", "[rsp]", "Get nos")
-		emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "pop", "rax", "", "Get nos ptr")
-		s.localSp--
-		emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
-		emit(s, "mov", "ecx", "[rax]", "Get nos length")
-		emit(s, "add", "rsi", "4", "Start of string 1")
-		emit(s, "add", "rdi", "4", "Start of string 2")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
-		EmitLabel(s, lbl, "unequal")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		return &ValueDef{Typ: &BoolType}, nil
+	} else if op.IsAritmetic() {
+		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+			EmitIntegerOp(s, op)
+			return val1, nil
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+			EmitF64Op(s, op)
+			return val1, nil
+		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+			if op == TOK_PLUS {
+				EmitConcat(s)
+				return val1, nil
+			}
+		}
 	}
 	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())
+}
+
+// GenerateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
+func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+	var err error
+	if op.IsCompare() {
+		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+			err = EmitCompareIntConst(s, op, val2.IntValue)
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+			// First push constant into xmm<sp+1>
+			emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm<sp>")
+			s.XmmSp++
+			err = EmitCompareFloats(s, op)
+		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+			err = EmitCompareStrings(s, op, val2.StringValue, val2.StringLitNo)
+		} else {
+			err = fmt.Errorf("Unknown type combination for compare")
+		}
+		return &ValueDef{Typ: &BoolType}, err
+	} else if op.IsAritmetic() {
+		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+			err = EmitOpIntConst(s, op, val2.IntValue, "")
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
+			// Move constant value to sp+1
+			if s.XmmSp > 6 {
+				panic("Floating point stack overflow")
+			}
+			EmitPushFloat(s, val2.FloatLitNo)
+			EmitF64Op(s, op)
+			return &ValueDef{Typ: val1.Typ}, nil
+		}
+		return &ValueDef{Typ: val1.Typ}, err
+	}
+	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
 }
 
 func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (err error) {
@@ -256,6 +148,9 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_F64 {
 		EmitStoreF64(s, lvalue.Offset, "Assign F64 to "+lvalue.Name)
+	} else if value.Typ.Pt == TYP_STRING {
+		instr := TokenOp[op]
+		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}

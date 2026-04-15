@@ -87,18 +87,36 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
+func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
+	for {
+		lvalue := VarDefs[id]
+		if lvalue == nil {
+			// We don't yet know the type, so just use nil as type
+			lvalue = AddLocalVar(s, id, nil, false)
+			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
+		}
+		lvalues = append(lvalues, lvalue)
+		if !s.found(TOK_COMMA) {
+			break
+		}
+		if s.token != TOK_ID {
+			break
+		}
+		nextToken(s)
+		id = s.tokenString
+	}
+	return lvalues, err
+}
+
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
-	// For each actual argument in the argument list
+	// For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 	for {
 		s.RaxIsTOS = false
-		s.ArgCount++
-		if s.ArgCount > len(s.ArgCode) {
-			s.ArgCode = append(s.ArgCode, "")
-		}
-		s.ArgCode[s.ArgCount-1] = ""
+		// A new argument. Append "" to the ArgCode slice
 		if s.token == TOK_RPAR {
 			break
 		}
+		s.ArgCode = append(s.ArgCode, "")
 		var value *ValueDef
 		value, err = ParseExpression(s)
 		if err != nil {
@@ -143,78 +161,70 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	return valueList, floatParCount, nil
 }
 
-func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
-	for {
-		lvalue := VarDefs[id]
-		if lvalue == nil {
-			// We don't yet know the type, so just use nil as type
-			lvalue = AddLocalVar(s, id, nil, false)
-			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
-		}
-		lvalues = append(lvalues, lvalue)
-		if !s.found(TOK_COMMA) {
-			break
-		}
-		if s.token != TOK_ID {
-			break
-		}
-		nextToken(s)
-		id = s.tokenString
-	}
-	return lvalues, err
-}
-
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error) {
+	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
+	if len(s.ArgCode) == 0 {
+		s.ArgCode = append(s.ArgCode, "")
+	}
+	if s.nesting == 0 {
+		s.ArgCode[0] = ""
+	}
+	if s.ArgCode[len(s.ArgCode)-1] != "" {
+		panic("ArgCode[i] should be blank")
+	}
+	// Save the starting point for arguments. Needed for nested function calls
+	startArgNo := len(s.ArgCode) - 1
+
 	f := FuncDefs[id]
 	if f == nil {
 		return &NoValue, fmt.Errorf("expected a function name, got: %s", id)
 	}
+
+	s.nesting++
+
 	// Make space for return values
 	n := len(f.returnTypes)
 	if n > 1 {
 		EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 	}
-	// Save the starting point for arguments. Needed for nested function calls
-	startArgNo := s.ArgCount
-	s.ArgCode = s.ArgCode[0:s.ArgCount]
+	if len(s.ArgCode) > 0 {
+		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList()
+		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
+	}
+
 	// Parse the argument list and push each arg
 	values, floatParCount, err := ParseActualArgList(s, f)
 	if err != nil {
 		return &NoValue, err
 	}
+
 	// Now output the generated code for each argument, in reverse order
-	i := len(s.ArgCode) - 1
 	txt := ""
-	for {
+	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
 		txt += s.ArgCode[i]
-		if i == startArgNo {
-			break
-		}
-		if values[i].Typ.Pt == TYP_F64 {
+		if values[i-startArgNo].Typ.Pt == TYP_F64 {
 			txt += "   movq rax, xmm0\n"
 		}
-		txt += "   push rax                             ; Push argument " + strconv.Itoa(i-startArgNo+1) + " of " + id + "\n"
-
+		if i > startArgNo {
+			txt += "   push rax\n"
+		}
 		s.localSp++
-		i--
 	}
-	if startArgNo == 0 {
-		// If this is a top level call, output txt
-		EmitCode(s, txt)
-	} else {
-		// If it is a nested call, save the code
-		s.ArgCode[startArgNo-1] = txt
-		s.ArgCode = s.ArgCode[0:startArgNo]
-	}
+	s.ArgCode[startArgNo] = txt
+	s.ArgCode = s.ArgCode[0 : startArgNo+1]
 
-	s.ArgCount = startArgNo
 	if f.builtin {
 		id = "_" + id
 	}
 	EmitCall(s, id, len(values))
+	s.nesting--
 	s.XmmSp -= floatParCount
+	if s.nesting == 0 {
+		Write(s, s.ArgCode[0], true)
+		s.ArgCode[0] = ""
+	}
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		return &NoValue, nil

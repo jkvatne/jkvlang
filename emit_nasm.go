@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -41,10 +42,15 @@ var CommentIndent = 40
 var spaces = "                                                                                    "
 
 func Write(s *State, txt string, force bool) (int, error) {
-	if s.ArgCount == 0 || force {
+	if s.nesting == 0 {
+		// Write directly to file
 		return s.outputFile.WriteString(txt)
 	}
-	s.ArgCode[s.ArgCount-1] += txt
+	if len(s.ArgCode) == 0 {
+		panic("Argument code is empty")
+	}
+	// When parsing an argument, output text to the last element in the ArgCode slice
+	s.ArgCode[len(s.ArgCode)-1] += txt
 	return len(txt), nil
 }
 
@@ -244,11 +250,33 @@ func EmitPushFloat(s *State, litNo int) {
 	}
 }
 
+// EmitCompareStrings : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
+func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int) (err error) {
+	if op == TOK_EQ {
+		// First check lengths
+		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "")
+		emit(s, "mov", "rdi", "rax", "")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return nil
+	} else {
+		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
+	}
+}
+
 // EmitCompareFloats compares two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
-func EmitCompareFloats(s *State, op Token) {
+func EmitCompareFloats(s *State, op Token) (err error) {
 	lbl := NewLabel(s)
 	emit(s, "ucomisd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Compare two floats equal")
 	emit(s, "mov", "rax", "1", "Default to true")
+	return EmitSetCompareResult(s, op)
 	if op == TOK_EQ {
 		emit(s, "je", LabelName(lbl), "", "")
 	} else if op == TOK_NE {
@@ -262,7 +290,7 @@ func EmitCompareFloats(s *State, op Token) {
 	} else if op == TOK_LT {
 		emit(s, "jge", LabelName(lbl), "", "")
 	} else {
-		panic("EmitCompareFloats not implemented")
+		err = fmt.Errorf("EmitCompareFloats not implemented")
 	}
 	emit(s, "mov", "rax", "0", "Return false if we did not jump")
 	EmitLabel(s, lbl, "")
@@ -271,6 +299,7 @@ func EmitCompareFloats(s *State, op Token) {
 	if s.XmmSp < 0 {
 		panic("Floating point stack underflow")
 	}
+	return err
 }
 
 func EmitSetCompareResult(s *State, op Token) error {
@@ -329,7 +358,11 @@ func EmitIntegerOp(s *State, op Token) {
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
-		emit(s, instruction, "rax", "rbx", "")
+		if op == TOK_MULT {
+			emit(s, "mul", "rbx", "", "")
+		} else {
+			emit(s, instruction, "rax", "rbx", "")
+		}
 	}
 	s.localSp--
 }
@@ -573,7 +606,7 @@ func EmitPushConst(s *State, value int64, comment string) {
 	} else {
 		emit(s, "mov", "rax", strconv.FormatInt(value, 10), comment)
 	}
-	if s.ArgCount == 0 {
+	if len(s.ArgCode) == 0 {
 		s.RaxIsTOS = true
 	}
 }
@@ -696,4 +729,119 @@ func EmitPrintSp(s *State) {
 	if *PrintSp {
 		emit(s, "call", "_printsp", "", "")
 	}
+}
+
+func Inverse(op Token) Token {
+	switch op {
+	case TOK_LT:
+		return TOK_GT
+	case TOK_LE:
+		return TOK_GE
+	case TOK_GT:
+		return TOK_LT
+	case TOK_GE:
+		return TOK_LE
+	case TOK_MINUS:
+		return TOK_INV_MINUS
+	case TOK_DIV:
+		return TOK_INV_DIV
+	default:
+		return op
+	}
+}
+
+// EmitConstOpConst will calculate the result of the operation on the two constant values
+// and return the constant result.
+func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+	var result ValueDef
+	result.Typ = widest(val1, val2).Typ
+	result.HasValue = true
+	switch op {
+	case TOK_PLUS:
+		result.IntValue = val1.IntValue + val2.IntValue
+		result.FloatValue = val1.FloatValue + val2.FloatValue
+	case TOK_MINUS:
+		result.IntValue = val1.IntValue - val2.IntValue
+		result.FloatValue = val1.FloatValue - val2.FloatValue
+	case TOK_MULT:
+		result.IntValue = val1.IntValue * val2.IntValue
+		result.FloatValue = val1.FloatValue * val2.FloatValue
+	case TOK_DIV:
+		result.IntValue = val1.IntValue / val2.IntValue
+		result.FloatValue = val1.FloatValue / val2.FloatValue
+	case TOK_AND:
+		result.IntValue = val1.IntValue & val2.IntValue
+	case TOK_OR:
+		result.IntValue = val1.IntValue | val2.IntValue
+	case TOK_LOG_OR:
+		result.Typ = &BoolType
+		result.BoolValue = val1.BoolValue || val2.BoolValue
+	case TOK_LOG_AND:
+		result.Typ = &BoolType
+		result.BoolValue = val1.BoolValue && val2.BoolValue
+	case TOK_EQ:
+		result.Typ = &BoolType
+		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
+	case TOK_NE:
+		result.Typ = &BoolType
+		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
+	case TOK_LT:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue < val2.FloatValue
+	case TOK_LE:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue <= val2.FloatValue
+	case TOK_GT:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue > val2.FloatValue
+	case TOK_GE:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue >= val2.FloatValue
+	default:
+		// Invalid operand
+		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
+	}
+	return &result, nil
+}
+
+func EmitCompareStringsEq(s *State) {
+	// Compare two strings, one in rax, and one on top of stack, and drop top of stack
+	lbl := NewLabel(s)
+	emit(s, "mov", "rdi", "rax", "Save tos")
+	emit(s, "mov", "rsi", "[rsp]", "Get nos")
+	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+	emit(s, "repe", "cmpsb", "", "")
+	emit(s, "pop", "rax", "", "Get nos ptr")
+	s.localSp--
+	emit(s, "mov", "rbx", "0", "Initialize result to false")
+	emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+	emit(s, "mov", "ecx", "[rax]", "Get nos length")
+	emit(s, "add", "rsi", "4", "Start of string 1")
+	emit(s, "add", "rdi", "4", "Start of string 2")
+	emit(s, "repe", "cmpsb", "", "")
+	emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+	emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+	EmitLabel(s, lbl, "unequal")
+	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+}
+
+// Compare two strings, one in rax, and one on top of stack, and drop top of stack
+func EmitCompareStringsNe(s *State) {
+	lbl := NewLabel(s)
+	emit(s, "mov", "rbx", "1", "Initialize result to true")
+	emit(s, "mov", "rdi", "rax", "Save tos")
+	emit(s, "mov", "rsi", "[rsp]", "Get nos")
+	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+	emit(s, "repe", "cmpsb", "", "")
+	emit(s, "pop", "rax", "", "Get nos ptr")
+	s.localSp--
+	emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+	emit(s, "mov", "ecx", "[rax]", "Get nos length")
+	emit(s, "add", "rsi", "4", "Start of string 1")
+	emit(s, "add", "rdi", "4", "Start of string 2")
+	emit(s, "repe", "cmpsb", "", "")
+	emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+	emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
+	EmitLabel(s, lbl, "unequal")
+	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }

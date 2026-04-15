@@ -32,4 +32,6 @@ func main() {
   printf("w=%f\n", w)
   assert (w>63.943244 && w<63.943246)
 
+  w = x+1
+
 }
