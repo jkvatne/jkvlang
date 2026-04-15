@@ -36,7 +36,7 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err := EmitCompareIntegers(s, op)
+			err := EmitCompareIntegers(s, op, false)
 			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			EmitCompareFloats(s, op)
@@ -72,7 +72,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 	var err error
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = EmitCompareIntConst(s, op, val2.IntValue)
+			err = EmitCompareIntConst(s, op, val2.IntValue, false)
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			// First push constant into xmm<sp+1>
 			emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm<sp>")

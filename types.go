@@ -15,6 +15,7 @@ const (
 	TYP_U32
 	TYP_RUNE
 	TYP_I64
+	TYP_U64
 	TYP_F32
 	TYP_F64
 	TYP_STRING
@@ -28,12 +29,12 @@ const (
 )
 
 var PrimaryTypeNames = [...]string{
-	"None", "Bool", "U8", "I16", "U16", "I32", "U32", "Rune", "I64", "F32",
-	"F64", "String", "Struct", "Func", "Map", "Set", "Ptr", "Error"}
+	"None", "Bool", "U8", "I16", "U16", "I32", "U32", "Rune", "I64", "U64",
+	"F32", "F64", "String", "Struct", "Func", "Map", "Set", "Ptr", "Error"}
 
 var PrimaryTypeSizes = [...]int{
-	0, 1, 1, 2, 2, 4, 4, 4, 8, 4,
-	8, 8, 8, 8, 8, 8, 8, 8}
+	0, 1, 1, 2, 2, 4, 4, 4, 8, 8,
+	4, 8, 8, 8, 8, 8, 8, 8, 8}
 
 type TypeDef struct {
 	Pt       PrimaryType
@@ -168,6 +169,10 @@ func AddType(name string, typ *TypeDef) {
 
 func (t PrimaryType) IsInteger() bool {
 	return t == TYP_I32 || t == TYP_U32 || t == TYP_U16 || t == TYP_I16 || t == TYP_U8 || t == TYP_I64
+}
+
+func (t PrimaryType) IsUnsigned() bool {
+	return t == TYP_U32 || t == TYP_U16 || t == TYP_U8 || t == TYP_U64
 }
 
 func (t PrimaryType) IsFloat() bool {

@@ -246,9 +246,10 @@ func EmitF64Op(s *State, op Token) {
 }
 
 func EmitPushFloat(s *State, litNo int) {
-	emit(s, "movsd", "xmm"+strconv.Itoa(s.XmmSp), "[flt"+strconv.Itoa(litNo)+"]", "Load float value frm string variable")
+	emit(s, "movsd", "xmm"+strconv.Itoa(s.XmmSp), "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
 	emit(s, "movq", "rax", "xmm"+strconv.Itoa(s.XmmSp), "")
 	s.XmmSp++
+	s.RaxIsTOS = true
 	if s.XmmSp > 8 {
 		panic("Floating point stack overflow")
 	}
@@ -275,30 +276,51 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int)
 	}
 }
 
-// EmitCompareFloats compares two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
-func EmitCompareFloats(s *State, op Token) (err error) {
+func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
 	lbl := NewLabel(s)
-	emit(s, "ucomisd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Compare two floats equal")
 	emit(s, "mov", "rax", "1", "Default to true")
-	return EmitSetCompareResult(s, op)
 	if op == TOK_EQ {
 		emit(s, "je", LabelName(lbl), "", "")
 	} else if op == TOK_NE {
 		emit(s, "jne", LabelName(lbl), "", "")
-	} else if op == TOK_GT {
-		emit(s, "jg", LabelName(lbl), "", "")
-	} else if op == TOK_LE {
-		emit(s, "jg", LabelName(lbl), "", "")
-	} else if op == TOK_GE {
-		emit(s, "jge", LabelName(lbl), "", "")
-	} else if op == TOK_LT {
-		emit(s, "jge", LabelName(lbl), "", "")
 	} else {
-		err = fmt.Errorf("EmitCompareFloats not implemented")
+		if unsignedOrFloat {
+			if op == TOK_GT {
+				emit(s, "ja", LabelName(lbl), "", "")
+			} else if op == TOK_LE {
+				emit(s, "jbe", LabelName(lbl), "", "")
+			} else if op == TOK_GE {
+				emit(s, "jae", LabelName(lbl), "", "")
+			} else if op == TOK_LT {
+				emit(s, "jb", LabelName(lbl), "", "")
+			} else {
+				return fmt.Errorf("EmitJumpCond not implemented")
+			}
+		} else {
+			if op == TOK_GT {
+				emit(s, "jg", LabelName(lbl), "", "")
+			} else if op == TOK_LE {
+				emit(s, "jle", LabelName(lbl), "", "")
+			} else if op == TOK_GE {
+				emit(s, "jge", LabelName(lbl), "", "")
+			} else if op == TOK_LT {
+				emit(s, "jl", LabelName(lbl), "", "")
+			} else {
+				return fmt.Errorf("EmitJumpCond not implemented")
+			}
+
+		}
 	}
 	emit(s, "mov", "rax", "0", "Return false if we did not jump")
 	EmitLabel(s, lbl, "")
 	s.RaxIsTOS = true
+	return nil
+}
+
+// EmitCompareFloats compares two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
+func EmitCompareFloats(s *State, op Token) (err error) {
+	emit(s, "ucomisd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Compare two floats equal")
+	err = EmitJumpCond(s, op, true)
 	s.XmmSp -= 2
 	if s.XmmSp < 0 {
 		panic("Floating point stack underflow")
@@ -306,38 +328,19 @@ func EmitCompareFloats(s *State, op Token) (err error) {
 	return err
 }
 
-func EmitSetCompareResult(s *State, op Token) error {
-	if op == TOK_EQ {
-		emit(s, "sete", "al", "", "")
-	} else if op == TOK_GT {
-		emit(s, "setg", "al", "", "")
-	} else if op == TOK_NE {
-		emit(s, "setne", "al", "", "")
-	} else if op == TOK_GE {
-		emit(s, "setge", "al", "", "")
-	} else if op == TOK_LT {
-		emit(s, "setl", "al", "", "")
-	} else if op == TOK_LE {
-		emit(s, "setle", "al", "", "")
-	} else {
-		return fmt.Errorf("EmitCompareResult: invalid token %v", op)
-	}
-	return nil
-}
-
 // EmitCompareIntegers will compare the top two stack entries
-func EmitCompareIntegers(s *State, op Token) error {
+func EmitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
 	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
 	s.localSp--
 	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-	return EmitSetCompareResult(s, op)
+	return EmitJumpCond(s, op, unsigned)
 }
 
 // EmitCompareIntConst will compare top of stack with a constant
-func EmitCompareIntConst(s *State, op Token, value int64) error {
+func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
 	emit(s, "cmp", "rax", sval, "Compare and set flags")
-	return EmitSetCompareResult(s, op)
+	return EmitJumpCond(s, op, unsigned)
 }
 
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
@@ -509,7 +512,7 @@ func EmitStoreConst(s *State, size int, value int64, offset int, comment string)
 
 func EmitLoadFloat64(s *State, size int, adr int, comment string) {
 	emit(s, "movq", xmm(s.XmmSp), BpRel(adr), comment)
-	emit(s, "mov", "rax", BpRel(adr), comment)
+	emit(s, "mov", "rax", BpRel(adr), "")
 	s.XmmSp++
 }
 

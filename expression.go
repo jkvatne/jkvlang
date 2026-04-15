@@ -507,6 +507,12 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 		}
 		nextToken(s)
 
+		if op == TOK_LOG_OR {
+			EmitJumpTrue(s, endlbl, "")
+		} else if op == TOK_LOG_AND {
+			EmitJumpFalse(s, endlbl, "")
+		}
+
 		value2, err = ParseCompareTerm(s)
 		if err != nil {
 			return &NoValue, err
@@ -516,11 +522,6 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 		}
 		if value2.Typ.Pt != TYP_BOOL {
 			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
-		}
-		if op == TOK_LOG_OR {
-			EmitJumpTrue(s, endlbl, "")
-		} else if op == TOK_LOG_AND {
-			EmitJumpFalse(s, endlbl, "")
 		}
 	}
 	if endlbl != 0 {
