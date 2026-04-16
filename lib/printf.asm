@@ -9,6 +9,7 @@ section .text
 ;-------------
 
 extern printf
+extern fflush
 
 ; _printf is the local version of printf from msvcrt.dll
 ; The first parameter should be in rax (the format string)
@@ -20,3 +21,11 @@ _printf:
     mov rdi, printf
     jmp _syscall
 
+_flush:
+    push rbp              ; Save old frame pointer
+    mov rbp, rsp          ; Setup new frame pointer
+    and rsp, -16          ; Align stack by clearing the 4 lsb
+    sub rsp, 96           ; Reserve space for arguments to the called function
+    call fflush
+    leave
+    ret

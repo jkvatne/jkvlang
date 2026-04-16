@@ -98,7 +98,7 @@ func EmitTextLabel(s *State, text string) {
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := Write(s, "; "+comment+"\n", false)
+	_, err := Write(s, "   ; "+comment+"\n", false)
 	if err != nil {
 		panic(err)
 	}
@@ -118,7 +118,7 @@ func EmitLineNo(s *State) {
 	}
 }
 
-func LabelName(label int) string {
+func EmitNumericLabel(label int) string {
 	return ".L" + strconv.Itoa(label)
 }
 
@@ -262,11 +262,11 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int)
 		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
 		lbl := NewLabel(s)
 		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "")
 		emit(s, "mov", "rdi", "rax", "")
 		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 		EmitLabel(s, lbl, "")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
@@ -280,31 +280,31 @@ func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
 	lbl := NewLabel(s)
 	emit(s, "mov", "rax", "1", "Default to true")
 	if op == TOK_EQ {
-		emit(s, "je", LabelName(lbl), "", "")
+		emit(s, "je", EmitNumericLabel(lbl), "", "")
 	} else if op == TOK_NE {
-		emit(s, "jne", LabelName(lbl), "", "")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "")
 	} else {
 		if unsignedOrFloat {
 			if op == TOK_GT {
-				emit(s, "ja", LabelName(lbl), "", "")
+				emit(s, "ja", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_LE {
-				emit(s, "jbe", LabelName(lbl), "", "")
+				emit(s, "jbe", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_GE {
-				emit(s, "jae", LabelName(lbl), "", "")
+				emit(s, "jae", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_LT {
-				emit(s, "jb", LabelName(lbl), "", "")
+				emit(s, "jb", EmitNumericLabel(lbl), "", "")
 			} else {
 				return fmt.Errorf("EmitJumpCond not implemented")
 			}
 		} else {
 			if op == TOK_GT {
-				emit(s, "jg", LabelName(lbl), "", "")
+				emit(s, "jg", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_LE {
-				emit(s, "jle", LabelName(lbl), "", "")
+				emit(s, "jle", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_GE {
-				emit(s, "jge", LabelName(lbl), "", "")
+				emit(s, "jge", EmitNumericLabel(lbl), "", "")
 			} else if op == TOK_LT {
-				emit(s, "jl", LabelName(lbl), "", "")
+				emit(s, "jl", EmitNumericLabel(lbl), "", "")
 			} else {
 				return fmt.Errorf("EmitJumpCond not implemented")
 			}
@@ -821,12 +821,12 @@ func EmitCompareStringsEq(s *State) {
 	emit(s, "pop", "rax", "", "Get nos ptr")
 	s.localSp--
 	emit(s, "mov", "rbx", "0", "Initialize result to false")
-	emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+	emit(s, "jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
 	emit(s, "add", "rsi", "4", "Start of string 1")
 	emit(s, "add", "rdi", "4", "Start of string 2")
 	emit(s, "repe", "cmpsb", "", "")
-	emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+	emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 	emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 	EmitLabel(s, lbl, "unequal")
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
@@ -842,12 +842,12 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "repe", "cmpsb", "", "")
 	emit(s, "pop", "rax", "", "Get nos ptr")
 	s.localSp--
-	emit(s, "jne", LabelName(lbl), "", "If lengths not equal, jump to unequal end")
+	emit(s, "jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
 	emit(s, "add", "rsi", "4", "Start of string 1")
 	emit(s, "add", "rdi", "4", "Start of string 2")
 	emit(s, "repe", "cmpsb", "", "")
-	emit(s, "jne", LabelName(lbl), "", "If not equal, jump to unequal end")
+	emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 	emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
 	EmitLabel(s, lbl, "unequal")
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
@@ -855,6 +855,8 @@ func EmitCompareStringsNe(s *State) {
 
 func EmitFree(s *State, adr int) {
 	// Call free if variable is on heap
+	emit(s, "push", "rax", "", "")
 	emit(s, "mov", "rax", BpRel(adr), "Free")
 	emit(s, "call", "_free", "", "")
+	emit(s, "pop", "rax", "", "")
 }

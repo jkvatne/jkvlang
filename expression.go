@@ -111,7 +111,9 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
+	parNo := 0
 	for {
+		parNo++
 		s.RaxIsTOS = false
 		s.ArgCode = append(s.ArgCode, "")
 		// A new argument. Append "" to the ArgCode slice
@@ -144,7 +146,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 			} else {
 				return nil, 0, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
 			}
-		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING {
+		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING && parNo > 1 {
 			EmitSkipLenCap(s)
 		} else if f.name == "printf" && (value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32) {
 			emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
@@ -630,6 +632,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 			L2 = NewLabel(s)
 			EmitJump(s, L2, "")
 		}
+		EmitLabel(s, L1, "")
 		// Parse stm2 in if cond ? stm1 : stm2
 		_, err = ParseStatement(s)
 		if err != nil {
@@ -638,8 +641,9 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		if !s.hasReturned && !value.HasValue {
 			EmitLabel(s, L2, "")
 		}
+	} else {
+		EmitLabel(s, L1, "")
 	}
-	EmitLabel(s, L1, "")
 	return nil
 }
 
@@ -789,7 +793,7 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, parList, returnList, false)
-	f.returnLbl = NewLabel(s)
+	s.returnLbl = NewLabel(s)
 	s.currentFunc = f
 	if err != nil {
 		return err
@@ -807,14 +811,44 @@ func ParseFuncDef(s *State) error {
 	if !s.hasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
-	EmitLabel(s, f.returnLbl, "")
+	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
 	// Free arguments on the heap
-	for i, v := range f.parameters {
-		if v.Typ.Pt == TYP_STRING {
-			EmitFree(s, i*8-8)
+	for _, v := range VarDefs {
+		if v.Typ.Pt == TYP_STRING && v.kind == LocalVar {
+			EmitComment(s, "Free "+v.Name+" at "+strconv.Itoa(v.Offset))
+			// EmitFree(s, v.Offset)
 		}
 	}
-	EmitReturn(s)
+
+	// Set return values if more than one. If only one, it is already in rax
+	if s.LocalRetSize > 1 {
+		for range len(s.currentFunc.returnTypes) - 1 {
+			// TODO emit(s, "pop", "rax", "", "Return value no "+strconv.Itoa(i))
+			s.localSp--
+		}
+	}
+	// Remove local variables
+	if s.localSp > 0 {
+		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
+		s.localSp -= s.localSp
+	}
+
+	// Verify localsp is zero
+	if s.localSp != 0 {
+		panic("s.localSp != 0")
+	}
+
+	// Return exit code from main
+	if s.currentFunc.name == "main" {
+		EmitPrintSp(s)
+		emit(s, "mov", "rax", "r15", "Get error code")
+		emit(s, "call", "_exit", "", "")
+	} else {
+		// Function epilogue. Restore frame pointer and exit
+		emit(s, "leave", "", "", "")
+		emit(s, "ret", "", "", "return from "+s.currentFunc.name)
+	}
+
 	nextToken(s)
 	s.currentFunc = nil
 	return nil

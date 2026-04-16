@@ -4,6 +4,16 @@ import (
 	"fmt"
 )
 
+type Vkind int
+
+const (
+	ParVar Vkind = iota
+	LocalVar
+	RetVar
+	TempVar
+	ErrorVar
+)
+
 type VarDef struct {
 	Typ     *TypeDef
 	Value   ValueDef
@@ -11,13 +21,15 @@ type VarDef struct {
 	Offset  int
 	IsConst bool
 	ParNo   int // Used for local parameters
+	level   int
+	kind    Vkind
 }
 
 var VarDefs map[string]*VarDef
 
 func VarInit() {
 	VarDefs = make(map[string]*VarDef)
-	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Value: ValueDef{Typ: &I64Type}}
+	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
 }
 
 func (v *VarDef) Size() int {
@@ -31,7 +43,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 // AddLocalPar is called from ParseFormalParList
 // The name "par" should be used only for formal parameters
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
-	v := &VarDef{Name: name, Typ: typ, IsConst: false}
+	v := &VarDef{Name: name, Typ: typ, IsConst: false, kind: ParVar}
 	s.ParCount++
 	if s.ParCount == 1 {
 		// The first parameter is actualy in rax. It can be stored in BP-8 if needed
@@ -49,7 +61,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}}
+		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}, kind: LocalVar}
 		VarDefs[id] = v
 		s.VarCount++
 		v.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24

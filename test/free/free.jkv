@@ -1,9 +1,30 @@
 
+func f1(s String) String {
+    w = "f1 "+s
+    return w
+}
 
-func f(s String) {
-    printf(s)
+func f0(s String) String {
+    return "f0 "+s
 }
 
 func main() {
-    f("........Hello"+" world\n")
+    printf("Start free.exe\n")
+    assert(f0("xyz")=="f0 xyz")
+    printf("f0 returned '%s'\n", f0("xyz"))
+    assert(f1("xyz")=="f1 xyz")
+    printf("f1 returned '%s'\n", f1("xyz"))
+
+/*    //flush()
+    s = "Hello"
+    printf(s)
+    //flush()
+    printf("Goodby\n")
+    //flush()
+    //t = "World"
+    //u = s+" "+t+"\n"   // Creates a new string object
+    //print(s+t)
+    // This call will allocate a string on the heap
+    // print("........Hello"+" world\n")
+*/
 }

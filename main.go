@@ -230,7 +230,17 @@ func Run(outputName string) error {
 	return err
 }
 
+func app(s string, strings ...string) {
+	for _, ss := range strings {
+		s = s + ss
+	}
+}
+
 func main() {
+	s := "Start"
+	app(s, "Hello", "World")
+	fmt.Println(s)
+
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)

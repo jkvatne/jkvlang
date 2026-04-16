@@ -7,7 +7,6 @@ import (
 
 func ParseReturn(s *State) error {
 	f := s.currentFunc
-	// requireRpar := s.found(TOK_LPAR)
 	i := 0
 	if len(f.returnTypes) > 0 {
 		for {
@@ -33,7 +32,7 @@ func ParseReturn(s *State) error {
 			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 		}
 	}
-	EmitReturn(s)
+	emit(s, "jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
 	return nil
 }
 

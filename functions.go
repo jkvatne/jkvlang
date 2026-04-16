@@ -3,13 +3,13 @@ package main
 import "fmt"
 
 type FuncDef struct {
-	name          string
-	returnTypes   []*TypeDef
-	parameters    []*VarDef
-	floatParCount int
-	stackSize     int
-	builtin       bool
-	returnLbl     int
+	name           string
+	returnTypes    []*TypeDef
+	parameters     []*VarDef
+	localVariables []*VarDef
+	floatParCount  int
+	stackSize      int
+	builtin        bool
 }
 
 var FuncDefs map[string]*FuncDef
@@ -19,6 +19,7 @@ func FuncInit() {
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("flush", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true)
 }

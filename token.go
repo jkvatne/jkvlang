@@ -33,6 +33,7 @@ type State struct {
 	CommentLevel    int
 	XmmSp           int // Stack pointer into SSE registers
 	nesting         int
+	returnLbl       int
 }
 
 type Token int
