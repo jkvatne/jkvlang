@@ -21,7 +21,7 @@ _printf:
     mov rdi, printf
     jmp _syscall
 
-_flush:
+_fflush:
     push rbp              ; Save old frame pointer
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb

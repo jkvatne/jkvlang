@@ -653,21 +653,19 @@ func EmitConcat(s *State) {
 	// Calculate new size to allocate, including 32 extra bytes
 	emit(s, "mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
 	emit(s, "add", "rax", "r14", "")
-	emit(s, "add", "rax", "32", "")
+	emit(s, "add", "rax", "40", "Add 32+8 to include len/cap")
 	// Allocate string
 	emit(s, "call", "_alloc", "", "Allocate new string")
 	// Save pointer in rdx and rdi for later use
 	emit(s, "mov", "rdx", "rax", "Save pointer in rdx and rdi for later use")
 	emit(s, "mov", "rdi", "rax", "")
-	// Save new length
-	emit(s, "mov", "rax", "r12", "First string length")
-	emit(s, "add", "rax", "r14", "Add second length")
-	emit(s, "add", "rax", "32", "")
-
-	emit(s, "mov", "rsi", "rax", "")
-	emit(s, "shl", "rsi", "32", "")
+	// Save new capacity/length
+	emit(s, "mov", "rsi", "r12", "First string length")
+	emit(s, "add", "rsi", "r14", "Add second length")
+	emit(s, "mov", "rax", "rsi", "New length")
+	emit(s, "add", "rsi", "40", "Add 32 for extra bytes and 8 for len/cap")
+	emit(s, "shl", "rsi", "32", "Move to cap (msw)")
 	emit(s, "or", "rax", "rsi", "")
-
 	emit(s, "mov", "[rdi]", "rax", "Save len/cap")
 	emit(s, "add", "rdi", "8", "move pointer to actual string data")
 	// Copy string 1

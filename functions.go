@@ -19,7 +19,7 @@ func FuncInit() {
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("flush", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("fflush", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true)
 }

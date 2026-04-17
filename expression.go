@@ -830,7 +830,7 @@ func ParseFuncDef(s *State) error {
 		for _, v := range VarDefs {
 			if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
 				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset))
-				EmitFreeLocal(s, v.Offset, v.Size())
+				// EmitFreeLocal(s, v.Offset, v.Size())
 			}
 		}
 		emit(s, "pop", "rax", "", "Restore rax")
@@ -862,6 +862,7 @@ func ParseFuncDef(s *State) error {
 		emit(s, "mov", "rax", "alloc_size_str", "")
 		emit(s, "mov", "rbx", "8", "")
 		emit(s, "call", "_printf", "", "")
+		emit(s, "call", "_fflush", "", "")
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
 	} else {
