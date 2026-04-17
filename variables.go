@@ -15,14 +15,16 @@ const (
 )
 
 type VarDef struct {
-	Typ     *TypeDef
-	Value   ValueDef
-	Name    string
-	Offset  int
-	IsConst bool
-	ParNo   int // Used for local parameters
-	level   int
-	kind    Vkind
+	Typ        *TypeDef
+	Value      ValueDef
+	Name       string
+	Offset     int
+	IsConst    bool
+	ParNo      int // Used for local parameters
+	level      int
+	IsOnHeap   bool
+	IsReturned bool
+	kind       Vkind
 }
 
 var VarDefs map[string]*VarDef

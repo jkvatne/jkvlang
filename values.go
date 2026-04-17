@@ -15,7 +15,7 @@ type ValueDef struct {
 	StringValue string
 	StringLitNo int
 	FloatLitNo  int
-	IsOnHeap    bool
+	IsReturned  bool
 }
 
 var (

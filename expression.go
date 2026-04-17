@@ -316,7 +316,8 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 		}
 		if !v.Value.HasValue {
-			// THis is a local variable, not a known constant
+			// This is a local variable, not a known constant
+			v.Value.IsReturned = s.Returning
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
 				s.RaxIsTOS = true
@@ -407,6 +408,7 @@ func ParseProd(s *State) (value *ValueDef, err error) {
 		if err == nil {
 			value, err = GenerateOp(s, op, value, value2)
 		}
+		value.IsReturned = false
 		if err != nil {
 			return &NoValue, err
 		}
@@ -462,6 +464,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			if err != nil {
 				return &NoValue, err
 			}
+			value1.IsReturned = false
 		}
 		return value1, nil
 	}
@@ -481,6 +484,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		// Not a compare operation, return value1 immediately
 		return value1, nil
 	}
+	value1.IsReturned = false
 	op := s.token
 	nextToken(s)
 	value2, err = ParseSumTerm(s)
@@ -501,6 +505,7 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 	}
 	endlbl := 0
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+		result.IsReturned = false
 		if endlbl == 0 {
 			endlbl = NewLabel(s)
 		}
@@ -812,14 +817,24 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("function definition does not return a value")
 	}
 	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
-	// Free arguments on the heap
+	// Free arguments on the heap, if any
+	MustFree := false
 	for _, v := range VarDefs {
-		if v.Typ.Pt == TYP_STRING && v.kind == LocalVar {
-			EmitComment(s, "Free "+v.Name+" at "+strconv.Itoa(v.Offset))
-			EmitFreeLocal(s, v.Offset, v.Size())
+		if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
+			MustFree = true
 		}
 	}
-
+	if MustFree {
+		// Save ax because it might contain the returne value of the current function definition
+		emit(s, "push", "rax", "", "Save rax")
+		for _, v := range VarDefs {
+			if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
+				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset))
+				EmitFreeLocal(s, v.Offset, v.Size())
+			}
+		}
+		emit(s, "pop", "rax", "", "Restore rax")
+	}
 	// Set return values if more than one. If only one, it is already in rax
 	if s.LocalRetSize > 1 {
 		for range len(s.currentFunc.returnTypes) - 1 {

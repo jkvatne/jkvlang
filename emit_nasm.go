@@ -654,17 +654,22 @@ func EmitConcat(s *State) {
 	emit(s, "mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
 	emit(s, "add", "rax", "r14", "")
 	emit(s, "add", "rax", "32", "")
-	emit(s, "add", "[allocation_count]", "rax", "Increment total allocated count")
 	// Allocate string
 	emit(s, "call", "_alloc", "", "Allocate new string")
 	// Save pointer in rdx and rdi for later use
 	emit(s, "mov", "rdx", "rax", "Save pointer in rdx and rdi for later use")
 	emit(s, "mov", "rdi", "rax", "")
 	// Save new length
-	emit(s, "mov", "rax", "r12", "Save new length")
-	emit(s, "add", "rax", "r14", "")
-	emit(s, "mov", "[rdi]", "rax", "")
-	emit(s, "add", "rdi", "8", "")
+	emit(s, "mov", "rax", "r12", "First string length")
+	emit(s, "add", "rax", "r14", "Add second length")
+	emit(s, "add", "rax", "32", "")
+
+	emit(s, "mov", "rsi", "rax", "")
+	emit(s, "shl", "rsi", "32", "")
+	emit(s, "or", "rax", "rsi", "")
+
+	emit(s, "mov", "[rdi]", "rax", "Save len/cap")
+	emit(s, "add", "rdi", "8", "move pointer to actual string data")
 	// Copy string 1
 	emit(s, "mov", "rsi", "rbx", "Copy string 1")
 	emit(s, "mov", "rcx", "r14", "")
@@ -828,19 +833,16 @@ func EmitCompareStringsNe(s *State) {
 
 // EmitFreeLocal will de-allocate an object in a local variable
 func EmitFreeLocal(s *State, adr int, size int) {
-	// Save ax because it might contain the returne value of the current function definition
-	emit(s, "push", "rax", "", "")
-	// Decrement allocation count
-	emit(s, "sub", "qword [allocation_count]", strconv.Itoa(size), "Decrement allocation count")
+	// Decrement allocation count, first load size given in offset +4 (capacity)
+	emit(s, "mov", "rax", BpRel(adr), "Load cap")
+	emit(s, "mov", "rax", "[rax]", "")
+	emit(s, "shr", "rax", "32", "")
+	// Skip free if cap=0
+	lbl := NewLabel(s)
+	emit(s, "or", "rax", "rax", "")
+	emit(s, "jz", EmitNumericLabel(lbl), "", "")
 	// Load the offset from the variable in local stack frame with offset given by adr
-	emit(s, "mov", "rax", BpRel(adr), "Free")
-	// Push the object size. For a slice it is found at adr+4
-	// emit(s, "mov", "rcx", BpRel(adr), "Free")
-	// emit(s, "add", rcx, "4", "")
-	// emit(s, "mov", "ecx", "[rcx]", "")
-	// emit(s, "push", "rcx", "","")
-	// Now call _free
+	emit(s, "mov", "rax", BpRel(adr), "")
 	emit(s, "call", "_free", "", "")
-	// Restore ax
-	emit(s, "pop", "rax", "", "")
+	EmitLabel(s, lbl, "")
 }

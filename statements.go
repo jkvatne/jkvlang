@@ -9,6 +9,7 @@ func ParseReturn(s *State) error {
 	f := s.currentFunc
 	i := 0
 	if len(f.returnTypes) > 0 {
+		s.Returning = true
 		for {
 			v, err := ParseExpression(s)
 			if err != nil {
@@ -33,6 +34,7 @@ func ParseReturn(s *State) error {
 		}
 	}
 	emit(s, "jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
+	s.Returning = false
 	return nil
 }
 
