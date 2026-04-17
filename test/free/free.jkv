@@ -1,6 +1,6 @@
 
 func f1(s String) String {
-    v = "f1 "+s                  // Alloc 38
+    //v = "f1 "+s                  // Alloc 38
     return "f1 "
     // Should free v now
 }
