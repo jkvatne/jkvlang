@@ -2,6 +2,9 @@ extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
 
+section .data
+allocation_count   dq 0
+
 ;-------------
 section .text
 ;-------------

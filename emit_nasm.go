@@ -152,34 +152,6 @@ func EmitCall(s *State, id string, nPar int) {
 	}
 }
 
-func EmitReturn(s *State) {
-	if !s.RaxIsTOS || s.LocalRetSize > 1 {
-		for i := range len(s.currentFunc.returnTypes) {
-			emit(s, "pop", "rax", "", "Return value no "+strconv.Itoa(i))
-			s.localSp--
-		}
-	}
-	// Remove local variables
-	if s.localSp > 0 {
-		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
-		s.localSp -= s.localSp
-	}
-	// Verify localsp is zero
-	if s.localSp != 0 {
-		panic("s.localSp != 0")
-	}
-	// Return exit code from main
-	if s.currentFunc.name == "main" {
-		EmitPrintSp(s)
-		emit(s, "mov", "rax", "r15", "Get error code")
-		emit(s, "call", "_exit", "", "")
-	} else {
-		// Function epilogue. Restore frame pointer and exit
-		emit(s, "leave", "", "", "")
-		emit(s, "ret", "", "", "return from "+s.currentFunc.name)
-	}
-}
-
 func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 	if s.localSp != 0 {
@@ -670,18 +642,19 @@ func out(s *State, str string) {
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
 func EmitConcat(s *State) {
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
-	emit(s, "mov", "rdx", "[rsp]", " Get string 1 sizes/ptr into r14, rbx")
-	emit(s, "mov", "r14d", "dword [rdx]", " Get string 1 sizes/ptr into r14, rbx")
+	emit(s, "mov", "rdx", "[rsp]", "Get string 1 sizes/ptr into r14, rbx")
+	emit(s, "mov", "r14d", "dword [rdx]", "Get string 1 sizes/ptr into r14, rbx")
 	emit(s, "mov", "rbx", "rdx", "")
 	emit(s, "add", "rbx", "8", "")
 	// Get string 2 sizes/ptr into r12, r13 from rax
-	emit(s, "mov", "r12d", "dword [rax]", " Get string 2 sizes/ptr into r12, r13")
+	emit(s, "mov", "r12d", "dword [rax]", "Get string 2 sizes/ptr into r12, r13")
 	emit(s, "mov", "r13", "rax", "")
 	emit(s, "add", "r13", "8", "")
 	// Calculate new size to allocate, including 32 extra bytes
-	emit(s, "mov", "rax", "r12", " Calculate new size to allocate, including 32 extra bytes")
+	emit(s, "mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
 	emit(s, "add", "rax", "r14", "")
 	emit(s, "add", "rax", "32", "")
+	emit(s, "add", "[allocation_count]", "rax", "Increment total allocated count")
 	// Allocate string
 	emit(s, "call", "_alloc", "", "Allocate new string")
 	// Save pointer in rdx and rdi for later use
@@ -853,10 +826,21 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }
 
-func EmitFree(s *State, adr int) {
-	// Call free if variable is on heap
+// EmitFreeLocal will de-allocate an object in a local variable
+func EmitFreeLocal(s *State, adr int, size int) {
+	// Save ax because it might contain the returne value of the current function definition
 	emit(s, "push", "rax", "", "")
+	// Decrement allocation count
+	emit(s, "sub", "qword [allocation_count]", strconv.Itoa(size), "Decrement allocation count")
+	// Load the offset from the variable in local stack frame with offset given by adr
 	emit(s, "mov", "rax", BpRel(adr), "Free")
+	// Push the object size. For a slice it is found at adr+4
+	// emit(s, "mov", "rcx", BpRel(adr), "Free")
+	// emit(s, "add", rcx, "4", "")
+	// emit(s, "mov", "ecx", "[rcx]", "")
+	// emit(s, "push", "rcx", "","")
+	// Now call _free
 	emit(s, "call", "_free", "", "")
+	// Restore ax
 	emit(s, "pop", "rax", "", "")
 }

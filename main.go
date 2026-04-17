@@ -53,7 +53,7 @@ func CompileDir(inputPath string, workDir string) error {
 	if *link {
 		err = Assemble(workDir)
 		if err != nil {
-			fmt.Printf("Assembler error " + err.Error())
+			fmt.Printf(err.Error())
 			os.Exit(2)
 		}
 		err = Link(workDir, outputName)
@@ -139,17 +139,10 @@ func Assemble(workDir string) error {
 				fmt.Println(string(out))
 			}
 			if err != nil {
-				return fmt.Errorf("assembly %s error: %s", name, err.Error())
+				return fmt.Errorf("%s: %s", name, err.Error())
 			}
 		}
 	}
-	// var args = []string{"-f", "win64", "-o syscall.obj", "../tools/syscall.asm"}
-	// out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
-	// fmt.Println(string(out))
-	// if err != nil {
-	//	return fmt.Errorf("assembly of syscall.asm, error: %s", err.Error())
-	// }
-
 	return nil
 }
 

@@ -816,7 +816,7 @@ func ParseFuncDef(s *State) error {
 	for _, v := range VarDefs {
 		if v.Typ.Pt == TYP_STRING && v.kind == LocalVar {
 			EmitComment(s, "Free "+v.Name+" at "+strconv.Itoa(v.Offset))
-			// EmitFree(s, v.Offset)
+			EmitFreeLocal(s, v.Offset, v.Size())
 		}
 	}
 
@@ -841,6 +841,12 @@ func ParseFuncDef(s *State) error {
 	// Return exit code from main
 	if s.currentFunc.name == "main" {
 		EmitPrintSp(s)
+		// Print remaining allocation
+		emit(s, "mov", "rax", "[allocation_count]", "")
+		emit(s, "push", "rax", "", "")
+		emit(s, "mov", "rax", "alloc_size_str", "")
+		emit(s, "mov", "rbx", "8", "")
+		emit(s, "call", "_printf", "", "")
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
 	} else {
