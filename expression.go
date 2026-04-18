@@ -235,30 +235,24 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	}
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
-		return &NoValue, nil
+		return nil, nil
 	}
 	s.RaxIsTOS = true
 	return &ValueDef{Typ: f.returnTypes[0]}, nil
 }
 
-// ParseAssignOrCall - this might be the start of a lvalue list or a function call
-func ParseAssignOrCall(s *State, id string) error {
-	if s.found(TOK_LPAR) {
-		// This is a function call that does not use any returned values (a procedure call)
-		_, err := ParseFuncCall(s, id, false)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-	// if it was not a "(", then it must be a list of lvalues
+// ParseAssign - this might be the start of a lvalue list or a function call
+func ParseAssign(s *State, id string) error {
+	// Expect a list of lvalues
 	lvalues, err := ParseLvalueList(s, id)
 	if err != nil {
 		return err
 	}
-
 	op := s.token
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+		if len(lvalues) > 1 && op != TOK_ASSIGN {
+			fmt.Errorf("Can not have many lvalues for " + op.Name())
+		}
 		// Now parse the expression(s) to find the value(s)
 		values, err := ParseExpressions(s)
 		if err != nil {

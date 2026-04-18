@@ -49,7 +49,17 @@ func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()
-		err = ParseAssignOrCall(s, id)
+		if s.found(TOK_LPAR) {
+			v, err1 := ParseFuncCall(s, id, false)
+			if err1 != nil {
+				return false, err
+			}
+			if v != nil {
+				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
+			}
+		} else {
+			err = ParseAssign(s, id)
+		}
 	} else if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {
@@ -61,10 +71,6 @@ func ParseStatement(s *State) (returned bool, err error) {
 		err = ParseIf(s)
 	} else if s.token == TOK_FOR {
 		nextToken(s)
-	} else if s.token == TOK_ID {
-		id := s.tokenString
-		s.next()
-		err = ParseAssignOrCall(s, id)
 	} else if s.token == TOK_SEMICOLON {
 		// Ignore
 		nextToken(s)
