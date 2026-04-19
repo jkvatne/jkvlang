@@ -112,7 +112,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
 	parNo := 0
-	for {
+	for { // each agrument in the actual argument list
 		parNo++
 		s.RaxIsTOS = false
 		s.ArgCode = append(s.ArgCode, "")
@@ -120,12 +120,28 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		if s.token == TOK_RPAR {
 			break
 		}
+
+		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		value, err = ParseExpression(s)
+		// The parameter can be either aliteral/constant, a local variable or the result of a function call
+		// If it is a string/slice/struct then it is a object on the heap
+		// If the formal parameter is of type "in" then the called function will own it and get rid of it if needed.
+		// If it is a heap object, and the formal parameter is not "in", and it is the result of a function call,
+		// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
+		// during the call, and then free it after the call.
 		if err != nil {
 			return
 		}
 		valueList = append(valueList, value)
+		p := parNo
+		if p > len(f.parameters) {
+			p = len(f.parameters)
+		}
+		if !value.HasValue && value.Typ.Pt.IsObject() && f.parameters[p-1].IsInType {
+			value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
+		}
+
 		if value.Typ.Pt == TYP_F64 {
 			floatParCount++
 		}
@@ -164,9 +180,16 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	return valueList, floatParCount, nil
 }
 
+func FreeLocalVar(s *State, value *ValueDef) (err error) {
+	if !value.HasValue && value.Typ.Pt.IsObject() {
+		err = EmitFreeLocal(s, value.Offset, value.Typ.Pt)
+	}
+	return err
+}
+
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
-func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error) {
+func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "")
 	}
@@ -185,7 +208,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 
 	f := FuncDefs[id]
 	if f == nil {
-		return &NoValue, fmt.Errorf("expected a function name, got: %s", id)
+		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
 	s.nesting++
@@ -196,14 +219,20 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 		EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 	}
 	if len(s.ArgCode) > 0 {
-		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList()
+		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
 		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
 	}
 
 	// Parse the argument list and push each arg
+	if id == "printf" {
+		fmt.Printf("Error")
+	}
+	// -------------------------------------------------------
 	values, floatParCount, err := ParseActualArgList(s, f)
+	// -------------------------------------------------------
+
 	if err != nil {
-		return &NoValue, err
+		return nil, err
 	}
 
 	// Now output the generated code for each argument, in reverse order
@@ -226,7 +255,24 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 	if f.builtin {
 		id = "_" + id
 	}
+
+	// ----------------------------------
 	EmitCall(s, id, len(values))
+	// ----------------------------------
+
+	// Now we must free the temporary local variables
+	for _, value := range values {
+		if !value.HasValue && value.Typ.Pt.IsObject() && value.Typ.Pt.IsObject() {
+			if value.Offset == 0 {
+				fmt.Printf("Error %s, line %d", id, s.lineNum)
+			}
+			err = EmitFreeLocal(s, value.Offset, value.Typ.Pt)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
@@ -238,7 +284,11 @@ func ParseFuncCall(s *State, id string, returnSomething bool) (*ValueDef, error)
 		return nil, nil
 	}
 	s.RaxIsTOS = true
-	return &ValueDef{Typ: f.returnTypes[0]}, nil
+	var v []*ValueDef
+	for _, t := range f.returnTypes {
+		v = append(v, &ValueDef{Typ: t})
+	}
+	return v, nil
 }
 
 // ParseAssign - this might be the start of a lvalue list or a function call
@@ -317,9 +367,9 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 				s.RaxIsTOS = true
 			} else if v.Value.Typ.Pt == TYP_F64 {
 				// Load value into xmm<sp>
-				EmitLoadFloat64(s, 8, v.Offset, "Load float "+v.Name)
+				EmitLoadFloat64(s, 8, v.Offset(), "Load float "+v.Name)
 			} else {
-				EmitLoad(s, v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
+				EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 			}
 		}
 		return &v.Value, err
@@ -329,7 +379,14 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		return &NoValue, err
 	} else if s.found(TOK_LPAR) {
 		// It is a function call that should return values
-		return ParseFuncCall(s, id, true)
+		values, err := ParseFuncCall(s, id, true)
+		if err != nil {
+			return nil, err
+		}
+		if len(values) != 1 {
+			return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+		}
+		return values[0], nil
 	}
 	return &NoValue, fmt.Errorf("unrecognized variable or function call")
 }
@@ -338,7 +395,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 func ParseUnary(s *State) (value *ValueDef, err error) {
 	value = &ValueDef{}
 	if s.token == TOK_ID {
-		// An id can be either a variable or a function call
+		// An id can be either a variable or a function call. A func call must returne one value
 		value, err = ParseVarOrFunc(s)
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
@@ -823,7 +880,7 @@ func ParseFuncDef(s *State) error {
 		emit(s, "push", "rax", "", "Save rax")
 		for _, v := range VarDefs {
 			if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
-				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset))
+				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset()))
 				// EmitFreeLocal(s, v.Offset, v.Size())
 			}
 		}

@@ -558,9 +558,10 @@ func EmitJumpTrue(s *State, n int, comment string) {
 }
 
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
-func EmitAllocLocalVar(s *State, size int, comment string) {
+func EmitAllocLocalVar(s *State, comment string) int {
 	emit(s, "sub", "rsp", "8", comment)
 	s.localSp++
+	return -8 - 8*s.localSp
 }
 
 func EmitPushStringLit(s *State, lit int) {
@@ -830,17 +831,22 @@ func EmitCompareStringsNe(s *State) {
 }
 
 // EmitFreeLocal will de-allocate an object in a local variable
-func EmitFreeLocal(s *State, adr int, size int) {
-	// Decrement allocation count, first load size given in offset +4 (capacity)
-	emit(s, "mov", "rax", BpRel(adr), "Load cap")
-	emit(s, "mov", "rax", "[rax]", "")
-	emit(s, "shr", "rax", "32", "")
-	// Skip free if cap=0
-	lbl := NewLabel(s)
-	emit(s, "or", "rax", "rax", "")
-	emit(s, "jz", EmitNumericLabel(lbl), "", "")
-	// Load the offset from the variable in local stack frame with offset given by adr
-	emit(s, "mov", "rax", BpRel(adr), "")
-	emit(s, "call", "_free", "", "")
-	EmitLabel(s, lbl, "")
+func EmitFreeLocal(s *State, adr int, pt PrimaryType) error {
+	if pt == TYP_STRING {
+		// Decrement allocation count, first load size given in offset +4 (capacity)
+		emit(s, "mov", "rax", BpRel(adr), "Load cap")
+		emit(s, "mov", "rax", "[rax]", "")
+		emit(s, "shr", "rax", "32", "")
+		// Skip free if cap=0
+		lbl := NewLabel(s)
+		emit(s, "or", "rax", "rax", "")
+		emit(s, "jz", EmitNumericLabel(lbl), "", "")
+		// Load the offset from the variable in local stack frame with offset given by adr
+		emit(s, "mov", "rax", BpRel(adr), "")
+		emit(s, "call", "_free", "", "")
+		EmitLabel(s, lbl, "")
+		return nil
+	} else {
+		return fmt.Errorf("Can not free %s", TokenNames[pt])
+	}
 }

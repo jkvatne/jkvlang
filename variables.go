@@ -15,14 +15,14 @@ const (
 )
 
 type VarDef struct {
-	Typ        *TypeDef
-	Value      ValueDef
-	Name       string
-	Offset     int
+	Typ   *TypeDef
+	Value ValueDef
+	Name  string
+	// Offset     int
 	IsConst    bool
 	ParNo      int // Used for local parameters
 	level      int
-	IsOnHeap   bool
+	IsInType   bool
 	IsReturned bool
 	kind       Vkind
 }
@@ -33,7 +33,9 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
 }
-
+func (v *VarDef) Offset() int {
+	return v.Value.Offset
+}
 func (v *VarDef) Size() int {
 	return PrimaryTypeSizes[v.Typ.Pt]
 }
@@ -49,9 +51,9 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	s.ParCount++
 	if s.ParCount == 1 {
 		// The first parameter is actualy in rax. It can be stored in BP-8 if needed
-		v.Offset = -8
+		v.Value.Offset = -8
 	} else {
-		v.Offset = s.ParCount * 8
+		v.Value.Offset = s.ParCount * 8
 	}
 	v.ParNo = s.ParCount
 	v.Value.Typ = typ
@@ -66,7 +68,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}, kind: LocalVar}
 		VarDefs[id] = v
 		s.VarCount++
-		v.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24
+		v.Value.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24
 		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 	}
 	return v

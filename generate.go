@@ -106,9 +106,8 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
 		// old := VarDefs[lvalue.Name].Offset
-		VarDefs[lvalue.Name].Offset = -s.VarCount * 8
 		// fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
-		EmitAllocLocalVar(s, lvalue.Size(), "Allocate local variable "+lvalue.Name)
+		VarDefs[lvalue.Name].Value.Offset = EmitAllocLocalVar(s, "Allocate local variable "+lvalue.Name)
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -122,15 +121,15 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	if value.HasValue {
 		if CanAssignConst(lvalue.Typ.Pt, value) {
 			if lvalue.Typ.Pt == TYP_STRING {
-				err = EmitOpAssignString(s, lvalue.Offset, value.StringLitNo)
+				err = EmitOpAssignString(s, lvalue.Offset(), value.StringLitNo)
 			} else if lvalue.Typ.Pt.IsInteger() {
 				if lvalue.Name == "err" {
 					emit(s, "mov", "r15", strconv.Itoa(int(value.IntValue)), "Set tos to r15 = error value")
 				} else {
-					err = EmitOpAssign(s, op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+					err = EmitOpAssign(s, op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if lvalue.Typ.Pt == TYP_F64 {
-				err = EmitOpAssignFloat(s, op, lvalue.Offset, value.FloatLitNo, "")
+				err = EmitOpAssignFloat(s, op, lvalue.Offset(), value.FloatLitNo, "")
 			} else {
 				panic("Unimplemented assignment")
 			}
@@ -145,12 +144,12 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	} else if value.Typ.Pt.IsInteger() {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		instr := TokenOp[op]
-		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
+		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_F64 {
-		EmitStoreF64(s, lvalue.Offset, "Assign F64 to "+lvalue.Name)
+		EmitStoreF64(s, lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRING {
 		instr := TokenOp[op]
-		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign to "+lvalue.Name)
+		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}

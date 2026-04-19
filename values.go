@@ -16,6 +16,7 @@ type ValueDef struct {
 	StringLitNo int
 	FloatLitNo  int
 	IsReturned  bool
+	Offset      int
 }
 
 var (

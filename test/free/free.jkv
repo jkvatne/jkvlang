@@ -11,11 +11,22 @@ func f0(s String) String {
 */
 
 func main() {
+    printf("\nStart free.exe\n")
+    a = 1
+    b = 2
+    assert(a+b==3)
+
+    s = "Hello "
+    t = "World "
+    v = s + t
+    printf("v=%s\n", v)
+
+    /*
 //    assert(f0("xyz")=="f0 xyz")
 //    printf("f0 returned '%s'\n", f0("xyz"))
     t = f1("xyz")
     printf(t)
-    /*assert(f1("xyz")=="f1 xyz.")
+    assert(f1("xyz")=="f1 xyz.")
     printf("f1 returned '%s'\n", f1("xyz"))
     */
 }

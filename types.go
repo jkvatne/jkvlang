@@ -57,6 +57,10 @@ func InitTypes() {
 	}
 }
 
+func (t PrimaryType) IsObject() bool {
+	return t == TYP_STRUCT || t == TYP_STRING || t == TYP_MAP || t == TYP_SET
+}
+
 // CommonType is the smallest type that is greater or equal to each of the two types.
 // The common operations like add, mult etc. needs identical types on both operands,
 // so we promote each to the CommonType.
