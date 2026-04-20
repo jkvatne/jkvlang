@@ -19,15 +19,24 @@ type VarDef struct {
 	Value ValueDef
 	Name  string
 	// Offset     int
-	IsConst    bool
-	ParNo      int // Used for local parameters
-	level      int
-	IsInType   bool
-	IsReturned bool
-	kind       Vkind
+	IsConst  bool
+	ParNo    int // Used for local parameters
+	level    int
+	IsInType bool
+	MustFree bool
+	kind     Vkind
 }
 
 var VarDefs map[string]*VarDef
+
+func MustFree() bool {
+	for _, v := range VarDefs {
+		if v.Value.Typ.Pt == TYP_STRING && !v.MustFree {
+			return true
+		}
+	}
+	return false
+}
 
 func VarInit() {
 	VarDefs = make(map[string]*VarDef)

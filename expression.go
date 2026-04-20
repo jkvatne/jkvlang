@@ -115,8 +115,8 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	for { // each agrument in the actual argument list
 		parNo++
 		s.RaxIsTOS = false
-		s.ArgCode = append(s.ArgCode, "")
 		// A new argument. Append "" to the ArgCode slice
+		s.ArgCode = append(s.ArgCode, "")
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -124,29 +124,13 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		value, err = ParseExpression(s)
-		// The parameter can be either aliteral/constant, a local variable or the result of a function call
-		// If it is a string/slice/struct then it is a object on the heap
-		// If the formal parameter is of type "in" then the called function will own it and get rid of it if needed.
-		// If it is a heap object, and the formal parameter is not "in", and it is the result of a function call,
-		// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
-		// during the call, and then free it after the call.
 		if err != nil {
 			return nil, 0, err
 		}
 		valueList = append(valueList, value)
-		p := parNo
-		if p > len(f.parameters) {
-			p = len(f.parameters)
-		}
-		if !value.HasValue && value.Typ.Pt.IsObject() && f.parameters[p-1].IsInType {
-			value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
-		}
 
-		if value.Typ.Pt == TYP_F64 {
-			floatParCount++
-		}
 		if value.HasValue {
-			// First parameter is a literal
+			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(s, value.StringLitNo, "Actual argument is string literal")
 			} else if value.Typ.Pt.IsInteger() {
@@ -158,14 +142,37 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 					EmitPushConst(s, 0, "")
 				}
 			} else if value.Typ.Pt == TYP_F64 {
+				floatParCount++
 				EmitPushFloat(s, value.FloatLitNo)
 			} else {
-				return nil, 0, fmt.Errorf("unknown constant: %s", value.Typ.Pt)
+				// TODO: Handle F32 etc.
+				return nil, 0, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
 			}
-		} else if f.name == "printf" && value.Typ.Pt == TYP_STRING && parNo > 1 {
-			EmitSkipLenCap(s)
-		} else if f.name == "printf" && (value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32) {
-			emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
+		} else {
+			if f.name == "printf" {
+				// We have a value on the stack (TOS). printf needs special handling.
+				if value.Typ.Pt == TYP_STRING && parNo > 1 {
+					EmitSkipLenCap(s)
+				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
+					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
+				} else {
+					return nil, 0, fmt.Errorf("prinf of arguments of type %s is not yet handled", value.Typ.Pt)
+				}
+			} else if value.Typ.Pt.IsObject() {
+				// We have a value on the stack (TOS).
+				// If it is a heap object, and the formal parameter is not "in", and it is the result of a function call,
+				// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
+				// during the call, and then free it after the call.
+				if !f.parameters[min(parNo, len(f.parameters))-1].IsInType {
+					// This is not a formal in parameter. Check if it was a local parameter or a function call result.
+					if !value.IsLocalVar {
+						value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
+					}
+				}
+
+			} else {
+				// We have a simple value on the stack. Just continue.
+			}
 		}
 		if s.token != TOK_COMMA {
 			break
@@ -202,7 +209,7 @@ func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
 // Now we must free the temporary local variables
 func FreeTemporariVariables(s *State, values []*ValueDef) error {
 	for _, value := range values {
-		if !value.HasValue && value.Typ.Pt.IsObject() && !value.IsReturned {
+		if !value.HasValue && value.Typ.Pt.IsObject() && !value.IsLocalVar {
 			if value.Offset == 0 {
 				return fmt.Errorf("Could not free value with no offset")
 			}
@@ -254,21 +261,19 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
 	values, floatParCount, err := ParseActualArgList(s, f)
-	// -------------------------------------------------------
-
 	if err != nil {
 		return nil, err
 	}
 	OutputArgCode(s, startArgNo, values)
 
+	// DO actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
-	// ----------------------------------
-
-	// err = FreeTemporariVariables(s, values)
+	err = FreeTemporariVariables(s, values)
 	if err != nil {
 		return nil, err
 	}
+
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
@@ -346,6 +351,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	if s.token != TOK_LBRACK && s.token != TOK_LPAR {
 		// It is  a simple variable
 		v, ok := VarDefs[id]
+		v.Value.IsLocalVar = true
 		if !ok {
 			return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
 		}
@@ -867,17 +873,11 @@ func ParseFuncDef(s *State) error {
 	}
 	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
 	// Free arguments on the heap, if any
-	MustFree := false
-	for _, v := range VarDefs {
-		if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
-			MustFree = true
-		}
-	}
-	if MustFree {
-		// Save ax because it might contain the returne value of the current function definition
+	if MustFree() {
+		// Save ax because it might contain the returned value of the current function definition
 		emit(s, "push", "rax", "", "Save rax")
 		for _, v := range VarDefs {
-			if v.Value.Typ.Pt == TYP_STRING && !v.IsReturned {
+			if v.Value.Typ.Pt == TYP_STRING && !v.MustFree {
 				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset()))
 				// EmitFreeLocal(s, v.Offset, v.Size())
 			}

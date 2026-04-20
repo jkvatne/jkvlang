@@ -625,18 +625,6 @@ func EmitSection(s *State, section string) {
 	}
 }
 
-// EmitAlloc will allocate a memory area of given length and return a pointer in rax
-func EmitAlloc(s *State, len int) {
-	_, _ = Write(s, "   push rax\n", false)
-	// Allocate result string and assign pointer to di
-	_, _ = Write(s, "   push 50\n", false)
-	_, _ = Write(s, "   call malloc\n", false)
-}
-
-func out(s *State, str string) {
-	_, _ = Write(s, "   "+str+"\n", false)
-}
-
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in [rax]
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
