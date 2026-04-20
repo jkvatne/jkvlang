@@ -215,6 +215,7 @@ func Link(workDir string, outputName string) error {
 func Run(outputName string) error {
 	cwd, _ := os.Getwd()
 	fmt.Printf("Running \"%s\" in \"%s\"\n", outputName+".exe", cwd)
+	fmt.Printf("--------------------------------------\n")
 	out, err := exec.Command(path.Join(cwd, outputName+".exe"), "").CombinedOutput()
 	fmt.Println(string(out))
 	if err != nil {
@@ -223,17 +224,7 @@ func Run(outputName string) error {
 	return err
 }
 
-func app(s string, strings ...string) {
-	for _, ss := range strings {
-		s = s + ss
-	}
-}
-
 func main() {
-	s := "Start"
-	app(s, "Hello", "World")
-	fmt.Println(s)
-
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)

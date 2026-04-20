@@ -34,6 +34,7 @@ type State struct {
 	XmmSp           int // Stack pointer into SSE registers
 	nesting         int
 	returnLbl       int
+	DidReturn       bool
 	Returning       bool
 }
 

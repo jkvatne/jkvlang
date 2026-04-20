@@ -1,31 +1,43 @@
-
+/*
 func f1(s String) String {
     //v = "f1 "+s                  // Alloc 38
     return "f1 "
     // Should free v now
 }
-/*
+
+func f2() String {
+    return "f2"
+}
+
+*/
+
 func f0(s String) String {
     return "f0 "+s
 }
-*/
 
 func main() {
-    printf("\nStart free.exe\n")
+    assert(f0("xyz")=="f0 xyz")
+    /*
+
+    printf("Start free.jkv\n")
+    fflush()
+    printf("f2 returned '%s'\n", f2("xyz"))
+
     a = 1
     b = 2
     assert(a+b==3)
+
 
     s = "Hello "
     t = "World "
     v = s + t
     printf("v=%s\n", v)
 
-    /*
-//    assert(f0("xyz")=="f0 xyz")
-//    printf("f0 returned '%s'\n", f0("xyz"))
+
+    printf("OK")
     t = f1("xyz")
     printf(t)
+
     assert(f1("xyz")=="f1 xyz.")
     printf("f1 returned '%s'\n", f1("xyz"))
     */

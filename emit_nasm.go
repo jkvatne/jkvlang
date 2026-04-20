@@ -46,9 +46,6 @@ func Write(s *State, txt string, force bool) (int, error) {
 		// Write directly to file
 		return s.outputFile.WriteString(txt)
 	}
-	if len(s.ArgCode) == 0 {
-		panic("Argument code is empty")
-	}
 	// When parsing an argument, output text to the last element in the ArgCode slice
 	s.ArgCode[len(s.ArgCode)-1] += txt
 	return len(txt), nil
@@ -139,7 +136,10 @@ func EmitPushTos(s *State, argNo int, funcName string, force bool) {
 	_, _ = Write(s, "   push rax                             ; Push TOS "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
 }
 
-func EmitCall(s *State, id string, nPar int) {
+func EmitCall(s *State, id string, nPar int, builtin bool) {
+	if builtin {
+		id = "_" + id
+	}
 	if nPar > 1 {
 		emit(s, "mov", "rbx", strconv.Itoa((nPar-1)*8), "")
 	} else {
@@ -155,15 +155,14 @@ func EmitCall(s *State, id string, nPar int) {
 func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 	if s.localSp != 0 {
-		fmt.Printf("Local Sp: %d, should be 0\n", s.localSp)
-		// panic("localSp is not 0")
+		// fmt.Printf("Local Sp: %d, should be 0\n", s.localSp)
+		panic("localSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
-	s.localSp++
 	emit(s, "mov", "rbp", "rsp", "")
-	emit(s, "push", "rax", "", "Save first argument in rax")
-	s.localSp++
+	// emit(s, "push", "rax", "", "Save first argument in rax")
+	// s.localSp = 1
 	if id == "main" {
 		EmitPrintSp(s)
 		emit(s, "call", "_sysinit", "", "")
@@ -564,12 +563,12 @@ func EmitAllocLocalVar(s *State, comment string) int {
 	return -8 - 8*s.localSp
 }
 
-func EmitPushStringLit(s *State, lit int) {
+func EmitPushStringLit(s *State, lit int, comment string) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "2 Push TOS")
 		s.localSp++
 	}
-	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), "")
+	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), comment)
 }
 
 func EmitSkipLenCap(s *State) {

@@ -22,7 +22,13 @@ func ParseReturn(s *State) error {
 				return fmt.Errorf("returns wrong type")
 			}
 			if v.HasValue {
-				EmitPushConst(s, v.IntValue, "Return value "+strconv.Itoa(i))
+				if v.Typ.Pt.IsInteger() {
+					EmitPushConst(s, v.IntValue, "Returned value number "+strconv.Itoa(i))
+				} else if v.Typ.Pt == TYP_STRING {
+					EmitPushStringLit(s, v.StringLitNo, "Returned value number "+strconv.Itoa(i))
+				} else {
+					panic("Not implemented")
+				}
 			}
 			if !s.found(TOK_COMMA) {
 				break
@@ -33,7 +39,7 @@ func ParseReturn(s *State) error {
 			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 		}
 	}
-	emit(s, "jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
+	s.DidReturn = true
 	s.Returning = false
 	return nil
 }
@@ -41,18 +47,18 @@ func ParseReturn(s *State) error {
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
+	s.DidReturn = false
 	if s.XmmSp != 0 || s.localSp > 2 {
 		// fmt.Printf("Line no %d: XmmSp=%d  localSp=%d\n", s.lineNum, s.XmmSp, s.localSp)
 	}
 	s.XmmSp = 0
-	s.localSp = 1
 	if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()
 		if s.found(TOK_LPAR) {
 			v, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
-				return false, err
+				return false, err1
 			}
 			if v != nil {
 				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
@@ -87,6 +93,10 @@ func ParseStatement(s *State) (returned bool, err error) {
 func ParseStatements(s *State) error {
 	s.hasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
+		if s.DidReturn {
+			emit(s, "jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
+			s.DidReturn = false
+		}
 		EmitLineNo(s)
 		returned, err := ParseStatement(s)
 		if err != nil {

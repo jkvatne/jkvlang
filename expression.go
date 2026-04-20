@@ -131,7 +131,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
 		// during the call, and then free it after the call.
 		if err != nil {
-			return
+			return nil, 0, err
 		}
 		valueList = append(valueList, value)
 		p := parNo
@@ -148,7 +148,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		if value.HasValue {
 			// First parameter is a literal
 			if value.Typ.Pt == TYP_STRING {
-				EmitPushStringLit(s, value.StringLitNo)
+				EmitPushStringLit(s, value.StringLitNo, "Actual argument is string literal")
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(s, value.IntValue, "")
 			} else if value.Typ.Pt == TYP_BOOL {
@@ -180,11 +180,39 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	return valueList, floatParCount, nil
 }
 
-func FreeLocalVar(s *State, value *ValueDef) (err error) {
-	if !value.HasValue && value.Typ.Pt.IsObject() {
-		err = EmitFreeLocal(s, value.Offset, value.Typ.Pt)
+func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
+	// Now output the generated code for each argument, in reverse order
+	txt := ""
+	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
+		txt += s.ArgCode[i]
+		if len(values) > 0 {
+			if values[i-startArgNo].Typ.Pt == TYP_F64 {
+				txt += "   movq rax, xmm0\n"
+			}
+			if i > startArgNo {
+				txt += "   push rax\n"
+				s.localSp++
+			}
+		}
 	}
-	return err
+	s.ArgCode[startArgNo] = txt
+	s.ArgCode = s.ArgCode[0 : startArgNo+1]
+}
+
+// Now we must free the temporary local variables
+func FreeTemporariVariables(s *State, values []*ValueDef) error {
+	for _, value := range values {
+		if !value.HasValue && value.Typ.Pt.IsObject() && !value.IsReturned {
+			if value.Offset == 0 {
+				return fmt.Errorf("Could not free value with no offset")
+			}
+			err := EmitFreeLocal(s, value.Offset, value.Typ.Pt)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // ParseFuncCall parses a function call and its arguments
@@ -205,6 +233,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	// Save the starting point for arguments. Needed for nested function calls
 	startArgNo := len(s.ArgCode) - 1
+	if len(s.ArgCode) > 0 {
+		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
+		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
+	}
 
 	f := FuncDefs[id]
 	if f == nil {
@@ -218,15 +250,8 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if n > 1 {
 		EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
 	}
-	if len(s.ArgCode) > 0 {
-		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
-		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
-	}
 
 	// Parse the argument list and push each arg
-	if id == "printf" {
-		fmt.Printf("Error")
-	}
 	// -------------------------------------------------------
 	values, floatParCount, err := ParseActualArgList(s, f)
 	// -------------------------------------------------------
@@ -234,45 +259,16 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if err != nil {
 		return nil, err
 	}
-
-	// Now output the generated code for each argument, in reverse order
-	txt := ""
-	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
-		txt += s.ArgCode[i]
-		if len(values) > 0 {
-			if values[i-startArgNo].Typ.Pt == TYP_F64 {
-				txt += "   movq rax, xmm0\n"
-			}
-			if i > startArgNo {
-				txt += "   push rax\n"
-			}
-			s.localSp++
-		}
-	}
-	s.ArgCode[startArgNo] = txt
-	s.ArgCode = s.ArgCode[0 : startArgNo+1]
-
-	if f.builtin {
-		id = "_" + id
-	}
+	OutputArgCode(s, startArgNo, values)
 
 	// ----------------------------------
-	EmitCall(s, id, len(values))
+	EmitCall(s, id, len(values), f.builtin)
 	// ----------------------------------
 
-	// Now we must free the temporary local variables
-	for _, value := range values {
-		if !value.HasValue && value.Typ.Pt.IsObject() && value.Typ.Pt.IsObject() {
-			if value.Offset == 0 {
-				fmt.Printf("Error %s, line %d", id, s.lineNum)
-			}
-			err = EmitFreeLocal(s, value.Offset, value.Typ.Pt)
-			if err != nil {
-				return nil, err
-			}
-		}
+	// err = FreeTemporariVariables(s, values)
+	if err != nil {
+		return nil, err
 	}
-
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
@@ -286,7 +282,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	s.RaxIsTOS = true
 	var v []*ValueDef
 	for _, t := range f.returnTypes {
-		v = append(v, &ValueDef{Typ: t})
+		v = append(v, &ValueDef{Typ: t, IsReturned: true})
 	}
 	return v, nil
 }
@@ -301,7 +297,7 @@ func ParseAssign(s *State, id string) error {
 	op := s.token
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
-			fmt.Errorf("Can not have many lvalues for " + op.Name())
+			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
 		// Now parse the expression(s) to find the value(s)
 		values, err := ParseExpressions(s)
@@ -809,6 +805,7 @@ func ParseIf(s *State) error {
 
 func ParseFuncDef(s *State) error {
 	nextToken(s)
+	s.localSp = 0
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
@@ -856,6 +853,7 @@ func ParseFuncDef(s *State) error {
 	}
 	// Now parse all the statements in the function
 	s.RaxIsTOS = len(parList) > 0
+	s.DidReturn = false
 	err = ParseStatements(s)
 	if err != nil {
 		return err
@@ -896,7 +894,7 @@ func ParseFuncDef(s *State) error {
 	// Remove local variables
 	if s.localSp > 0 {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
-		s.localSp -= s.localSp
+		s.localSp = 0
 	}
 
 	// Verify localsp is zero
