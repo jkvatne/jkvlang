@@ -108,9 +108,44 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
+func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
+	// Now output the generated code for each argument, in reverse order
+	txt := ""
+	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
+		txt += s.ArgCode[i]
+		if len(values) > 0 {
+			if values[i-startArgNo].Typ.Pt == TYP_F64 {
+				txt += "   movq rax, xmm0\n"
+			}
+			if i > startArgNo {
+				txt += "   push rax\n"
+				s.localSp++
+			}
+		}
+	}
+	s.ArgCode[startArgNo] = txt
+	s.ArgCode = s.ArgCode[0 : startArgNo+1]
+}
+
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
+	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
+	if len(s.ArgCode) == 0 {
+		s.ArgCode = append(s.ArgCode, "")
+	}
+	if s.nesting == 0 {
+		s.ArgCode[0] = ""
+	}
+	if s.ArgCode[len(s.ArgCode)-1] != "" {
+		panic("ArgCode[i] should be blank")
+	}
+	// Save the starting point for arguments. Needed for nested function calls
+	startArgNo := len(s.ArgCode) - 1
+	if len(s.ArgCode) > 0 {
+		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
+		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
+	}
 	parNo := 0
 	for { // each agrument in the actual argument list
 		parNo++
@@ -184,26 +219,8 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 	}
 	// Skip the final ")"
 	nextToken(s)
+	OutputArgCode(s, startArgNo, valueList)
 	return valueList, floatParCount, nil
-}
-
-func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
-	// Now output the generated code for each argument, in reverse order
-	txt := ""
-	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
-		txt += s.ArgCode[i]
-		if len(values) > 0 {
-			if values[i-startArgNo].Typ.Pt == TYP_F64 {
-				txt += "   movq rax, xmm0\n"
-			}
-			if i > startArgNo {
-				txt += "   push rax\n"
-				s.localSp++
-			}
-		}
-	}
-	s.ArgCode[startArgNo] = txt
-	s.ArgCode = s.ArgCode[0 : startArgNo+1]
 }
 
 // Now we must free the temporary local variables
@@ -213,6 +230,7 @@ func FreeTemporaryObjects(s *State, values []*ValueDef) error {
 			if value.Offset == 0 {
 				return fmt.Errorf("Could not free value with no offset")
 			}
+			EmitComment(s, "Free temporary object "+strconv.Itoa(value.Offset))
 			// err := EmitFreeTempObject(s, value.Offset, value.Typ.Pt, "Free offset "+strconv.Itoa(value.Offset))
 		}
 	}
@@ -224,22 +242,6 @@ func FreeTemporaryObjects(s *State, values []*ValueDef) error {
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	if s.RaxIsTOS {
 		emit(s, "push", "rax", "", "")
-	}
-	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
-	if len(s.ArgCode) == 0 {
-		s.ArgCode = append(s.ArgCode, "")
-	}
-	if s.nesting == 0 {
-		s.ArgCode[0] = ""
-	}
-	if s.ArgCode[len(s.ArgCode)-1] != "" {
-		panic("ArgCode[i] should be blank")
-	}
-	// Save the starting point for arguments. Needed for nested function calls
-	startArgNo := len(s.ArgCode) - 1
-	if len(s.ArgCode) > 0 {
-		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
-		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
 	}
 
 	f := FuncDefs[id]
@@ -261,12 +263,12 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if err != nil {
 		return nil, err
 	}
-	OutputArgCode(s, startArgNo, values)
 
-	// DO actual call
+	// Do actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
-	// err = FreeTemporaryObjects(s, values)
+
+	err = FreeTemporaryObjects(s, values)
 	if err != nil {
 		return nil, err
 	}
