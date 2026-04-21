@@ -155,14 +155,13 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 func EmitFunction(s *State, id string) {
 	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
 	if s.localSp != 0 {
-		// fmt.Printf("Local Sp: %d, should be 0\n", s.localSp)
 		panic("localSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
-	// emit(s, "push", "rax", "", "Save first argument in rax")
-	// s.localSp = 1
+	emit(s, "push", "rax", "", "Save first argument in rax")
+	s.localSp = 0
 	if id == "main" {
 		EmitPrintSp(s)
 		emit(s, "call", "_sysinit", "", "")
@@ -817,8 +816,8 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }
 
-// EmitFreeLocal will de-allocate an object in a local variable
-func EmitFreeLocal(s *State, adr int, pt PrimaryType) error {
+// EmitFreeLocalVariables will de-allocate an object in a local variable
+func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) error {
 	if pt == TYP_STRING {
 		// Decrement allocation count, first load size given in offset +4 (capacity)
 		emit(s, "mov", "rax", BpRel(adr), "Load cap")
@@ -830,7 +829,7 @@ func EmitFreeLocal(s *State, adr int, pt PrimaryType) error {
 		emit(s, "jz", EmitNumericLabel(lbl), "", "")
 		// Load the offset from the variable in local stack frame with offset given by adr
 		emit(s, "mov", "rax", BpRel(adr), "")
-		emit(s, "call", "_free", "", "")
+		emit(s, "call", "_free", "", comment)
 		EmitLabel(s, lbl, "")
 		return nil
 	} else {

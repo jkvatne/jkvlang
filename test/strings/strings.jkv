@@ -19,16 +19,16 @@ func f3(s String, t String) String {
 */
 
 func main() {
+    printf("Start strings.exe\n")
     // Test concat
     s = "Hello "
     t = "World "
-    printf("s=%s, t=%s\n", s, t)
-
-/*
-    printf("Start strings.exe\n")
-    assert(f0("xyz")=="f0 xyz")
     v = s + t
     printf("v=s+t=%s\n", v)
+
+/*
+    printf("s=%s, t=%s\n", s, t)
+    assert(f0("xyz")=="f0 xyz")
 
     assert(v=="HellosWorld ")
     // Test concatenation of variable and constant

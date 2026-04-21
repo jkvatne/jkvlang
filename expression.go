@@ -163,7 +163,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 				// If it is a heap object, and the formal parameter is not "in", and it is the result of a function call,
 				// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
 				// during the call, and then free it after the call.
-				if !f.parameters[min(parNo, len(f.parameters))-1].IsInType {
+				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// This is not a formal in parameter. Check if it was a local parameter or a function call result.
 					if !value.IsLocalVar {
 						value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
@@ -207,16 +207,13 @@ func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
 }
 
 // Now we must free the temporary local variables
-func FreeTemporariVariables(s *State, values []*ValueDef) error {
+func FreeTemporaryObjects(s *State, values []*ValueDef) error {
 	for _, value := range values {
 		if !value.HasValue && value.Typ.Pt.IsObject() && !value.IsLocalVar {
 			if value.Offset == 0 {
 				return fmt.Errorf("Could not free value with no offset")
 			}
-			err := EmitFreeLocal(s, value.Offset, value.Typ.Pt)
-			if err != nil {
-				return err
-			}
+			// err := EmitFreeTempObject(s, value.Offset, value.Typ.Pt, "Free offset "+strconv.Itoa(value.Offset))
 		}
 	}
 	return nil
@@ -269,7 +266,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// DO actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
-	err = FreeTemporariVariables(s, values)
+	// err = FreeTemporaryObjects(s, values)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +320,7 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			if lvalues[i].IsConst {
+			if lvalues[i].Value.HasValue {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
 			oldHasValue := lvalues[i].Value.HasValue
@@ -872,14 +869,17 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("function definition does not return a value")
 	}
 	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
-	// Free arguments on the heap, if any
+	// Free local varibales that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
 		emit(s, "push", "rax", "", "Save rax")
 		for _, v := range VarDefs {
-			if v.Value.Typ.Pt == TYP_STRING && !v.MustFree {
-				EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset()))
-				// EmitFreeLocal(s, v.Offset, v.Size())
+			if v.Value.Typ.Pt.IsObject() && v.MustFree {
+				// EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset()))
+				err = EmitFreeLocalVariables(s, v.Offset(), v.Value.Typ.Pt, "Free "+v.Name)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		emit(s, "pop", "rax", "", "Restore rax")
@@ -891,15 +891,10 @@ func ParseFuncDef(s *State) error {
 			s.localSp--
 		}
 	}
-	// Remove local variables
+	// Remove local variables from stack
 	if s.localSp > 0 {
 		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
 		s.localSp = 0
-	}
-
-	// Verify localsp is zero
-	if s.localSp != 0 {
-		panic("s.localSp != 0")
 	}
 
 	// Return exit code from main

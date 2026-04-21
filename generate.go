@@ -150,6 +150,7 @@ func GenertateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (e
 	} else if value.Typ.Pt == TYP_STRING {
 		instr := TokenOp[op]
 		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
+		lvalue.MustFree = true
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}

@@ -4,10 +4,10 @@ import (
 	"fmt"
 )
 
-type Vkind int
+type VarKind int
 
 const (
-	ParVar Vkind = iota
+	ParVar VarKind = iota
 	LocalVar
 	RetVar
 	TempVar
@@ -15,16 +15,13 @@ const (
 )
 
 type VarDef struct {
-	Typ   *TypeDef
-	Value ValueDef
-	Name  string
-	// Offset     int
-	IsConst  bool
-	ParNo    int // Used for local parameters
-	level    int
-	IsInType bool
-	MustFree bool
-	kind     Vkind
+	Typ         *TypeDef
+	Value       ValueDef
+	Name        string
+	level       int
+	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takse ownership.
+	MustFree    bool
+	Kind        VarKind
 }
 
 var VarDefs map[string]*VarDef
@@ -40,7 +37,7 @@ func MustFree() bool {
 
 func VarInit() {
 	VarDefs = make(map[string]*VarDef)
-	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
+	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
 }
 func (v *VarDef) Offset() int {
 	return v.Value.Offset
@@ -56,7 +53,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 // AddLocalPar is called from ParseFormalParList
 // The name "par" should be used only for formal parameters
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
-	v := &VarDef{Name: name, Typ: typ, IsConst: false, kind: ParVar}
+	v := &VarDef{Name: name, Typ: typ, Kind: ParVar}
 	s.ParCount++
 	if s.ParCount == 1 {
 		// The first parameter is actualy in rax. It can be stored in BP-8 if needed
@@ -64,7 +61,6 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	} else {
 		v.Value.Offset = s.ParCount * 8
 	}
-	v.ParNo = s.ParCount
 	v.Value.Typ = typ
 	VarDefs[name] = v
 	return v
@@ -74,7 +70,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{Name: id, Typ: typ, IsConst: isConst, Value: ValueDef{Typ: typ, HasValue: isConst}, kind: LocalVar}
+		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, HasValue: isConst}, Kind: LocalVar}
 		VarDefs[id] = v
 		s.VarCount++
 		v.Value.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24
