@@ -108,6 +108,15 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
+func OutputCleanupCode(s *State, startArgNo int, values []*ValueDef) {
+	txt := ""
+	for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
+		txt += s.CleanupCode[i]
+	}
+	s.CleanupCode[startArgNo] = txt
+	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
+}
+
 func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
 	// Now output the generated code for each argument, in reverse order
 	txt := ""
@@ -129,22 +138,25 @@ func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
 
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
-func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCount int, err error) {
+func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*ValueDef, floatParCount int, err error) {
 	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
 	if len(s.ArgCode) == 0 {
 		s.ArgCode = append(s.ArgCode, "")
+		s.CleanupCode = append(s.CleanupCode, "")
 	}
 	if s.nesting == 0 {
 		s.ArgCode[0] = ""
+		s.CleanupCode[0] = ""
 	}
 	if s.ArgCode[len(s.ArgCode)-1] != "" {
 		panic("ArgCode[i] should be blank")
 	}
 	// Save the starting point for arguments. Needed for nested function calls
-	startArgNo := len(s.ArgCode) - 1
+	startArgNo = len(s.ArgCode) - 1
 	if len(s.ArgCode) > 0 {
 		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
 		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
+		s.CleanupCode = s.CleanupCode[:len(s.CleanupCode)-1]
 	}
 	parNo := 0
 	for { // each agrument in the actual argument list
@@ -152,6 +164,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		s.RaxIsTOS = false
 		// A new argument. Append "" to the ArgCode slice
 		s.ArgCode = append(s.ArgCode, "")
+		s.CleanupCode = append(s.CleanupCode, "")
 		if s.token == TOK_RPAR {
 			break
 		}
@@ -160,7 +173,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		var value *ValueDef
 		value, err = ParseExpression(s)
 		if err != nil {
-			return nil, 0, err
+			return 0, nil, 0, err
 		}
 		valueList = append(valueList, value)
 
@@ -181,7 +194,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 				EmitPushFloat(s, value.FloatLitNo)
 			} else {
 				// TODO: Handle F32 etc.
-				return nil, 0, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
+				return 0, nil, 0, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
 			}
 		} else {
 			if f.name == "printf" {
@@ -191,17 +204,16 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
 				} else {
-					return nil, 0, fmt.Errorf("prinf of arguments of type %s is not yet handled", value.Typ.Pt)
+					return 0, nil, 0, fmt.Errorf("prinf of arguments of type %s is not yet handled", value.Typ.Pt)
 				}
 			} else if value.Typ.Pt.IsObject() {
-				// We have a value on the stack (TOS).
-				// If it is a heap object, and the formal parameter is not "in", and it is the result of a function call,
-				// then we have to free it after the call. This can be done by asssigning it to a temporary local variable
-				// during the call, and then free it after the call.
+				// We have a heap object pointer on top of the stack. If the formal parameter is not "in",
+				// and it is the result of a function call, then we have to free it after the call.
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
-					// This is not a formal in parameter. Check if it was a local parameter or a function call result.
+					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
-						value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
+						// value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
+						s.CleanupCode[len(s.CleanupCode)-1] = "; Call free"
 					}
 				}
 
@@ -215,24 +227,20 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, floatParCo
 		nextToken(s)
 	}
 	if s.token != TOK_RPAR {
-		return nil, 0, fmt.Errorf("expected right parenthesis but got %s", s.tokenString)
+		return 0, nil, 0, fmt.Errorf("expected right parenthesis but got %s", s.tokenString)
 	}
 	// Skip the final ")"
 	nextToken(s)
 	OutputArgCode(s, startArgNo, valueList)
-	return valueList, floatParCount, nil
+	return startArgNo, valueList, floatParCount, nil
 }
 
-// Now we must free the temporary local variables
-func FreeTemporaryObjects(s *State, values []*ValueDef) error {
-	for _, value := range values {
-		if !value.HasValue && value.Typ.Pt.IsObject() && !value.IsLocalVar {
-			if value.Offset == 0 {
-				return fmt.Errorf("Could not free value with no offset")
-			}
-			EmitComment(s, "Free temporary object "+strconv.Itoa(value.Offset))
-			// err := EmitFreeTempObject(s, value.Offset, value.Typ.Pt, "Free offset "+strconv.Itoa(value.Offset))
-		}
+// Now we must remove the actual arguments from the stack.
+// The called function should not be able to change them from the stored values.
+func RemoveArguments(s *State, values []*ValueDef) error {
+	if len(values) > 1 {
+		emit(s, "add", "rsp", strconv.Itoa((len(values)-1)*8), "Remove arguments")
+		s.localSp -= len(values) - 1
 	}
 	return nil
 }
@@ -259,7 +267,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
-	values, floatParCount, err := ParseActualArgList(s, f)
+	startArgNo, values, floatParCount, err := ParseActualArgList(s, f)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +276,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
 
-	err = FreeTemporaryObjects(s, values)
+	OutputCleanupCode(s, startArgNo, values)
+
+	err = RemoveArguments(s, values)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +286,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
-		Write(s, s.ArgCode[0], true)
+		_, _ = Write(s, s.ArgCode[0], true)
 		s.ArgCode[0] = ""
 	}
 	if !returnSomething || len(f.returnTypes) == 0 {
@@ -502,6 +512,16 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s)
+			// Free possible temporary objects in value1 or value2
+			err = FreeTemporaryObject(s, value1)
+			if err != nil {
+				return &NoValue, err
+			}
+			// Free possible temporary objects in value1 or value2
+			err = FreeTemporaryObject(s, value2)
+			if err != nil {
+				return &NoValue, err
+			}
 		}
 		return &ValueDef{Typ: &StringType}, nil
 	} else {
@@ -522,10 +542,15 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 	}
 }
 
+func FreeTemporaryObject(s *State, value *ValueDef) error {
+	if value.IsReturned {
+		EmitComment(s, "Free temporary object")
+	}
+	return nil
+}
+
 func ParseCompareTerm(s *State) (*ValueDef, error) {
-	var value1, value2 *ValueDef
-	var err error
-	value1, err = ParseSumTerm(s)
+	value1, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
 	}
@@ -539,11 +564,24 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	value1.IsReturned = false
 	op := s.token
 	nextToken(s)
-	value2, err = ParseSumTerm(s)
+	value2, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
 	}
-	return GenerateOp(s, op, value1, value2)
+	result, err := GenerateOp(s, op, value1, value2)
+	if err != nil {
+		return &NoValue, err
+	}
+	// Free possible temporary objects in value1 or value2
+	err = FreeTemporaryObject(s, value1)
+	if err != nil {
+		return &NoValue, err
+	}
+	err = FreeTemporaryObject(s, value2)
+	if err != nil {
+		return &NoValue, err
+	}
+	return result, err
 }
 
 func ParseExpression(s *State) (result *ValueDef, err error) {
@@ -633,25 +671,6 @@ func NewLabel(s *State) int {
 	s.labelNo++
 	return s.labelNo
 }
-
-/*
-// StartCond will increment noCode if the value is a constant equal to cond
-func StartCond(s *State, value *ValueDef, cond bool) {
-	if value.HasValue && (value.BoolValue != cond) {
-		s.noCode++
-	}
-}
-
-// EndCond will decrement noCode if the value is a constant equal to cond
-func EndCond(s *State, value *ValueDef, cond bool) {
-	if value.HasValue && (value.BoolValue != cond) {
-		s.noCode--
-		if s.noCode < 0 {
-			panic("negative noCode")
-		}
-	}
-}
-*/
 
 func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {

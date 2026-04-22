@@ -146,10 +146,6 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 		emit(s, "xor", "rbx", "rbx", "")
 	}
 	emit(s, "call", id, "", "")
-	if nPar > 1 {
-		emit(s, "add", "rsp", strconv.Itoa((nPar-1)*8), "Remove arguments")
-		s.localSp -= nPar - 1
-	}
 }
 
 func EmitFunction(s *State, id string) {

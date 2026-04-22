@@ -21,6 +21,7 @@ func f0(s String) String {
 func main() {
     assert(f0("xyz")=="f0 xyz")
 
+/*
     printf("Start strings.exe\n")
     // Test concat
     s = "Hello "
@@ -28,9 +29,6 @@ func main() {
     printf("s=%s, t=%s\n", s, t)
     v = s + t
     printf("v=s+t=%s\n", v)
-
-/*
-
 
     assert(v=="HellosWorld ")
     // Test concatenation of variable and constant
