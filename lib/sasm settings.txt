@@ -15,7 +15,8 @@ Original, ok with no code:
 -f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
 $PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64
 C:/Program Files (x86)/SASM/NASM/nasm.exe
-C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exeprogram.o
+C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
+program.o
 
 Running ok:
 -f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
@@ -23,3 +24,17 @@ $PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64 -lkernel32 -lmsvcrt
 C:/Program Files (x86)/SASM/NASM/nasm.exe
 C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
 program.o
+
+
+Settings in go code:
+	if *UseGcc {
+		// Add all object files to argument list
+		entries, err := os.ReadDir(workDir)
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
+				args = append(args, filepath.Join(workDir, entry.Name()))
+			}
+		}
+		args = append(args, "-o", "program.exe", "-m64", "-lkernel32", "-lmsvcrt")
+		// outp, err := exec.Command("C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe", args...).CombinedOutput()
+		outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()

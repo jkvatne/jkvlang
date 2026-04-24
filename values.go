@@ -8,7 +8,6 @@ import (
 
 type ValueDef struct {
 	Typ         *TypeDef
-	HasValue    bool
 	IntValue    int64
 	FloatValue  float64
 	BoolValue   bool
@@ -18,6 +17,8 @@ type ValueDef struct {
 	IsReturned  bool
 	Offset      int
 	IsLocalVar  bool
+	IsTempObj   bool
+	HasValue    bool
 }
 
 var (

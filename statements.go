@@ -9,7 +9,6 @@ func ParseReturn(s *State) error {
 	f := s.currentFunc
 	i := 0
 	if len(f.returnTypes) > 0 {
-		s.Returning = true
 		for {
 			v, err := ParseExpression(s)
 			if err != nil {

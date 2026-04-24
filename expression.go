@@ -108,7 +108,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-func OutputCleanupCode(s *State, startArgNo int, values []*ValueDef) {
+func OutputCleanupCode(s *State, startArgNo int) {
 	txt := ""
 	for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
 		txt += s.CleanupCode[i]
@@ -235,16 +235,6 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 	return startArgNo, valueList, floatParCount, nil
 }
 
-// Now we must remove the actual arguments from the stack.
-// The called function should not be able to change them from the stored values.
-func RemoveArguments(s *State, values []*ValueDef) error {
-	if len(values) > 1 {
-		emit(s, "add", "rsp", strconv.Itoa((len(values)-1)*8), "Remove arguments")
-		s.localSp -= len(values) - 1
-	}
-	return nil
-}
-
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
@@ -276,12 +266,8 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
 
-	OutputCleanupCode(s, startArgNo, values)
-
-	err = RemoveArguments(s, values)
-	if err != nil {
-		return nil, err
-	}
+	OutputCleanupCode(s, startArgNo)
+	EmitSubStack(s, len(values))
 
 	s.nesting--
 	s.XmmSp -= floatParCount
@@ -354,13 +340,31 @@ func ParseAssign(s *State, id string) error {
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when en ID is encountered in an expression
 func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
+	value = &NoValue
+	err = fmt.Errorf("unrecognized variable or function call")
 	// We now have s.token == TOK_ID
 	id := s.tokenString
 	nextToken(s)
-	if s.token != TOK_LBRACK && s.token != TOK_LPAR {
+	if s.found(TOK_LPAR) {
+		// It is a function call that should return values
+		var values []*ValueDef
+		values, err = ParseFuncCall(s, id, true)
+		if err != nil {
+			return &NoValue, err
+		}
+		if len(values) != 1 {
+			return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+		}
+		value = values[0]
+		value.IsReturned = true
+		return value, nil
+	} else if s.token == TOK_LBRACK {
+		// TODO: It is an array
+		err = ParseArrayIndexes(s)
+		return &NoValue, fmt.Errorf("Arras are not yet implemented")
+	} else {
 		// It is  a simple variable
 		v, ok := VarDefs[id]
-		v.Value.IsLocalVar = true
 		if !ok {
 			return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
 		}
@@ -372,7 +376,6 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		}
 		if !v.Value.HasValue {
 			// This is a local variable, not a known constant
-			v.Value.IsReturned = s.Returning
 			if v.Name == "err" {
 				emit(s, "mov", "rax", "r15", "Load err")
 				s.RaxIsTOS = true
@@ -382,24 +385,10 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			} else {
 				EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 			}
+			v.Value.IsLocalVar = true
 		}
-		return &v.Value, err
-	} else if s.token == TOK_LBRACK {
-		// It is an array
-		err = ParseArrayIndexes(s)
-		return &NoValue, err
-	} else if s.found(TOK_LPAR) {
-		// It is a function call that should return values
-		values, err := ParseFuncCall(s, id, true)
-		if err != nil {
-			return nil, err
-		}
-		if len(values) != 1 {
-			return nil, fmt.Errorf("expected 1 value but got %d", len(values))
-		}
-		return values[0], nil
+		return &v.Value, nil
 	}
-	return &NoValue, fmt.Errorf("unrecognized variable or function call")
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
@@ -478,25 +467,27 @@ func ParseProd(s *State) (value *ValueDef, err error) {
 	return value, nil
 }
 
+func FreeTemporaryObject(s *State, value *ValueDef) {
+	if value.IsTempObj {
+		EmitComment(s, "Free temporary object ")
+	}
+}
+
 func ParseSumTerm(s *State) (*ValueDef, error) {
 	value1, err := ParseProd(s)
+	var value2 *ValueDef
 	if err != nil {
 		return &NoValue, err
 	}
 	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
-		if value1.HasValue {
-			if s.RaxIsTOS {
-				emit(s, "push", "rax", "", "")
-				s.localSp++
-			}
-			// Push constant string
-			emit(s, "mov", "rax", "str"+strconv.Itoa(value1.StringLitNo), "")
-			s.RaxIsTOS = true
-		}
 		// Concatenation of two or more strings
+		if value1.HasValue {
+			EmitPushConstString(s, value1.StringLitNo)
+		}
 		for s.token == TOK_PLUS {
+			// Loop through all strings that are concatenated
 			nextToken(s)
-			value2, err := ParseProd(s)
+			value2, err = ParseProd(s)
 			if err != nil {
 				return &NoValue, err
 			}
@@ -513,22 +504,15 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			}
 			EmitConcat(s)
 			// Free possible temporary objects in value1 or value2
-			err = FreeTemporaryObject(s, value1)
-			if err != nil {
-				return &NoValue, err
-			}
-			// Free possible temporary objects in value1 or value2
-			err = FreeTemporaryObject(s, value2)
-			if err != nil {
-				return &NoValue, err
-			}
+			FreeTemporaryObject(s, value1)
+			FreeTemporaryObject(s, value2)
 		}
-		return &ValueDef{Typ: &StringType}, nil
+		return &ValueDef{Typ: &StringType, IsReturned: true, IsTempObj: true}, nil
 	} else {
 		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 			op := s.token
 			nextToken(s)
-			value2, err := ParseProd(s)
+			value2, err = ParseProd(s)
 			if err != nil {
 				return &NoValue, err
 			}
@@ -540,13 +524,6 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 		}
 		return value1, nil
 	}
-}
-
-func FreeTemporaryObject(s *State, value *ValueDef) error {
-	if value.IsReturned {
-		EmitComment(s, "Free temporary object")
-	}
-	return nil
 }
 
 func ParseCompareTerm(s *State) (*ValueDef, error) {
@@ -573,14 +550,8 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		return &NoValue, err
 	}
 	// Free possible temporary objects in value1 or value2
-	err = FreeTemporaryObject(s, value1)
-	if err != nil {
-		return &NoValue, err
-	}
-	err = FreeTemporaryObject(s, value2)
-	if err != nil {
-		return &NoValue, err
-	}
+	FreeTemporaryObject(s, value1)
+	FreeTemporaryObject(s, value2)
 	return result, err
 }
 
@@ -890,7 +861,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("function definition does not return a value")
 	}
 	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
-	// Free local varibales that have objects on the heap, if any
+	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
 		emit(s, "push", "rax", "", "Save rax")

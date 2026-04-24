@@ -832,3 +832,26 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 		return fmt.Errorf("Can not free %s", TokenNames[pt])
 	}
 }
+
+func EmitSubStack(s *State, count int) {
+	if count > 0 {
+		emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
+		s.localSp -= count - 1
+	}
+}
+
+func EmitPushIfNeeded(s *State) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "")
+		s.localSp++
+	}
+}
+
+func EmitPushConstString(s *State, litNo int) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "")
+		s.localSp++
+	}
+	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "")
+	s.RaxIsTOS = true
+}
