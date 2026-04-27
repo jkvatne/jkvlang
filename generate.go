@@ -33,6 +33,8 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		return EmitTosOpNos(s, op, val1, val2)
 	}
 }
+
+// EmitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
@@ -43,7 +45,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			return &ValueDef{Typ: &BoolType}, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_EQ {
-				EmitCompareStringsEq(s)
+				EmitCompareStringsEq(s, val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			} else if op == TOK_NE {
 				EmitCompareStringsNe(s)
@@ -59,7 +61,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			return val1, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_PLUS {
-				EmitConcat(s)
+				EmitConcat(s, val1.IsTempObj, val2.IsTempObj)
 				return val1, nil
 			}
 		}
@@ -79,7 +81,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 			s.XmmSp++
 			err = EmitCompareFloats(s, op)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-			err = EmitCompareStrings(s, op, val2.StringValue, val2.StringLitNo)
+			err = EmitCompareStrings(s, op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
 			err = fmt.Errorf("Unknown type combination for compare")
 		}

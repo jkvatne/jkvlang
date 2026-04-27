@@ -219,6 +219,7 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 
 			} else {
 				// We have a simple value on the stack. Just continue.
+				slog.Debug("Simple value")
 			}
 		}
 		if s.token != TOK_COMMA {
@@ -282,7 +283,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	s.RaxIsTOS = true
 	var v []*ValueDef
 	for _, t := range f.returnTypes {
-		v = append(v, &ValueDef{Typ: t, IsReturned: true})
+		v = append(v, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
 	}
 	return v, nil
 }
@@ -474,6 +475,7 @@ func FreeTemporaryObject(s *State, value *ValueDef) {
 }
 
 func ParseSumTerm(s *State) (*ValueDef, error) {
+	// ParseProd should push rax and leave new result in rax
 	value1, err := ParseProd(s)
 	var value2 *ValueDef
 	if err != nil {
@@ -484,9 +486,10 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 		if value1.HasValue {
 			EmitPushConstString(s, value1.StringLitNo)
 		}
+		// Loop through all strings that are concatenated
 		for s.token == TOK_PLUS {
-			// Loop through all strings that are concatenated
 			nextToken(s)
+			// ParseProd should push rax and leave new result in rax
 			value2, err = ParseProd(s)
 			if err != nil {
 				return &NoValue, err
@@ -502,12 +505,9 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			if value2.Typ.Pt != TYP_STRING {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
-			EmitConcat(s)
-			// Free possible temporary objects in value1 or value2
-			FreeTemporaryObject(s, value1)
-			FreeTemporaryObject(s, value2)
+			EmitConcat(s, value1.IsTempObj, value2.IsTempObj)
 		}
-		return &ValueDef{Typ: &StringType, IsReturned: true, IsTempObj: true}, nil
+		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
 	} else {
 		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 			op := s.token

@@ -221,27 +221,6 @@ func EmitPushFloat(s *State, litNo int) {
 	}
 }
 
-// EmitCompareStrings : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
-func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int) (err error) {
-	if op == TOK_EQ {
-		// First check lengths
-		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
-		lbl := NewLabel(s)
-		emit(s, "mov", "rbx", "0", "Initialize result to false")
-		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "")
-		emit(s, "mov", "rdi", "rax", "")
-		emit(s, "repe", "cmpsb", "", "")
-		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
-		EmitLabel(s, lbl, "")
-		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
-		return nil
-	} else {
-		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
-	}
-}
-
 func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
 	lbl := NewLabel(s)
 	emit(s, "mov", "rax", "1", "Default to true")
@@ -623,12 +602,11 @@ func EmitSection(s *State, section string) {
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in [rax]
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
-func EmitConcat(s *State) {
+func EmitConcat(s *State, free1 bool, free2 bool) {
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
 	emit(s, "mov", "rdx", "[rsp]", "Get string 1 sizes/ptr into r14, rbx")
 	emit(s, "mov", "r14d", "dword [rdx]", "Get string 1 sizes/ptr into r14, rbx")
 	emit(s, "mov", "rbx", "rdx", "")
-	emit(s, "add", "rbx", "8", "")
 	// Get string 2 sizes/ptr into r12, r13 from rax
 	emit(s, "mov", "r12d", "dword [rax]", "Get string 2 sizes/ptr into r12, r13")
 	emit(s, "mov", "r13", "rax", "")
@@ -653,17 +631,27 @@ func EmitConcat(s *State) {
 	emit(s, "add", "rdi", "8", "move pointer to actual string data")
 	// Copy string 1
 	emit(s, "mov", "rsi", "rbx", "Copy string 1")
+	emit(s, "add", "rsi", "8", "")
 	emit(s, "mov", "rcx", "r14", "")
 	emit(s, "cld", "", "", "")
 	emit(s, "rep", "movsb", "", "")
 	// Copy string 2
 	emit(s, "mov", "rsi", "r13", "Copy string 2")
+	emit(s, "add", "rsi", "8", "Skip len/cap")
 	emit(s, "mov", "rcx", "r12", "")
 	emit(s, "rep", "movsb", "", "")
-	// Remove the top of stack. New TOS is the pointer in rax
+	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
 	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	s.localSp--
-	// Now AX should point to the string
+	if free1 {
+		emit(s, "mov", "rax", "rbx", "Free first argument to Concatenate")
+		emit(s, "call", "_free", "", "")
+	}
+	if free2 {
+		emit(s, "mov", "rax", "r13", "Free second argument to Concatenate")
+		emit(s, "call", "_free", "", "")
+	}
+	// Copy the allocated buffer address from rdx to rax. Now rax points to the new string.
 	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
 }
 
@@ -770,7 +758,32 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 	return &result, nil
 }
 
-func EmitCompareStringsEq(s *State) {
+// EmitCompareStrings : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
+func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
+	if op == TOK_EQ {
+		emit(s, "mov", "rdi", "rax", "")
+		// First check lengths
+		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "0", "Initialize result to false")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
+		EmitLabel(s, lbl, "")
+		if isTemp {
+			emit(s, "mov", "rax", "rdi", "")
+			emit(s, "call", "_free", "", "")
+		}
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return nil
+	} else {
+		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
+	}
+}
+
+func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	// Compare two strings, one in rax, and one on top of stack, and drop top of stack
 	lbl := NewLabel(s)
 	emit(s, "mov", "rdi", "rax", "Save tos")
@@ -788,6 +801,14 @@ func EmitCompareStringsEq(s *State) {
 	emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 	emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 	EmitLabel(s, lbl, "unequal")
+	if temp1 {
+		emit(s, "mov", "rax", "rsi", "")
+		emit(s, "call", "_free", "", "")
+	}
+	if temp2 {
+		emit(s, "mov", "rax", "rdi", "")
+		emit(s, "call", "_free", "", "")
+	}
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }
 
