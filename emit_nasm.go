@@ -67,7 +67,9 @@ func emit(s *State, op string, dst string, src string, comment string) {
 		txt = txt + " " + src
 	}
 	if comment != "" {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + " (" + strconv.Itoa(s.localSp) + ")"
+	} else {
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + ";  (" + strconv.Itoa(s.localSp) + ")"
 	}
 	txt += "\n"
 	_, err := Write(s, txt, false)
@@ -275,8 +277,8 @@ func EmitCompareFloats(s *State, op Token) (err error) {
 
 // EmitCompareIntegers will compare the top two stack entries
 func EmitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
-	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
 	s.localSp--
+	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
 	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
 	return EmitJumpCond(s, op, unsigned)
 }
@@ -294,18 +296,18 @@ func EmitIntegerOp(s *State, op Token) {
 	if op == TOK_DIV {
 		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		s.localSp--
+		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		s.localSp--
+		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
-		emit(s, "pop", "rbx", "", "")
 		s.localSp--
+		emit(s, "pop", "rbx", "", "")
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
@@ -316,7 +318,6 @@ func EmitIntegerOp(s *State, op Token) {
 			emit(s, instruction, "rax", "rbx", "")
 		}
 	}
-	s.localSp--
 }
 
 // EmitOpConst will evaluate tos=tos op <constant>
@@ -464,8 +465,8 @@ func EmitLoadFloat64(s *State, size int, adr int, comment string) {
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(s *State, size int, adr int, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "1 Push TOS")
 		s.localSp++
+		emit(s, "push", "rax", "", "1 Push TOS")
 	}
 	s.RaxIsTOS = true
 	emit(s, MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
@@ -476,7 +477,6 @@ func EmitLoad(s *State, size int, adr int, comment string) {
 func EmitStore(s *State, opcode string, size int, adr int, comment string) {
 	emit(s, opcode, BpRel(adr), AxName(size), comment)
 	s.RaxIsTOS = false
-	s.localSp--
 }
 
 func EmitStoreF64(s *State, adr int, comment string) {
@@ -490,16 +490,16 @@ func EmitStoreF64(s *State, adr int, comment string) {
 // EmitAddSp will drop the top "count" 64-bit words.
 func EmitAddSp(s *State, count int, comment string) {
 	if count != 0 {
-		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
 		s.localSp += count
+		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
 	}
 	s.RaxIsTOS = false
 }
 
 func EmitPushString(s *State, litno int) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "EmitPushString() Push TOS")
 		s.localSp++
+		emit(s, "push", "rax", "", "EmitPushString() Push TOS")
 	}
 	emit(s, "mov", "rax", "str"+strconv.Itoa(litno), "Push pointer to literal string")
 	s.localSp++
@@ -532,15 +532,15 @@ func EmitJumpTrue(s *State, n int, comment string) {
 
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, comment string) int {
-	emit(s, "sub", "rsp", "8", comment)
 	s.localSp++
+	emit(s, "sub", "rsp", "8", comment)
 	return -8 - 8*s.localSp
 }
 
 func EmitPushStringLit(s *State, lit int, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "2 Push TOS")
 		s.localSp++
+		emit(s, "push", "rax", "", "2 Push TOS")
 	}
 	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), comment)
 }
@@ -551,8 +551,8 @@ func EmitSkipLenCap(s *State) {
 
 func EmitPushConst(s *State, value int64, comment string) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "EmitPushConst() Push TOS")
 		s.localSp++
+		emit(s, "push", "rax", "", "EmitPushConst() Push TOS")
 	}
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
@@ -641,15 +641,15 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 	emit(s, "mov", "rcx", "r12", "")
 	emit(s, "rep", "movsb", "", "")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
-	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	s.localSp--
+	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	if free1 {
 		emit(s, "mov", "rax", "rbx", "Free first argument to Concatenate")
-		emit(s, "call", "_free", "", "")
+		emit(s, "call", "_free_str", "", "")
 	}
 	if free2 {
 		emit(s, "mov", "rax", "r13", "Free second argument to Concatenate")
-		emit(s, "call", "_free", "", "")
+		emit(s, "call", "_free_str", "", "")
 	}
 	// Copy the allocated buffer address from rdx to rax. Now rax points to the new string.
 	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
@@ -774,7 +774,7 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		EmitLabel(s, lbl, "")
 		if isTemp {
 			emit(s, "mov", "rax", "rdi", "")
-			emit(s, "call", "_free", "", "")
+			emit(s, "call", "_free_str", "", "")
 		}
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return nil
@@ -790,8 +790,8 @@ func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	emit(s, "mov", "rsi", "[rsp]", "Get nos")
 	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 	emit(s, "repe", "cmpsb", "", "")
-	emit(s, "pop", "rax", "", "Get nos ptr")
 	s.localSp--
+	emit(s, "pop", "rax", "", "Get nos ptr")
 	emit(s, "mov", "rbx", "0", "Initialize result to false")
 	emit(s, "jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
@@ -803,11 +803,11 @@ func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	EmitLabel(s, lbl, "unequal")
 	if temp1 {
 		emit(s, "mov", "rax", "rsi", "")
-		emit(s, "call", "_free", "", "")
+		emit(s, "call", "_free_str", "", "")
 	}
 	if temp2 {
 		emit(s, "mov", "rax", "rdi", "")
-		emit(s, "call", "_free", "", "")
+		emit(s, "call", "_free_str", "", "")
 	}
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }
@@ -820,8 +820,8 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rsi", "[rsp]", "Get nos")
 	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
 	emit(s, "repe", "cmpsb", "", "")
-	emit(s, "pop", "rax", "", "Get nos ptr")
 	s.localSp--
+	emit(s, "pop", "rax", "", "Get nos ptr")
 	emit(s, "jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
 	emit(s, "add", "rsi", "4", "Start of string 1")
@@ -846,7 +846,7 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 		emit(s, "jz", EmitNumericLabel(lbl), "", "")
 		// Load the offset from the variable in local stack frame with offset given by adr
 		emit(s, "mov", "rax", BpRel(adr), "")
-		emit(s, "call", "_free", "", comment)
+		emit(s, "call", "_free_str", "", comment)
 		EmitLabel(s, lbl, "")
 		return nil
 	} else {
@@ -856,22 +856,22 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 
 func EmitSubStack(s *State, count int) {
 	if count > 0 {
-		emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
 		s.localSp -= count - 1
+		emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
 	}
 }
 
 func EmitPushIfNeeded(s *State) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "")
 		s.localSp++
+		emit(s, "push", "rax", "", "")
 	}
 }
 
 func EmitPushConstString(s *State, litNo int) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "")
 		s.localSp++
+		emit(s, "push", "rax", "", "")
 	}
 	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "")
 	s.RaxIsTOS = true

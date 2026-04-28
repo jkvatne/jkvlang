@@ -19,21 +19,23 @@ func f0(s String) String {
 }
 
 func main() {
-    assert(f0("xyz")=="f0 xyz")
-
-/*
     printf("Start strings.exe\n")
+
     // Test concat
     s = "Hello "
     t = "World "
     printf("s=%s, t=%s\n", s, t)
     v = s + t
     printf("v=s+t=%s\n", v)
-
     assert(v=="HellosWorld ")
+
+    // Test freeing of temporary object returned from f0
+    assert(f0("xyz")=="f0 xyz")
+
     // Test concatenation of variable and constant
     s = "xyz"
     u = "pre-" + s
+/*
     assert(u=="pre-xyz")
     v = s+"-post"
     assert(v=="xyz-post")

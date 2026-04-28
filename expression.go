@@ -496,8 +496,8 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			}
 			if value2.HasValue {
 				if s.RaxIsTOS {
-					emit(s, "push", "rax", "", "")
 					s.localSp++
+					emit(s, "push", "rax", "", "")
 				}
 				// Push constant string
 				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "")

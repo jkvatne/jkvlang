@@ -38,31 +38,33 @@ _alloc:
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
 
-; _free will free the memory pointed to by rax.
+; _free will free the memory pointed to by rax, assuming it is a string with len/cap.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
 ; No return value.
-global _free
-_free:
+global _free_str
+_free_str:
     push rbp
     mov rbp, rsp
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 40                      ; Reserve shadow space
-    mov rdi, rax                     ; Save ptr in rdi
-    mov rax, [rax]
-    shr rax, 32
+    mov rdi, rax                     ; Save objecgt pointer in rdi
+
+    mov rax, [rax]                   ; Load len/cap qword
+    shr rax, 32                      ; Extract capacity in the high 32bits
 	sub [allocation_count], rax,     ; Decrement allocated count
-    mov rcx, freestr                 ; First argument: format string
+
+    mov rcx, freestr                 ; First argument: format string for the printed message
     mov rdx, [rdi]                   ; Second argument: size
     shr rdx, 32
     mov r8, rdi                      ; Third argument: address
-    call printf
+    call printf                      ; Print the size of the freed object
 
     mov rax, rdi
     call GetProcessHeap
     mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     mov r8, rdi                      ; Argument 3, move memory pointer into r8
-    call HeapFree
+    call HeapFree                    ; Do the actual freeing of the memory
     leave
     ret
 
