@@ -19,28 +19,31 @@ func f0(s String) String {
 }
 
 func main() {
-    printf("Start strings.exe\n")
 
-    // Test concat
+    printf("1. Test concat two variables\n")
     s = "Hello "
     t = "World "
-    printf("s=%s, t=%s\n", s, t)
-    v = s + t
-    printf("v=s+t=%s\n", v)
-    assert(v=="HellosWorld ")
+    u = s + t
+    assert(u=="HellosWorld ")
 
-    // Test freeing of temporary object returned from f0
+    printf("2. Test freeing of temporary object returned from f0\n")
     assert(f0("xyz")=="f0 xyz")
 
-    // Test concatenation of variable and constant
+    printf("3. Test concatenation of constant and variable\n")
     s = "xyz"
-    u = "pre-" + s
+    v = "pre-" + s
+    assert(v=="pre-xyz")
 /*
-    assert(u=="pre-xyz")
+
+    printf("4. Test concatenation of variable and constant\n")
     v = s+"-post"
     assert(v=="xyz-post")
+
+
+    printf("5. Test concatenation of constant and constant\n")
     w = "pre-"+"post"
     assert(w=="pre-post")
+
 
     // Test calling functions with string parameters
     assert(f0("xyz")=="f0 xyz")
