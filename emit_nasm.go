@@ -857,7 +857,9 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 func EmitSubStack(s *State, count int) {
 	if count > 0 {
 		s.localSp -= count - 1
-		emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
+		if count > 1 {
+			emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
+		}
 	}
 }
 

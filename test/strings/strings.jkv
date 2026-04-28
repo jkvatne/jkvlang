@@ -30,15 +30,17 @@ func main() {
     assert(f0("xyz")=="f0 xyz")
 
     printf("3. Test concatenation of constant and variable\n")
-    s = "xyz"
+    s = "xyzzzzzzzzzzzzzzzzzzzzz"
     v = "pre-" + s
     assert(v=="pre-xyz")
-/*
 
     printf("4. Test concatenation of variable and constant\n")
+    // This is current causing leaked memory because v has already a object
+    // And that is overwritten, but not freed. Assigning to an existing variable must free the old object if it is owned.
     v = s+"-post"
     assert(v=="xyz-post")
 
+/*
 
     printf("5. Test concatenation of constant and constant\n")
     w = "pre-"+"post"

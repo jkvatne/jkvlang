@@ -297,6 +297,17 @@ func ParseAssign(s *State, id string) error {
 	}
 	op := s.token
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+		if op == TOK_ASSIGN {
+			// If there is an old object, we must free it first.
+			for _, lv := range lvalues {
+				if lv.MustFree && lv.Typ.Pt.IsObject() {
+					err = EmitFreeLocalVariables(s, lv.Offset(), lv.Value.Typ.Pt, "Free "+lv.Name)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
@@ -864,17 +875,17 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
-		emit(s, "push", "rax", "", "Save rax")
+		emit(s, "push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
 		for _, v := range VarDefs {
+			EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset())+" MustFree="+strconv.FormatBool(v.MustFree))
 			if v.Value.Typ.Pt.IsObject() && v.MustFree {
-				// EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset()))
 				err = EmitFreeLocalVariables(s, v.Offset(), v.Value.Typ.Pt, "Free "+v.Name)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		emit(s, "pop", "rax", "", "Restore rax")
+		emit(s, "pop", "rax", "", "Restore rax after freeing local variables")
 	}
 	// Set return values if more than one. If only one, it is already in rax
 	if s.LocalRetSize > 1 {
