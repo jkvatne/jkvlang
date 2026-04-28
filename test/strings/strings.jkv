@@ -1,4 +1,4 @@
-/*
+
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -12,7 +12,6 @@ func f2(s String) String {
 func f3(s String, t String) String {
   return s+t
 }
-*/
 
 func f0(s String) String {
     return "f0 "+s
@@ -30,34 +29,31 @@ func main() {
     assert(f0("xyz")=="f0 xyz")
 
     printf("3. Test concatenation of constant and variable\n")
-    s = "xyzzzzzzzzzzzzzzzzzzzzz"
+    s = "xyz"
     v = "pre-" + s
     assert(v=="pre-xyz")
 
-    printf("4. Test concatenation of variable and constant\n")
-    // This is current causing leaked memory because v has already a object
-    // And that is overwritten, but not freed. Assigning to an existing variable must free the old object if it is owned.
+    printf("4. Test concatenation of variable and constant overwriting old local var\n")
     v = s+"-post"
     assert(v=="xyz-post")
-
-/*
 
     printf("5. Test concatenation of constant and constant\n")
     w = "pre-"+"post"
     assert(w=="pre-post")
 
-
-    // Test calling functions with string parameters
+    printf("6. Test calling functions with string parameters\n")
     assert(f0("xyz")=="f0 xyz")
     assert(f1("xyz")=="f1 xyz")
     assert(f2("xyz")=="xyz f2")
 
-    // Test string compare
+    printf("7. Test string compare equal\n")
     a = "abc"
-    assert(a=="abc", "Failed a==abc")
     b = "abc"
+    assert(a=="abc", "Failed a==abc")
     assert(a==b, "a==b failed")
     assert(b==a, "b==a failed")
+
+    printf("8. Test string compare not equal\n")
     c = "abcs"
     assert(a!=c, "a!=c failed")
     assert(c!=a, "c!=a failed")
@@ -69,15 +65,11 @@ func main() {
         assert(false,"Failed compare strings")
     }
 
-    // Test concat
+    printf("9. Test concat three strings\n")
     s = "Hello "
     t = "World "
-    v = s + t
-    printf("v=%s\n", v)
     u = "and goodbye!"
     w = s + t + u
-    printf("w=%s\n", w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     printf("Ending string tests\n")
-    */
 }
