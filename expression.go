@@ -342,6 +342,7 @@ func ParseAssign(s *State, id string) error {
 			if oldHasValue && !value.HasValue {
 				lvalues[i].Value.HasValue = false
 			}
+			lvalues[i].Value.IsTempObj = false
 		}
 	} else {
 		return fmt.Errorf("unrecognized token \"%s\"", s.tokenString)
@@ -399,7 +400,8 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			}
 			v.Value.IsLocalVar = true
 		}
-		return &v.Value, nil
+		*value = v.Value
+		return value, nil
 	}
 }
 
@@ -511,7 +513,8 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 					emit(s, "push", "rax", "", "")
 				}
 				// Push constant string
-				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "")
+				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
+				value2.IsTempObj = false
 			}
 			if value2.Typ.Pt != TYP_STRING {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
