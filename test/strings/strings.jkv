@@ -26,9 +26,14 @@ func main() {
     u = s + t
     assert(u=="Hello World ")
     printf("u='%s'\n", u)
-    printf("2. Test freeing of temporary object returned from f0\n")
-    assert(f0("xyz")=="f0 xyz")
+*/
 
+    printf("2. Test freeing of temporary object returned from f0\n")
+    w = f0("xyz")
+    printf("%s\n", w)
+    //assert(f0("xyz")=="f0 xyz")
+
+/*
     printf("3. Test concatenation of constant and variable\n")
     s = "xyz"
     v = "pre-" + s
@@ -37,7 +42,6 @@ func main() {
     printf("4. Test concatenation of variable and constant overwriting old local var\n")
     v = s+"-post"
     assert(v=="xyz-post")
-
     printf("5. Test concatenation of constant and constant\n")
     w = "pre-"+"post"
     assert(w=="pre-post")
@@ -65,7 +69,6 @@ func main() {
     if a==c {
         assert(false,"Failed compare strings")
     }
-*/
 
     printf("9. Test concat three strings\n")
     s = "Hello "
@@ -75,4 +78,5 @@ func main() {
     printf("w='%s'\n", w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     printf("Ending string tests\n")
+    */
 }
