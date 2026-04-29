@@ -782,6 +782,24 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		}
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 		return nil
+	} else if op == TOK_NE {
+		lbl := NewLabel(s)
+		emit(s, "mov", "rbx", "1", "Initialize result to true")
+		emit(s, "mov", "rdi", "rax", "Save tos")
+		emit(s, "mov", "r14", "rax", "Save tos")
+		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "Pointer to literal string")
+		// First check lengths
+		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
+		emit(s, "mov", "ecx", "[rax]", "Get nos length")
+		emit(s, "add", "rsi", "8", "Start of string 1")
+		emit(s, "add", "rdi", "8", "Start of string 2")
+		emit(s, "repe", "cmpsb", "", "")
+		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
+		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
+		EmitLabel(s, lbl, "unequal")
+		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		return nil
 	} else {
 		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
 	}
