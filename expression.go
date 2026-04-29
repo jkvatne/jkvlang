@@ -517,6 +517,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s, value1.IsTempObj, value2.IsTempObj)
+			value1.IsTempObj = true
 		}
 		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
 	} else {

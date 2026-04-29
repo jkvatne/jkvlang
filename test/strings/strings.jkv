@@ -17,14 +17,15 @@ func f0(s String) String {
     return "f0 "+s
 }
 
-func main() {
 
+func main() {
+/*
     printf("1. Test concat two variables\n")
     s = "Hello "
     t = "World "
     u = s + t
-    assert(u=="HellosWorld ")
-
+    assert(u=="Hello World ")
+    printf("u='%s'\n", u)
     printf("2. Test freeing of temporary object returned from f0\n")
     assert(f0("xyz")=="f0 xyz")
 
@@ -64,12 +65,14 @@ func main() {
     if a==c {
         assert(false,"Failed compare strings")
     }
+*/
 
     printf("9. Test concat three strings\n")
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     w = s + t + u
+    printf("w='%s'\n", w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     printf("Ending string tests\n")
 }

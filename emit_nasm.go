@@ -602,24 +602,24 @@ func EmitSection(s *State, section string) {
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in [rax]
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
+// Calls _alloc to allocate a new string with size for both the input strings + 32 bytes extra.
 func EmitConcat(s *State, free1 bool, free2 bool) {
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
-	emit(s, "mov", "rdx", "[rsp]", "Get string 1 sizes/ptr into r14, rbx")
-	emit(s, "mov", "r14d", "dword [rdx]", "Get string 1 sizes/ptr into r14, rbx")
-	emit(s, "mov", "rbx", "rdx", "")
+	emit(s, "mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
+	emit(s, "mov", "rbx", "rdx", "Get string 1 ptr into rbx")
+	emit(s, "mov", "r14d", "dword [rdx]", "String 1 size into r14")
 	// Get string 2 sizes/ptr into r12, r13 from rax
-	emit(s, "mov", "r12d", "dword [rax]", "Get string 2 sizes/ptr into r12, r13")
-	emit(s, "mov", "r13", "rax", "")
-	emit(s, "add", "r13", "8", "")
+	emit(s, "mov", "r12d", "dword [rax]", "Get string 2 size into r12d from TOS (rax)")
+	emit(s, "mov", "r13", "rax", "Save string 2 ptr in r13")
 	// Calculate new size to allocate, including 32 extra bytes
 	emit(s, "mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
 	emit(s, "add", "rax", "r14", "")
 	emit(s, "add", "rax", "40", "Add 32+8 to include len/cap")
 	// Allocate string
 	emit(s, "call", "_alloc", "", "Allocate new string")
-	// Save pointer in rdx and rdi for later use
-	emit(s, "mov", "rdx", "rax", "Save pointer in rdx and rdi for later use")
-	emit(s, "mov", "rdi", "rax", "")
+	// Save pointer in r9 and rdi for later use
+	emit(s, "mov", "rdi", "rax", "Save pointer in rdi for later use")
+	emit(s, "push", "rax", "", "Save pointer on stack for later use")
 	// Save new capacity/length
 	emit(s, "mov", "rsi", "r12", "First string length")
 	emit(s, "add", "rsi", "r14", "Add second length")
@@ -640,9 +640,6 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 	emit(s, "add", "rsi", "8", "Skip len/cap")
 	emit(s, "mov", "rcx", "r12", "")
 	emit(s, "rep", "movsb", "", "")
-	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
-	s.localSp--
-	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	if free1 {
 		emit(s, "mov", "rax", "rbx", "Free first argument to Concatenate")
 		emit(s, "call", "_free_str", "", "")
@@ -651,8 +648,11 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 		emit(s, "mov", "rax", "r13", "Free second argument to Concatenate")
 		emit(s, "call", "_free_str", "", "")
 	}
-	// Copy the allocated buffer address from rdx to rax. Now rax points to the new string.
-	emit(s, "mov", "rax", "rdx", "Now AX should point to the string")
+	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
+	emit(s, "pop", "rax", "", "Now AX should point to the string")
+	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
+	s.localSp--
+	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 }
 
 func includeFile(s *State, txt string) error {
@@ -767,7 +767,10 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		lbl := NewLabel(s)
 		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "")
+		emit(s, "mov", "cx", "word [rax]", "")
+		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "Pointer to literal string")
+		emit(s, "add", "rsi", "8", "Skip size of literal string")
+		emit(s, "add", "rdi", "8", "Skip size of string object")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
@@ -833,7 +836,7 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
 }
 
-// EmitFreeLocalVariables will de-allocate an object in a local variable
+// EmitFreeLocalVariables will free an object in a local variable
 func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) error {
 	if pt == TYP_STRING {
 		// Decrement allocation count, first load size given in offset +4 (capacity)
