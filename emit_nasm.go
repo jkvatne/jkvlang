@@ -761,7 +761,8 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 // EmitCompareStrings : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
 	if op == TOK_EQ {
-		emit(s, "mov", "rdi", "rax", "")
+		emit(s, "mov", "r14", "rax", "CompareStrings. Save rax to r14")
+		emit(s, "mov", "rdi", "rax", "Save rax to rdi")
 		// First check lengths
 		emit(s, "cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
 		lbl := NewLabel(s)
@@ -776,7 +777,7 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 		EmitLabel(s, lbl, "")
 		if isTemp {
-			emit(s, "mov", "rax", "rdi", "")
+			emit(s, "mov", "rax", "r14", "")
 			emit(s, "call", "_free_str", "", "")
 		}
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")

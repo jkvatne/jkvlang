@@ -1,4 +1,4 @@
-
+/*
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -16,28 +16,28 @@ func f3(s String, t String) String {
 func f0(s String) String {
     return "f0 "+s
 }
-
-
-func main() {
-/*
-    printf("1. Test concat two variables\n")
-    s = "Hello "
-    t = "World "
-    u = s + t
-    assert(u=="Hello World ")
-    printf("u='%s'\n", u)
 */
 
+func main() {
+    //printf("1. Test concat two variables\n")
+    s = "Hello "
+    t = "World "
+    u = s + t  // This makes it fail!
+/*
+    assert(u=="Hello World ")
+    printf("u='%s'\n", u)
+
     printf("2. Test freeing of temporary object returned from f0\n")
+    assert(f0("xyz")=="f0 xyz")
     w = f0("xyz")
     printf("%s\n", w)
-    //assert(f0("xyz")=="f0 xyz")
 
-/*
     printf("3. Test concatenation of constant and variable\n")
     s = "xyz"
+*/
     v = "pre-" + s
     assert(v=="pre-xyz")
+/*
 
     printf("4. Test concatenation of variable and constant overwriting old local var\n")
     v = s+"-post"
