@@ -74,7 +74,7 @@ func main() {
     assert(w=="Hello World and goodbye!", "s+t+u failed")
     printf("Ending string tests\n")
 
-    printf("8. Test string compare with literal\n")
+    printf("10. Test string compare with literal\n")
     a = "abc"
     assert(a!="abb", "a!='abb' failed")
     assert("abca"!=a, "'cxba'!=a failed")
