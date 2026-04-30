@@ -108,10 +108,14 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	return lvalues, err
 }
 
-func OutputCleanupCode(s *State, startArgNo int) {
+func OutputCleanupCode(s *State, startArgNo, argCount int) {
 	txt := ""
 	for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
-		txt += s.CleanupCode[i]
+		if s.CleanupCode[i] == "" {
+			EmitSubStack(s, 1)
+		} else {
+			txt += s.CleanupCode[i]
+		}
 	}
 	s.CleanupCode[startArgNo] = txt
 	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
@@ -201,6 +205,11 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == TYP_STRING && parNo > 1 {
 					EmitSkipLenCap(s)
+					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
+					if !value.IsLocalVar {
+						// This cleanup is special for prinf. It uses C-strings so we must subtract 8 from pointer.
+						s.CleanupCode[len(s.CleanupCode)-1] = "   pop rax ; Call free\n   sub rax, 8\n   call _free_str\n"
+					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
 				} else {
@@ -267,14 +276,15 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
 
-	OutputCleanupCode(s, startArgNo)
-	EmitSubStack(s, len(values))
+	OutputCleanupCode(s, startArgNo, len(values))
 
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
 		_, _ = Write(s, s.ArgCode[0], true)
+		_, _ = Write(s, s.CleanupCode[0], true)
 		s.ArgCode[0] = ""
+		s.CleanupCode[0] = ""
 	}
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
@@ -566,8 +576,8 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		return &NoValue, err
 	}
 	// Free possible temporary objects in value1 or value2
-	FreeTemporaryObject(s, value1)
-	FreeTemporaryObject(s, value2)
+	// FreeTemporaryObject(s, value1)
+	// FreeTemporaryObject(s, value2)
 	return result, err
 }
 

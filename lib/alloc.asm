@@ -28,12 +28,13 @@ _alloc:
     mov r8, rdi
     call HeapAlloc
 
-    mov rcx, allocstr                ; First argument: format string
-    mov rdx, rdi                     ; Second argument: size
-    mov r8, rax                      ; Third argument: address
-    mov rdi, rax                     ; Save rax
-    call printf
-    mov rax, rdi                     ; Restore rax
+    ; Print debug message with allocation size
+    ; mov rcx, allocstr                ; First argument: format string
+    ; mov rdx, rdi                     ; Second argument: size
+    ; mov r8, rax                      ; Third argument: address
+    ; mov rdi, rax                     ; Save rax
+    ; call printf
+    ; mov rax, rdi                     ; Restore rax
 
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
@@ -53,11 +54,14 @@ _free_str:
     shr rax, 32                      ; Extract capacity in the high 32bits
 	sub [allocation_count], rax,     ; Decrement allocated count
 
-    mov rcx, freestr                 ; First argument: format string for the printed message
-    mov rdx, [rdi]                   ; Second argument: size
-    shr rdx, 32
-    mov r8, rdi                      ; Third argument: address
-    call printf                      ; Print the size of the freed object
+    mov qword [rdi],0                ; Clear old string
+
+    ; Print debug message with freed size
+    ; mov rcx, freestr                 ; First argument: format string for the printed message
+    ; mov rdx, [rdi]                   ; Second argument: size
+    ; shr rdx, 32
+    ; mov r8, rdi                      ; Third argument: address
+    ; call printf                      ; Print the size of the freed object
 
     mov rax, rdi
     call GetProcessHeap

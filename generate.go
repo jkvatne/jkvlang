@@ -81,7 +81,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 			s.XmmSp++
 			err = EmitCompareFloats(s, op)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-			err = EmitCompareStrings(s, op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
+			err = EmitCompareStrToLit(s, op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
 			err = fmt.Errorf("Unknown type combination for compare")
 		}

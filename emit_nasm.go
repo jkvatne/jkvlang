@@ -758,8 +758,8 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 	return &result, nil
 }
 
-// EmitCompareStrings : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
-func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
+// EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
+func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
 	if op == TOK_EQ {
 		emit(s, "mov", "r14", "rax", "CompareStrings. Save rax to r14")
 		emit(s, "mov", "rdi", "rax", "Save rax to rdi")
@@ -768,10 +768,11 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		lbl := NewLabel(s)
 		emit(s, "mov", "rbx", "0", "Initialize result to false")
 		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit(s, "mov", "cx", "word [rax]", "")
+		emit(s, "mov", "ecx", "[rax]", "")
 		emit(s, "mov", "rsi", "str"+strconv.Itoa(stringLitNo), "Pointer to literal string")
 		emit(s, "add", "rsi", "8", "Skip size of literal string")
 		emit(s, "add", "rdi", "8", "Skip size of string object")
+		emit(s, "cld", "", "", "")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
@@ -794,6 +795,7 @@ func EmitCompareStrings(s *State, op Token, stringValue string, stringLitNo int,
 		emit(s, "mov", "ecx", "[rax]", "Get nos length")
 		emit(s, "add", "rsi", "8", "Start of string 1")
 		emit(s, "add", "rdi", "8", "Start of string 2")
+		emit(s, "cld", "", "", "")
 		emit(s, "repe", "cmpsb", "", "")
 		emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
@@ -811,6 +813,7 @@ func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	emit(s, "mov", "rdi", "rax", "Save tos")
 	emit(s, "mov", "rsi", "[rsp]", "Get nos")
 	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+	emit(s, "cld", "", "", "")
 	emit(s, "repe", "cmpsb", "", "")
 	s.localSp--
 	emit(s, "pop", "rax", "", "Get nos ptr")
@@ -819,16 +822,17 @@ func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
 	emit(s, "add", "rsi", "4", "Start of string 1")
 	emit(s, "add", "rdi", "4", "Start of string 2")
+	emit(s, "cld", "", "", "")
 	emit(s, "repe", "cmpsb", "", "")
 	emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 	emit(s, "mov", "rbx", "1", "Strings was equal, set rax=true")
 	EmitLabel(s, lbl, "unequal")
 	if temp1 {
-		emit(s, "mov", "rax", "rsi", "")
+		emit(s, "mov", "rax", "rsi", "EmitCompareStringsEq 1")
 		emit(s, "call", "_free_str", "", "")
 	}
 	if temp2 {
-		emit(s, "mov", "rax", "rdi", "")
+		emit(s, "mov", "rax", "rdi", "EmitCompareStringsEq 2")
 		emit(s, "call", "_free_str", "", "")
 	}
 	emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
@@ -841,6 +845,7 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "rdi", "rax", "Save tos")
 	emit(s, "mov", "rsi", "[rsp]", "Get nos")
 	emit(s, "mov", "rcx", "4", "Compare first 4 bytes")
+	emit(s, "cld", "", "", "")
 	emit(s, "repe", "cmpsb", "", "")
 	s.localSp--
 	emit(s, "pop", "rax", "", "Get nos ptr")
@@ -848,6 +853,7 @@ func EmitCompareStringsNe(s *State) {
 	emit(s, "mov", "ecx", "[rax]", "Get nos length")
 	emit(s, "add", "rsi", "4", "Start of string 1")
 	emit(s, "add", "rdi", "4", "Start of string 2")
+	emit(s, "cld", "", "", "")
 	emit(s, "repe", "cmpsb", "", "")
 	emit(s, "jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 	emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
