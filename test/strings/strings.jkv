@@ -1,4 +1,4 @@
-/*
+
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -16,9 +16,8 @@ func f3(s String, t String) String {
 func f0(s String) String {
     return "f0 "+s
 }
-*/
+
 func main() {
-/*
     printf("1. Test concat two variables\n")
     s = "Hello "
     t = "World "
@@ -68,12 +67,11 @@ func main() {
     }
 
     printf("9. Test concat three strings\n")
-*/
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     w = s + t + u
-/*
+
     printf("w='%s'\n", w)
     assert(w=="Hello World and goodbye!", "s+t+u failed")
 
@@ -83,5 +81,4 @@ func main() {
     assert("abca"!=a, "'cxba'!=a failed")
 
     printf("11. Ending string tests\n")
-*/
 }

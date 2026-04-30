@@ -400,7 +400,8 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			}
 			v.Value.IsLocalVar = true
 		}
-		*value = v.Value
+		value = &ValueDef{}
+		value.Typ = v.Value.Typ
 		return value, nil
 	}
 }
