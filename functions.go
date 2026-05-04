@@ -3,13 +3,12 @@ package main
 import "fmt"
 
 type FuncDef struct {
-	name           string
-	returnTypes    []*TypeDef
-	parameters     []*VarDef
-	localVariables []*VarDef
-	floatParCount  int
-	stackSize      int
-	builtin        bool
+	name          string
+	returnTypes   []*TypeDef
+	parameters    []*VarDef
+	floatParCount int
+	stackSize     int
+	builtin       bool
 }
 
 var FuncDefs map[string]*FuncDef

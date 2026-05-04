@@ -86,6 +86,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 	} else {
 		return false, fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
+	// CheckLocalSp(s, "Line "+strconv.Itoa(s.lineNum))
 	return returned, err
 }
 

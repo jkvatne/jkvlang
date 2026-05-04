@@ -18,9 +18,10 @@ global _printsp
 _printsp:
     push rsp                    ; Value to be printed
     mov rax, sp_mess            ; Message at top of stack
-    mov rbx, 8                  ; Stack size is 8 bytes
+    push rax
+    mov rbx, 16                  ; Stack size is 8 bytes
     call _printf                ; system function to call
-    add sp, 8
+    add sp, 16
     ret
 
 

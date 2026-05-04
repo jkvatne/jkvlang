@@ -55,12 +55,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, Kind: ParVar}
 	s.ParCount++
-	if s.ParCount == 1 {
-		// The first parameter is actualy in rax. It can be stored in BP-8 if needed
-		v.Value.Offset = -8
-	} else {
-		v.Value.Offset = s.ParCount * 8
-	}
+	v.Value.Offset = 8 + s.ParCount*8
 	v.Value.Typ = typ
 	VarDefs[name] = v
 	return v
@@ -73,7 +68,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, HasValue: isConst}, Kind: LocalVar}
 		VarDefs[id] = v
 		s.VarCount++
-		v.Value.Offset = -8 - s.VarCount*8 // First local variable is at rbp-16, the next at rpb-24
+		v.Value.Offset = -s.VarCount * 8 // First local variable is at rbp-16, the next at rpb-24
 		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 	}
 	return v

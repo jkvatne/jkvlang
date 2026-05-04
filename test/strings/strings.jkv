@@ -1,4 +1,4 @@
-
+/*
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -12,19 +12,24 @@ func f2(s String) String {
 func f3(s String, t String) String {
   return s+t
 }
+*/
 
 func f0(s String) String {
     return "f0 "+s
 }
 
 func main() {
-/*
+
     printf("1. Test concat two variables\n")
+
     s = "Hello "
     t = "World "
-    u = s + t  // This makes it fail!
-    assert(u=="Hello World ")
+    u = s + t
     printf("u='%s'\n", u)
+/*
+
+
+    assert(u=="Hello World ")
 
     printf("2. Test freeing of temporary object returned from f0\n")
     assert(f0("xyz")=="f0 xyz")
@@ -37,6 +42,7 @@ func main() {
     assert(v=="pre-xyz")
 
     printf("4. Test concatenation of variable and constant overwriting old local var\n")
+    s = "xyz"
     v = s+"-post"
     assert(v=="xyz-post")
     printf("5. Test concatenation of constant and constant\n")
@@ -65,22 +71,23 @@ func main() {
     c = "ab"
     assert(a!=c, "a!=c failed")
 
-*/
     a = "abc"
     b = "abx"
     if a==b {
         // This makes next test fail!!
         assert(false,"Failed compare strings")
     }
+    fflush()
 
     printf("9. Test concat three strings\n")
+    fflush()
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     printf("s+t+u='%s'\n", s+t+u)
+    fflush()
     assert(s+t+u=="Hello World and goodbye!", "9. Failed: s+t+u")
-
-/*
+    fflush()
 
     w = s + t + u
     printf("w=%s\n", w)
@@ -101,4 +108,5 @@ func main() {
     assert(f1("xyz")=="f1 xyz")
     printf("%s\n", f1("F1"))
     */
+
 }

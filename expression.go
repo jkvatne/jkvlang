@@ -111,12 +111,12 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 func OutputCleanupCode(s *State, startArgNo, argCount int) {
 	txt := ""
 	for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
-		if s.CleanupCode[i] == "" {
-			EmitSubStack(s, 1)
-		} else {
+		if s.CleanupCode[i] != "" {
 			txt += s.CleanupCode[i]
 		}
 	}
+	txt += "   add rsp," + strconv.Itoa(argCount*8) + "\n"
+	s.localSp -= argCount
 	s.CleanupCode[startArgNo] = txt
 	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
 }
@@ -131,8 +131,8 @@ func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
 				txt += "   movq rax, xmm0\n"
 			}
 			if i > startArgNo {
-				txt += "   push rax\n"
-				s.localSp++
+				// txt += "   push rax ; OutArgCode\n"
+				// s.localSp++
 			}
 		}
 	}
@@ -165,7 +165,6 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 	parNo := 0
 	for { // each agrument in the actual argument list
 		parNo++
-		s.RaxIsTOS = false
 		// A new argument. Append "" to the ArgCode slice
 		s.ArgCode = append(s.ArgCode, "")
 		s.CleanupCode = append(s.CleanupCode, "")
@@ -176,6 +175,7 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		value, err = ParseExpression(s)
+
 		if err != nil {
 			return 0, nil, 0, err
 		}
@@ -185,6 +185,10 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(s, value.StringLitNo, "Actual argument is string literal")
+				EmitPushTos(s, parNo, f.name, false)
+				if f.name == "printf" {
+					EmitSkipLenCap(s)
+				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(s, value.IntValue, "")
 			} else if value.Typ.Pt == TYP_BOOL {
@@ -200,15 +204,17 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 				// TODO: Handle F32 etc.
 				return 0, nil, 0, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
 			}
+			EmitPushTos(s, parNo, f.name, false)
 		} else {
+			EmitPushTos(s, parNo, f.name, false)
 			if f.name == "printf" {
 				// We have a value on the stack (TOS). printf needs special handling.
-				if value.Typ.Pt == TYP_STRING && parNo > 1 {
+				if value.Typ.Pt == TYP_STRING {
 					EmitSkipLenCap(s)
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						// This cleanup is special for prinf. It uses C-strings so we must subtract 8 from pointer.
-						s.CleanupCode[len(s.CleanupCode)-1] = "   pop rax ; Call free\n   sub rax, 8\n   call _free_str\n"
+						s.CleanupCode[len(s.CleanupCode)-1] = "   mov rax, [rsp+" + strconv.Itoa(parNo*8) + "] ; Free C-string\n   sub rax, 8\n   call _free_str\n"
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
@@ -249,7 +255,9 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "")
+		emit(s, "push", "rax", "", "Push TOS before call")
+		s.localSp++
+		s.RaxIsTOS = false
 	}
 
 	f := FuncDefs[id]
@@ -290,11 +298,12 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		// The function call should be alone, so just continue
 		return nil, nil
 	}
-	s.RaxIsTOS = true
 	var v []*ValueDef
 	for _, t := range f.returnTypes {
 		v = append(v, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
 	}
+	// Function results are on stack and not in RAX.
+	s.RaxIsTOS = false
 	return v, nil
 }
 
@@ -344,7 +353,7 @@ func ParseAssign(s *State, id string) error {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
 			oldHasValue := lvalues[i].Value.HasValue
-			err = GenertateAssignment(s, op, lvalues[i], value)
+			err = GenerateAssignment(s, op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
@@ -363,7 +372,7 @@ func ParseAssign(s *State, id string) error {
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when en ID is encountered in an expression
 func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
-	value = &NoValue
+	value = &ValueDef{}
 	err = fmt.Errorf("unrecognized variable or function call")
 	// We now have s.token == TOK_ID
 	id := s.tokenString
@@ -408,9 +417,8 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			} else {
 				EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 			}
-			v.Value.IsLocalVar = true
+			value.IsLocalVar = true
 		}
-		value = &ValueDef{}
 		value.Typ = v.Value.Typ
 		return value, nil
 	}
@@ -521,7 +529,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			if value2.HasValue {
 				if s.RaxIsTOS {
 					s.localSp++
-					emit(s, "push", "rax", "", "")
+					emit(s, "push", "rax", "", "Push value2")
 				}
 				// Push constant string
 				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
@@ -879,6 +887,8 @@ func ParseFuncDef(s *State) error {
 	if err != nil {
 		return err
 	}
+	// CheckLocalSp(s, fun)
+
 	// After all the statements in the function, we must have a right-brace "}".
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
@@ -902,29 +912,26 @@ func ParseFuncDef(s *State) error {
 		}
 		emit(s, "pop", "rax", "", "Restore rax after freeing local variables")
 	}
-	// Set return values if more than one. If only one, it is already in rax
-	if s.LocalRetSize > 1 {
-		for range len(s.currentFunc.returnTypes) - 1 {
-			// TODO emit(s, "pop", "rax", "", "Return value no "+strconv.Itoa(i))
-			s.localSp--
-		}
-	}
-	// Remove local variables from stack
-	if s.localSp > 0 {
-		emit(s, "add", "rsp", strconv.Itoa(s.localSp*8), "")
-		s.localSp = 0
-	}
+	// Free local variables on the stack
+	EmitComment(s, "End of function. Drop local varibales for "+f.name)
+	EmitSubStack(s, s.localSp)
+
+	// CheckLocalSp(s, f.name)
 
 	// Return exit code from main
 	if s.currentFunc.name == "main" {
 		EmitPrintSp(s)
 		// Print remaining allocation
-		emit(s, "mov", "rax", "[allocation_count]", "")
+		EmitComment(s, "main() returning. Printing allocation count.")
+		emit(s, "mov", "rax", "[allocation_count]", "Printing allocation count")
 		emit(s, "push", "rax", "", "")
-		emit(s, "mov", "rax", "alloc_size_str", "")
-		emit(s, "mov", "rbx", "8", "")
+		emit(s, "mov", "rax", "alloc_size_str+8", "")
+		emit(s, "push", "rax", "", "")
+		emit(s, "mov", "rbx", "16", "")
 		emit(s, "call", "_printf", "", "")
 		emit(s, "call", "_fflush", "", "")
+		emit(s, "add", "rsp", "16", "")
+		EmitComment(s, "Returning error code via _exit()")
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")
 	} else {

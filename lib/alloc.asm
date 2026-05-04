@@ -3,7 +3,9 @@ extern HeapAlloc
 extern HeapFree
 
 section .data
+dummy1 dq 0
 allocation_count   dq 0
+dummy2 dq 0
 
 section .rodata
 allocstr db `Allocated %d bytes at 0x%X\n`, 00h
@@ -54,7 +56,6 @@ _free_str:
     shr rax, 32                      ; Extract capacity in the high 32bits
 	sub [allocation_count], rax,     ; Decrement allocated count
 
-    mov qword [rdi],0                ; Clear old string
 
     ; Print debug message with freed size
     ; mov rcx, freestr                 ; First argument: format string for the printed message

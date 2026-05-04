@@ -135,15 +135,22 @@ func EmitCode(s *State, code string) {
 }
 
 func EmitPushTos(s *State, argNo int, funcName string, force bool) {
-	_, _ = Write(s, "   push rax                             ; Push TOS "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
+	if s.RaxIsTOS {
+		_, _ = Write(s, "   push rax                             ; Push arg "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
+		s.localSp++
+		s.RaxIsTOS = false
+	}
 }
 
 func EmitCall(s *State, id string, nPar int, builtin bool) {
 	if builtin {
 		id = "_" + id
 	}
-	if nPar > 1 {
-		emit(s, "mov", "rbx", strconv.Itoa((nPar-1)*8), "")
+	if nPar > 0 && s.RaxIsTOS {
+		emit(s, "push", "rax", "", "Push TOS from rax to stack")
+	}
+	if nPar > 0 {
+		emit(s, "mov", "rbx", strconv.Itoa(nPar*8), "")
 	} else {
 		emit(s, "xor", "rbx", "rbx", "")
 	}
@@ -158,12 +165,11 @@ func EmitFunction(s *State, id string) {
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
-	emit(s, "push", "rax", "", "Save first argument in rax")
+	// emit(s, "push", "rax", "", "Save first argument in rax")
 	s.localSp = 0
 	if id == "main" {
 		EmitPrintSp(s)
 		emit(s, "call", "_sysinit", "", "")
-		EmitPrintSp(s)
 	}
 	s.RaxIsTOS = false
 }
@@ -414,7 +420,7 @@ func BpRel(offset int) string {
 	ofs := strconv.Itoa(Abs(offset))
 	if offset < 0 {
 		return "[rbp-" + ofs + "]"
-	} else if offset > 0 {
+	} else if offset > 15 {
 		return "[rbp+" + ofs + "]"
 	} else {
 		panic("Bp relative addressing with zero offset")
@@ -534,7 +540,7 @@ func EmitJumpTrue(s *State, n int, comment string) {
 func EmitAllocLocalVar(s *State, comment string) int {
 	s.localSp++
 	emit(s, "sub", "rsp", "8", comment)
-	return -8 - 8*s.localSp
+	return -8 * s.localSp
 }
 
 func EmitPushStringLit(s *State, lit int, comment string) {
@@ -542,11 +548,12 @@ func EmitPushStringLit(s *State, lit int, comment string) {
 		s.localSp++
 		emit(s, "push", "rax", "", "2 Push TOS")
 	}
+	s.RaxIsTOS = true
 	emit(s, "mov", "rax", "str"+strconv.Itoa(lit), comment)
 }
 
 func EmitSkipLenCap(s *State) {
-	emit(s, "add", "rax", "8", "Load string value frm string variable")
+	emit(s, "add", "dword [rsp]", "8", "Skip len/cap")
 }
 
 func EmitPushConst(s *State, value int64, comment string) {
@@ -604,6 +611,8 @@ func EmitSection(s *State, section string) {
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
 // Calls _alloc to allocate a new string with size for both the input strings + 32 bytes extra.
 func EmitConcat(s *State, free1 bool, free2 bool) {
+	EmitComment(s, "")
+	EmitComment(s, "Start of EmitConcat")
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
 	emit(s, "mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
 	emit(s, "mov", "rbx", "rdx", "Get string 1 ptr into rbx")
@@ -619,6 +628,7 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 	emit(s, "call", "_alloc", "", "Allocate new string")
 	// Save pointer in r9 and rdi for later use
 	emit(s, "mov", "rdi", "rax", "Save pointer in rdi for later use")
+	s.localSp++
 	emit(s, "push", "rax", "", "Save pointer on stack for later use")
 	// Save new capacity/length
 	emit(s, "mov", "rsi", "r12", "First string length")
@@ -649,10 +659,13 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 		emit(s, "call", "_free_str", "", "")
 	}
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
+	s.localSp--
 	emit(s, "pop", "rax", "", "Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
 	s.localSp--
 	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
+	EmitComment(s, "End of EmitConcat")
+	EmitComment(s, "")
 }
 
 func includeFile(s *State, txt string) error {
@@ -682,6 +695,7 @@ func EmitPrologue(s *State) {
 func EmitPrintSp(s *State) {
 	if *PrintSp {
 		emit(s, "call", "_printsp", "", "")
+		emit(s, "call", "_fflush", "", "")
 	}
 }
 
@@ -882,27 +896,27 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 	}
 }
 
+func EmitPop(s *State) {
+	s.localSp--
+	emit(s, "add", "rsp", "8", "Remove one argument")
+}
+
 func EmitSubStack(s *State, count int) {
 	if count > 0 {
-		s.localSp -= count - 1
+		s.localSp -= count
 		if count > 1 {
-			emit(s, "add", "rsp", strconv.Itoa((count-1)*8), "Remove arguments")
+			emit(s, "add", "rsp", strconv.Itoa(count*8), "Remove arguments")
 		}
 	}
 }
 
-func EmitPushIfNeeded(s *State) {
-	if s.RaxIsTOS {
-		s.localSp++
-		emit(s, "push", "rax", "", "")
-	}
-}
-
 func EmitPushConstString(s *State, litNo int) {
-	if s.RaxIsTOS {
-		s.localSp++
-		emit(s, "push", "rax", "", "")
-	}
 	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "")
 	s.RaxIsTOS = true
+}
+
+func CheckLocalSp(s *State, text string) {
+	if s.localSp != 0 {
+		panic("Function stack is " + strconv.Itoa(s.localSp) + " at end of " + text)
+	}
 }
