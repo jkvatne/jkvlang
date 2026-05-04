@@ -26,11 +26,9 @@ func main() {
     t = "World "
     u = s + t
     printf("u='%s'\n", u)
-/*
-
-
     assert(u=="Hello World ")
 
+/*
     printf("2. Test freeing of temporary object returned from f0\n")
     assert(f0("xyz")=="f0 xyz")
     w = f0("xyz")

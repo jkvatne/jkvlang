@@ -25,14 +25,14 @@ _printsp:
     ret
 
 
-; assert will verify that the first arbument (rax) is true (not 0)
-; with optional additional parameters.
-; The stack will contain <messageptr><arg1><arg2>..
+; assert will verify that the first arbument [rsp] is true (not 0)
+; with optional additional parameters in [rsp+8], [rsp+16]...
+; Stack; <bool><messageptr><arg1><arg2>..
 ; rbx should contain the size of the stack. (number of arguments-1) * 8.
-; rax is already the value to be tested
 ; NB: Assert will append LF after the message.
 global _assert
 _assert:
+    mov rax, [rsp+8]
     or rax, rax           ; Set z-flag if rax is zero
     jz .L1                ; Jump if the bool argument was false
     ret                   ; Returns if assert(true)
@@ -44,6 +44,7 @@ _assert:
     sub rsp, 96           ; Reserve space for arguments to the called function
 
     mov r15, 99           ; Set error code - assert failed
+    sub rbx, 8
     or bx, bx             ; Check if bx=0 (no string given)
     jnz .L5 
     mov bx, 8
@@ -51,52 +52,48 @@ _assert:
     jmp .L4
 .L5:    
 
-    mov rcx, [rbp+16]    ; rcx = First argument: format string
+    mov rcx, [rbp+24]    ; rcx = First argument: format string
     add rcx, 8           ; Skip length/capacity of string
     sub rbx, 8
     or rbx, rbx
     jz .L2
 .L4:
-    mov rdx, [rbp+24]    ; dx = Second argument
+    mov rdx, [rbp+32]    ; dx = Second argument
     sub rbx, 8
     jc .L2
 
-    mov r8,  [rbp+32]    ; r8 = Third argument
+    mov r8,  [rbp+40]    ; r8 = Third argument
     sub rbx, 8
     jc .L2
 
-    mov r9,  [rbp+40]    ; r9 = Forth argument
+    mov r9,  [rbp+48]    ; r9 = Forth argument
     sub rbx, 8
     jc .L2
 
-    mov rsi, [rbp+48]    ; Fifth argument onto stack
+    mov rsi, [rbp+56]    ; Fifth argument onto stack
     mov [rsp+32], rsi
     sub rbx, 8
     jc .L2
 
-    mov rsi, [rbp+56]
+    mov rsi, [rbp+64]
     mov [rsp+40], rsi     ; Sixth argument onto stack
     sub rbx, 8
     jc .L2
 
-    mov rsi, [rbp+64]
+    mov rsi, [rbp+72]
     mov [rsp+48], rsi     ; Seventh argument onto stack
     sub rbx, 8
     jc .L2
 
-    mov rsi, [rbp+72]
+    mov rsi, [rbp+80]
     mov [rsp+56], rsi     ; Eight argument onto stack
     sub rbx, 8
     jc .L2
 
-    mov rsi, [rbp+80]
+    mov rsi, [rbp+88]
     mov [rsp+64], rsi     ; Ninth argument onto stack
     sub rbx, 8
     jc .L2
-
-    mov rsi, [rbp+88]
-    mov [rsp+72], rsi     ; Tenth argument onto stack
-    jmp .L2
 
 .L2:
     call printf
