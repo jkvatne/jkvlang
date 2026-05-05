@@ -3,6 +3,7 @@
 section .rodata
 ;-------------
 crlf               db 0Dh,0Ah,00h
+sp_mess            db "...rsp=0x%X", 0Ah, 00h
 
 ;-------------
 section .text
@@ -21,6 +22,7 @@ _printf:
     mov rdi, printf
     jmp _syscall
 
+global _fflush
 _fflush:
     push rbp              ; Save old frame pointer
     mov rbp, rsp          ; Setup new frame pointer
@@ -28,4 +30,14 @@ _fflush:
     sub rsp, 96           ; Reserve space for arguments to the called function
     call fflush
     leave
+    ret
+
+global _printsp
+_printsp:
+    push rsp                    ; Value to be printed
+    mov rax, sp_mess            ; Message at top of stack
+    push rax
+    mov rbx, 16                  ; Stack size is 8 bytes
+    call _printf                ; system function to call
+    add sp, 16
     ret

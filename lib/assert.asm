@@ -7,23 +7,9 @@ section .rodata
 ;-------------
 crlf_str               db 0Ah, 00h
 default_assert_mess    db "Assert failed", 00h
-sp_mess                dq 11
-                       db "...rsp=0x%X", 0Ah, 00h
-
 ;-------------
 section .text
 ;-------------
-
-global _printsp
-_printsp:
-    push rsp                    ; Value to be printed
-    mov rax, sp_mess            ; Message at top of stack
-    push rax
-    mov rbx, 16                  ; Stack size is 8 bytes
-    call _printf                ; system function to call
-    add sp, 16
-    ret
-
 
 ; assert will verify that the first arbument [rsp] is true (not 0)
 ; with optional additional parameters in [rsp+8], [rsp+16]...

@@ -265,16 +265,12 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
-	s.nesting++
-
 	// Make space for return values
-	n := len(f.returnTypes)
-	if n > 1 {
-		EmitAddSp(s, n-1, "Make space for "+strconv.Itoa(n-1)+" extra return values in addition to AX")
-	}
+	EmitAddSp(s, len(f.returnTypes), "Make space for return values")
 
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
+	s.nesting++
 	startArgNo, values, floatParCount, err := ParseActualArgList(s, f)
 	if err != nil {
 		return nil, err
@@ -314,6 +310,12 @@ func ParseAssign(s *State, id string) error {
 	if err != nil {
 		return err
 	}
+	for _, v := range lvalues {
+		if v.Typ == nil {
+			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar(s, "Allocate local variable "+v.Name)
+		}
+	}
+
 	op := s.token
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
 		if op == TOK_ASSIGN {

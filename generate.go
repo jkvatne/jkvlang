@@ -107,9 +107,7 @@ func GenerateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (er
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
-		// old := VarDefs[lvalue.Name].Offset
-		// fmt.Printf("Assign value sp=%d; offset=%d; old offset=%d\n", s.localSp, lvalue.Offset, old)
-		VarDefs[lvalue.Name].Value.Offset = EmitAllocLocalVar(s, "Allocate local variable "+lvalue.Name)
+		// VarDefs[lvalue.Name].Value.Offset = EmitAllocLocalVar(s, "Allocate local variable "+lvalue.Name)
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -151,6 +149,9 @@ func GenerateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (er
 		EmitStoreF64(s, lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRING {
 		instr := TokenOp[op]
+		if !s.RaxIsTOS {
+			EmitPopAx(s)
+		}
 		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
 		lvalue.MustFree = true
 	} else {

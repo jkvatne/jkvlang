@@ -42,7 +42,7 @@ var CommentIndent = 40
 var spaces = "                                                                                    "
 
 func Write(s *State, txt string, force bool) (int, error) {
-	if s.nesting == 0 {
+	if s.nesting == 0 || force {
 		// Write directly to file
 		return s.outputFile.WriteString(txt)
 	}
@@ -896,6 +896,11 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 	} else {
 		return fmt.Errorf("Can not free %s", TokenNames[pt])
 	}
+}
+
+func EmitPopAx(s *State) {
+	s.localSp--
+	emit(s, "pop", "rax", "", "")
 }
 
 func EmitPop(s *State) {

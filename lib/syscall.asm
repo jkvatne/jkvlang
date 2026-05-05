@@ -12,6 +12,7 @@ _syscall:
     sub rsp, 96           ; Reserve space for arguments to the called function
 
     mov rcx, [rbp+16]     ; rcx = First argument: format string
+    sub rbx, 8
     or rbx, rbx
     jz .L3
 

@@ -28,10 +28,11 @@ func main() {
     printf("u='%s'\n", u)
     assert(u=="Hello World ")
 
-/*
     printf("2. Test freeing of temporary object returned from f0\n")
-    assert(f0("xyz")=="f0 xyz")
     w = f0("xyz")
+    printf("-- done --\n")
+/*
+    assert(f0("xyz")=="f0 xyz")
     printf("%s\n", w)
 
     printf("3. Test concatenation of constant and variable\n")
