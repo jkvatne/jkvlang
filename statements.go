@@ -28,6 +28,12 @@ func ParseReturn(s *State) error {
 				} else {
 					panic("Not implemented")
 				}
+			} else {
+				// Copy return values to stack are where the caller expects them
+				if !s.RaxIsTOS {
+					emit(s, "pop", "rax", "", "")
+				}
+				emit(s, "mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
 			}
 			if !s.found(TOK_COMMA) {
 				break

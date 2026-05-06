@@ -31,6 +31,7 @@ func main() {
     printf("2. Test freeing of temporary object returned from f0\n")
     w = f0("xyz")
     printf("-- done --\n")
+    fflush()
 /*
     assert(f0("xyz")=="f0 xyz")
     printf("%s\n", w)

@@ -115,8 +115,10 @@ func OutputCleanupCode(s *State, startArgNo, argCount int) {
 			txt += s.CleanupCode[i]
 		}
 	}
-	txt += "   add rsp," + strconv.Itoa(argCount*8) + "\n"
-	s.localSp -= argCount
+	if argCount > 0 {
+		txt += "   add rsp," + strconv.Itoa(argCount*8) + "\n"
+		s.localSp -= argCount
+	}
 	s.CleanupCode[startArgNo] = txt
 	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
 }
