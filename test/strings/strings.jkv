@@ -27,12 +27,17 @@ func g2(s String, t String) String {
 }
 
 func main() {
-    printf("Hello\n")
-    w = g2("abc","def")
+    printf("Start tests\n")
+
+    w = g1("abc", "def", "ghi")
     printf("w='%s'\n", w)
-    // w = g1("abc", g2("def", "ghi"),"jkl")
 
 /*
+    w = g1("abc", g2("def", "ghi"),"jkl")
+    printf("w='%s'\n", w)
+
+    w = g2("abc","def")
+    printf("w='%s'\n", w)
 
     assert(f0("xyz")=="f0 xyzx")
     printf("1. Test concat two variables\n")

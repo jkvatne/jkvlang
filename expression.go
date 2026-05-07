@@ -228,7 +228,7 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						// value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
-						s.CleanupCode[len(s.CleanupCode)-1] = "; Call free"
+						s.CleanupCode[len(s.CleanupCode)-1] = "; Call free \n"
 					}
 				}
 
