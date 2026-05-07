@@ -25,7 +25,9 @@ func g2(s String, t String) String {
 }
 
 func main() {
-    assert(f0("xyz")=="f0 xyzx")
+    assert(f0("xyz")=="f0 xyz", "Should not fail")
+    assert(f0("axyz")=="f0 xyz", "Should fail")
+    assert(f0("ayz")=="f0 xyz", "Should fail")
 
 /*
     printf("Start tests\n")

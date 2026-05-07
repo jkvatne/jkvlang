@@ -777,7 +777,6 @@ func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int
 		emit(s, "mov", "r14", "rax", "CompareStrings, save rax to r14")
 		emit(s, "mov", "rdi", "rax", "Save rax to rdi")
 		// First check lengths
-		emit(s, "mov", "rax", "[rsp]", "")
 		emit(s, "mov", "eax", "[rax]", "")
 		emit(s, "cmp", "eax", strconv.Itoa(len(stringValue)), "Compare string lengths")
 		lbl := NewLabel(s)
