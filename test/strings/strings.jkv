@@ -29,7 +29,7 @@ func main() {
     assert(f0("axyz")=="f0 xyz", "Should fail")
     assert(f0("ayz")=="f0 xyz", "Should fail")
 
-/*
+
     printf("Start tests\n")
 
     w = g1("abc", g2("def", "ghi"),"jkl")
@@ -37,8 +37,6 @@ func main() {
 
     w = g2("abc","def")
     printf("w='%s'\n", w)
-
-    assert(f0("xyz")=="f0 xyzx")
 
     printf("1. Test concat two variables\n")
 
@@ -53,10 +51,6 @@ func main() {
 
     printf("2. Test calling function in actual parameter\n")
     assert(f0("xyz")=="f0 xyzx")
-
-    printf("-- done --\n")
-    fflush()
-
 
     printf("3. Test concatenation of constant and variable\n")
     s = "xyz"
@@ -100,7 +94,7 @@ func main() {
         assert(false,"Failed compare strings")
     }
     fflush()
-
+/*
     printf("9. Test concat three strings\n")
     fflush()
     s = "Hello "
@@ -110,7 +104,6 @@ func main() {
     fflush()
     assert(s+t+u=="Hello World and goodbye!", "9. Failed: s+t+u")
     fflush()
-
     w = s + t + u
     printf("w=%s\n", w)
 
@@ -129,6 +122,5 @@ func main() {
     // Failing compile:  printf("%s\n", f1("F1")+f2("F2"))
     assert(f1("xyz")=="f1 xyz")
     printf("%s\n", f1("F1"))
-*/
-
+    */
 }
