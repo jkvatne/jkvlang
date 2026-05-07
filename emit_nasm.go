@@ -150,12 +150,15 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 		s.localSp++
 		emit(s, "push", "rax", "", "Push TOS from rax to stack")
 	}
+	// The following is needed only for variadic functions.
 	if nPar > 0 {
 		emit(s, "mov", "rbx", strconv.Itoa(nPar*8), "")
 	} else {
 		emit(s, "xor", "rbx", "rbx", "")
 	}
+
 	emit(s, "call", id, "", "")
+	EmitAddToSp(s, -nPar, "Drop "+strconv.Itoa(nPar)+" arguments")
 }
 
 func EmitFunction(s *State, id string) {

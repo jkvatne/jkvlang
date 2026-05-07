@@ -110,18 +110,13 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 
 func OutputCleanupCode(s *State, startArgNo, argCount int) {
 	txt := ""
-	for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
-		if s.CleanupCode[i] != "" {
+	if argCount > 0 {
+		for i := len(s.CleanupCode) - 1; i >= startArgNo; i-- {
 			txt += s.CleanupCode[i]
 		}
+		s.CleanupCode[startArgNo] = txt
+		s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
 	}
-	if argCount > 0 {
-		s.localSp -= argCount
-		txt += "   add rsp," + strconv.Itoa(argCount*8) +
-			"                            ; Cleanup " + strconv.Itoa(argCount) + " args (" + strconv.Itoa(s.localSp) + ")\n"
-	}
-	s.CleanupCode[startArgNo] = txt
-	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
 }
 
 func OutputArgCode(s *State, startArgNo int, values []*ValueDef, retCnt int) {
