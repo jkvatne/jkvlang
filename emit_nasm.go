@@ -147,6 +147,7 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 		id = "_" + id
 	}
 	if nPar > 0 && s.RaxIsTOS {
+		s.localSp++
 		emit(s, "push", "rax", "", "Push TOS from rax to stack")
 	}
 	if nPar > 0 {
@@ -165,7 +166,6 @@ func EmitFunction(s *State, id string) {
 	// Function prologue. Set up new frame pointer.
 	emit(s, "push", "rbp", "", "")
 	emit(s, "mov", "rbp", "rsp", "")
-	// emit(s, "push", "rax", "", "Save first argument in rax")
 	s.localSp = 0
 	if id == "main" {
 		EmitPrintSp(s)
@@ -774,8 +774,11 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
+	if !s.RaxIsTOS {
+		emit(s, "pop", "rax", "", "Compare strings, first argument into rax")
+	}
 	if op == TOK_EQ {
-		emit(s, "mov", "r14", "rax", "CompareStrings. Save rax to r14")
+		emit(s, "mov", "r14", "rax", "CompareStrings, save rax to r14")
 		emit(s, "mov", "rdi", "rax", "Save rax to rdi")
 		// First check lengths
 		emit(s, "mov", "rax", "[rsp]", "")
@@ -908,12 +911,16 @@ func EmitPop(s *State) {
 	emit(s, "add", "rsp", "8", "Remove one argument")
 }
 
-func EmitSubStack(s *State, count int) {
+// EmitAddToSp adjusts stack pointer. Count is in qwords.
+// Positive count to reserve space (push)
+// Negative count to remove entries (pop)
+func EmitAddToSp(s *State, count int, comment string) {
+	s.localSp += count
 	if count > 0 {
-		s.localSp -= count
-		if count > 1 {
-			emit(s, "add", "rsp", strconv.Itoa(count*8), "Remove arguments")
-		}
+		// Stack grows downward
+		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
+	} else if count < 0 {
+		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
 	}
 }
 

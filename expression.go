@@ -116,26 +116,23 @@ func OutputCleanupCode(s *State, startArgNo, argCount int) {
 		}
 	}
 	if argCount > 0 {
-		txt += "   add rsp," + strconv.Itoa(argCount*8) + "\n"
 		s.localSp -= argCount
+		txt += "   add rsp," + strconv.Itoa(argCount*8) +
+			"                            ; Cleanup " + strconv.Itoa(argCount) + " args (" + strconv.Itoa(s.localSp) + ")\n"
 	}
 	s.CleanupCode[startArgNo] = txt
 	s.CleanupCode = s.CleanupCode[0 : startArgNo+1]
 }
 
-func OutputArgCode(s *State, startArgNo int, values []*ValueDef) {
+func OutputArgCode(s *State, startArgNo int, values []*ValueDef, retCnt int) {
 	// Now output the generated code for each argument, in reverse order
 	txt := ""
-	for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
-		txt += s.ArgCode[i]
-		if len(values) > 0 {
-			if values[i-startArgNo].Typ.Pt == TYP_F64 {
-				txt += "   movq rax, xmm0\n"
-			}
-			if i > startArgNo {
-				// txt += "   push rax ; OutArgCode\n"
-				// s.localSp++
-			}
+	if len(values) > 0 {
+		for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
+			txt += s.ArgCode[i]
+			// if values[i-startArgNo-retCnt].Typ.Pt == TYP_F64 {
+			//	txt += "   movq rax, xmm0\n"
+			// }
 		}
 	}
 	s.ArgCode[startArgNo] = txt
@@ -186,19 +183,21 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 		if value.HasValue {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
-				EmitPushStringLit(s, value.StringLitNo, "Actual argument is string literal")
+				EmitPushStringLit(s, value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
 				EmitPushTos(s, parNo, f.name, false)
 				if f.name == "printf" {
 					EmitSkipLenCap(s)
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(s, value.IntValue, "")
+				EmitPushTos(s, parNo, f.name, false)
 			} else if value.Typ.Pt == TYP_BOOL {
 				if value.BoolValue {
 					EmitPushConst(s, 1, "")
 				} else {
 					EmitPushConst(s, 0, "")
 				}
+				EmitPushTos(s, parNo, f.name, false)
 			} else if value.Typ.Pt == TYP_F64 {
 				floatParCount++
 				EmitPushFloat(s, value.FloatLitNo)
@@ -206,7 +205,6 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 				// TODO: Handle F32 etc.
 				return 0, nil, 0, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
 			}
-			EmitPushTos(s, parNo, f.name, false)
 		} else {
 			EmitPushTos(s, parNo, f.name, false)
 			if f.name == "printf" {
@@ -249,7 +247,6 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 	}
 	// Skip the final ")"
 	nextToken(s)
-	OutputArgCode(s, startArgNo, valueList)
 	return startArgNo, valueList, floatParCount, nil
 }
 
@@ -257,8 +254,8 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push TOS before call")
 		s.localSp++
+		emit(s, "push", "rax", "", "Push TOS before call")
 		s.RaxIsTOS = false
 	}
 
@@ -268,7 +265,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 
 	// Make space for return values
-	EmitAddSp(s, len(f.returnTypes), "Make space for return values")
+	// if len(f.returnTypes) > 0 {
+	// _, _ = Write(s, "   sub rsp, "+strconv.Itoa(len(f.returnTypes)*8)+"   ; Reserve space for return values\n", true)
+	// s.localSp += len(f.returnTypes)
+	// }
 
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
@@ -278,11 +278,20 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		return nil, err
 	}
 
+	// Make space for return values. This code is added to the ArgCode stack.
+	s.ArgCode = append(s.ArgCode, "")
+	EmitAddToSp(s, len(f.returnTypes), "Make space for return values")
+
+	OutputArgCode(s, startArgNo, values, len(f.returnTypes))
+
 	// Do actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
 
 	OutputCleanupCode(s, startArgNo, len(values))
+
+	// Drop arguments from stack
+	// EmitAddToSp(s, -len(f.parameters), "Drop arguments")
 
 	s.nesting--
 	s.XmmSp -= floatParCount
@@ -904,6 +913,7 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
+		s.localSp++
 		emit(s, "push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
 		for _, v := range VarDefs {
 			EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset())+" MustFree="+strconv.FormatBool(v.MustFree))
@@ -917,8 +927,8 @@ func ParseFuncDef(s *State) error {
 		emit(s, "pop", "rax", "", "Restore rax after freeing local variables")
 	}
 	// Free local variables on the stack
-	EmitComment(s, "End of function. Drop local varibales for "+f.name)
-	EmitSubStack(s, s.localSp)
+	EmitComment(s, "End of function. Drop local variables for "+f.name)
+	EmitAddToSp(s, -s.localSp, "Drop local variables")
 
 	// CheckLocalSp(s, f.name)
 

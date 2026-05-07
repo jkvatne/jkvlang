@@ -12,14 +12,29 @@ func f2(s String) String {
 func f3(s String, t String) String {
   return s+t
 }
-*/
 
 func f0(s String) String {
     return "f0 "+s
 }
+*/
+
+func g1(a String, b String, c String) String {
+    return a+b+c
+}
+
+func g2(s String, t String) String {
+    return s+t
+}
 
 func main() {
+    printf("Hello\n")
+    w = g2("abc","def")
+    printf("w='%s'\n", w)
+    // w = g1("abc", g2("def", "ghi"),"jkl")
 
+/*
+
+    assert(f0("xyz")=="f0 xyzx")
     printf("1. Test concat two variables\n")
 
     s = "Hello "
@@ -30,11 +45,14 @@ func main() {
 
     printf("2. Test freeing of temporary object returned from f0\n")
     w = f0("xyz")
+    printf("w='%s'\n", w)
+
+    printf("2. Test calling function in actual parameter\n")
+    assert(f0("xyz")=="f0 xyzx")
+
     printf("-- done --\n")
     fflush()
-/*
-    assert(f0("xyz")=="f0 xyz")
-    printf("%s\n", w)
+
 
     printf("3. Test concatenation of constant and variable\n")
     s = "xyz"
