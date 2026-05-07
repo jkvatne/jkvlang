@@ -136,8 +136,8 @@ func EmitCode(s *State, code string) {
 
 func EmitPushTos(s *State, argNo int, funcName string, force bool) {
 	if s.RaxIsTOS {
-		_, _ = Write(s, "   push rax                             ; Push arg "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
 		s.localSp++
+		_, _ = Write(s, "   push rax                             ; Push arg "+strconv.Itoa(argNo)+" of "+funcName+"\n", force)
 		s.RaxIsTOS = false
 	}
 }
@@ -166,7 +166,9 @@ func EmitFunction(s *State, id string) {
 		panic("localSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
-	emit(s, "push", "rbp", "", "")
+	if id != "main" {
+		emit(s, "push", "rbp", "", "")
+	}
 	emit(s, "mov", "rbp", "rsp", "")
 	s.localSp = 0
 	if id == "main" {
@@ -768,7 +770,8 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
 	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "Compare strings, first argument into rax")
+		s.localSp--
+		emit(s, "pop", "rax", "", "EmitCompareStrToLit, pop first argument into rax")
 	}
 	if op == TOK_EQ {
 		emit(s, "mov", "r14", "rax", "CompareStrings, save rax to r14")
@@ -794,6 +797,7 @@ func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int
 			emit(s, "call", "_free_str", "", "")
 		}
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		s.RaxIsTOS = true
 		return nil
 	} else if op == TOK_NE {
 		lbl := NewLabel(s)
@@ -813,6 +817,7 @@ func EmitCompareStrToLit(s *State, op Token, stringValue string, stringLitNo int
 		emit(s, "mov", "rbx", "0", "Strings was equal, set rax=false")
 		EmitLabel(s, lbl, "unequal")
 		emit(s, "mov", "rax", "rbx", "Result to TOS (rax)")
+		s.RaxIsTOS = true
 		return nil
 	} else {
 		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
