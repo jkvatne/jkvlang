@@ -222,8 +222,9 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
-						// value.Offset = EmitAllocLocalVar(s, "Temporary variable for parameter "+strconv.Itoa(parNo))
-						s.CleanupCode[len(s.CleanupCode)-1] = "; Call free \n"
+						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d\n", parNo*8-8, parNo)
+						s.CleanupCode[len(s.CleanupCode)-1] = str
+						// "   mov rax, rsp\n   sub rax, " + strconv.Itoa(parNo*8-8) + "\n   call _free_str   ; Call free arg " + strconv.Itoa(parNo) + "\n"
 					}
 				}
 
@@ -259,12 +260,6 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
-	// Make space for return values
-	// if len(f.returnTypes) > 0 {
-	// _, _ = Write(s, "   sub rsp, "+strconv.Itoa(len(f.returnTypes)*8)+"   ; Reserve space for return values\n", true)
-	// s.localSp += len(f.returnTypes)
-	// }
-
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
 	s.nesting++
@@ -285,9 +280,6 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 
 	OutputCleanupCode(s, startArgNo, len(values))
 
-	// Drop arguments from stack
-	// EmitAddToSp(s, -len(f.parameters), "Drop arguments")
-
 	s.nesting--
 	s.XmmSp -= floatParCount
 	if s.nesting == 0 {
@@ -296,6 +288,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		s.ArgCode[0] = ""
 		s.CleanupCode[0] = ""
 	}
+
+	EmitAddToSp(s, -len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
+
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		return nil, nil

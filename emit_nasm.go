@@ -158,7 +158,6 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 	}
 
 	emit(s, "call", id, "", "")
-	EmitAddToSp(s, -nPar, "Drop "+strconv.Itoa(nPar)+" arguments")
 }
 
 func EmitFunction(s *State, id string) {
@@ -494,15 +493,6 @@ func EmitStoreF64(s *State, adr int, comment string) {
 		panic("Floating point stack underflow")
 	}
 	emit(s, "movq", BpRel(adr), xmm(s.XmmSp), comment)
-}
-
-// EmitAddSp will drop the top "count" 64-bit words.
-func EmitAddSp(s *State, count int, comment string) {
-	if count != 0 {
-		s.localSp += count
-		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
-	}
-	s.RaxIsTOS = false
 }
 
 func EmitPushString(s *State, litno int) {
@@ -923,7 +913,7 @@ func EmitAddToSp(s *State, count int, comment string) {
 		// Stack grows downward
 		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
 	} else if count < 0 {
-		emit(s, "sub", "rsp", strconv.Itoa(count*8), comment)
+		emit(s, "add", "rsp", strconv.Itoa(-count*8), comment)
 	}
 }
 

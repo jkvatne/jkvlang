@@ -54,7 +54,7 @@ _free_str:
 
     mov rax, [rax]                   ; Load len/cap qword
     shr rax, 32                      ; Extract capacity in the high 32bits
-	sub [allocation_count], rax,     ; Decrement allocated count
+    sub [allocation_count], rax,     ; Decrement allocated count
 
 
     ; Print debug message with freed size
