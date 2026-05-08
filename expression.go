@@ -208,8 +208,16 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 					EmitSkipLenCap(s)
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
+						v := ""
+						v += "   mov rax, rsp\n"
+						v += "   add rax, rbx\n"
+						v += "   sub rax, " + strconv.Itoa(parNo*8-8) + "\n"
+						v += "   mov rax, [rax]\n"
+						v += "   sub rax, 8\n" // The stack contains a C-string pointer, so adjust it back
+						v += "   call _free_str\n"
+						s.CleanupCode[len(s.CleanupCode)-1] = v
 						// This cleanup is special for prinf. It uses C-strings so we must subtract 8 from pointer.
-						s.CleanupCode[len(s.CleanupCode)-1] = "   mov rax, [rsp+" + strconv.Itoa(parNo*8) + "] ; Free C-string\n   sub rax, 8\n   call _free_str\n"
+						// s.CleanupCode[len(s.CleanupCode)-1] = "   mov rax, [rsp+" + strconv.Itoa((3-parNo)*8) + "] ; Free C-string\n   sub rax, 8\n   call _free_str\n"
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")

@@ -25,6 +25,20 @@ func g2(s String, t String) String {
 }
 
 func main() {
+    s = "Hello "
+    t = "World "
+    u = "and goodbye!"
+    printf("s+t+u='%s'\n", s+t+u)
+
+/*
+    printf("1. Test concat three strings and assign to local variable"
+    s = "Hello "
+    t = "World "
+    u = "and goodbye!"
+    w = s+t+u
+    printf("s+t+u='%s'\n", w)
+
+    printf("2. Test asserts that fail compare strings that are different size or different content\n")
     assert(f0("xyz")=="f0 xyz", "Should not fail")
     assert(f0("axyz")=="f0 xyz", "Should fail")
     assert(f0("ayz")=="f0 xyz", "Should fail")
@@ -93,17 +107,8 @@ func main() {
         // This makes next test fail!!
         assert(false,"Failed compare strings")
     }
-    fflush()
-/*
-    printf("9. Test concat three strings\n")
-    fflush()
-    s = "Hello "
-    t = "World "
-    u = "and goodbye!"
-    printf("s+t+u='%s'\n", s+t+u)
-    fflush()
+
     assert(s+t+u=="Hello World and goodbye!", "9. Failed: s+t+u")
-    fflush()
     w = s + t + u
     printf("w=%s\n", w)
 

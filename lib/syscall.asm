@@ -10,7 +10,7 @@ _syscall:
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
-
+    mov r14, rbx
     mov rcx, [rbp+16]     ; rcx = First argument: format string
     sub rbx, 8
     or rbx, rbx
@@ -57,6 +57,7 @@ _syscall:
     mov [rsp+72], rsi     ; Tenth argument onto stack
 
 .L3:
+    mov rbx, r14
     call rdi
     leave
     ret
