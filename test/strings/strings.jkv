@@ -25,13 +25,17 @@ func g2(s String, t String) String {
 }
 
 func main() {
+    printf("Start tests\n")
+    w = f1("F1")+f2("F2")
+//    printf("%s\n", f1("F1")+f2("F2"))
+
+/*
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     printf("s+t+u='%s'\n", s+t+u)
 
-/*
-    printf("1. Test concat three strings and assign to local variable"
+    printf("1. Test concat three strings and assign to local variable")
     s = "Hello "
     t = "World "
     u = "and goodbye!"
@@ -40,38 +44,35 @@ func main() {
 
     printf("2. Test asserts that fail compare strings that are different size or different content\n")
     assert(f0("xyz")=="f0 xyz", "Should not fail")
-    assert(f0("axyz")=="f0 xyz", "Should fail")
-    assert(f0("ayz")=="f0 xyz", "Should fail")
+    //assert(f0("axyz")=="f0 xyz", "Should fail")
+    //assert(f0("ayz")=="f0 xyz", "Should fail")
 
-
-    printf("Start tests\n")
-
+    printf("3. Test nested functions")
     w = g1("abc", g2("def", "ghi"),"jkl")
     printf("w='%s'\n", w)
-
     w = g2("abc","def")
     printf("w='%s'\n", w)
 
-    printf("1. Test concat two variables\n")
-
+    printf("4. Test concat two variables\n")
     s = "Hello "
     t = "World "
     u = s + t
     printf("u='%s'\n", u)
     assert(u=="Hello World ")
-    printf("2. Test freeing of temporary object returned from f0\n")
+
+    printf("5. Test freeing of temporary object returned from f0\n")
     w = f0("xyz")
     printf("w='%s'\n", w)
 
-    printf("2. Test calling function in actual parameter\n")
-    assert(f0("xyz")=="f0 xyzx")
+    printf("6. Test calling function in actual parameter\n")
+    assert(f0("xyz")=="f0 xyz")
 
-    printf("3. Test concatenation of constant and variable\n")
+    printf("7. Test concatenation of constant and variable\n")
     s = "xyz"
     v = "pre-" + s
     assert(v=="pre-xyz")
 
-    printf("4. Test concatenation of variable and constant overwriting old local var\n")
+    printf("8. Test concatenation of variable and constant overwriting old local var\n")
     s = "xyz"
     v = s+"-post"
     assert(v=="xyz-post")
@@ -79,19 +80,19 @@ func main() {
     w = "pre-"+"post"
     assert(w=="pre-post")
 
-    printf("6. Test calling functions with string parameters\n")
+    printf("9. Test calling functions with string parameters\n")
     assert(f0("xyz")=="f0 xyz")
     assert(f1("xyz")=="f1 xyz")
     assert(f2("xyz")=="xyz f2")
 
-    printf("7. Test string compare equal\n")
+    printf("10. Test string compare equal\n")
     a = "abc"
     b = "abc"
     assert(a=="abc", "Failed a==abc")
     assert(a==b, "a==b failed")
     assert(b==a, "b==a failed")
 
-    printf("8. Test string compare not equal\n")
+    printf("11. Test string compare equal and not equal\n")
     a = "abc"
     c = "abcs"
     assert(a!=c, "a!=c failed")
@@ -104,28 +105,35 @@ func main() {
     a = "abc"
     b = "abx"
     if a==b {
-        // This makes next test fail!!
         assert(false,"Failed compare strings")
     }
 
+    printf("12. Test tripple concat in assert")
+    s = "Hello "
+    t = "World "
+    u = "and goodbye!"
     assert(s+t+u=="Hello World and goodbye!", "9. Failed: s+t+u")
+
+    printf("13. Test concat three strings\n")
     w = s + t + u
     printf("w=%s\n", w)
+    assert(w=="Hello World and goodbye!", "s+t+u failed")
 
-    printf("10. Test concat three strings\n")
-    //assert(w=="Hello World and goodbye!", "s+t+u failed")
-
-    printf("10. Test string compare with literal\n")
+    printf("14. Test string compare with literal\n")
     a = "abc"
     assert(a!="abb", "a!='abb' failed")
     assert("abca"!=a, "'cxba'!=a failed")
 
-    printf("11. Test more concat\n")
+    printf("15. Test more concat\n")
     assert(s+"--"=="Hello --", "Failed s+'--'")
     assert(s+"--"+t+u=="Hello --World and goodbye!", "Failed 11")
 
-    // Failing compile:  printf("%s\n", f1("F1")+f2("F2"))
+    printf("16. Test concat function results\n")
+    w = f1("F1")+f2("F2")
+    printf("%s\n", f1("F1")+f2("F2"))
+
     assert(f1("xyz")=="f1 xyz")
-    printf("%s\n", f1("F1"))
+
+    printf("End of tests\n")
     */
 }
