@@ -27,12 +27,31 @@ func g2(s String, t String) String {
 */
 
 func main() {
+    x = 4
+    y = 5
+    w = x*y+5*2
+    printf("w=%d\n", w)
+    assert(w==30)
 
     x = 2
     y = 3
     w = x+y+1
     printf("w=%d\n", w)
     assert(w==6)
+
+    x = 4
+    y = 5
+    w = x*y+1
+    printf("w=%d\n", w)
+    assert(w==21)
+
+    x = 4
+    y = 5
+    a = 2
+    b = 4
+    w = x*y+a*b
+    printf("w=%d\n", w)
+    assert(w==28)
 
 /*
     printf("%s\n", f1("F1")+f2("F2"))

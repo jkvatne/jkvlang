@@ -350,7 +350,7 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 		if instr == "" {
 			return fmt.Errorf("invalid operation %s", op.Name())
 		}
-		emit(s, instr, "rax", "$"+strconv.FormatInt(value, 10), comment)
+		emit(s, instr, "rax", strconv.FormatInt(value, 10), comment)
 	}
 	return nil
 }
