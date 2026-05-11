@@ -28,7 +28,6 @@ type State struct {
 	currentFunc     *FuncDef // The current function being compiled. Nested function definitions is not allowed.
 	ParCount        int      // The number of formal parameters to the current function
 	LocalRetSize    int      // The number of return values from the current function
-	ArgCount        int      // The current actual argument beeing evaluated. Points into ArgCode below
 	ArgCode         []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	CleanupCode     []string
 	CommentLevel    int

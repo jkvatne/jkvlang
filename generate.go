@@ -150,7 +150,7 @@ func GenerateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (er
 	} else if value.Typ.Pt == TYP_STRING {
 		instr := TokenOp[op]
 		if !s.RaxIsTOS {
-			EmitPopAx(s)
+			EmitPopAx(s, "Pop TOS into rax before assignment")
 		}
 		EmitStore(s, instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
 		lvalue.MustFree = true

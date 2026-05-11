@@ -119,47 +119,40 @@ func OutputCleanupCode(s *State, startArgNo, argCount int) {
 	}
 }
 
-func OutputArgCode(s *State, startArgNo int, values []*ValueDef, retCnt int) {
-	// Now output the generated code for each argument, in reverse order
+func ConsArgCode(s *State, startArgNo int, values []*ValueDef, reverse bool) {
 	txt := ""
 	if len(values) > 0 {
-		for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
-			txt += s.ArgCode[i]
-			// if values[i-startArgNo-retCnt].Typ.Pt == TYP_F64 {
-			//	txt += "   movq rax, xmm0\n"
-			// }
+		if reverse {
+			for i := len(s.ArgCode) - 1; i >= startArgNo; i-- {
+				txt += s.ArgCode[i]
+			}
+		} else {
+			for i := startArgNo; i < len(s.ArgCode); i++ {
+				txt += s.ArgCode[i]
+			}
 		}
+		s.ArgCode[startArgNo] = txt
 	}
-	s.ArgCode[startArgNo] = txt
 	s.ArgCode = s.ArgCode[0 : startArgNo+1]
+}
+
+func OutputArgCode(s *State, startArgNo int, values []*ValueDef, reverse bool) {
+	// s.XmmSp -= floatParCount
+	_, _ = Write(s, s.ArgCode[0], true)
+	//		_, _ = Write(s, s.CleanupCode[0], true)
+	s.ArgCode[0] = ""
+	// s.CleanupCode[0] = ""
 }
 
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*ValueDef, floatParCount int, err error) {
-	// Make sure we have an empty last entry in ArgCode. Will exist for nested functions.
-	if len(s.ArgCode) == 0 {
-		s.ArgCode = append(s.ArgCode, "")
-		s.CleanupCode = append(s.CleanupCode, "")
-	}
-	if s.nesting == 0 {
-		s.ArgCode[0] = ""
-		s.CleanupCode[0] = ""
-	}
-	if s.ArgCode[len(s.ArgCode)-1] != "" {
-		panic("ArgCode[i] should be blank")
-	}
 	// Save the starting point for arguments. Needed for nested function calls
-	startArgNo = len(s.ArgCode) - 1
-	if len(s.ArgCode) > 0 {
-		// Remove the last entry in ArgCode. A new will be added by ParseActualArgList
-		s.ArgCode = s.ArgCode[:len(s.ArgCode)-1]
-		s.CleanupCode = s.CleanupCode[:len(s.CleanupCode)-1]
-	}
+	startArgNo = len(s.ArgCode)
 	parNo := 0
 	for { // each agrument in the actual argument list
 		parNo++
-		// A new argument. Append "" to the ArgCode slice
+		// A new argument. Append "" to the ArgCode and CleanupCode slices
 		s.ArgCode = append(s.ArgCode, "")
 		s.CleanupCode = append(s.CleanupCode, "")
 		if s.token == TOK_RPAR {
@@ -169,7 +162,6 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		value, err = ParseExpression(s)
-
 		if err != nil {
 			return 0, nil, 0, err
 		}
@@ -221,8 +213,12 @@ func ParseActualArgList(s *State, f *FuncDef) (startArgNo int, valueList []*Valu
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
+				} else if value.Typ.Pt.IsInteger() && s.RaxIsTOS {
+					emit(s, "push", "rax", "", "Integer argument to printf")
+				} else if value.Typ.Pt.IsInteger() {
+					// Do nothing. Value is TOS
 				} else {
-					return 0, nil, 0, fmt.Errorf("prinf of arguments of type %s is not yet handled", value.Typ.Pt)
+					return 0, nil, 0, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
 			} else if value.Typ.Pt.IsObject() {
 				// We have a heap object pointer on top of the stack. If the formal parameter is not "in",
@@ -271,7 +267,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
 	s.nesting++
-	startArgNo, values, floatParCount, err := ParseActualArgList(s, f)
+	startArgNo, values, _, err := ParseActualArgList(s, f)
 	if err != nil {
 		return nil, err
 	}
@@ -280,22 +276,13 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	s.ArgCode = append(s.ArgCode, "")
 	EmitAddToSp(s, len(f.returnTypes), "Make space for return values")
 
-	OutputArgCode(s, startArgNo, values, len(f.returnTypes))
+	ConsArgCode(s, startArgNo, values, true)
 
 	// Do actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
 
 	OutputCleanupCode(s, startArgNo, len(values))
-
-	s.nesting--
-	s.XmmSp -= floatParCount
-	if s.nesting == 0 {
-		_, _ = Write(s, s.ArgCode[0], true)
-		_, _ = Write(s, s.CleanupCode[0], true)
-		s.ArgCode[0] = ""
-		s.CleanupCode[0] = ""
-	}
 
 	EmitAddToSp(s, -len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
@@ -491,6 +478,9 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 }
 
 func ParseProd(s *State) (value *ValueDef, err error) {
+	s.nesting++
+	startArgNo := len(s.ArgCode)
+	s.ArgCode = append(s.ArgCode, "")
 	value, err = ParseUnary(s)
 	if err != nil {
 		return value, err
@@ -499,15 +489,18 @@ func ParseProd(s *State) (value *ValueDef, err error) {
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
 		op := s.token
 		nextToken(s)
+		s.ArgCode = append(s.ArgCode, "")
 		value2, err = ParseUnary(s)
 		if err == nil {
 			value, err = GenerateOp(s, op, value, value2)
 		}
-		value.IsReturned = false
+		ConsArgCode(s, startArgNo, []*ValueDef{value, value2}, false)
 		if err != nil {
 			return &NoValue, err
 		}
+		value.IsReturned = false
 	}
+	s.nesting--
 	return value, nil
 }
 
@@ -519,6 +512,7 @@ func FreeTemporaryObject(s *State, value *ValueDef) {
 
 func ParseSumTerm(s *State) (*ValueDef, error) {
 	// ParseProd should push rax and leave new result in rax
+	s.nesting++
 	value1, err := ParseProd(s)
 	var value2 *ValueDef
 	if err != nil {
@@ -552,6 +546,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			EmitConcat(s, value1.IsTempObj, value2.IsTempObj)
 			value1.IsTempObj = true
 		}
+		s.nesting--
 		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
 	} else {
 		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
@@ -567,11 +562,13 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			}
 			value1.IsReturned = false
 		}
+		s.nesting--
 		return value1, nil
 	}
 }
 
 func ParseCompareTerm(s *State) (*ValueDef, error) {
+	s.nesting++
 	value1, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
@@ -581,6 +578,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
+		s.nesting--
 		return value1, nil
 	}
 	value1.IsReturned = false
@@ -594,14 +592,13 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	if err != nil {
 		return &NoValue, err
 	}
-	// Free possible temporary objects in value1 or value2
-	// FreeTemporaryObject(s, value1)
-	// FreeTemporaryObject(s, value2)
+	s.nesting--
 	return result, err
 }
 
 func ParseExpression(s *State) (result *ValueDef, err error) {
 	var value2 *ValueDef
+	s.nesting++
 	result, err = ParseCompareTerm(s)
 	if err != nil {
 		return &NoValue, err
@@ -638,6 +635,7 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 	}
+	s.nesting--
 	if endlbl != 0 {
 		EmitLabel(s, endlbl, "")
 	}
@@ -649,37 +647,24 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 
 // ParseExpressions will parse either a comma separated list of values,
 // or a function call returning potentially many values.
+// It is called from the ParseAssign() function
 func ParseExpressions(s *State) (results []*ValueDef, err error) {
 	var v *ValueDef
-	results = make([]*ValueDef, 0, 3)
-	// expectRpar := s.found(TOK_LPAR)
+	results = make([]*ValueDef, 0, 4)
+	s.ArgCode = []string{}
+	s.nesting = 0
 	for {
-		id := s.tokenString
-		f := FuncDefs[s.tokenString]
-		if s.token == TOK_ID && f != nil && len(f.returnTypes) > 0 {
-			nextToken(s)
-			if !s.found(TOK_LPAR) {
-				return nil, fmt.Errorf("expected ( after function, found: %s", s.tokenString)
-			}
-			_, err = ParseFuncCall(s, id, true)
-			if err != nil {
-				return nil, err
-			}
-			for _, t := range f.returnTypes {
-				v = &ValueDef{Typ: t}
-				results = append(results, v)
-			}
-		} else {
-			v, err = ParseExpression(s)
-			if err != nil {
-				return nil, err
-			}
-			results = append(results, v)
+		v, err = ParseExpression(s)
+		if err != nil {
+			return nil, err
 		}
+		results = append(results, v)
 		if !s.found(TOK_COMMA) {
 			break
 		}
 	}
+	ConsArgCode(s, 0, nil, false)
+	OutputArgCode(s, 0, results, false)
 	return results, nil
 }
 
@@ -951,7 +936,7 @@ func ParseFuncDef(s *State) error {
 		emit(s, "leave", "", "", "")
 		emit(s, "ret", "", "", "return from "+s.currentFunc.name)
 	}
-
+	Write(s, s.ArgCode[0], true)
 	nextToken(s)
 	s.currentFunc = nil
 	return nil

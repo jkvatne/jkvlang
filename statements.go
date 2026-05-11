@@ -31,7 +31,7 @@ func ParseReturn(s *State) error {
 			} else {
 				// Copy return values to stack are where the caller expects them
 				if !s.RaxIsTOS {
-					emit(s, "pop", "rax", "", "")
+					// emit(s, "pop", "rax", "", "Pop return value to rax")
 				}
 				emit(s, "mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
 			}
@@ -60,17 +60,21 @@ func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()
+		s.ArgCode = []string{}
+		s.nesting = 0
 		if s.found(TOK_LPAR) {
-			v, err1 := ParseFuncCall(s, id, false)
+			values, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
 				return false, err1
 			}
-			if v != nil {
+			if len(values) > 0 {
 				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
 			}
 		} else {
 			err = ParseAssign(s, id)
 		}
+		ConsArgCode(s, 0, nil, false)
+		OutputArgCode(s, 0, nil, false)
 	} else if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {

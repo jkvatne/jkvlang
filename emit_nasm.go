@@ -608,6 +608,10 @@ func EmitSection(s *State, section string) {
 func EmitConcat(s *State, free1 bool, free2 bool) {
 	EmitComment(s, "")
 	EmitComment(s, "Start of EmitConcat")
+	if !s.RaxIsTOS {
+		s.localSp--
+		emit(s, "pop", "rax", "", "TOS was on stack. Pop it into rax")
+	}
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
 	emit(s, "mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
 	emit(s, "mov", "rbx", "rdx", "Get string 1 ptr into rbx")
@@ -656,6 +660,7 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
 	s.localSp--
 	emit(s, "pop", "rax", "", "Now AX should point to the string")
+	s.RaxIsTOS = true
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
 	s.localSp--
 	emit(s, "add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
@@ -898,9 +903,9 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 	}
 }
 
-func EmitPopAx(s *State) {
+func EmitPopAx(s *State, txt string) {
 	s.localSp--
-	emit(s, "pop", "rax", "", "")
+	emit(s, "pop", "rax", "", txt)
 }
 
 func EmitPop(s *State) {
