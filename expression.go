@@ -513,6 +513,8 @@ func FreeTemporaryObject(s *State, value *ValueDef) {
 func ParseSumTerm(s *State) (*ValueDef, error) {
 	// ParseProd should push rax and leave new result in rax
 	s.nesting++
+	startArgNo := len(s.ArgCode)
+	s.ArgCode = append(s.ArgCode, "")
 	value1, err := ParseProd(s)
 	var value2 *ValueDef
 	if err != nil {
@@ -544,6 +546,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
 			EmitConcat(s, value1.IsTempObj, value2.IsTempObj)
+			ConsArgCode(s, startArgNo, []*ValueDef{value1, value2}, false)
 			value1.IsTempObj = true
 		}
 		s.nesting--
@@ -557,6 +560,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, err
 			}
 			value1, err = GenerateOp(s, op, value1, value2)
+			ConsArgCode(s, startArgNo, []*ValueDef{value1, value2}, false)
 			if err != nil {
 				return &NoValue, err
 			}
@@ -569,6 +573,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 
 func ParseCompareTerm(s *State) (*ValueDef, error) {
 	s.nesting++
+	startArgNo := len(s.ArgCode)
 	value1, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
@@ -589,10 +594,10 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		return &NoValue, err
 	}
 	result, err := GenerateOp(s, op, value1, value2)
+	ConsArgCode(s, startArgNo, []*ValueDef{value1, value2}, false)
 	if err != nil {
 		return &NoValue, err
 	}
-	s.nesting--
 	return result, err
 }
 
