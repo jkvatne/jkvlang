@@ -3,38 +3,22 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 func CompileFile(name string, workdir string) error {
 	// slog.Info("Compiling", "filename", name, "workdir", workdir)
-	var err error
-	s := new(State)
-	s.LibPath, err = filepath.Abs("../lib/")
-	s.LibPath += string(os.PathSeparator)
-	s.ArgCode = make([]string, 0, 64)
-	LiteralInit()
-	s.lineNum = 1
-	s.text, err = os.ReadFile(name)
-	if err != nil {
-		slog.Error("Could not open file %s : %s", name, err.Error())
-	}
-	s.unitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
-
-	objectFile := filepath.Join(workdir, s.unitName+".asm")
-	s.outputFile, err = os.Create(objectFile)
-	defer func(s *State) {
-		_ = CloseObjFile(s)
-	}(s)
-	EmitComment(s, "File \""+objectFile+"\"\n")
-	EmitPrologue(s)
-
+	s, err := NewState(name, workdir)
 	if err != nil {
 		return err
 	}
+	defer func(s *State) {
+		_ = CloseObjFile(s)
+	}(s)
+
+	LiteralInit()
+	EmitPrologue(s)
+
 	InitTypes()
 	FuncInit()
 	nextToken(s)

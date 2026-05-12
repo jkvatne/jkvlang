@@ -1,4 +1,3 @@
-/*
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -8,6 +7,8 @@ func f2(s String) String {
     t = " f2"
     return s+t
 }
+
+/*
 
 func f3(s String, t String) String {
   return s+t
@@ -27,34 +28,45 @@ func g2(s String, t String) String {
 */
 
 func main() {
+    printf("%s\n", f1("F1")+f2("F2"))
+
+/*
+
     x = 4
     y = 5
-    w = x*y+5*2
-    printf("w=%d\n", w)
-    assert(w==30)
+    z = x*y+5*2
+    printf("z=%d\n", z)
+    assert(z==30)
+
+
+    printf("1. Test concat three strings and assign to local variable\n")
+    s = "Hello "
+    t = "World "
+    u = "and goodbye!"
+    w = s+t+u
+    printf("s+t+u='%s'\n", w)
+
+
 
     x = 2
     y = 3
-    w = x+y+1
-    printf("w=%d\n", w)
-    assert(w==6)
+    z = x+y+1
+    printf("z=%d\n", z)
+    assert(z==6)
 
     x = 4
     y = 5
-    w = x*y+1
-    printf("w=%d\n", w)
-    assert(w==21)
+    z = x*y+1
+    printf("z=%d\n", z)
+    assert(z==21)
 
     x = 4
     y = 5
     a = 2
     b = 4
-    w = x*y+a*b
-    printf("w=%d\n", w)
-    assert(w==28)
-
-/*
-    printf("%s\n", f1("F1")+f2("F2"))
+    z = x*y+a*b
+    printf("z=%d\n", z)
+    assert(z==28)
 
     printf("Start tests\n")
     w = f1("F1")+f2("F2")

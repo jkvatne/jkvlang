@@ -42,7 +42,7 @@ var CommentIndent = 40
 var spaces = "                                                                                    "
 
 func Write(s *State, txt string, force bool) (int, error) {
-	if s.nesting == 0 || force {
+	if force || len(s.ArgCode) == 0 {
 		// Write directly to file
 		return s.outputFile.WriteString(txt)
 	}
@@ -679,6 +679,7 @@ func includeFile(s *State, txt string) error {
 }
 
 func EmitPrologue(s *State) {
+	EmitComment(s, "File \""+s.unitName+".asm\"\n")
 	includeFile(s, "sysinit.asm")
 	includeFile(s, "syscall.asm")
 	includeFile(s, "assert.asm")

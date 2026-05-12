@@ -6,10 +6,14 @@ import (
 )
 
 func ParseReturn(s *State) error {
-	f := s.currentFunc
+	f := s.currentFuncDef
 	i := 0
+	if len(s.ArgCode) > 0 {
+		panic("ArgCode was not empty")
+	}
 	if len(f.returnTypes) > 0 {
 		for {
+			PushArgCode(s)
 			v, err := ParseExpression(s)
 			if err != nil {
 				return err
@@ -39,11 +43,13 @@ func ParseReturn(s *State) error {
 				break
 			}
 			i++
+			ConsArgCode(s, 2, false)
 		}
 		if len(f.returnTypes) == 0 {
 			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 		}
 	}
+	OutputArgCode(s)
 	s.DidReturn = true
 	s.Returning = false
 	return nil
@@ -60,9 +66,8 @@ func ParseStatement(s *State) (returned bool, err error) {
 	if s.token == TOK_ID {
 		id := s.tokenString
 		s.next()
-		s.ArgCode = []string{}
-		s.nesting = 0
 		if s.found(TOK_LPAR) {
+			PushArgCode(s)
 			values, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
 				return false, err1
@@ -73,8 +78,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 		} else {
 			err = ParseAssign(s, id)
 		}
-		ConsArgCode(s, 0, nil, false)
-		OutputArgCode(s, 0, nil, false)
+		OutputArgCode(s)
 	} else if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {
