@@ -74,14 +74,14 @@ func SetCleanupCode(s *State, txt string) {
 func OutputCleanupCode(s *State, n int) {
 	na := len(s.ArgCode) - 1
 	nc := len(s.CleanupCode) - 1
+	if nc+1 < n {
+		panic("CleanupCode error")
+	}
 	for ; n > 0; n-- {
 		if s.CleanupCode[nc] != "" {
 			s.ArgCode[na] = s.ArgCode[na] + s.CleanupCode[nc]
 		}
 		nc--
-	}
-	if nc < n {
-		panic("CleanupCode error")
 	}
 	s.CleanupCode = s.CleanupCode[0 : len(s.CleanupCode)-n]
 }

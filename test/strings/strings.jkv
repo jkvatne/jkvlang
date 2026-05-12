@@ -1,3 +1,7 @@
+func f0(s String) String {
+    return "f0 "+s
+}
+
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -8,15 +12,10 @@ func f2(s String) String {
     return s+t
 }
 
-/*
-
 func f3(s String, t String) String {
   return s+t
 }
 
-func f0(s String) String {
-    return "f0 "+s
-}
 
 func g1(a String, b String, c String) String {
     return a+b+c
@@ -25,121 +24,120 @@ func g1(a String, b String, c String) String {
 func g2(s String, t String) String {
     return s+t
 }
-*/
 
 func main() {
-    printf("%s\n", f1("F1 ")+f2("F2"))
+    printf("Start tests\n")
 
-/*
     printf("1. Test concat three strings and assign to local variable\n")
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     w = s+t+u
-    printf("s+t+u='%s'\n", w)
-    assert(w=="Hello World and goodbye!")
+    assert(w=="Hello World and goodbye!", "Failed 1")
 
-    x = 4
-    y = 5
-    z = x*y+5*2
-    printf("z=%d\n", z)
-    assert(z==30)
-
+    printf("2. Test integer summation\n")
     x = 2
     y = 3
     z = x+y+1
-    printf("z=%d\n", z)
-    assert(z==6)
+    assert(z==6, "Failed 2")
 
+    printf("3. Test integer + and *\n")
     x = 4
     y = 5
-    z = x*y+1
-    printf("z=%d\n", z)
-    assert(z==21)
+    z = x*y+5*2
+    assert(z==30, "Failed 3")
 
+    printf("4. Test integer + and *\n")
     x = 4
     y = 5
     a = 2
     b = 4
     z = x*y+a*b
-    printf("z=%d\n", z)
-    assert(z==28)
+    assert(z==28, "Failed 4")
 
-    printf("Start tests\n")
+    printf("5. Test concatenated function calls\n")
     w = f1("F1")+f2("F2")
-    printf("%s\n", w)
+    assert(w=="f1 F1F2 f2", "Failed 5")
 
-    printf("1. Test concat three strings and assign to local variable")
+    printf("6. Test nested function calls\n")
+    w = f1(f2("F1F2"))+f2("F2")
+    // printf("6: w='%s'\n", w)
+    assert(w=="f1 F1F2 f2F2 f2", "Failed 6")
+
+    printf("7. Test concat three strings and assign to local variable\n")
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     w = s+t+u
-    printf("s+t+u='%s'\n", w)
+    assert(w=="Hello World and goodbye!")
 
-    printf("2. Test asserts that fail compare strings that are different size or different content\n")
+    printf("8. Test asserts that fail compare strings that are different size or different content\n")
     assert(f0("xyz")=="f0 xyz", "Should not fail")
     //assert(f0("axyz")=="f0 xyz", "Should fail")
     //assert(f0("ayz")=="f0 xyz", "Should fail")
 
-    printf("3. Test nested functions")
+    printf("9. Test nested functions\n")
     w = g1("abc", g2("def", "ghi"),"jkl")
-    printf("w='%s'\n", w)
+    assert(w=="abcdefghijkl", "Failed 9")
     w = g2("abc","def")
-    printf("w='%s'\n", w)
+    assert(w=="abcdef", "Failed 9")
 
-    printf("4. Test concat two variables\n")
+    printf("10. Test concat two variables\n")
     s = "Hello "
     t = "World "
     u = s + t
-    printf("u='%s'\n", u)
-    assert(u=="Hello World ")
+    assert(u=="Hello World ", "Failed 10")
 
-    printf("5. Test freeing of temporary object returned from f0\n")
+    printf("11. Test freeing of temporary object returned from f0\n")
     w = f0("xyz")
-    printf("w='%s'\n", w)
+    assert(w=="f0 xyz", "Failed 11")
 
-    printf("6. Test calling function in actual parameter\n")
-    assert(f0("xyz")=="f0 xyz")
+    printf("12. Test calling function in actual parameter\n")
+    assert(f0("xyz")=="f0 xyz", "Failed 12")
 
-    printf("7. Test concatenation of constant and variable\n")
+    printf("13. Test concatenation of constant and variable\n")
     s = "xyz"
     v = "pre-" + s
-    assert(v=="pre-xyz")
+    assert(v=="pre-xyz","Failed 13")
 
-    printf("8. Test concatenation of variable and constant overwriting old local var\n")
+    printf("14. Test concatenation of variable and constant overwriting old local var\n")
     s = "xyz"
     v = s+"-post"
-    assert(v=="xyz-post")
-    printf("5. Test concatenation of constant and constant\n")
+    assert(v=="xyz-post","Failed 14")
+
+    printf("15. Test concatenation of constant and constant\n")
     w = "pre-"+"post"
-    assert(w=="pre-post")
+    assert(w=="pre-post","Failed 15")
 
-    printf("9. Test calling functions with string parameters\n")
-    assert(f0("xyz")=="f0 xyz")
-    assert(f1("xyz")=="f1 xyz")
-    assert(f2("xyz")=="xyz f2")
+    printf("16. Test calling functions with string parameters\n")
+    assert(f0("xyz")=="f0 xyz","Failed 16")
+    assert(f1("xyz")=="f1 xyz","Failed 16")
+    assert(f2("xyz")=="xyz f2","Failed 16")
 
-    printf("10. Test string compare equal\n")
-    a = "abc"
-    b = "abc"
-    assert(a=="abc", "Failed a==abc")
-    assert(a==b, "a==b failed")
-    assert(b==a, "b==a failed")
 
-    printf("11. Test string compare equal and not equal\n")
-    a = "abc"
-    c = "abcs"
-    assert(a!=c, "a!=c failed")
-    assert(c!=a, "c!=a failed")
-    c = "abx"
-    assert(a!=c, "a!=c failed")
-    c = "ab"
-    assert(a!=c, "a!=c failed")
+    printf("17. Test string compare equal\n")
+    u = "abc"
+    v = "abc"
+    assert(u=="abc","Failed 17a")
+    assert(u==v,"Failed 17b")
+    assert(v==u,"Failed 17c")
 
-    a = "abc"
-    b = "abx"
-    if a==b {
-        assert(false,"Failed compare strings")
+    printf("18. Test string compare equal and not equal\n")
+    u = "abc"
+    v = "abcs"
+    assert(u!=v, "a!=c failed")
+    assert(v!=u, "c!=a failed")
+    v = "abx"
+    assert(u!=v, "a!=c failed")
+    v = "ab"
+    assert(u!=v, "a!=c failed")
+
+/*
+    printf("19. Test if equal\n")
+    u = "abc"
+    v = "abx"
+    if u==v {
+        assert(false,"Failed 19")
     }
 
     printf("12. Test tripple concat in assert")

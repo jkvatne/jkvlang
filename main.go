@@ -224,7 +224,19 @@ func Run(outputName string) error {
 	return err
 }
 
+func f1(s string) string {
+	t := "f1 "
+	return t + s
+}
+
+func f2(s string) string {
+	t := " f2"
+	return s + t
+}
+
 func main() {
+	w := f1(f2("F1F2")) + f2("F2")
+	fmt.Println(w)
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)
