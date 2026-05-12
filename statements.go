@@ -37,8 +37,8 @@ func ParseReturn(s *State) error {
 				if !s.RaxIsTOS {
 					// emit(s, "pop", "rax", "", "Pop return value to rax")
 				}
-				emit(s, "mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
 			}
+			emit(s, "mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
 			if !s.found(TOK_COMMA) {
 				break
 			}

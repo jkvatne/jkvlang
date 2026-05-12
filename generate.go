@@ -72,6 +72,9 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 // GenerateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
 func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
+	if !s.RaxIsTOS {
+		emit(s, "pop", "rax", "", "Pop value for TosOpConst")
+	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitCompareIntConst(s, op, val2.IntValue, false)

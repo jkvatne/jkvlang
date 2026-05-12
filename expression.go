@@ -231,7 +231,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		return nil, err
 	}
 	s.currentFuncCall = id
-
+	nac := len(s.ArgCode)
+	if len(values) == 0 && nac >= 1 && s.ArgCode[nac-1] == "" {
+		s.ArgCode = s.ArgCode[0 : nac-1]
+	}
 	// Make space for return values. This code is added to the ArgCode stack.
 	PushArgCode(s)
 	EmitAddToSp(s, len(f.returnTypes), "Make space for return values")
@@ -533,6 +536,9 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	if value1.Typ == nil {
 		return &NoValue, fmt.Errorf("internal error, no type")
 	}
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "Push value1")
+	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
 		return value1, nil
@@ -544,6 +550,9 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	value2, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
+	}
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "Push value2")
 	}
 	PushArgCode(s)
 	result, err := GenerateOp(s, op, value1, value2)
@@ -775,7 +784,7 @@ func ParseIf(s *State) error {
 	if value.Typ.Pt != TYP_BOOL {
 		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 	}
-
+	OutputArgCode(s)
 	if s.found(TOK_COLON) || s.found(TOK_QMARK) {
 		return ParseColonQmark(s, value)
 	} else if s.token == TOK_LBRACE {
