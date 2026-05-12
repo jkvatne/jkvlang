@@ -114,11 +114,9 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 	parNo := 0
 	for { // each agrument in the actual argument list
 		parNo++
-		// A new argument. Append "" to the ArgCode and CleanupCode slices
 		if s.token == TOK_RPAR {
 			break
 		}
-
 		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		if parNo > 1 {
@@ -129,7 +127,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			return nil, err
 		}
 		valueList = append(valueList, value)
-
+		PushCleanupCode(s)
 		if value.HasValue {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
@@ -163,15 +161,13 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						v := ""
-						v += "   mov rax, rsp\n"
+						v += "   mov rax, rsp  ;  Cleanup arg " + strconv.Itoa(parNo) + "\n"
 						v += "   add rax, rbx\n"
 						v += "   sub rax, " + strconv.Itoa(parNo*8-8) + "\n"
 						v += "   mov rax, [rax]\n"
 						v += "   sub rax, 8\n" // The stack contains a C-string pointer, so adjust it back
-						v += "   call _free_str\n"
-						s.CleanupCode[len(s.CleanupCode)-1] = v
-						// This cleanup is special for prinf. It uses C-strings so we must subtract 8 from pointer.
-						// s.CleanupCode[len(s.CleanupCode)-1] = "   mov rax, [rsp+" + strconv.Itoa((3-parNo)*8) + "] ; Free C-string\n   sub rax, 8\n   call _free_str\n"
+						v += "   call _free_str\n\n"
+						SetCleanupCode(s, v)
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
@@ -189,8 +185,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d\n", parNo*8-8, parNo)
-						s.CleanupCode[len(s.CleanupCode)-1] = str
-						// "   mov rax, rsp\n   sub rax, " + strconv.Itoa(parNo*8-8) + "\n   call _free_str   ; Call free arg " + strconv.Itoa(parNo) + "\n"
+						SetCleanupCode(s, str)
 					}
 				}
 
@@ -246,9 +241,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// Do actual call
 	// ----------------------------------
 	EmitCall(s, id, len(values), f.builtin)
-	EmitAddToSp(s, -len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
-	// OutputCleanupCode(s, len(values))
+	OutputCleanupCode(s, len(values))
+	EmitAddToSp(s, -len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue

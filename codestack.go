@@ -59,7 +59,31 @@ func NewState(name string, workdir string) (*State, error) {
 
 func PushArgCode(s *State) {
 	s.ArgCode = append(s.ArgCode, "")
+}
+
+func PushCleanupCode(s *State) {
 	s.CleanupCode = append(s.CleanupCode, "")
+}
+
+func SetCleanupCode(s *State, txt string) {
+	if txt != "" {
+		s.CleanupCode[len(s.CleanupCode)-1] = txt
+	}
+}
+
+func OutputCleanupCode(s *State, n int) {
+	na := len(s.ArgCode) - 1
+	nc := len(s.CleanupCode) - 1
+	for ; n > 0; n-- {
+		if s.CleanupCode[nc] != "" {
+			s.ArgCode[na] = s.ArgCode[na] + s.CleanupCode[nc]
+		}
+		nc--
+	}
+	if nc < n {
+		panic("CleanupCode error")
+	}
+	s.CleanupCode = s.CleanupCode[0 : len(s.CleanupCode)-n]
 }
 
 func ConsArgCode(s *State, count int, reverse bool) {
@@ -96,6 +120,5 @@ func OutputArgCode(s *State) {
 		return
 	}
 	_, _ = Write(s, s.ArgCode[0], true)
-	//		_, _ = Write(s, s.CleanupCode[0], true)
 	s.ArgCode = nil
 }
