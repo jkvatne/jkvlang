@@ -78,7 +78,9 @@ func ParseStatement(s *State) (returned bool, err error) {
 		} else {
 			err = ParseAssign(s, id)
 		}
-		OutputArgCode(s)
+		if err == nil {
+			OutputArgCode(s)
+		}
 	} else if s.token == TOK_RETURN {
 		nextToken(s)
 		if s.hasReturned {

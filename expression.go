@@ -565,6 +565,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 
 func ParseExpression(s *State) (result *ValueDef, err error) {
 	var value2 *ValueDef
+	s.RaxIsTOS = false
 	result, err = ParseCompareTerm(s)
 	if err != nil {
 		return &NoValue, err

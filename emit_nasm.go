@@ -317,15 +317,18 @@ func EmitIntegerOp(s *State, op Token) {
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
 		s.localSp--
-		emit(s, "pop", "rbx", "", "")
+		if !s.RaxIsTOS {
+			emit(s, "pop", "rax", "", "Get op 1 from stack")
+		}
+		emit(s, "pop", "rbx", "", "Get op 2 from stack")
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
 		if op == TOK_MULT {
-			emit(s, "mul", "rbx", "", "")
+			emit(s, "mul", "rbx", "", "Integer op mul")
 		} else {
-			emit(s, instruction, "rax", "rbx", "")
+			emit(s, instruction, "rax", "rbx", "Integer op")
 		}
 	}
 }
@@ -344,7 +347,7 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
-		emit(s, "mov", "rax", sval, "")
+		emit(s, "mov", "rax", sval, "Assign OpIntConst")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
@@ -387,7 +390,7 @@ func EmitOpAssign(s *State, op Token, adr int, size int, value int64, comment st
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
 	}
 	if instr == "imul" {
-		emit(s, "mov", "rax", strconv.FormatInt(value, 10), "")
+		emit(s, "mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
 		emit(s, "movzx", "rbx", DataType(size)+BpRel(adr), comment)
 		emit(s, "imul", "rbx", "", "")
 		// Move result to local variable at BpRel(adr)
@@ -559,11 +562,9 @@ func EmitPushConst(s *State, value int64, comment string) {
 	if value == 0 {
 		emit(s, "xor", "rax", "rax", comment)
 	} else {
-		emit(s, "mov", "rax", strconv.FormatInt(value, 10), comment)
+		emit(s, "mov", "rax", strconv.FormatInt(value, 10), "PushConst "+comment)
 	}
-	if len(s.ArgCode) == 0 {
-		s.RaxIsTOS = true
-	}
+	s.RaxIsTOS = true
 }
 
 func EmitPrintHello(s *State, format string) {
@@ -928,7 +929,7 @@ func EmitAddToSp(s *State, count int, comment string) {
 }
 
 func EmitPushConstString(s *State, litNo int) {
-	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "")
+	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "PushConstString")
 	s.RaxIsTOS = true
 }
 

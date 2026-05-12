@@ -1,4 +1,4 @@
-/*
+
 func gg(a Bool, c I32) I32 {
     if a ? c+=2 : c+=1
     return c
@@ -6,36 +6,35 @@ func gg(a Bool, c I32) I32 {
 
 func test_g()  {
     r = gg(true, 30)
-    assert(r==32)
+    assert(r==32, "Failed 6")
+}
+
+func mpy(x I32, y I32) I32 {
+   return x*y
 }
 
 func sum(x I32, y I32) I32 {
    return x+y
 }
 
-func mpy(x I32, y I32) I32 {
-   return x*y
-}
-*/
-
 func f2() I32 {
-    //return sum(2,3)+mpy(4,5)  // = (2+3) + (4*5) = 25
-    return 25
+    return sum(2,3)+mpy(4,5)  // = (2+3) + (4*5) = 25
 }
 
 func main() {
-    assert(f2()==25,"Failed f2()==25, got %d", f2())
-/*
-    printf("f2()=%d\n", f2())
-    assert(f2()==25,"Failed f2()==25, got %d", f2())
+
     w = sum(3, mpy(4,5))   // = 23
-    assert(w==23)
-    printf("w=%d\n",w)
+    assert(w==23, "Failed 1")
+
+    x = sum(1,2)
+    assert(x==3, "Failed 2")
+
+    assert(f2()==25,"Failed 3 : f2()==25, got %d", f2())
+
     w = mpy(3,4)
-    printf("w=%d\n",w)   // 12
-    assert(w==12)
-    printf("gg(true, f2())=%d\n", gg(true,f2()))  // 277
-    assert(gg(true, f2())==27)
+    assert(w==12, "Failed 4")
+
+    assert(gg(true, f2())==27, "Failed 5")
     test_g()
-    */
+
 }
