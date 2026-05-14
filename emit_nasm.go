@@ -305,6 +305,7 @@ func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
 func EmitIntegerOp(s *State, op Token) {
+
 	if op == TOK_DIV {
 		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")

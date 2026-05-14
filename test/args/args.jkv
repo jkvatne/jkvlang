@@ -22,19 +22,24 @@ func f2() I32 {
 }
 
 func main() {
+    printf("Start tests\n")
 
+    printf("1. Test nested integer funvtions\n")
     w = sum(3, mpy(4,5))   // = 23
     assert(w==23, "Failed 1")
 
+    printf("1. Test simple integer function call\n")
     x = sum(1,2)
     assert(x==3, "Failed 2")
 
+    printf("2. Test function call inside assert and with integer arg to assert")
     assert(f2()==25,"Failed 3 : f2()==25, got %d", f2())
 
-    w = mpy(3,4)
-    assert(w==12, "Failed 4")
+    printf("3. Test failing assert with function call inside assert and with integer arg")
+    assert(f2()==21,"Intentionaly failed 3 : f2()==21, got %d", f2())
+    invert_err()
 
+    printf("4. Test nested functions")
     assert(gg(true, f2())==27, "Failed 5")
-    test_g()
-
+    printf("End of tests\n")
 }

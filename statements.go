@@ -67,6 +67,9 @@ func ParseStatement(s *State) (returned bool, err error) {
 		id := s.tokenString
 		s.next()
 		if s.found(TOK_LPAR) {
+			if len(s.ArgCode) > 0 {
+				panic("ArgCode was not empty")
+			}
 			PushArgCode(s)
 			values, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
@@ -75,11 +78,11 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if len(values) > 0 {
 				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
 			}
+			if err == nil && len(s.ArgCode) > 0 {
+				OutputArgCode(s)
+			}
 		} else {
 			err = ParseAssign(s, id)
-		}
-		if err == nil {
-			OutputArgCode(s)
 		}
 	} else if s.token == TOK_RETURN {
 		nextToken(s)

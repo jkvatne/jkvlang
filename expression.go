@@ -537,11 +537,6 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	if value1.Typ == nil {
 		return &NoValue, fmt.Errorf("internal error, no type")
 	}
-	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Compare push TOS")
-		s.localSp++
-		s.RaxIsTOS = false
-	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
 		return value1, nil
@@ -649,6 +644,9 @@ func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
 		s.noCode++
 	}
+	if len(s.ArgCode) > 0 {
+		panic("ParseBlock: ArgCode was not empty")
+	}
 	err := ParseStatements(s)
 	if err != nil {
 		return err
@@ -724,10 +722,17 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 		L1 = 0
 		if s.token == TOK_IF {
 			nextToken(s)
+			if len(s.ArgCode) > 0 {
+				panic("ParseIfElse has len(ArgCode)>0")
+			}
 			PushArgCode(s)
 			value, err = ParseExpression(s)
+			OutputArgCode(s)
 			if err != nil {
 				return err
+			}
+			if len(s.ArgCode) > 0 {
+				panic("ParseIfElse has len(ArgCode)>0")
 			}
 			if value.Typ.Pt != TYP_BOOL {
 				return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])

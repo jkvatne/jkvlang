@@ -3,33 +3,48 @@ func main() {
     a = 1
     b = 2
     c = 3
-    printf(" 1. Starting tests of if/else\n")
-
-    assert(true, "Should not be printed")
-    if a>0 ? c+=2 : c+=1
-    assert(c==5, "c+2 should be 5")
-
-    if a==1 {
-       printf(" 2. Selecting first if block\n")
-    } else {
-       assert(false, "Error, should select first block")
-    }
-
-    if a!=1 {
-       assert(false, "Error, should select else block")
-    } else {
-       printf(" 3. Selecting else block\n")
-    }
 
     if b==6 {
         assert(false, "Error, b is not 6")
     } else if a==b  {
         assert(false, "Error, a is not equal to b")
+    }
+
+
+    printf("Starting test ifelse.jkv\n")
+
+    printf("1. Test simple assert\n")
+    assert(true, "Should not be printed")
+
+    printf("2. Test if ? :\n")
+    if a>0 ? c+=2 : c+=1
+    assert(c==5, "c+2 should be 5")
+
+    printf("2. Test simple if/else\n")
+    if a==1 {
+       printf("Selecting first if block\n")
+    } else {
+       assert(false, "Error, should select first block")
+    }
+
+    printf("3. Test simple if/else\n")
+    if a==2 {
+       assert(false, "3 Failed, should select second block")
+    } else {
+       printf("Selecting else block\n")
+    }
+
+    printf("4. Test else if\n")
+    if b==6 {
+        assert(false, "Error, b is not 6")
+    } else if a==b  {
+        assert(false, "Error, a is not equal to b")
     } else if b!=c {
-        printf(" 4. Ok, b!=c\n")
+        printf("Selecting block 3\n")
     } else {
         assert(false, "Error, else should not be selected")
     }
-    printf(" 5. Ended multiple else statements")
+    printf("End of ifelse.jkv\n")
+
  }
 
