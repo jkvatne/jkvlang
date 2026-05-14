@@ -25,6 +25,7 @@ func g2(s String, t String) String {
     return s+t
 }
 
+
 func main() {
 
     printf("Start tests\n")
@@ -115,7 +116,6 @@ func main() {
     assert(f1("xyz")=="f1 xyz","Failed 16")
     assert(f2("xyz")=="xyz f2","Failed 16")
 
-
     printf("17. Test string compare equal\n")
     u = "abc"
     v = "abc"
@@ -126,12 +126,11 @@ func main() {
     printf("18. Test string compare equal and not equal\n")
     u = "abc"
     v = "abcs"
-    assert(u!=v, "a!=c failed")
-    assert(v!=u, "c!=a failed")
-    v = "abx"
-    assert(u!=v, "a!=c failed")
-    v = "ab"
-    assert(u!=v, "a!=c failed")
+    s = "abc"
+    assert(u!=v, "Fail 18a")
+    assert(u!=s, "Fail 18b")
+    assert(u==v, "Fail 18c")
+    assert(u==s, "Fail 18d")
 
     printf("19. Test if equal\n")
     u = "abc"

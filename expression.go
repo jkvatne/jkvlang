@@ -173,6 +173,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
 				} else if value.Typ.Pt.IsInteger() && s.RaxIsTOS {
 					emit(s, "push", "rax", "", "Integer argument to printf")
+					s.localSp++
 				} else if value.Typ.Pt.IsInteger() {
 					// Do nothing. Value is TOS
 				} else {
@@ -212,8 +213,8 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
 	if s.RaxIsTOS {
-		s.localSp++
 		emit(s, "push", "rax", "", "Push TOS before call")
+		s.localSp++
 		s.RaxIsTOS = false
 	}
 
@@ -237,7 +238,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	// Make space for return values. This code is added to the ArgCode stack.
 	PushArgCode(s)
-	EmitAddToSp(s, len(f.returnTypes), "Make space for return values")
+	EmitAddToSp(s, len(f.returnTypes), "Make space for return values from "+f.name)
 
 	ConsArgCode(s, len(values)+1, true)
 
@@ -491,8 +492,8 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			}
 			if value2.HasValue {
 				if s.RaxIsTOS {
+					emit(s, "push", "rax", "", "SumTerm push value 2")
 					s.localSp++
-					emit(s, "push", "rax", "", "Push value2")
 				}
 				// Push constant string
 				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
@@ -537,7 +538,9 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		return &NoValue, fmt.Errorf("internal error, no type")
 	}
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push value1")
+		emit(s, "push", "rax", "", "Compare push TOS")
+		s.localSp++
+		s.RaxIsTOS = false
 	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
@@ -552,7 +555,9 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 		return &NoValue, err
 	}
 	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push value2")
+		emit(s, "push", "rax", "", "Push TOS value 2")
+		s.localSp++
+		s.RaxIsTOS = false
 	}
 	PushArgCode(s)
 	result, err := GenerateOp(s, op, value1, value2)
@@ -864,8 +869,8 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
-		s.localSp++
 		emit(s, "push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
+		s.localSp++
 		for _, v := range VarDefs {
 			EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset())+" MustFree="+strconv.FormatBool(v.MustFree))
 			if v.Value.Typ.Pt.IsObject() && v.MustFree {
@@ -876,6 +881,7 @@ func ParseFuncDef(s *State) error {
 			}
 		}
 		emit(s, "pop", "rax", "", "Restore rax after freeing local variables")
+		s.localSp--
 	}
 	// Free local variables on the stack
 	EmitComment(s, "End of function. Drop local variables for "+f.name)
@@ -890,12 +896,15 @@ func ParseFuncDef(s *State) error {
 		EmitComment(s, "main() returning. Printing allocation count.")
 		emit(s, "mov", "rax", "[allocation_count]", "Printing allocation count")
 		emit(s, "push", "rax", "", "")
+		s.localSp++
 		emit(s, "mov", "rax", "alloc_size_str+8", "")
 		emit(s, "push", "rax", "", "")
+		s.localSp++
 		emit(s, "mov", "rbx", "16", "")
 		emit(s, "call", "_printf", "", "")
 		emit(s, "call", "_fflush", "", "")
 		emit(s, "add", "rsp", "16", "")
+		s.localSp -= 2
 		EmitComment(s, "Returning error code via _exit()")
 		emit(s, "mov", "rax", "r15", "Get error code")
 		emit(s, "call", "_exit", "", "")

@@ -235,8 +235,6 @@ func f2(s string) string {
 }
 
 func main() {
-	w := f1(f2("F1F2")) + f2("F2")
-	fmt.Println(w)
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)

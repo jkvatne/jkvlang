@@ -48,7 +48,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 				EmitCompareStringsEq(s, val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			} else if op == TOK_NE {
-				EmitCompareStringsNe(s)
+				EmitCompareStringsNe(s, val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			}
 		}
@@ -74,6 +74,8 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 	var err error
 	if !s.RaxIsTOS {
 		emit(s, "pop", "rax", "", "Pop value for TosOpConst")
+		s.localSp--
+		s.RaxIsTOS = true
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
