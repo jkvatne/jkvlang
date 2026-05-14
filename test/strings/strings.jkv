@@ -128,8 +128,10 @@ func main() {
     v = "abcs"
     s = "abc"
     assert(u!=v, "Fail 18a")
-    assert(u!=s, "Fail 18b")
-    assert(u==v, "Fail 18c")
+    assert(u!=s, "Intentional fail 18b")
+    invert_err()
+    assert(u==v, "Intentional fail 18c")
+    invert_err()
     assert(u==s, "Fail 18d")
 
     printf("19. Test if equal\n")
@@ -140,7 +142,7 @@ func main() {
     }
     v = "abc"
     if u==v {
-        printf("Was equal\n")
+        printf("Expected equal\n")
     }
 
     printf("20. Test string compare with literal\n")

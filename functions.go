@@ -21,6 +21,7 @@ func FuncInit() {
 	_, _ = AddFunc("fflush", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true)
+	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true)
 }
 
 func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool) (*FuncDef, error) {
