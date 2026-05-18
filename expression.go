@@ -132,20 +132,20 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(s, value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
-				EmitPushTos(s, parNo, f.name, false)
+				EmitPushTos(s, parNo, f.name)
 				if f.name == "printf" {
 					EmitSkipLenCap(s)
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(s, value.IntValue, "")
-				EmitPushTos(s, parNo, f.name, false)
+				EmitPushTos(s, parNo, f.name)
 			} else if value.Typ.Pt == TYP_BOOL {
 				if value.BoolValue {
 					EmitPushConst(s, 1, "")
 				} else {
 					EmitPushConst(s, 0, "")
 				}
-				EmitPushTos(s, parNo, f.name, false)
+				EmitPushTos(s, parNo, f.name)
 			} else if value.Typ.Pt == TYP_F64 {
 				EmitPushFloatLit(s, value.FloatLitNo)
 			} else {
@@ -153,7 +153,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				return nil, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
 			}
 		} else {
-			EmitPushTos(s, parNo, f.name, false)
+			EmitPushTos(s, parNo, f.name)
 			if f.name == "printf" {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == TYP_STRING {
@@ -915,9 +915,7 @@ func ParseFuncDef(s *State) error {
 		emit(s, "leave", "", "", "")
 		emit(s, "ret", "", "", "return from "+s.currentFuncDef.name)
 	}
-	if len(s.ArgCode) > 0 {
-		Write(s, s.ArgCode[0], true)
-	}
+	OutputArgCode(s)
 	nextToken(s)
 	s.currentFuncDef = nil
 	return nil

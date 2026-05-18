@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -38,24 +37,16 @@ const (
 	OverflowFlag = "0x800"
 )
 
+// localSp
+// RaxIsTOS
+// outputFile
+// ArgCode
+
 var CommentIndent = 40
 var spaces = "                                                                                    "
 
-func Write(s *State, txt string, force bool) (int, error) {
-	if force || len(s.ArgCode) == 0 {
-		// Write directly to file
-		return s.outputFile.WriteString(txt)
-	}
-	// When parsing an argument, output text to the last element in the ArgCode slice
-	s.ArgCode[len(s.ArgCode)-1] += txt
-	return len(txt), nil
-}
-
 func emit(s *State, op string, dst string, src string, comment string) {
 	var txt string
-	if s.noCode > 0 {
-		return
-	}
 	txt = "   " + op
 	if dst != "" {
 		txt = txt + " " + dst
@@ -67,23 +58,11 @@ func emit(s *State, op string, dst string, src string, comment string) {
 		txt = txt + " " + src
 	}
 	if comment != "" {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + " (SP=" + strconv.Itoa(s.localSp) + ")"
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + " (SP=" + strconv.Itoa(s.localSp) + ")\n"
 	} else {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; (SP=" + strconv.Itoa(s.localSp) + ")"
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; (SP=" + strconv.Itoa(s.localSp) + ")\n"
 	}
-	txt += "\n"
-	_, err := Write(s, txt, false)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func CloseObjFile(s *State) error {
-	return s.outputFile.Close()
-}
-
-func EmitError(s *State, e error) {
-	_, err := s.outputFile.WriteString(e.Error() + "\n")
+	_, err := Write(s, txt)
 	if err != nil {
 		panic(err)
 	}
@@ -91,27 +70,25 @@ func EmitError(s *State, e error) {
 
 func EmitTextLabel(s *State, text string) {
 	text = strings.Trim(text, ":\n ")
-	_, err := s.outputFile.WriteString(text + ":\n")
-	if err != nil {
-	}
+	_, _ = Write(s, text+":\n")
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := Write(s, "   ; "+comment+"\n", false)
+	_, err := Write(s, "   ; "+comment+"\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitBlankLine(s *State) {
-	_, err := Write(s, "\n", false)
+	_, err := Write(s, "\n")
 	if err != nil {
 		panic(err)
 	}
 }
 
 func EmitLineNo(s *State) {
-	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"  (SP="+strconv.Itoa(s.localSp)+")\n", false)
+	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"  (SP="+strconv.Itoa(s.localSp)+")\n")
 	if err != nil {
 		panic(err)
 	}
@@ -122,22 +99,18 @@ func EmitNumericLabel(label int) string {
 }
 
 func EmitLabel(s *State, label int, comment string) {
-	n, _ := Write(s, ".L"+strconv.Itoa(label)+":", false)
-	_, _ = Write(s, spaces[0:max(0, CommentIndent-n)]+"; "+comment+"\n", false)
+	n, _ := Write(s, ".L"+strconv.Itoa(label)+":")
+	_, _ = Write(s, spaces[0:max(0, CommentIndent-n)]+"; "+comment+"\n")
 }
 
 func EmitJump(s *State, n int, comment string) {
 	emit(s, "jmp", ".L"+strconv.Itoa(n), "", comment)
 }
 
-func EmitCode(s *State, code string) {
-	_, _ = Write(s, code, true)
-}
-
-func EmitPushTos(s *State, argNo int, funcName string, force bool) {
+func EmitPushTos(s *State, argNo int, funcName string) {
 	if s.RaxIsTOS {
 		_, _ = Write(s, "   push rax                             ; Push arg "+
-			strconv.Itoa(argNo)+" of "+funcName+" ("+strconv.Itoa(s.localSp)+")\n", force)
+			strconv.Itoa(argNo)+" of "+funcName+" ("+strconv.Itoa(s.localSp)+")\n")
 		s.localSp++
 		s.RaxIsTOS = false
 	}
@@ -162,7 +135,7 @@ func EmitCall(s *State, id string, nPar int, builtin bool) {
 }
 
 func EmitFunction(s *State, id string) {
-	_, _ = s.outputFile.WriteString("\n" + id + ":\n")
+	EmitTextLabel(s, id)
 	if s.localSp != 0 {
 		panic("localSp is not 0")
 	}
@@ -196,49 +169,6 @@ var TokenOp = map[Token]string{
 
 func xmm(sp int) string {
 	return "xmm" + strconv.Itoa(sp)
-}
-
-func EmitOpFloatConst(s *State, op Token, litNo int) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "EmitOpFloatConst, tos is not rax")
-		s.localSp--
-	}
-	emit(s, "movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
-	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
-	emit(s, "movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
-	doFloatOp(s, op)
-}
-
-// EmitFloatOp will generate a stack operation on the top two stack entries
-func EmitFloatOp(s *State, op Token) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "EmitFloatOp, tos is not rax")
-		s.localSp--
-	}
-	emit(s, "movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
-	emit(s, "pop", "rax", "", "EmitFloatOp pop nos")
-	s.localSp--
-	emit(s, "movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
-	doFloatOp(s, op)
-}
-
-func doFloatOp(s *State, op Token) {
-	if op == TOK_PLUS {
-		emit(s, "addsd", xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
-		emit(s, "subsd", xmm(1), xmm(2), "Subtract nos from tos")
-	} else if op == TOK_MULT {
-		emit(s, "mulsd", xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
-		emit(s, "divsd", xmm(1), xmm(2), "Divide tos by nos")
-	} else if op == TOK_INV_DIV {
-		emit(s, "divsd", xmm(2), xmm(1), "Divide nos by tos")
-		emit(s, "movq", xmm(1), xmm(2), "")
-	} else {
-		panic("EmitFloatOp not implemented for " + op.Name())
-	}
-	emit(s, "movq", "rax", xmm(1), "Move float result into rax")
-	s.RaxIsTOS = true
 }
 
 func EmitPushFloatLit(s *State, litNo int) {
@@ -286,106 +216,6 @@ func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
 	emit(s, "mov", "rax", "0", "Return false if we did not jump")
 	EmitLabel(s, lbl, "")
 	s.RaxIsTOS = true
-	return nil
-}
-
-// EmitCompareFloatConst compares float in rax with float constant
-func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
-	emit(s, "movq", xmm(1), "rax", "")
-	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
-	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(s, op, true)
-	return err
-}
-
-// EmitCompareFloats compares two floats.
-func EmitCompareFloats(s *State, op Token) (err error) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "")
-		s.localSp--
-	}
-	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "pop", "rax", "", "")
-	s.localSp--
-	emit(s, "movq", xmm(1), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(s, op, true)
-	return err
-}
-
-// EmitCompareIntegers will compare the top two stack entries
-func EmitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
-	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-	s.localSp--
-	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-	return EmitJumpCond(s, op, unsigned)
-}
-
-// EmitCompareIntConst will compare top of stack with a constant
-func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
-	sval := strconv.FormatInt(value, 10)
-	emit(s, "cmp", "rax", sval, "Compare and set flags")
-	return EmitJumpCond(s, op, unsigned)
-}
-
-// EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
-// The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
-func EmitIntegerOp(s *State, op Token) {
-
-	if op == TOK_DIV {
-		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
-		s.localSp--
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-	} else if op == TOK_MOD {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
-		s.localSp--
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
-	} else {
-		if !s.RaxIsTOS {
-			emit(s, "pop", "rax", "", "Get op 1 from stack")
-			s.localSp--
-		}
-		emit(s, "pop", "rbx", "", "Get op 2 from stack")
-		s.localSp--
-		instruction := TokenOp[op]
-		if instruction == "" {
-			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
-		}
-		if op == TOK_MULT {
-			emit(s, "mul", "rbx", "", "Integer op mul")
-		} else {
-			emit(s, instruction, "rax", "rbx", "Integer op")
-		}
-	}
-}
-
-// EmitOpConst will evaluate tos=tos op <constant>
-// It uses 64bit integer values on the 64 bit rax register
-func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
-	sval := strconv.FormatInt(value, 10)
-	if op == TOK_DIV {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", "rbx", sval, "Get divisor from stack into RBX")
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-	} else if op == TOK_MOD {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", "rbx", sval, "RBX=constant divisor")
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
-	} else if op == TOK_ASSIGN {
-		emit(s, "mov", "rax", sval, "Assign OpIntConst")
-	} else {
-		instr := TokenOp[op]
-		if instr == "" {
-			return fmt.Errorf("invalid operation %s", op.Name())
-		}
-		emit(s, instr, "rax", strconv.FormatInt(value, 10), comment)
-	}
 	return nil
 }
 
@@ -616,8 +446,9 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = s.outputFile.WriteString(litName + " dq " + strconv.Itoa(len(litValue)) + "\n")
-	_, _ = s.outputFile.WriteString("     db `" + litValue + "`, 00h\n")
+	_, _ = Write(s, "alignb 8\n")
+	_, _ = Write(s, litName+" dq "+strconv.Itoa(len(litValue))+"\n")
+	_, _ = Write(s, "     db `"+litValue+"`, 00h\n")
 }
 
 func EmitFloatLitteral(s *State, litName string, litValue float64) {
@@ -629,15 +460,12 @@ func EmitFloatLitteral(s *State, litName string, litValue float64) {
 			value = value + ".0"
 		}
 	}
-	_, _ = s.outputFile.WriteString(litName + " dq " + value + "\n")
+	_, _ = Write(s, litName+" dq "+value+"\n")
 }
 
 func EmitSection(s *State, section string) {
 	section = strings.Trim(section, ".\n ")
-	_, err := s.outputFile.WriteString("\nsection ." + section + "\n\n")
-	if err != nil {
-		panic(err)
-	}
+	_, _ = Write(s, "\nsection ."+section+"\n\n")
 }
 
 // EmitConcat will concatenate the two strings at the top of the stack
@@ -708,9 +536,9 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 }
 
 func includeFile(s *State, txt string) error {
-	// _, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n", false)
+	// _, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n")
 	str, err := os.ReadFile(s.LibPath + txt)
-	_, _ = Write(s, string(str), false)
+	_, _ = Write(s, string(str))
 	if err != nil {
 		return err
 	}

@@ -56,6 +56,10 @@ func NewState(name string, workdir string) (*State, error) {
 	return s, err
 }
 
+func CloseObjFile(s *State) error {
+	return s.outputFile.Close()
+}
+
 func PushArgCode(s *State) {
 	s.ArgCode = append(s.ArgCode, "")
 }
@@ -118,6 +122,20 @@ func OutputArgCode(s *State) {
 	if len(s.ArgCode) == 0 {
 		return
 	}
-	_, _ = Write(s, s.ArgCode[0], true)
+	// _, _ = Write(s, s.ArgCode[0], true)
+	_, _ = s.outputFile.WriteString(s.ArgCode[0])
 	s.ArgCode = nil
+}
+
+func Write(s *State, txt string) (int, error) {
+	if s.noCode > 0 {
+		return 0, nil
+	}
+	if len(s.ArgCode) == 0 {
+		// Write directly to file
+		return s.outputFile.WriteString(txt)
+	}
+	// When parsing an argument, output text to the last element in the ArgCode slice
+	s.ArgCode[len(s.ArgCode)-1] += txt
+	return len(txt), nil
 }
