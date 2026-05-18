@@ -32,5 +32,5 @@ section .rodata
 
 alignb 8
 alloc_size_str  dq 19
-                db `Leaked memory: %d\n`, 00h
+                db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
 

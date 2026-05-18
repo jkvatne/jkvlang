@@ -41,7 +41,6 @@ func CompileDir(inputPath string, workDir string) error {
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := filepath.Join(inputPath, entry.Name())
-			// fmt.Printf("Compiling %s\n", name)
 			err = CompileFile(name, workDir)
 			if err != nil {
 				return err
@@ -66,7 +65,7 @@ func CompileDir(inputPath string, workDir string) error {
 		// Run the exe file if -run is present and linking is ok
 		err = Run(outputName)
 	}
-	return nil
+	return err
 }
 
 // CompileDir will compile all source files in the given directory

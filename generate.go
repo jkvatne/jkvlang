@@ -37,7 +37,7 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 // EmitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "CompareStrings, get TOS to rax")
+		emit(s, "pop", "rax", "", "EmitTosOpNos, get TOS to rax")
 		s.localSp--
 		s.RaxIsTOS = true
 	}

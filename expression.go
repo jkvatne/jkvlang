@@ -894,13 +894,15 @@ func ParseFuncDef(s *State) error {
 		EmitPrintSp(s)
 		// Print remaining allocation
 		EmitComment(s, "main() returning. Printing allocation count.")
+		emit(s, "push", "r15", "", "")
+		s.localSp++
 		emit(s, "mov", "rax", "[allocation_count]", "Printing allocation count")
 		emit(s, "push", "rax", "", "")
 		s.localSp++
 		emit(s, "mov", "rax", "alloc_size_str+8", "")
 		emit(s, "push", "rax", "", "")
 		s.localSp++
-		emit(s, "mov", "rbx", "16", "")
+		emit(s, "mov", "rbx", "24", "")
 		emit(s, "call", "_printf", "", "")
 		emit(s, "call", "_fflush", "", "")
 		emit(s, "add", "rsp", "16", "")

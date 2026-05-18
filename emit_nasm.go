@@ -294,7 +294,7 @@ func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
 	emit(s, "movq", xmm(1), "rax", "")
 	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
 	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats equal")
+	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(s, op, true)
 	return err
 }
@@ -305,11 +305,11 @@ func EmitCompareFloats(s *State, op Token) (err error) {
 		emit(s, "pop", "rax", "", "")
 		s.localSp--
 	}
-	emit(s, "movq", xmm(1), "rax", "")
+	emit(s, "movq", xmm(2), "rax", "")
 	emit(s, "pop", "rax", "", "")
 	s.localSp--
-	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats equal")
+	emit(s, "movq", xmm(1), "rax", "")
+	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(s, op, true)
 	return err
 }

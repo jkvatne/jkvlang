@@ -95,6 +95,28 @@ func main() {
     printf("(z*z*(x+y))=%f (should be 34.848)\n",w)
     assert(w==34.848)
 
+    printf("10. Compare two variables. All theese should succeed\n")
+    a = 1.234
+    b = 2.345
+    assert(a<b, "58. Failed compare float %f<%f", a, b)
+    assert(a<=b, "59. Failed compare float %f<=%f", a, b)
+    assert(b>a, "61. Failed compare float %f>%f", a, b)
+    assert(b>=a, "62. Failed compare float %f>=%f", a, b)
+    assert(b==b, "60. Failed compare equal %f==%f", a, b)
+    assert(a!=b, "60. Failed compare equal %f==%f", a, b)
 
+    printf("11. Compare two variables. All theese should fail\n")
+    a = 1.234
+    b = 2.345
+    assert(a>b, "58. Intentionally failed compare float %f<%f", a, b)
+    invert_err()
+    assert(b>a, "61. Intentionally failed compare float %f>%f", a, b)
+    invert_err()
+    assert(b<=a, "62. Intentionally failed compare float %f>=%f", a, b)
+    invert_err()
+    assert(b!=b, "60. Intentionally failed compare equal %f==%f", a, b)
+    invert_err()
+    assert(a==b, "60. Intentionally failed compare equal %f==%f", a, b)
+    invert_err()
 
 }
