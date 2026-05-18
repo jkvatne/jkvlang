@@ -62,7 +62,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			EmitIntegerOp(s, op)
 			return val1, nil
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			EmitF64Op(s, op)
+			EmitFloatOp(s, op)
 			return val1, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_PLUS {
@@ -86,10 +86,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitCompareIntConst(s, op, val2.IntValue, false)
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			// First push constant into xmm<sp+1>
-			emit(s, "movq", xmm(s.XmmSp), "[flt"+strconv.Itoa(val2.FloatLitNo)+"]", "Load NOS into xmm<sp>")
-			s.XmmSp++
-			err = EmitCompareFloats(s, op)
+			err = EmitCompareFloatConst(s, op, val2.FloatLitNo)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			err = EmitCompareStrToLit(s, op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
@@ -100,12 +97,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitOpIntConst(s, op, val2.IntValue, "")
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
-			// Move constant value to sp+1
-			if s.XmmSp > 6 {
-				panic("Floating point stack overflow")
-			}
-			EmitPushFloat(s, val2.FloatLitNo)
-			EmitF64Op(s, op)
+			EmitOpFloatConst(s, op, val2.FloatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
 		}
 		return &ValueDef{Typ: val1.Typ}, err
@@ -139,7 +131,12 @@ func GenerateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (er
 					err = EmitOpAssign(s, op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if lvalue.Typ.Pt == TYP_F64 {
-				err = EmitOpAssignFloat(s, op, lvalue.Offset(), value.FloatLitNo, "")
+				if value.FloatLitNo == 0 {
+					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
+					err = EmitOpAssignFloat(s, op, lvalue.Offset(), value.FloatLitNo, "")
+				} else {
+					err = EmitOpAssignFloat(s, op, lvalue.Offset(), value.FloatLitNo, "")
+				}
 			} else {
 				panic("Unimplemented assignment")
 			}

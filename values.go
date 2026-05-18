@@ -45,11 +45,11 @@ func LiteralInit() {
 func AddFloatLiteral(value float64) int {
 	for i, s := range FloatLiteralDefs {
 		if s == value {
-			return i
+			return i + 1
 		}
 	}
 	FloatLiteralDefs = append(FloatLiteralDefs, value)
-	return len(FloatLiteralDefs) - 1
+	return len(FloatLiteralDefs)
 }
 
 func AddLiteral(value string) int {

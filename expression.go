@@ -147,7 +147,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				}
 				EmitPushTos(s, parNo, f.name, false)
 			} else if value.Typ.Pt == TYP_F64 {
-				EmitPushFloat(s, value.FloatLitNo)
+				EmitPushFloatLit(s, value.FloatLitNo)
 			} else {
 				// TODO: Handle F32 etc.
 				return nil, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
@@ -170,12 +170,15 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 						SetCleanupCode(s, v)
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
-					emit(s, "movq", "rax", xmm(s.XmmSp-1), "printf argument")
-				} else if value.Typ.Pt.IsInteger() && s.RaxIsTOS {
-					emit(s, "push", "rax", "", "Integer argument to printf")
-					s.localSp++
+					if s.RaxIsTOS {
+						emit(s, "push", "rax", "", "printf float argument")
+						s.localSp++
+					}
 				} else if value.Typ.Pt.IsInteger() {
-					// Do nothing. Value is TOS
+					if s.RaxIsTOS {
+						emit(s, "push", "rax", "", "Integer argument to printf")
+						s.localSp++
+					}
 				} else {
 					return nil, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}

@@ -67,9 +67,9 @@ func emit(s *State, op string, dst string, src string, comment string) {
 		txt = txt + " " + src
 	}
 	if comment != "" {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + " (" + strconv.Itoa(s.localSp) + ")"
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + " (SP=" + strconv.Itoa(s.localSp) + ")"
 	} else {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + ";  (" + strconv.Itoa(s.localSp) + ")"
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; (SP=" + strconv.Itoa(s.localSp) + ")"
 	}
 	txt += "\n"
 	_, err := Write(s, txt, false)
@@ -111,7 +111,7 @@ func EmitBlankLine(s *State) {
 }
 
 func EmitLineNo(s *State) {
-	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"("+strconv.Itoa(s.localSp)+")\n", false)
+	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"  (SP="+strconv.Itoa(s.localSp)+")\n", false)
 	if err != nil {
 		panic(err)
 	}
@@ -198,41 +198,54 @@ func xmm(sp int) string {
 	return "xmm" + strconv.Itoa(sp)
 }
 
-// EmitFloatOp will generate a stack operation on the top two stack entries, like fadd or fsub
-// The stack pointer will be incremented (pop), and the result will now be on top of the stack (xmm0)
-// Assumes TOS is in xmm+sp and NOS in xmm+sp-1
-func EmitF64Op(s *State, op Token) {
-	if s.XmmSp < 2 {
-		panic("EmitF64OP requires two values on the floating point stack")
+func EmitOpFloatConst(s *State, op Token, litNo int) {
+	if !s.RaxIsTOS {
+		emit(s, "pop", "rax", "", "EmitOpFloatConst, tos is not rax")
+		s.localSp--
 	}
+	emit(s, "movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
+	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
+	emit(s, "movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
+	doFloatOp(s, op)
+}
+
+// EmitFloatOp will generate a stack operation on the top two stack entries
+func EmitFloatOp(s *State, op Token) {
+	if !s.RaxIsTOS {
+		emit(s, "pop", "rax", "", "EmitFloatOp, tos is not rax")
+		s.localSp--
+	}
+	emit(s, "movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
+	emit(s, "pop", "rax", "", "EmitFloatOp pop nos")
+	s.localSp--
+	emit(s, "movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+	doFloatOp(s, op)
+}
+
+func doFloatOp(s *State, op Token) {
 	if op == TOK_PLUS {
-		emit(s, "addsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Add the two top xmm stack values")
+		emit(s, "addsd", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
-		emit(s, "subsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Subtract the two top xmm stack values")
+		emit(s, "subsd", xmm(1), xmm(2), "Subtract nos from tos")
 	} else if op == TOK_MULT {
-		emit(s, "mulsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Multiply the two top xmm stack values")
+		emit(s, "mulsd", xmm(1), xmm(2), "Multiply nos by tos")
 	} else if op == TOK_DIV {
-		emit(s, "divsd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Divide the two top xmm stack values")
+		emit(s, "divsd", xmm(1), xmm(2), "Divide tos by nos")
 	} else if op == TOK_INV_DIV {
-		emit(s, "divsd", xmm(s.XmmSp-1), xmm(s.XmmSp-2), "Divide the two top xmm stack values inverted")
-		emit(s, "movq", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "")
+		emit(s, "divsd", xmm(2), xmm(1), "Divide nos by tos")
+		emit(s, "movq", xmm(1), xmm(2), "")
 	} else {
 		panic("EmitFloatOp not implemented for " + op.Name())
 	}
-	s.XmmSp--
-	if s.XmmSp < 0 {
-		panic("Floating point stack underflow")
-	}
+	emit(s, "movq", "rax", xmm(1), "Move float result into rax")
+	s.RaxIsTOS = true
 }
 
-func EmitPushFloat(s *State, litNo int) {
-	emit(s, "movsd", "xmm"+strconv.Itoa(s.XmmSp), "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
-	emit(s, "movq", "rax", "xmm"+strconv.Itoa(s.XmmSp), "")
-	s.XmmSp++
-	s.RaxIsTOS = true
-	if s.XmmSp > 8 {
-		panic("Floating point stack overflow")
-	}
+func EmitPushFloatLit(s *State, litNo int) {
+	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
+	emit(s, "push", "rax", "", "Push old tos in rax")
+	s.localSp++
+	s.RaxIsTOS = false
 }
 
 func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
@@ -276,14 +289,28 @@ func EmitJumpCond(s *State, op Token, unsignedOrFloat bool) error {
 	return nil
 }
 
-// EmitCompareFloats compares two floats. TOS is in xmm<sp>. NOS is in xmm<sp-1>
-func EmitCompareFloats(s *State, op Token) (err error) {
-	emit(s, "ucomisd", xmm(s.XmmSp-2), xmm(s.XmmSp-1), "Compare two floats equal")
+// EmitCompareFloatConst compares float in rax with float constant
+func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
+	emit(s, "movq", xmm(1), "rax", "")
+	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
+	emit(s, "movq", xmm(2), "rax", "")
+	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats equal")
 	err = EmitJumpCond(s, op, true)
-	s.XmmSp -= 2
-	if s.XmmSp < 0 {
-		panic("Floating point stack underflow")
+	return err
+}
+
+// EmitCompareFloats compares two floats.
+func EmitCompareFloats(s *State, op Token) (err error) {
+	if !s.RaxIsTOS {
+		emit(s, "pop", "rax", "", "")
+		s.localSp--
 	}
+	emit(s, "movq", xmm(1), "rax", "")
+	emit(s, "pop", "rax", "", "")
+	s.localSp--
+	emit(s, "movq", xmm(2), "rax", "")
+	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats equal")
+	err = EmitJumpCond(s, op, true)
 	return err
 }
 
@@ -474,9 +501,12 @@ func EmitStoreConst(s *State, size int, value int64, offset int, comment string)
 }
 
 func EmitLoadFloat64(s *State, size int, adr int, comment string) {
-	emit(s, "movq", xmm(s.XmmSp), BpRel(adr), comment)
-	emit(s, "mov", "rax", BpRel(adr), "")
-	s.XmmSp++
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", "Push TOS loading float")
+		s.localSp++
+	}
+	s.RaxIsTOS = true
+	emit(s, "mov", "rax", BpRel(adr), comment)
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)
@@ -497,11 +527,7 @@ func EmitStore(s *State, opcode string, size int, adr int, comment string) {
 }
 
 func EmitStoreF64(s *State, adr int, comment string) {
-	s.XmmSp--
-	if s.XmmSp < 0 {
-		panic("Floating point stack underflow")
-	}
-	emit(s, "movq", BpRel(adr), xmm(s.XmmSp), comment)
+	emit(s, "mov", BpRel(adr), "rax", comment)
 }
 
 func EmitPushString(s *State, litno int) {
@@ -539,7 +565,8 @@ func EmitJumpTrue(s *State, n int, comment string) {
 
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, comment string) int {
-	emit(s, "sub", "rsp", "8", comment)
+	// emit(s, "sub", "rsp", "8", comment)
+	emit(s, "push", "0", "", comment)
 	s.localSp++
 	return -8 * s.localSp
 }
@@ -740,8 +767,14 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 		result.IntValue = val1.IntValue * val2.IntValue
 		result.FloatValue = val1.FloatValue * val2.FloatValue
 	case TOK_DIV:
-		result.IntValue = val1.IntValue / val2.IntValue
-		result.FloatValue = val1.FloatValue / val2.FloatValue
+		if val2.Typ.Pt.IsInteger() {
+			if val2.IntValue == 0 {
+				return &NoValue, fmt.Errorf("Cannot divide by zero")
+			}
+			result.IntValue = val1.IntValue / val2.IntValue
+		} else if val2.Typ.Pt.IsFloat() {
+			result.FloatValue = val1.FloatValue / val2.FloatValue
+		}
 	case TOK_AND:
 		result.IntValue = val1.IntValue & val2.IntValue
 	case TOK_OR:

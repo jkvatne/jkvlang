@@ -44,7 +44,7 @@ func CompileFile(name string, workdir string) error {
 		EmitLitteral(s, "str"+strconv.Itoa(i), l)
 	}
 	for i, l := range FloatLiteralDefs {
-		EmitFloatLitteral(s, "flt"+strconv.Itoa(i), l)
+		EmitFloatLitteral(s, "flt"+strconv.Itoa(i+1), l)
 	}
 	if err != nil {
 		return fmt.Errorf("%s:%d %v", name, s.lineNum, err)
