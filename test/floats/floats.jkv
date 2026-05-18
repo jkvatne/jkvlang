@@ -1,14 +1,15 @@
 
 
 func main() {
-/*    x = 1.0
-    y = 2.2
-    z = 3.3
-    w = (0.5+(x+y)*z+0.5)
-    printf("w=%f\n", w)
-*/
     x = 1.0
     y = 2.2
+    z = 3.3
+
+    printf("1.0/y=%f\n", 1.0/y)
+    printf("x+y/z=%f\n",x+y/z)
+    w = 1.0/y+(x+y/z)*(z*z*(x+y))
+    printf("w = 1.0/y+(x+y/z)*(z*z*(x+y)) = %f\n", w)
+
     printf("1. Test var div const\n")
     printf("x=%0.2f, y=%0.2f\n", x, y)
     z = x / 2.2
@@ -29,14 +30,13 @@ func main() {
 
     printf("5. Test printf with float args\n")
     i = 3
-    printf("x=%f (should be 1.000000)\n", x)
+    // printf("x=%f (should be 1.000000)\n", x)
     r = x+y
     printf("r=%f (should be 3.000000\n", r)
     printf("x=%f r=%f (should be 1.00000 and 7.0000)\n", x,r)
     printf("%d %d %d %d (should be 1 2 3 4)\n", 1,2, i, 4)
     printf("%s, %f, %d, %s, %f (should be 1, 1.0, 3, 4, 2.2)\n", "1", x, i, "4", y)
     printf("Floats %f, %f, %f, %f, %f, %f, %f, %f\n", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
-
 
     printf("6. Test float compare\n")
     y = 5.0
@@ -58,30 +58,43 @@ func main() {
     assert(y!=5.0, "Intentionally failed y!=5")
     invert_err()
 
-    printf("3. Test float addition/subtraction\n")
+    printf("7. Test float addition/subtraction\n")
     assert(x+1.0==2.0)
     assert(1.0+x==2.0)
     assert(1.0+x==2.0)
+    y = 2.2
     w = x+y
     printf("w=%f\n", w)
-    // The expression is not exactly equal to 3.3. Use > and <
-    assert(w>3.2999 && w<3.30001, "Failed w==3.3, got %f", w)
-/*
+    // The expression is not exactly equal to 3.2. Use > and <
+    assert(w>3.1999 && w<3.20001, "Failed w==3.2, got %f", w)
 
-    assert(w4==11.89, "Failed, w4==11.89, got %f", w4)
-    w2 = 0.1+z/x
-    printf("w2=%f\n", w2)
-    assert (w2>3.0999 && w2<3.1001,"Failed divide, got %f", w2)
-
+    printf("9. Divide by float zero\n")
     zero = 0.0
     w2 = x/zero
     printf("x/0.0=%f\n", w2)
 
-    w = 1.0/y+(x+y/z)*(z*z*(x+y))
-    printf("w=%f\n", w)
-    assert (w>63.943244 && w<63.943246)
+    printf("8. Test nested parantesises\n")
+    x = 1.0
+    y = 2.2
+    z = 3.3
+    printf("z=%f, y=%f, z=%f\n", x,y,z)
 
-    w = x+1
-    */
+    w = (0.5+(x+y)*z+0.5)
+    printf("w=%f (Should be 11.56)\n", w)
+    assert(w==11.56)
+
+    w = 1.0/y+(x+y/z)*(z*z*(x+y))
+    printf("w = 1.0/y+(x+y/z)*(z*z*(x+y)) = %f\n", w)
+    assert (w>=58.534544 && w<=58.534546)
+
+    w =z*(x+y)
+    printf("Should be 10.56: %f\n", w)
+    assert(w==10.56)
+
+    w = (z*z*(x+y))
+    printf("(z*z*(x+y))=%f (should be 34.848)\n",w)
+    assert(w==34.848)
+
+
 
 }

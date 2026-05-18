@@ -597,6 +597,14 @@ func EmitPushConst(s *State, value int64, comment string) {
 	s.RaxIsTOS = true
 }
 
+func EmitFlushRax(s *State, comment string) {
+	if s.RaxIsTOS {
+		emit(s, "push", "rax", "", comment)
+		s.localSp++
+		s.RaxIsTOS = false
+	}
+}
+
 func EmitPrintHello(s *State, format string) {
 	emit(s, "mov", "ecx", "-11", "STD_OUTPUT_HANDLE (.11)")
 	emit(s, "call", "GetStdHandle", "", "Handle returned in rax")

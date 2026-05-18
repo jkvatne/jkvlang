@@ -215,12 +215,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
-	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push TOS before call")
-		s.localSp++
-		s.RaxIsTOS = false
-	}
-
+	EmitFlushRax(s, "Push TOS before call")
 	f := FuncDefs[id]
 	if f == nil {
 		s.currentFuncCall = ""
@@ -400,8 +395,9 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
 		nextToken(s)
-		PushArgCode(s)
+		EmitFlushRax(s, "Begin parantesis term")
 		value, err = ParseExpression(s)
+		EmitFlushRax(s, "End parantesis term")
 		return value, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
@@ -552,11 +548,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	if err != nil {
 		return &NoValue, err
 	}
-	if s.RaxIsTOS {
-		emit(s, "push", "rax", "", "Push TOS value 2")
-		s.localSp++
-		s.RaxIsTOS = false
-	}
+	EmitFlushRax(s, "Push TOS value 2")
 	PushArgCode(s)
 	result, err := GenerateOp(s, op, value1, value2)
 	ConsArgCode(s, 3, false)
