@@ -3,74 +3,16 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 
 	"github.com/jkvatne/jkv/code"
 )
 
-func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
-	// Set lvalue type if not already set. Needed for new variables.
-	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		lvalue.SetType(value.Typ)
-		// VarDefs[lvalue.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable "+lvalue.Name)
-	}
-	if lvalue.Typ == nil {
-		return fmt.Errorf("new variable not allowed before op-assignment")
-	}
-	// Check types to see if the value can be assigned to the lvalue
-	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
-		return fmt.Errorf("assignment expected type %s but got %s",
-			lvalue.Typ.Pt.Name(), value.Typ.Name())
-	}
-	// If the value is known (a compile time constant)
-	if value.HasValue {
-		if CanAssignConst(lvalue.Typ.Pt, value) {
-			if lvalue.Typ.Pt == TYP_STRING {
-				err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
-			} else if lvalue.Typ.Pt.IsInteger() {
-				if lvalue.Name == "err" {
-					EmitStoreErr(int(value.IntValue), "Assign to err")
-				} else {
-					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
-				}
-			} else if lvalue.Typ.Pt == TYP_F64 {
-				if value.FloatLitNo == 0 {
-					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
-					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
-				} else {
-					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
-				}
-			} else {
-				panic("Unimplemented assignment")
-			}
-
-			if err != nil {
-				return err
-			}
-
-		} else {
-			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
-		}
-	} else if value.Typ.Pt.IsInteger() {
-		// The value is on the top of the stack (rax). Save it to the lvalue.
-		instr := TokenOp[op]
-		EmitStore(instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
-	} else if value.Typ.Pt == TYP_F64 {
-		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
-	} else if value.Typ.Pt == TYP_STRING {
-		instr := TokenOp[op]
-		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		EmitStore(instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
-		lvalue.MustFree = true
-	} else {
-		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
-	}
-	return nil
-}
-
 // GenerateOp will handle the infix operations +,-,*,/,%,|,&,^,<,>,<=,>=,==,!=
 // Integer operands are promoted to the smallest size that can accomondate both.
 // F.ex. I16 op U16 results in an I32
+// There are 4 different cases: const op const, tos op const, const op tos, tos op nos
 func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	// Convert int values to float in case of mixed types.
 	if val1.Typ.Pt != TYP_F64 && val1.Typ.Pt != TYP_F32 {
@@ -85,28 +27,89 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 	}
 	if val1.HasValue && val2.HasValue {
 		// If both operands are constant. Evaluate at compile time.
-		return EmitConstOpConst(op, val1, val2)
+		return generateConstOpConst(op, val1, val2)
 	} else if val1.HasValue {
 		// The left side is a constant. Do the inverse operation
-		return GenerateTosOpConst(s, Inverse(op), val2, val1)
+		return generateTosOpConst(s, Inverse(op), val2, val1)
 	} else if val2.HasValue {
 		// The right side is a constant. Do the operation on top of stack
-		return GenerateTosOpConst(s, op, val1, val2)
+		return generateTosOpConst(s, op, val1, val2)
 	} else {
-		return EmitTosOpNos(s, op, val1, val2)
+		return emitTosOpNos(s, op, val1, val2)
 	}
 }
 
-// EmitTosOpNos will generate code for the operation op on the two top entries on the stack.
-func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+// generateConstOpConst will calculate the result of the operation on the two constant values
+// and return the constant result.
+// The operations are : + - * / & |  %% == != < <= > >=
+func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+	var result ValueDef
+	result.Typ = widest(val1, val2).Typ
+	result.HasValue = true
+	switch op {
+	case TOK_PLUS:
+		result.IntValue = val1.IntValue + val2.IntValue
+		result.FloatValue = val1.FloatValue + val2.FloatValue
+	case TOK_MINUS:
+		result.IntValue = val1.IntValue - val2.IntValue
+		result.FloatValue = val1.FloatValue - val2.FloatValue
+	case TOK_MULT:
+		result.IntValue = val1.IntValue * val2.IntValue
+		result.FloatValue = val1.FloatValue * val2.FloatValue
+	case TOK_DIV:
+		if val2.Typ.Pt.IsInteger() {
+			if val2.IntValue == 0 {
+				return &NoValue, fmt.Errorf("can not divide by zero")
+			}
+			result.IntValue = val1.IntValue / val2.IntValue
+		} else if val2.Typ.Pt.IsFloat() {
+			result.FloatValue = val1.FloatValue / val2.FloatValue
+		}
+	case TOK_AND:
+		result.IntValue = val1.IntValue & val2.IntValue
+	case TOK_OR:
+		result.IntValue = val1.IntValue | val2.IntValue
+	case TOK_LOG_OR:
+		result.Typ = &BoolType
+		result.BoolValue = val1.BoolValue || val2.BoolValue
+	case TOK_LOG_AND:
+		result.Typ = &BoolType
+		result.BoolValue = val1.BoolValue && val2.BoolValue
+	case TOK_EQ:
+		result.Typ = &BoolType
+		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
+	case TOK_NE:
+		result.Typ = &BoolType
+		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
+	case TOK_LT:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue < val2.FloatValue
+	case TOK_LE:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue <= val2.FloatValue
+	case TOK_GT:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue > val2.FloatValue
+	case TOK_GE:
+		result.Typ = &BoolType
+		result.BoolValue = val1.FloatValue >= val2.FloatValue
+	default:
+		// Invalid operand
+		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
+	}
+	return &result, nil
+}
+
+// emitTosOpNos will generate code for the operation op on the two top entries on the stack.
+func emitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err := EmitCompareIntegers(s, op, false)
+			err := emitCompareIntegers(s, op, false)
 			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			EmitCompareFloats(s, op)
-			return &ValueDef{Typ: &BoolType}, nil
+			err := emitCompareFloats(s, op)
+			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_EQ {
 				EmitCompareStringsEq(val1.IsTempObj, val2.IsTempObj)
@@ -118,10 +121,10 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		}
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			EmitIntegerOp(s, op)
+			emitIntegerOp(s, op)
 			return val1, nil
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			EmitFloatOp(s, op)
+			emitFloatOp(s, op)
 			return val1, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_PLUS {
@@ -133,15 +136,15 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())
 }
 
-// GenerateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
-func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+// generateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
+func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
 	EmitAssertTosInRax("Get TOS")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = EmitCompareIntConst(s, op, val2.IntValue, false)
+			err = emitCompareIntConst(s, op, val2.IntValue, false)
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			err = EmitCompareFloatConst(s, op, val2.FloatLitNo)
+			err = emitCompareFloatConst(s, op, val2.FloatLitNo)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
@@ -150,9 +153,9 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = EmitOpIntConst(s, op, val2.IntValue, "")
-		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Name() == val2.Typ.Name() {
-			EmitOpFloatConst(s, op, val2.FloatLitNo)
+			err = emitOpIntConst(s, op, val2.IntValue, "")
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
+			emitOpFloatConst(s, op, val2.FloatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
 		}
 		return &ValueDef{Typ: val1.Typ}, err
@@ -160,8 +163,9 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
 }
 
-// EmitCompareFloatConst compares float in rax with float constant
-func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
+// emitCompareFloatConst compares float in rax with float constant
+func emitCompareFloatConst(s *State, op Token, litNo int) (err error) {
+	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
 	emit("movq", xmm(2), "rax", "")
@@ -170,36 +174,35 @@ func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
 	return err
 }
 
-// EmitCompareFloats compares two floats.
-func EmitCompareFloats(s *State, op Token) (err error) {
+// emitCompareFloats compares two floats.
+func emitCompareFloats(s *State, op Token) (err error) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "")
-	emit("pop", "rax", "", "")
-	code.LocalSp--
+	EmitPopAx("")
 	emit("movq", xmm(1), "rax", "")
 	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(op, true)
 	return err
 }
 
-// EmitCompareIntegers will compare the top two stack entries
-func EmitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
+// emitCompareIntegers will compare the top two stack entries
+func emitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
 	emit("pop", "rbx", "", "Pop next on stack into RBX")
 	code.LocalSp--
 	emit("cmp", "rax", "rbx", "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
 }
 
-// EmitCompareIntConst will compare top of stack with a constant
-func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
+// emitCompareIntConst will compare top of stack with a constant
+func emitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
 	emit("cmp", "rax", sval, "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
 }
 
-// EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
+// emitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
-func EmitIntegerOp(s *State, op Token) {
+func emitIntegerOp(s *State, op Token) {
 	if op == TOK_DIV {
 		emit("xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
@@ -228,9 +231,9 @@ func EmitIntegerOp(s *State, op Token) {
 	}
 }
 
-// EmitOpConst will evaluate tos=tos op <constant>
+// emitOpIntConst will evaluate tos=tos op <constant>
 // It uses 64bit integer values on the 64 bit rax register
-func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
+func emitOpIntConst(s *State, op Token, value int64, comment string) error {
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
@@ -253,7 +256,7 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 	return nil
 }
 
-func EmitOpFloatConst(s *State, op Token, litNo int) {
+func emitOpFloatConst(s *State, op Token, litNo int) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
@@ -261,8 +264,8 @@ func EmitOpFloatConst(s *State, op Token, litNo int) {
 	doFloatOp(s, op)
 }
 
-// EmitFloatOp will generate a stack operation on the top two stack entries
-func EmitFloatOp(s *State, op Token) {
+// emitFloatOp will generate a stack operation on the top two stack entries
+func emitFloatOp(s *State, op Token) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
 	emit("pop", "rax", "", "EmitFloatOp pop nos")

@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path"
 	"strconv"
@@ -556,66 +555,6 @@ func Inverse(op Token) Token {
 	default:
 		return op
 	}
-}
-
-// EmitConstOpConst will calculate the result of the operation on the two constant values
-// and return the constant result.
-func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	var result ValueDef
-	result.Typ = widest(val1, val2).Typ
-	result.HasValue = true
-	switch op {
-	case TOK_PLUS:
-		result.IntValue = val1.IntValue + val2.IntValue
-		result.FloatValue = val1.FloatValue + val2.FloatValue
-	case TOK_MINUS:
-		result.IntValue = val1.IntValue - val2.IntValue
-		result.FloatValue = val1.FloatValue - val2.FloatValue
-	case TOK_MULT:
-		result.IntValue = val1.IntValue * val2.IntValue
-		result.FloatValue = val1.FloatValue * val2.FloatValue
-	case TOK_DIV:
-		if val2.Typ.Pt.IsInteger() {
-			if val2.IntValue == 0 {
-				return &NoValue, fmt.Errorf("can not divide by zero")
-			}
-			result.IntValue = val1.IntValue / val2.IntValue
-		} else if val2.Typ.Pt.IsFloat() {
-			result.FloatValue = val1.FloatValue / val2.FloatValue
-		}
-	case TOK_AND:
-		result.IntValue = val1.IntValue & val2.IntValue
-	case TOK_OR:
-		result.IntValue = val1.IntValue | val2.IntValue
-	case TOK_LOG_OR:
-		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue || val2.BoolValue
-	case TOK_LOG_AND:
-		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue && val2.BoolValue
-	case TOK_EQ:
-		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
-	case TOK_NE:
-		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
-	case TOK_LT:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue < val2.FloatValue
-	case TOK_LE:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue <= val2.FloatValue
-	case TOK_GT:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue > val2.FloatValue
-	case TOK_GE:
-		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue >= val2.FloatValue
-	default:
-		// Invalid operand
-		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
-	}
-	return &result, nil
 }
 
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
