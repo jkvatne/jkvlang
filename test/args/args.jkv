@@ -41,5 +41,18 @@ func main() {
 
     printf("4. Test nested functions\n")
     assert(gg(true, f2())==27, "Failed 5")
+
+    printf("4. Test div and mod\n")
+    x = 13
+    y = 3
+    assert(x%y==1, "Failed x%%y")
+    assert(13%y==1, "Failed 13%%y")
+    assert(x%3==1, "Failed x%%3")
+    assert(13%3==1, "Failed 13%%3")
+    assert(x/y==4, "Failed x/y")
+    assert(13/y==4, "Failed  13/y")
+    assert(x/3==4, "Failed x/3")
+    assert(13/3==4, "Failed 13/3")
+
     printf("End of tests\n")
 }

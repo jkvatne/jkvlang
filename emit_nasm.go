@@ -552,6 +552,8 @@ func Inverse(op Token) Token {
 		return TOK_INV_MINUS
 	case TOK_DIV:
 		return TOK_INV_DIV
+	case TOK_MOD:
+		return TOK_INV_MOD
 	default:
 		return op
 	}

@@ -68,7 +68,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 			if val2.IntValue == 0 {
 				return &NoValue, fmt.Errorf("can not divide by zero")
 			}
-			result.IntValue = val1.IntValue / val2.IntValue
+			result.IntValue = val1.IntValue % val2.IntValue
 		} else {
 			return &NoValue, fmt.Errorf("mod needs integer arguments")
 		}
@@ -175,7 +175,7 @@ func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = emitOpIntConst(s, op, val2.IntValue, "")
+			err = emitOpIntConst(s, op, val2.IntValue+val1.IntValue, "")
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			emitOpFloatConst(s, op, val2.FloatLitNo+val1.FloatLitNo)
@@ -225,22 +225,17 @@ func emitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 // emitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
 func emitIntegerOp(s *State, op Token) {
+	EmitPopBx("")
 	if op == TOK_DIV {
-		emit("xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
+		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("pop", "rbx", "", "Get divisor from stack into RBX")
-		code.LocalSp--
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
+		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("pop", "rbx", "", "Get divisor from stack into RBX")
-		code.LocalSp--
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
-		EmitAssertTosInRax("Get TOS")
-		emit("pop", "rbx", "", "Get op 2 from stack")
-		code.LocalSp--
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
@@ -261,9 +256,20 @@ func emitOpIntConst(s *State, op Token, value int64, comment string) error {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("mov", "rbx", sval, "Get divisor from stack into RBX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-	} else if op == TOK_MOD {
+	} else if op == TOK_INV_DIV {
+		emit("mov", "rbx", sval, "Get divisor from stack into RBX")
+		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+	} else if op == TOK_MOD {
 		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+	} else if op == TOK_INV_MOD {
+		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("xchg", "rax", "rbx", "")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {

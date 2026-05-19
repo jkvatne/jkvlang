@@ -69,6 +69,7 @@ const (
 	TOK_INVALID
 	TOK_INV_MINUS
 	TOK_INV_DIV
+	TOK_INV_MOD
 	TOK_SIZE
 )
 
@@ -133,6 +134,7 @@ var TokenNames = [...]string{
 	TOK_INVALID:     "INVALID",
 	TOK_INV_MINUS:   "INV_MINUS",
 	TOK_INV_DIV:     "INV_DIV",
+	TOK_INV_MOD:     "INV_MOD",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -152,11 +154,12 @@ func (t Token) IsCompare() bool {
 }
 
 func (t Token) IsAritmetic() bool {
-	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT || t == TOK_INV_DIV || t == TOK_INV_MINUS
+	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
+		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD
 }
 
 func (t Token) IsLogic() bool {
-	return t == TOK_AND || t == TOK_OR || t == TOK_MULT
+	return t == TOK_AND || t == TOK_OR
 }
 
 func isAlfaNum(ch uint8) bool {
@@ -312,6 +315,9 @@ func nextToken(s *State) {
 		case ch1 == '*':
 			s.token = TOK_MULT
 			s.tokenString = "*"
+		case ch1 == '%':
+			s.token = TOK_MOD
+			s.tokenString = "%"
 		case ch1 == '+' && ch2 == '+':
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_PLUS_PLUS
