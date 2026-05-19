@@ -207,7 +207,7 @@ func EmitJumpCond(op Token, unsignedOrFloat bool) error {
 			} else if op == TOK_LT {
 				emit("jb", EmitNumericLabel(lbl), "", "")
 			} else {
-				return fmt.Errorf("EmitJumpCond not implemented")
+				return fmt.Errorf("EmitJumpCond not implemented for " + op.Name())
 			}
 		} else {
 			if op == TOK_GT {
@@ -219,7 +219,7 @@ func EmitJumpCond(op Token, unsignedOrFloat bool) error {
 			} else if op == TOK_LT {
 				emit("jl", EmitNumericLabel(lbl), "", "")
 			} else {
-				return fmt.Errorf("EmitJumpCond not implemented")
+				return fmt.Errorf("EmitJumpCond not implemented for " + op.Name())
 			}
 
 		}
@@ -437,6 +437,14 @@ func EmitFlushRax(comment string) {
 	}
 }
 
+func EmitAssertTosInRax(comment string) {
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", comment)
+		code.LocalSp--
+		code.RaxIsTOS = true
+	}
+}
+
 func EmitPrintHello(format string) {
 	emit("mov", "ecx", "-11", "STD_OUTPUT_HANDLE (.11)")
 	emit("call", "GetStdHandle", "", "Handle returned in rax")
@@ -454,10 +462,7 @@ func EmitPrintHello(format string) {
 func EmitConcat(free1 bool, free2 bool) {
 	EmitComment("")
 	EmitComment("Start of EmitConcat")
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "TOS was on stack. Pop it into rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
 	emit("mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
 	emit("mov", "rbx", "rdx", "Get string 1 ptr into rbx")
@@ -504,12 +509,11 @@ func EmitConcat(free1 bool, free2 bool) {
 		emit("call", "_free_str", "", "")
 	}
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
-	emit("pop", "rax", "", "Now AX should point to the string")
-	code.LocalSp--
-	code.RaxIsTOS = true
+	EmitPopAx("Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
 	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 	code.LocalSp--
+	code.RaxIsTOS = true
 	EmitComment("End of EmitConcat")
 	EmitComment("")
 }
@@ -616,10 +620,7 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "EmitCompareStrToLit, pop first argument into rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	if op == TOK_EQ {
 		emit("mov", "r14", "rax", "CompareStrings, save rax to r14")
 		emit("mov", "rdi", "rax", "Save rax to rdi")
@@ -673,10 +674,7 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	// Compare two strings, one in rax, and one on top of stack, and drop top of stack
 	lbl := code.NewLabel()
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "CompareStrings, get TOS to rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	emit("mov", "rdi", "rax", "Save tos")
 	emit("mov", "rsi", "[rsp]", "Get nos")
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
@@ -709,10 +707,7 @@ func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 // EmitCompareStringsNe compares two strings, one in rax, and one on top of stack, and drop top of stack
 func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	lbl := code.NewLabel()
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "CompareStrings, get TOS to rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	emit("mov", "rdi", "rax", "Save tos")
 	emit("mov", "rsi", "[rsp]", "Get nos")
 	emit("mov", "rcx", "4", "Compare first 4 bytes")

@@ -59,9 +59,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRING {
 		instr := TokenOp[op]
-		if !code.RaxIsTOS {
-			EmitPopAx("Pop TOS into rax before assignment")
-		}
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStore(instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
 		lvalue.MustFree = true
 	} else {
@@ -101,11 +99,7 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 
 // EmitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "EmitTosOpNos, get TOS to rax")
-		code.LocalSp--
-		code.RaxIsTOS = true
-	}
+	EmitAssertTosInRax("Get TOS")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err := EmitCompareIntegers(s, op, false)
@@ -142,11 +136,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 // GenerateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
 func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "Pop value for TosOpConst")
-		code.LocalSp--
-		code.RaxIsTOS = true
-	}
+	EmitAssertTosInRax("Get TOS")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitCompareIntConst(s, op, val2.IntValue, false)
@@ -182,10 +172,7 @@ func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
 
 // EmitCompareFloats compares two floats.
 func EmitCompareFloats(s *State, op Token) (err error) {
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "")
 	emit("pop", "rax", "", "")
 	code.LocalSp--
@@ -213,7 +200,6 @@ func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
 func EmitIntegerOp(s *State, op Token) {
-
 	if op == TOK_DIV {
 		emit("xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
@@ -227,10 +213,7 @@ func EmitIntegerOp(s *State, op Token) {
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
-		if !code.RaxIsTOS {
-			emit("pop", "rax", "", "Get op 1 from stack")
-			code.LocalSp--
-		}
+		EmitAssertTosInRax("Get TOS")
 		emit("pop", "rbx", "", "Get op 2 from stack")
 		code.LocalSp--
 		instruction := TokenOp[op]
@@ -271,10 +254,7 @@ func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 }
 
 func EmitOpFloatConst(s *State, op Token, litNo int) {
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "EmitOpFloatConst, tos is not rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
 	emit("movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
@@ -283,10 +263,7 @@ func EmitOpFloatConst(s *State, op Token, litNo int) {
 
 // EmitFloatOp will generate a stack operation on the top two stack entries
 func EmitFloatOp(s *State, op Token) {
-	if !code.RaxIsTOS {
-		emit("pop", "rax", "", "EmitFloatOp, tos is not rax")
-		code.LocalSp--
-	}
+	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
 	emit("pop", "rax", "", "EmitFloatOp pop nos")
 	code.LocalSp--
