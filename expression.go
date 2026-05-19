@@ -310,7 +310,7 @@ func ParseAssign(s *State, id string) error {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
 			oldHasValue := lvalues[i].Value.HasValue
-			err = GenerateAssignment(s, op, lvalues[i], value)
+			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
