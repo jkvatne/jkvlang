@@ -28,13 +28,11 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 	if val1.HasValue && val2.HasValue {
 		// If both operands are constant. Evaluate at compile time.
 		return generateConstOpConst(op, val1, val2)
-	} else if val1.HasValue {
-		// The left side is a constant. Do the inverse operation
-		return generateTosOpConst(s, Inverse(op), val2, val1)
-	} else if val2.HasValue {
-		// The right side is a constant. Do the operation on top of stack
+	} else if val1.HasValue || val2.HasValue {
+		EmitAssertTosInRax("Get TOS")
 		return generateTosOpConst(s, op, val1, val2)
 	} else {
+		EmitAssertTosInRax("Get TOS")
 		return emitTosOpNos(s, op, val1, val2)
 	}
 }
@@ -64,6 +62,15 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 			result.IntValue = val1.IntValue / val2.IntValue
 		} else if val2.Typ.Pt.IsFloat() {
 			result.FloatValue = val1.FloatValue / val2.FloatValue
+		}
+	case TOK_MOD:
+		if val2.Typ.Pt.IsInteger() {
+			if val2.IntValue == 0 {
+				return &NoValue, fmt.Errorf("can not divide by zero")
+			}
+			result.IntValue = val1.IntValue / val2.IntValue
+		} else {
+			return &NoValue, fmt.Errorf("mod needs integer arguments")
 		}
 	case TOK_AND:
 		result.IntValue = val1.IntValue & val2.IntValue
@@ -98,6 +105,19 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
 	}
 	return &result, nil
+}
+
+func emitTosOpNos2(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+	EmitPopBx("Pop arg 2 into RBX")
+	if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+	}
+	return &NoValue, nil
+}
+
+// generateTosOpConst2 uses inverted op if first argument is a const
+func generateTosOpConst2(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+	return &NoValue, nil
 }
 
 // emitTosOpNos will generate code for the operation op on the two top entries on the stack.
@@ -139,7 +159,9 @@ func emitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 // generateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
 func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
-	EmitAssertTosInRax("Get TOS")
+	if val1.HasValue {
+		op = Inverse(op)
+	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = emitCompareIntConst(s, op, val2.IntValue, false)
@@ -155,7 +177,8 @@ func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = emitOpIntConst(s, op, val2.IntValue, "")
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
-			emitOpFloatConst(s, op, val2.FloatLitNo)
+			// FloatLitNo is in either val1 or val2. The other is allways zero
+			emitOpFloatConst(s, op, val2.FloatLitNo+val1.FloatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
 		}
 		return &ValueDef{Typ: val1.Typ}, err
@@ -187,8 +210,7 @@ func emitCompareFloats(s *State, op Token) (err error) {
 
 // emitCompareIntegers will compare the top two stack entries
 func emitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
-	emit("pop", "rbx", "", "Pop next on stack into RBX")
-	code.LocalSp--
+	EmitPopBx("Pop next on stack into RBX")
 	emit("cmp", "rax", "rbx", "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
 }
@@ -259,7 +281,7 @@ func emitOpIntConst(s *State, op Token, value int64, comment string) error {
 func emitOpFloatConst(s *State, op Token, litNo int) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
-	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
+	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "emitOpFloatConst")
 	emit("movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
 	doFloatOp(s, op)
 }

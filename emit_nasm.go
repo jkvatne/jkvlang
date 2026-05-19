@@ -764,3 +764,8 @@ func EmitStoreReturnValue(i int) {
 func EmitStoreErr(err int, comment string) {
 	emit("mov", "r15", strconv.Itoa(err), "Set tos to r15 = error value")
 }
+
+func EmitPopBx(comment string) {
+	emit("pop", "rbx", "", comment)
+	code.LocalSp--
+}
