@@ -512,7 +512,7 @@ func ParseProd(s *State) (value *ValueDef, err error) {
 			return &NoValue, err
 		}
 		code.PushArgCode()
-		value, err = GenerateOp(s, op, value, value2)
+		value, err = GenerateOp(op, value, value2)
 		code.ConsArgCode(3, false)
 		if err != nil {
 			return &NoValue, err
@@ -566,7 +566,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			return &NoValue, err
 		}
 		code.PushArgCode()
-		value1, err = GenerateOp(s, op, value1, value2)
+		value1, err = GenerateOp(op, value1, value2)
 		code.ConsArgCode(3, false)
 		if err != nil {
 			return &NoValue, err
@@ -598,7 +598,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	}
 	EmitFlushRax("Push TOS value 2")
 	code.PushArgCode()
-	result, err := GenerateOp(s, op, value1, value2)
+	result, err := GenerateOp(op, value1, value2)
 	code.ConsArgCode(3, false)
 	if err != nil {
 		return &NoValue, err

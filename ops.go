@@ -13,7 +13,7 @@ import (
 // Integer operands are promoted to the smallest size that can accomondate both.
 // F.ex. I16 op U16 results in an I32
 // There are 4 different cases: const op const, tos op const, const op tos, tos op nos
-func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	// Convert int values to float in case of mixed types.
 	if val1.Typ.Pt != TYP_F64 && val1.Typ.Pt != TYP_F32 {
 		val1.FloatValue = float64(val1.IntValue)
@@ -30,10 +30,10 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		return generateConstOpConst(op, val1, val2)
 	} else if val1.HasValue || val2.HasValue {
 		EmitAssertTosInRax("Get TOS")
-		return generateTosOpConst(s, op, val1, val2)
+		return generateTosOpConst(op, val1, val2)
 	} else {
 		EmitAssertTosInRax("Get TOS")
-		return emitTosOpNos(s, op, val1, val2)
+		return emitTosOpNos(op, val1, val2)
 	}
 }
 
@@ -107,7 +107,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 	return &result, nil
 }
 
-func emitTosOpNos2(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+func emitTosOpNos2(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitPopBx("Pop arg 2 into RBX")
 	if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
@@ -116,19 +116,19 @@ func emitTosOpNos2(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) 
 }
 
 // generateTosOpConst2 uses inverted op if first argument is a const
-func generateTosOpConst2(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+func generateTosOpConst2(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	return &NoValue, nil
 }
 
 // emitTosOpNos will generate code for the operation op on the two top entries on the stack.
-func emitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err := emitCompareIntegers(s, op, false)
+			err := emitCompareIntegers(op, false)
 			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			err := emitCompareFloats(s, op)
+			err := emitCompareFloats(op)
 			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_EQ {
@@ -141,10 +141,10 @@ func emitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		}
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			emitIntegerOp(s, op)
+			emitIntegerOp(op)
 			return val1, nil
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			emitFloatOp(s, op)
+			emitFloatOp(op)
 			return val1, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_PLUS {
@@ -157,16 +157,16 @@ func emitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 }
 
 // generateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
-func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
+func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
 	if val1.HasValue {
 		op = Inverse(op)
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = emitCompareIntConst(s, op, val2.IntValue, false)
+			err = emitCompareIntConst(op, val2.IntValue, false)
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			err = emitCompareFloatConst(s, op, val2.FloatLitNo)
+			err = emitCompareFloatConst(op, val2.FloatLitNo)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
@@ -175,10 +175,10 @@ func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = emitOpIntConst(s, op, val2.IntValue+val1.IntValue, "")
+			err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "")
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
-			emitOpFloatConst(s, op, val2.FloatLitNo+val1.FloatLitNo)
+			emitOpFloatConst(op, val2.FloatLitNo+val1.FloatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
 		}
 		return &ValueDef{Typ: val1.Typ}, err
@@ -187,7 +187,7 @@ func generateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 }
 
 // emitCompareFloatConst compares float in rax with float constant
-func emitCompareFloatConst(s *State, op Token, litNo int) (err error) {
+func emitCompareFloatConst(op Token, litNo int) (err error) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
@@ -198,7 +198,7 @@ func emitCompareFloatConst(s *State, op Token, litNo int) (err error) {
 }
 
 // emitCompareFloats compares two floats.
-func emitCompareFloats(s *State, op Token) (err error) {
+func emitCompareFloats(op Token) (err error) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "")
 	EmitPopAx("")
@@ -209,14 +209,14 @@ func emitCompareFloats(s *State, op Token) (err error) {
 }
 
 // emitCompareIntegers will compare the top two stack entries
-func emitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
+func emitCompareIntegers(op Token, unsigned bool) (err error) {
 	EmitPopBx("Pop next on stack into RBX")
 	emit("cmp", "rax", "rbx", "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
 }
 
 // emitCompareIntConst will compare top of stack with a constant
-func emitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
+func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
 	emit("cmp", "rax", sval, "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
@@ -224,7 +224,7 @@ func emitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 
 // emitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
-func emitIntegerOp(s *State, op Token) {
+func emitIntegerOp(op Token) {
 	EmitPopBx("")
 	if op == TOK_DIV {
 		emit("xchg", "rax", "rbx", "")
@@ -250,7 +250,7 @@ func emitIntegerOp(s *State, op Token) {
 
 // emitOpIntConst will evaluate tos=tos op <constant>
 // It uses 64bit integer values on the 64 bit rax register
-func emitOpIntConst(s *State, op Token, value int64, comment string) error {
+func emitOpIntConst(op Token, value int64, comment string) error {
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
@@ -284,25 +284,25 @@ func emitOpIntConst(s *State, op Token, value int64, comment string) error {
 	return nil
 }
 
-func emitOpFloatConst(s *State, op Token, litNo int) {
+func emitOpFloatConst(op Token, litNo int) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "emitOpFloatConst")
 	emit("movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
-	doFloatOp(s, op)
+	doFloatOp(op)
 }
 
 // emitFloatOp will generate a stack operation on the top two stack entries
-func emitFloatOp(s *State, op Token) {
+func emitFloatOp(op Token) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
 	emit("pop", "rax", "", "EmitFloatOp pop nos")
 	code.LocalSp--
 	emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
-	doFloatOp(s, op)
+	doFloatOp(op)
 }
 
-func doFloatOp(s *State, op Token) {
+func doFloatOp(op Token) {
 	if op == TOK_PLUS {
 		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
