@@ -2,6 +2,7 @@ package code
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -16,6 +17,15 @@ var (
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	CleanupCode []string
 )
+
+func New(name string, workdir string) (err error) {
+	ArgCode = make([]string, 0, 64)
+	CleanupCode = make([]string, 0, 64)
+	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
+	fn := filepath.Join(workdir, UnitName+".asm")
+	OutputFile, err = os.Create(fn)
+	return err
+}
 
 func NewLabel() int {
 	LabelNo++

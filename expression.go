@@ -172,15 +172,9 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 						code.SetCleanupCode(v)
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
-					if code.RaxIsTOS {
-						emit("push", "rax", "", "printf float argument")
-						code.LocalSp++
-					}
+					EmitFlushRax("Float arg to printf")
 				} else if value.Typ.Pt.IsInteger() {
-					if code.RaxIsTOS {
-						emit("push", "rax", "", "Integer argument to printf")
-						code.LocalSp++
-					}
+					EmitFlushRax("Integer arg to printf")
 				} else {
 					return nil, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
@@ -373,8 +367,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	if !v.Value.HasValue {
 		// This is a local variable, not a known constant
 		if v.Name == "err" {
-			emit("mov", "rax", "r15", "Load err")
-			code.RaxIsTOS = true
+			EmitLoadErr()
 		} else if v.Value.Typ.Pt == TYP_F64 {
 			// Load value into xmm<sp>
 			EmitLoadFloat64(8, v.Offset(), "Load float "+v.Name)
@@ -491,12 +484,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 				return &NoValue, err
 			}
 			if value2.HasValue {
-				if code.RaxIsTOS {
-					emit("push", "rax", "", "SumTerm push value 2")
-					code.LocalSp++
-				}
-				// Push constant string
-				emit("mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
+				EmitPushStringLit(value2.StringLitNo, "Sum term push value2")
 				value2.IsTempObj = false
 			}
 			if value2.Typ.Pt != TYP_STRING {
@@ -665,7 +653,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	}
 
 	if s.found(TOK_COLON) {
-		if !s.hasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue {
 			L2 = code.NewLabel()
 			EmitJump(L2, "")
 		}
@@ -675,7 +663,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		if err != nil {
 			return err
 		}
-		if !s.hasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue {
 			EmitLabel(L2, "")
 		}
 	} else {
@@ -704,7 +692,7 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 	}
 
 	for s.found(TOK_ELSE) {
-		if !s.hasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue {
 			L2 = code.NewLabel()
 			EmitJump(L2, "Skip else block")
 		}
@@ -738,7 +726,7 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 			if err != nil {
 				return err
 			}
-			if !s.hasReturned {
+			if !s.HasReturned {
 				EmitJump(L2, "jump to end of else block")
 			}
 			if s.token != TOK_RBRACE {
@@ -855,7 +843,7 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
-	if !s.hasReturned && f != nil && len(f.returnTypes) > 0 {
+	if !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
 	EmitLabel(s.returnLbl, "Return label for "+f.name)
@@ -879,35 +867,7 @@ func ParseFuncDef(s *State) error {
 	// Free local variables on the stack
 	EmitComment("End of function. Drop local variables for " + f.name)
 	EmitAddToSp(-code.LocalSp, "Drop local variables")
-
-	// CheckLocalSp(f.name)
-
-	// Return exit code from main
-	if s.currentFuncDef.name == "main" {
-		EmitPrintSp()
-		// Print remaining allocation
-		EmitComment("main() returning. Printing allocation count.")
-		emit("push", "r15", "", "")
-		code.LocalSp++
-		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
-		emit("push", "rax", "", "")
-		code.LocalSp++
-		emit("mov", "rax", "alloc_size_str+8", "")
-		emit("push", "rax", "", "")
-		code.LocalSp++
-		emit("mov", "rbx", "24", "")
-		emit("call", "_printf", "", "")
-		emit("call", "_fflush", "", "")
-		emit("add", "rsp", "16", "")
-		code.LocalSp -= 2
-		EmitComment("Returning error code via _exit()")
-		emit("mov", "rax", "r15", "Get error code")
-		emit("call", "_exit", "", "")
-	} else {
-		// Function epilogue. Restore frame pointer and exit
-		emit("leave", "", "", "")
-		emit("ret", "", "", "return from "+s.currentFuncDef.name)
-	}
+	EmitEpilogue(f.name)
 	code.OutputArgCode()
 	nextToken(s)
 	s.currentFuncDef = nil

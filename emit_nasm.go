@@ -370,15 +370,6 @@ func EmitStoreF64(adr int, comment string) {
 	emit("mov", BpRel(adr), "rax", comment)
 }
 
-func EmitPushString(litno int) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", "EmitPushString() Push TOS")
-		code.LocalSp++
-	}
-	emit("mov", "rax", "str"+strconv.Itoa(litno), "Push pointer to literal string")
-	code.RaxIsTOS = true
-}
-
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
 func EmitJumpFalse(n int, comment string) {
@@ -417,8 +408,8 @@ func EmitPushStringLit(lit int, comment string) {
 		emit("push", "rax", "", "2 Push TOS")
 		code.LocalSp++
 	}
-	code.RaxIsTOS = true
 	emit("mov", "rax", "str"+strconv.Itoa(lit), comment)
+	code.RaxIsTOS = true
 }
 
 func EmitSkipLenCap() {
@@ -791,5 +782,38 @@ func EmitAddToSp(count int, comment string) {
 
 func EmitPushConstString(litNo int) {
 	emit("mov", "rax", "str"+strconv.Itoa(litNo), "PushConstString")
+	code.RaxIsTOS = true
+}
+
+// EmitEpilogue - restores frame pointer and exit
+func EmitEpilogue(name string) {
+	if name == "main" {
+		EmitPrintSp()
+		// Print remaining allocation
+		EmitComment("main() returning. Printing allocation count.")
+		emit("push", "r15", "", "")
+		code.LocalSp++
+		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
+		emit("push", "rax", "", "")
+		code.LocalSp++
+		emit("mov", "rax", "alloc_size_str+8", "")
+		emit("push", "rax", "", "")
+		code.LocalSp++
+		emit("mov", "rbx", "24", "")
+		emit("call", "_printf", "", "")
+		emit("call", "_fflush", "", "")
+		emit("add", "rsp", "16", "")
+		code.LocalSp -= 2
+		EmitComment("Returning error code via _exit()")
+		emit("mov", "rax", "r15", "Get error code")
+		emit("call", "_exit", "", "")
+	} else {
+		emit("leave", "", "", "")
+		emit("ret", "", "", "return from "+name)
+	}
+}
+
+func EmitLoadErr() {
+	emit("mov", "rax", "r15", "Load err")
 	code.RaxIsTOS = true
 }

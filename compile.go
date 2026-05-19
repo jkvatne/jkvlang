@@ -10,6 +10,10 @@ import (
 )
 
 func CompileFile(name string, workdir string) error {
+	err := code.New(name, workdir)
+	if err != nil {
+		return err
+	}
 	s, err := NewState(name, workdir)
 	if err != nil {
 		return err

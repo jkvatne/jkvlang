@@ -53,7 +53,6 @@ func ParseReturn(s *State) error {
 	}
 	code.OutputArgCode()
 	s.DidReturn = true
-	s.Returning = false
 	return nil
 }
 
@@ -82,7 +81,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 		}
 	} else if s.token == TOK_RETURN {
 		nextToken(s)
-		if s.hasReturned {
+		if s.HasReturned {
 			return true, fmt.Errorf("more than one return in block")
 		}
 		err = ParseReturn(s)
@@ -105,10 +104,10 @@ func ParseStatement(s *State) (returned bool, err error) {
 }
 
 func ParseStatements(s *State) error {
-	s.hasReturned = false
+	s.HasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		if s.DidReturn {
-			emit("jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
+			EmitJump(s.returnLbl, "Jump to return")
 			s.DidReturn = false
 		}
 		code.EmitLineNo(s.currentLine, code.LocalSp)
@@ -118,10 +117,10 @@ func ParseStatements(s *State) error {
 		}
 		EmitPrintSp()
 		if returned {
-			if s.hasReturned {
+			if s.HasReturned {
 				return fmt.Errorf("statements after return")
 			}
-			s.hasReturned = true
+			s.HasReturned = true
 		}
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
