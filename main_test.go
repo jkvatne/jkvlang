@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 func TestTokens(t *testing.T) {
@@ -27,20 +29,20 @@ func TestCompile(t *testing.T) {
 		if entry.IsDir() {
 			continue
 		}
-		unitName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+		code.UnitName = strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
 		name := filepath.Join(inputPath, entry.Name())
 		fmt.Printf("Compiling %s\n", entry.Name())
 		err = CompileFile(name, outputPath)
-		if strings.HasPrefix(unitName, "err_") {
+		if strings.HasPrefix(code.UnitName, "err_") {
 			if err == nil {
-				t.Errorf("Expected error in %s", unitName)
+				t.Errorf("Expected error in %s", code.UnitName)
 			}
 			continue
 		} else if err != nil {
 			t.Errorf("Error in file \"%s.jkv\" : %v", unitName, err)
 		} else {
-			targetFile := "./test/targets/" + unitName + ".asm"
-			objectFile := "./test/objectfiles/" + unitName + ".asm"
+			targetFile := "./test/targets/" + code.UnitName + ".asm"
+			objectFile := "./test/objectfiles/" + code.UnitName + ".asm"
 			err := FilesAreEqual(objectFile, targetFile)
 			if err != nil {
 				fmt.Printf("Object file not correct: %s\n", err.Error())

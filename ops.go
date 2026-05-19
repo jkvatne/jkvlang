@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 // GenerateOp will handle the infix operations +,-,*,/,%,|,&,^,<,>,<=,>=,==,!=
@@ -37,10 +39,10 @@ func GenerateOp(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 
 // EmitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "EmitTosOpNos, get TOS to rax")
-		s.localSp--
-		s.RaxIsTOS = true
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", "EmitTosOpNos, get TOS to rax")
+		code.LocalSp--
+		code.RaxIsTOS = true
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
@@ -51,10 +53,10 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			return &ValueDef{Typ: &BoolType}, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_EQ {
-				EmitCompareStringsEq(s, val1.IsTempObj, val2.IsTempObj)
+				EmitCompareStringsEq(val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			} else if op == TOK_NE {
-				EmitCompareStringsNe(s, val1.IsTempObj, val2.IsTempObj)
+				EmitCompareStringsNe(val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			}
 		}
@@ -67,7 +69,7 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			return val1, nil
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			if op == TOK_PLUS {
-				EmitConcat(s, val1.IsTempObj, val2.IsTempObj)
+				EmitConcat(val1.IsTempObj, val2.IsTempObj)
 				return val1, nil
 			}
 		}
@@ -78,10 +80,10 @@ func EmitTosOpNos(s *State, op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 // GenerateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
 func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "Pop value for TosOpConst")
-		s.localSp--
-		s.RaxIsTOS = true
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", "Pop value for TosOpConst")
+		code.LocalSp--
+		code.RaxIsTOS = true
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
@@ -89,7 +91,7 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			err = EmitCompareFloatConst(s, op, val2.FloatLitNo)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-			err = EmitCompareStrToLit(s, op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
+			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else {
 			err = fmt.Errorf("Unknown type combination for compare")
 		}
@@ -108,42 +110,42 @@ func GenerateTosOpConst(s *State, op Token, val1 *ValueDef, val2 *ValueDef) (*Va
 
 // EmitCompareFloatConst compares float in rax with float constant
 func EmitCompareFloatConst(s *State, op Token, litNo int) (err error) {
-	emit(s, "movq", xmm(1), "rax", "")
-	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
-	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(s, op, true)
+	emit("movq", xmm(1), "rax", "")
+	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
+	emit("movq", xmm(2), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
 	return err
 }
 
 // EmitCompareFloats compares two floats.
 func EmitCompareFloats(s *State, op Token) (err error) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "")
-		s.localSp--
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", "")
+		code.LocalSp--
 	}
-	emit(s, "movq", xmm(2), "rax", "")
-	emit(s, "pop", "rax", "", "")
-	s.localSp--
-	emit(s, "movq", xmm(1), "rax", "")
-	emit(s, "ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(s, op, true)
+	emit("movq", xmm(2), "rax", "")
+	emit("pop", "rax", "", "")
+	code.LocalSp--
+	emit("movq", xmm(1), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
 	return err
 }
 
 // EmitCompareIntegers will compare the top two stack entries
 func EmitCompareIntegers(s *State, op Token, unsigned bool) (err error) {
-	emit(s, "pop", "rbx", "", "Pop next on stack into RBX")
-	s.localSp--
-	emit(s, "cmp", "rax", "rbx", "Compare and set flags")
-	return EmitJumpCond(s, op, unsigned)
+	emit("pop", "rbx", "", "Pop next on stack into RBX")
+	code.LocalSp--
+	emit("cmp", "rax", "rbx", "Compare and set flags")
+	return EmitJumpCond(op, unsigned)
 }
 
 // EmitCompareIntConst will compare top of stack with a constant
 func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
-	emit(s, "cmp", "rax", sval, "Compare and set flags")
-	return EmitJumpCond(s, op, unsigned)
+	emit("cmp", "rax", sval, "Compare and set flags")
+	return EmitJumpCond(op, unsigned)
 }
 
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
@@ -151,32 +153,32 @@ func EmitCompareIntConst(s *State, op Token, value int64, unsigned bool) error {
 func EmitIntegerOp(s *State, op Token) {
 
 	if op == TOK_DIV {
-		emit(s, "xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
-		s.localSp--
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("xchg", "rbx", "rax", "Exchange RAX and RBX since we calculate NOS/TOS")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("pop", "rbx", "", "Get divisor from stack into RBX")
+		code.LocalSp--
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "pop", "rbx", "", "Get divisor from stack into RBX")
-		s.localSp--
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("pop", "rbx", "", "Get divisor from stack into RBX")
+		code.LocalSp--
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else {
-		if !s.RaxIsTOS {
-			emit(s, "pop", "rax", "", "Get op 1 from stack")
-			s.localSp--
+		if !code.RaxIsTOS {
+			emit("pop", "rax", "", "Get op 1 from stack")
+			code.LocalSp--
 		}
-		emit(s, "pop", "rbx", "", "Get op 2 from stack")
-		s.localSp--
+		emit("pop", "rbx", "", "Get op 2 from stack")
+		code.LocalSp--
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
 		if op == TOK_MULT {
-			emit(s, "mul", "rbx", "", "Integer op mul")
+			emit("mul", "rbx", "", "Integer op mul")
 		} else {
-			emit(s, instruction, "rax", "rbx", "Integer op")
+			emit(instruction, "rax", "rbx", "Integer op")
 		}
 	}
 }
@@ -186,65 +188,65 @@ func EmitIntegerOp(s *State, op Token) {
 func EmitOpIntConst(s *State, op Token, value int64, comment string) error {
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", "rbx", sval, "Get divisor from stack into RBX")
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("mov", "rbx", sval, "Get divisor from stack into RBX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
-		emit(s, "cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit(s, "mov", "rbx", sval, "RBX=constant divisor")
-		emit(s, "idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
-		emit(s, "mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
-		emit(s, "mov", "rax", sval, "Assign OpIntConst")
+		emit("mov", "rax", sval, "Assign OpIntConst")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
 			return fmt.Errorf("invalid operation %s", op.Name())
 		}
-		emit(s, instr, "rax", strconv.FormatInt(value, 10), comment)
+		emit(instr, "rax", strconv.FormatInt(value, 10), comment)
 	}
 	return nil
 }
 
 func EmitOpFloatConst(s *State, op Token, litNo int) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "EmitOpFloatConst, tos is not rax")
-		s.localSp--
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", "EmitOpFloatConst, tos is not rax")
+		code.LocalSp--
 	}
-	emit(s, "movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
-	emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
-	emit(s, "movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
+	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
+	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
+	emit("movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
 	doFloatOp(s, op)
 }
 
 // EmitFloatOp will generate a stack operation on the top two stack entries
 func EmitFloatOp(s *State, op Token) {
-	if !s.RaxIsTOS {
-		emit(s, "pop", "rax", "", "EmitFloatOp, tos is not rax")
-		s.localSp--
+	if !code.RaxIsTOS {
+		emit("pop", "rax", "", "EmitFloatOp, tos is not rax")
+		code.LocalSp--
 	}
-	emit(s, "movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
-	emit(s, "pop", "rax", "", "EmitFloatOp pop nos")
-	s.localSp--
-	emit(s, "movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
+	emit("pop", "rax", "", "EmitFloatOp pop nos")
+	code.LocalSp--
+	emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
 	doFloatOp(s, op)
 }
 
 func doFloatOp(s *State, op Token) {
 	if op == TOK_PLUS {
-		emit(s, "addsd", xmm(1), xmm(2), "Add tos to nos")
+		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
-		emit(s, "subsd", xmm(1), xmm(2), "Subtract nos from tos")
+		emit("subsd", xmm(1), xmm(2), "Subtract nos from tos")
 	} else if op == TOK_MULT {
-		emit(s, "mulsd", xmm(1), xmm(2), "Multiply nos by tos")
+		emit("mulsd", xmm(1), xmm(2), "Multiply nos by tos")
 	} else if op == TOK_DIV {
-		emit(s, "divsd", xmm(1), xmm(2), "Divide tos by nos")
+		emit("divsd", xmm(1), xmm(2), "Divide tos by nos")
 	} else if op == TOK_INV_DIV {
-		emit(s, "divsd", xmm(2), xmm(1), "Divide nos by tos")
-		emit(s, "movq", xmm(1), xmm(2), "")
+		emit("divsd", xmm(2), xmm(1), "Divide nos by tos")
+		emit("movq", xmm(1), xmm(2), "")
 	} else {
 		panic("EmitFloatOp not implemented for " + op.Name())
 	}
-	emit(s, "movq", "rax", xmm(1), "Move float result into rax")
-	s.RaxIsTOS = true
+	emit("movq", "rax", xmm(1), "Move float result into rax")
+	code.RaxIsTOS = true
 }

@@ -3,21 +3,24 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 func CompileFile(name string, workdir string) error {
-	// slog.Info("Compiling", "filename", name, "workdir", workdir)
 	s, err := NewState(name, workdir)
 	if err != nil {
 		return err
 	}
 	defer func(s *State) {
-		_ = CloseObjFile(s)
+		_ = code.CloseObjFile()
 	}(s)
 
 	LiteralInit()
-	EmitPrologue(s)
+	libPath, err := filepath.Abs("../lib/")
+	EmitPrologue(libPath)
 
 	InitTypes()
 	FuncInit()
@@ -37,19 +40,19 @@ func CompileFile(name string, workdir string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}
-	EmitSection(s, "rodata")
+	EmitSection("rodata")
 	for i, l := range LiteralDefs {
 		// ALl strings must be aligned to qword
-		EmitLitteral(s, "str"+strconv.Itoa(i), l)
+		EmitLitteral("str"+strconv.Itoa(i), l)
 	}
 	for i, l := range FloatLiteralDefs {
-		EmitFloatLitteral(s, "flt"+strconv.Itoa(i+1), l)
+		EmitFloatLitteral("flt"+strconv.Itoa(i+1), l)
 	}
 	if err != nil {
 		return fmt.Errorf("%s:%d %v", name, s.lineNum, err)
 	}
 	if s.CommentLevel > 0 {
-		return fmt.Errorf("Missing end of comment")
+		return fmt.Errorf("missing end of comment")
 	}
 	return nil
 }

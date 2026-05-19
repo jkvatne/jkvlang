@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 func ParseType(s *State) (*TypeDef, error) {
@@ -120,44 +122,44 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		// Parse the argument and save the type of the result in the value list
 		var value *ValueDef
 		if parNo > 1 {
-			PushArgCode(s)
+			code.PushArgCode()
 		}
 		value, err = ParseExpression(s)
 		if err != nil {
 			return nil, err
 		}
 		valueList = append(valueList, value)
-		PushCleanupCode(s)
+		code.PushCleanupCode()
 		if value.HasValue {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
-				EmitPushStringLit(s, value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
-				EmitPushTos(s, parNo, f.name)
+				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
+				EmitPushTos(parNo, f.name)
 				if f.name == "printf" {
-					EmitSkipLenCap(s)
+					EmitSkipLenCap()
 				}
 			} else if value.Typ.Pt.IsInteger() {
-				EmitPushConst(s, value.IntValue, "")
-				EmitPushTos(s, parNo, f.name)
+				EmitPushConst(value.IntValue, "")
+				EmitPushTos(parNo, f.name)
 			} else if value.Typ.Pt == TYP_BOOL {
 				if value.BoolValue {
-					EmitPushConst(s, 1, "")
+					EmitPushConst(1, "")
 				} else {
-					EmitPushConst(s, 0, "")
+					EmitPushConst(0, "")
 				}
-				EmitPushTos(s, parNo, f.name)
+				EmitPushTos(parNo, f.name)
 			} else if value.Typ.Pt == TYP_F64 {
-				EmitPushFloatLit(s, value.FloatLitNo)
+				EmitPushFloatLit(value.FloatLitNo)
 			} else {
 				// TODO: Handle F32 etc.
 				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
-			EmitPushTos(s, parNo, f.name)
+			EmitPushTos(parNo, f.name)
 			if f.name == "printf" {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == TYP_STRING {
-					EmitSkipLenCap(s)
+					EmitSkipLenCap()
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						v := ""
@@ -167,17 +169,17 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 						v += "   mov rax, [rax]\n"
 						v += "   sub rax, 8\n" // The stack contains a C-string pointer, so adjust it back
 						v += "   call _free_str\n\n"
-						SetCleanupCode(s, v)
+						code.SetCleanupCode(v)
 					}
 				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
-					if s.RaxIsTOS {
-						emit(s, "push", "rax", "", "printf float argument")
-						s.localSp++
+					if code.RaxIsTOS {
+						emit("push", "rax", "", "printf float argument")
+						code.LocalSp++
 					}
 				} else if value.Typ.Pt.IsInteger() {
-					if s.RaxIsTOS {
-						emit(s, "push", "rax", "", "Integer argument to printf")
-						s.localSp++
+					if code.RaxIsTOS {
+						emit("push", "rax", "", "Integer argument to printf")
+						code.LocalSp++
 					}
 				} else {
 					return nil, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
@@ -189,7 +191,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
 					if !value.IsLocalVar {
 						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d\n", parNo*8-8, parNo)
-						SetCleanupCode(s, str)
+						code.SetCleanupCode(str)
 					}
 				}
 
@@ -215,7 +217,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 // This is the only location where arguments are evaluated
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
-	EmitFlushRax(s, "Push TOS before call")
+	EmitFlushRax("Push TOS before call")
 	f := FuncDefs[id]
 	if f == nil {
 		s.currentFuncCall = ""
@@ -230,22 +232,22 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		return nil, err
 	}
 	s.currentFuncCall = id
-	nac := len(s.ArgCode)
-	if len(values) == 0 && nac >= 1 && s.ArgCode[nac-1] == "" {
-		s.ArgCode = s.ArgCode[0 : nac-1]
+	nac := len(code.ArgCode)
+	if len(values) == 0 && nac >= 1 && code.ArgCode[nac-1] == "" {
+		code.ArgCode = code.ArgCode[0 : nac-1]
 	}
 	// Make space for return values. This code is added to the ArgCode stack.
-	PushArgCode(s)
-	EmitAddToSp(s, len(f.returnTypes), "Make space for return values from "+f.name)
+	code.PushArgCode()
+	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
 
-	ConsArgCode(s, len(values)+1, true)
+	code.ConsArgCode(len(values)+1, true)
 
 	// Do actual call
 	// ----------------------------------
-	EmitCall(s, id, len(values), f.builtin)
+	EmitCall(id, len(values), f.builtin)
 
-	OutputCleanupCode(s, len(values))
-	EmitAddToSp(s, -len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
+	code.OutputCleanupCode(len(values))
+	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
@@ -257,7 +259,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		v = append(v, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
 	}
 	// Function results are on stack and not in RAX.
-	s.RaxIsTOS = false
+	code.RaxIsTOS = false
 	s.currentFuncCall = ""
 	return v, nil
 }
@@ -271,7 +273,7 @@ func ParseAssign(s *State, id string) error {
 	}
 	for _, v := range lvalues {
 		if v.Typ == nil {
-			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar(s, "Allocate local variable "+v.Name)
+			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 		}
 	}
 
@@ -281,7 +283,7 @@ func ParseAssign(s *State, id string) error {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
 				if lv.MustFree && lv.Typ.Pt.IsObject() {
-					err = EmitFreeLocalVariables(s, lv.Offset(), lv.Value.Typ.Pt, "Free "+lv.Name)
+					err = EmitFreeLocalVariables(lv.Offset(), lv.Value.Typ.Pt, "Free "+lv.Name)
 					if err != nil {
 						return err
 					}
@@ -324,7 +326,7 @@ func ParseAssign(s *State, id string) error {
 			}
 			lvalues[i].Value.IsTempObj = false
 		}
-		OutputArgCode(s)
+		code.OutputArgCode()
 	} else {
 		return fmt.Errorf("unrecognized token \"%s\"", s.tokenString)
 	}
@@ -371,13 +373,13 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	if !v.Value.HasValue {
 		// This is a local variable, not a known constant
 		if v.Name == "err" {
-			emit(s, "mov", "rax", "r15", "Load err")
-			s.RaxIsTOS = true
+			emit("mov", "rax", "r15", "Load err")
+			code.RaxIsTOS = true
 		} else if v.Value.Typ.Pt == TYP_F64 {
 			// Load value into xmm<sp>
-			EmitLoadFloat64(s, 8, v.Offset(), "Load float "+v.Name)
+			EmitLoadFloat64(8, v.Offset(), "Load float "+v.Name)
 		} else {
-			EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
+			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
 		value.IsLocalVar = true
 	}
@@ -394,9 +396,9 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
 		nextToken(s)
-		EmitFlushRax(s, "Begin parenthesis term")
+		EmitFlushRax("Begin parenthesis term")
 		value, err = ParseExpression(s)
-		EmitFlushRax(s, "End parenthesis term")
+		EmitFlushRax("End parenthesis term")
 		return value, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
@@ -451,14 +453,14 @@ func ParseProd(s *State) (value *ValueDef, err error) {
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
 		op := s.token
 		nextToken(s)
-		PushArgCode(s)
+		code.PushArgCode()
 		value2, err = ParseUnary(s)
 		if err != nil {
 			return &NoValue, err
 		}
-		PushArgCode(s)
+		code.PushArgCode()
 		value, err = GenerateOp(s, op, value, value2)
-		ConsArgCode(s, 3, false)
+		code.ConsArgCode(3, false)
 		if err != nil {
 			return &NoValue, err
 		}
@@ -477,32 +479,32 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
 		// Concatenation of two or more strings
 		if value1.HasValue {
-			EmitPushConstString(s, value1.StringLitNo)
+			EmitPushConstString(value1.StringLitNo)
 		}
 		// Loop through all strings that are concatenated
 		for s.token == TOK_PLUS {
 			nextToken(s)
 			// ParseProd should push rax and leave new result in rax
-			PushArgCode(s)
+			code.PushArgCode()
 			value2, err = ParseProd(s)
 			if err != nil {
 				return &NoValue, err
 			}
 			if value2.HasValue {
-				if s.RaxIsTOS {
-					emit(s, "push", "rax", "", "SumTerm push value 2")
-					s.localSp++
+				if code.RaxIsTOS {
+					emit("push", "rax", "", "SumTerm push value 2")
+					code.LocalSp++
 				}
 				// Push constant string
-				emit(s, "mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
+				emit("mov", "rax", "str"+strconv.Itoa(value2.StringLitNo), "Push const string")
 				value2.IsTempObj = false
 			}
 			if value2.Typ.Pt != TYP_STRING {
 				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
 			}
-			PushArgCode(s)
-			EmitConcat(s, value1.IsTempObj, value2.IsTempObj)
-			ConsArgCode(s, 3, false)
+			code.PushArgCode()
+			EmitConcat(value1.IsTempObj, value2.IsTempObj)
+			code.ConsArgCode(3, false)
 			value1.IsTempObj = true
 		}
 		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
@@ -510,14 +512,14 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
 		op := s.token
 		nextToken(s)
-		PushArgCode(s)
+		code.PushArgCode()
 		value2, err = ParseProd(s)
 		if err != nil {
 			return &NoValue, err
 		}
-		PushArgCode(s)
+		code.PushArgCode()
 		value1, err = GenerateOp(s, op, value1, value2)
-		ConsArgCode(s, 3, false)
+		code.ConsArgCode(3, false)
 		if err != nil {
 			return &NoValue, err
 		}
@@ -541,15 +543,15 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 	value1.IsReturned = false
 	op := s.token
 	nextToken(s)
-	PushArgCode(s)
+	code.PushArgCode()
 	value2, err := ParseSumTerm(s)
 	if err != nil {
 		return &NoValue, err
 	}
-	EmitFlushRax(s, "Push TOS value 2")
-	PushArgCode(s)
+	EmitFlushRax("Push TOS value 2")
+	code.PushArgCode()
 	result, err := GenerateOp(s, op, value1, value2)
-	ConsArgCode(s, 3, false)
+	code.ConsArgCode(3, false)
 	if err != nil {
 		return &NoValue, err
 	}
@@ -558,7 +560,7 @@ func ParseCompareTerm(s *State) (*ValueDef, error) {
 
 func ParseExpression(s *State) (result *ValueDef, err error) {
 	var value2 *ValueDef
-	s.RaxIsTOS = false
+	code.RaxIsTOS = false
 	result, err = ParseCompareTerm(s)
 	if err != nil {
 		return &NoValue, err
@@ -570,7 +572,7 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
 		result.IsReturned = false
 		if endLabel == 0 {
-			endLabel = NewLabel(s)
+			endLabel = code.NewLabel()
 		}
 		op := s.token
 		if result.Typ.Pt != TYP_BOOL {
@@ -579,9 +581,9 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 		nextToken(s)
 
 		if op == TOK_LOG_OR {
-			EmitJumpTrue(s, endLabel, "")
+			EmitJumpTrue(endLabel, "")
 		} else if op == TOK_LOG_AND {
-			EmitJumpFalse(s, endLabel, "")
+			EmitJumpFalse(endLabel, "")
 		}
 
 		value2, err = ParseCompareTerm(s)
@@ -596,7 +598,7 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 		}
 	}
 	if endLabel != 0 {
-		EmitLabel(s, endLabel, "")
+		EmitLabel(endLabel, "")
 	}
 	if result.Typ == nil {
 		return &NoValue, fmt.Errorf("value.type is nil - internal error")
@@ -610,7 +612,7 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 func ParseExpressions(s *State) (results []*ValueDef, err error) {
 	var v *ValueDef
 	results = make([]*ValueDef, 0, 4)
-	PushArgCode(s)
+	code.PushArgCode()
 	n := 0
 	for {
 		n++
@@ -622,22 +624,17 @@ func ParseExpressions(s *State) (results []*ValueDef, err error) {
 		if !s.found(TOK_COMMA) {
 			break
 		}
-		PushArgCode(s)
+		code.PushArgCode()
 	}
-	ConsArgCode(s, n, false)
+	code.ConsArgCode(n, false)
 	return results, nil
-}
-
-func NewLabel(s *State) int {
-	s.labelNo++
-	return s.labelNo
 }
 
 func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
 		s.noCode++
 	}
-	if len(s.ArgCode) > 0 {
+	if len(code.ArgCode) > 0 {
 		panic("ParseBlock: ArgCode was not empty")
 	}
 	err := ParseStatements(s)
@@ -657,8 +654,8 @@ func ParseBlock(s *State, isTrue bool) error {
 func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
 	if !value.HasValue {
-		L1 = NewLabel(s)
-		EmitJumpFalse(s, L1, "Skip block 1 if false")
+		L1 = code.NewLabel()
+		EmitJumpFalse(L1, "Skip block 1 if false")
 	}
 
 	// Parse stm1 in if cond ? stm1 : stm2
@@ -669,20 +666,20 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 
 	if s.found(TOK_COLON) {
 		if !s.hasReturned && !value.HasValue {
-			L2 = NewLabel(s)
-			EmitJump(s, L2, "")
+			L2 = code.NewLabel()
+			EmitJump(L2, "")
 		}
-		EmitLabel(s, L1, "")
+		EmitLabel(L1, "")
 		// Parse stm2 in if cond ? stm1 : stm2
 		_, err = ParseStatement(s)
 		if err != nil {
 			return err
 		}
 		if !s.hasReturned && !value.HasValue {
-			EmitLabel(s, L2, "")
+			EmitLabel(L2, "")
 		}
 	} else {
-		EmitLabel(s, L1, "")
+		EmitLabel(L1, "")
 	}
 	return nil
 }
@@ -692,8 +689,8 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
 	nextToken(s)
 	if !value.HasValue {
-		L1 = NewLabel(s)
-		EmitJumpFalse(s, L1, "Skip block 1 if false")
+		L1 = code.NewLabel()
+		EmitJumpFalse(L1, "Skip block 1 if false")
 	}
 
 	// Parse stm1 in "if cond { stm1 } ..."
@@ -708,30 +705,30 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 
 	for s.found(TOK_ELSE) {
 		if !s.hasReturned && !value.HasValue {
-			L2 = NewLabel(s)
-			EmitJump(s, L2, "Skip else block")
+			L2 = code.NewLabel()
+			EmitJump(L2, "Skip else block")
 		}
-		EmitLabel(s, L1, "")
+		EmitLabel(L1, "")
 		L1 = 0
 		if s.token == TOK_IF {
 			nextToken(s)
-			if len(s.ArgCode) > 0 {
+			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
 			}
-			PushArgCode(s)
+			code.PushArgCode()
 			value, err = ParseExpression(s)
-			OutputArgCode(s)
+			code.OutputArgCode()
 			if err != nil {
 				return err
 			}
-			if len(s.ArgCode) > 0 {
+			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
 			}
 			if value.Typ.Pt != TYP_BOOL {
 				return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 			}
-			L1 = NewLabel(s)
-			EmitJumpFalse(s, L1, "jump if condition was false")
+			L1 = code.NewLabel()
+			EmitJumpFalse(L1, "jump if condition was false")
 			if s.token != TOK_LBRACE {
 				return fmt.Errorf("expected { after if but got %s", s.tokenString)
 			}
@@ -742,13 +739,13 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 				return err
 			}
 			if !s.hasReturned {
-				EmitJump(s, L2, "jump to end of else block")
+				EmitJump(L2, "jump to end of else block")
 			}
 			if s.token != TOK_RBRACE {
 				return fmt.Errorf("expected } after if clause, but got %s", s.tokenString)
 			}
 			if L2 != 0 {
-				EmitLabel(s, L2, "Skipped else block")
+				EmitLabel(L2, "Skipped else block")
 				L2 = 0
 			}
 			nextToken(s)
@@ -769,17 +766,17 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 		}
 	}
 	if L1 != 0 {
-		EmitLabel(s, L1, "")
+		EmitLabel(L1, "")
 	}
 	if L2 != 0 {
-		EmitLabel(s, L2, "")
+		EmitLabel(L2, "")
 	}
 	return nil
 }
 
 func ParseIf(s *State) error {
 	nextToken(s)
-	PushArgCode(s)
+	code.PushArgCode()
 	// Parse the if condition
 	value, err := ParseExpression(s)
 	if err != nil {
@@ -788,7 +785,7 @@ func ParseIf(s *State) error {
 	if value.Typ.Pt != TYP_BOOL {
 		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
 	}
-	OutputArgCode(s)
+	code.OutputArgCode()
 	if s.found(TOK_COLON) || s.found(TOK_QMARK) {
 		return ParseColonQmark(s, value)
 	} else if s.token == TOK_LBRACE {
@@ -799,13 +796,13 @@ func ParseIf(s *State) error {
 
 func ParseFuncDef(s *State) error {
 	nextToken(s)
-	s.localSp = 0
+	code.LocalSp = 0
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
 	VarInit()
 	fun := s.tokenString
-	EmitFunction(s, fun)
+	EmitFunction(fun)
 	nextToken(s)
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
@@ -816,7 +813,7 @@ func ParseFuncDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	s.RaxIsTOS = len(parList) > 1
+	code.RaxIsTOS = len(parList) > 1
 	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
 	if !s.found(TOK_LBRACE) {
@@ -840,19 +837,19 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, parList, returnList, false)
-	s.returnLbl = NewLabel(s)
+	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
 	if err != nil {
 		return err
 	}
 	// Now parse all the statements in the function
-	s.RaxIsTOS = len(parList) > 0
+	code.RaxIsTOS = len(parList) > 0
 	s.DidReturn = false
 	err = ParseStatements(s)
 	if err != nil {
 		return err
 	}
-	// CheckLocalSp(s, fun)
+	// CheckLocalSp(fun)
 
 	// After all the statements in the function, we must have a right-brace "}".
 	if s.token != TOK_RBRACE {
@@ -861,57 +858,57 @@ func ParseFuncDef(s *State) error {
 	if !s.hasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
-	EmitLabel(s, s.returnLbl, "Return label for "+f.name)
+	EmitLabel(s.returnLbl, "Return label for "+f.name)
 	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
-		emit(s, "push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
-		s.localSp++
+		emit("push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
+		code.LocalSp++
 		for _, v := range VarDefs {
-			EmitComment(s, "Free argument "+v.Name+" at "+strconv.Itoa(v.Offset())+" MustFree="+strconv.FormatBool(v.MustFree))
+			EmitComment("Free argument " + v.Name + " at " + strconv.Itoa(v.Offset()) + " MustFree=" + strconv.FormatBool(v.MustFree))
 			if v.Value.Typ.Pt.IsObject() && v.MustFree {
-				err = EmitFreeLocalVariables(s, v.Offset(), v.Value.Typ.Pt, "Free "+v.Name)
+				err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, "Free "+v.Name)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		emit(s, "pop", "rax", "", "Restore rax after freeing local variables")
-		s.localSp--
+		emit("pop", "rax", "", "Restore rax after freeing local variables")
+		code.LocalSp--
 	}
 	// Free local variables on the stack
-	EmitComment(s, "End of function. Drop local variables for "+f.name)
-	EmitAddToSp(s, -s.localSp, "Drop local variables")
+	EmitComment("End of function. Drop local variables for " + f.name)
+	EmitAddToSp(-code.LocalSp, "Drop local variables")
 
-	// CheckLocalSp(s, f.name)
+	// CheckLocalSp(f.name)
 
 	// Return exit code from main
 	if s.currentFuncDef.name == "main" {
-		EmitPrintSp(s)
+		EmitPrintSp()
 		// Print remaining allocation
-		EmitComment(s, "main() returning. Printing allocation count.")
-		emit(s, "push", "r15", "", "")
-		s.localSp++
-		emit(s, "mov", "rax", "[allocation_count]", "Printing allocation count")
-		emit(s, "push", "rax", "", "")
-		s.localSp++
-		emit(s, "mov", "rax", "alloc_size_str+8", "")
-		emit(s, "push", "rax", "", "")
-		s.localSp++
-		emit(s, "mov", "rbx", "24", "")
-		emit(s, "call", "_printf", "", "")
-		emit(s, "call", "_fflush", "", "")
-		emit(s, "add", "rsp", "16", "")
-		s.localSp -= 2
-		EmitComment(s, "Returning error code via _exit()")
-		emit(s, "mov", "rax", "r15", "Get error code")
-		emit(s, "call", "_exit", "", "")
+		EmitComment("main() returning. Printing allocation count.")
+		emit("push", "r15", "", "")
+		code.LocalSp++
+		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
+		emit("push", "rax", "", "")
+		code.LocalSp++
+		emit("mov", "rax", "alloc_size_str+8", "")
+		emit("push", "rax", "", "")
+		code.LocalSp++
+		emit("mov", "rbx", "24", "")
+		emit("call", "_printf", "", "")
+		emit("call", "_fflush", "", "")
+		emit("add", "rsp", "16", "")
+		code.LocalSp -= 2
+		EmitComment("Returning error code via _exit()")
+		emit("mov", "rax", "r15", "Get error code")
+		emit("call", "_exit", "", "")
 	} else {
 		// Function epilogue. Restore frame pointer and exit
-		emit(s, "leave", "", "", "")
-		emit(s, "ret", "", "", "return from "+s.currentFuncDef.name)
+		emit("leave", "", "", "")
+		emit("ret", "", "", "return from "+s.currentFuncDef.name)
 	}
-	OutputArgCode(s)
+	code.OutputArgCode()
 	nextToken(s)
 	s.currentFuncDef = nil
 	return nil

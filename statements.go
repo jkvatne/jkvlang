@@ -3,17 +3,19 @@ package main
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 func ParseReturn(s *State) error {
 	f := s.currentFuncDef
 	i := 0
-	if len(s.ArgCode) > 0 {
+	if len(code.ArgCode) > 0 {
 		panic("ArgCode was not empty")
 	}
 	if len(f.returnTypes) > 0 {
 		for {
-			PushArgCode(s)
+			code.PushArgCode()
 			v, err := ParseExpression(s)
 			if err != nil {
 				return err
@@ -26,30 +28,30 @@ func ParseReturn(s *State) error {
 			}
 			if v.HasValue {
 				if v.Typ.Pt.IsInteger() {
-					EmitPushConst(s, v.IntValue, "Returned value number "+strconv.Itoa(i))
+					EmitPushConst(v.IntValue, "Returned value number "+strconv.Itoa(i))
 				} else if v.Typ.Pt == TYP_STRING {
-					EmitPushStringLit(s, v.StringLitNo, "Returned value number "+strconv.Itoa(i))
+					EmitPushStringLit(v.StringLitNo, "Returned value number "+strconv.Itoa(i))
 				} else {
 					panic("Not implemented")
 				}
 			} else {
 				// Copy return values to stack are where the caller expects them
-				if !s.RaxIsTOS {
-					// emit(s, "pop", "rax", "", "Pop return value to rax")
+				if !code.RaxIsTOS {
+					// emit("pop", "rax", "", "Pop return value to rax")
 				}
 			}
-			emit(s, "mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
+			emit("mov", BpRel(16+i*8+len(f.parameters)*8), "rax", "")
 			if !s.found(TOK_COMMA) {
 				break
 			}
 			i++
-			ConsArgCode(s, 2, false)
+			code.ConsArgCode(2, false)
 		}
 		if len(f.returnTypes) == 0 {
 			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
 		}
 	}
-	OutputArgCode(s)
+	code.OutputArgCode()
 	s.DidReturn = true
 	s.Returning = false
 	return nil
@@ -63,10 +65,10 @@ func ParseStatement(s *State) (returned bool, err error) {
 		id := s.tokenString
 		s.next()
 		if s.found(TOK_LPAR) {
-			if len(s.ArgCode) > 0 {
+			if len(code.ArgCode) > 0 {
 				panic("ArgCode was not empty")
 			}
-			PushArgCode(s)
+			code.PushArgCode()
 			values, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
 				return false, err1
@@ -74,7 +76,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if len(values) > 0 {
 				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
 			}
-			OutputArgCode(s)
+			code.OutputArgCode()
 		} else {
 			err = ParseAssign(s, id)
 		}
@@ -106,15 +108,15 @@ func ParseStatements(s *State) error {
 	s.hasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		if s.DidReturn {
-			emit(s, "jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
+			emit("jmp", ".L"+strconv.Itoa(s.returnLbl), "", "Jump to return")
 			s.DidReturn = false
 		}
-		EmitLineNo(s)
+		code.EmitLineNo(s.currentLine, code.LocalSp)
 		returned, err := ParseStatement(s)
 		if err != nil {
 			return err
 		}
-		EmitPrintSp(s)
+		EmitPrintSp()
 		if returned {
 			if s.hasReturned {
 				return fmt.Errorf("statements after return")
@@ -124,8 +126,8 @@ func ParseStatements(s *State) error {
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
 		}
-		s.RaxIsTOS = false
+		code.RaxIsTOS = false
 	}
-	EmitLineNo(s)
+	code.EmitLineNo(s.currentLine, code.LocalSp)
 	return nil
 }
