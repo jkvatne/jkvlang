@@ -127,15 +127,28 @@ func OutputArgCode(s *State) {
 	s.ArgCode = nil
 }
 
-func Write(s *State, txt string) (int, error) {
+func Write(s *State, txt string) int {
 	if s.noCode > 0 {
-		return 0, nil
+		return 0
 	}
 	if len(s.ArgCode) == 0 {
 		// Write directly to file
-		return s.outputFile.WriteString(txt)
+		n, err := s.outputFile.WriteString(txt)
+		if err != nil {
+			panic("Could not write to file " + s.outputFile.Name() + ": " + err.Error())
+		}
+		return n
 	}
+
 	// When parsing an argument, output text to the last element in the ArgCode slice
 	s.ArgCode[len(s.ArgCode)-1] += txt
-	return len(txt), nil
+	return len(txt)
+}
+
+func EmitLineNo(s *State) {
+	Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"  (SP="+strconv.Itoa(s.localSp)+")\n")
+}
+
+func EmitBlankLine(s *State) {
+	Write(s, "\n")
 }

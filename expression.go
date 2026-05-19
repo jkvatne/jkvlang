@@ -37,7 +37,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	return typ, err
 }
 
-// ParseFormalParList parses the function definition and retrurns a list of formal parameters
+// ParseFormalParList parses the function definition and returns a list of formal parameters
 func ParseFormalParList(s *State) ([]*VarDef, error) {
 	var parList []*VarDef
 	s.ParCount = 0
@@ -112,7 +112,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error) {
 	parNo := 0
-	for { // each agrument in the actual argument list
+	for { // each argument in the actual argument list
 		parNo++
 		if s.token == TOK_RPAR {
 			break
@@ -150,7 +150,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				EmitPushFloatLit(s, value.FloatLitNo)
 			} else {
 				// TODO: Handle F32 etc.
-				return nil, fmt.Errorf("Constant arguments of type %s is not yet handled", value.Typ.Pt)
+				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
 			EmitPushTos(s, parNo, f.name)
@@ -355,49 +355,48 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	} else if s.token == TOK_LBRACK {
 		// TODO: It is an array
 		err = ParseArrayIndexes(s)
-		return &NoValue, fmt.Errorf("Arras are not yet implemented")
-	} else {
-		// It is  a simple variable
-		v, ok := VarDefs[id]
-		if !ok {
-			return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
-		}
-		if v.Typ == nil {
-			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
-		}
-		if v.Typ.Pt == TYP_NONE {
-			return &NoValue, fmt.Errorf("no type for \"%s\"", id)
-		}
-		if !v.Value.HasValue {
-			// This is a local variable, not a known constant
-			if v.Name == "err" {
-				emit(s, "mov", "rax", "r15", "Load err")
-				s.RaxIsTOS = true
-			} else if v.Value.Typ.Pt == TYP_F64 {
-				// Load value into xmm<sp>
-				EmitLoadFloat64(s, 8, v.Offset(), "Load float "+v.Name)
-			} else {
-				EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
-			}
-			value.IsLocalVar = true
-		}
-		value.Typ = v.Value.Typ
-		return value, nil
+		return &NoValue, fmt.Errorf("arrays are not yet implemented")
 	}
+	// It is  a simple variable
+	v, ok := VarDefs[id]
+	if !ok {
+		return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
+	}
+	if v.Typ == nil {
+		return &NoValue, fmt.Errorf("no type for \"%s\"", id)
+	}
+	if v.Typ.Pt == TYP_NONE {
+		return &NoValue, fmt.Errorf("no type for \"%s\"", id)
+	}
+	if !v.Value.HasValue {
+		// This is a local variable, not a known constant
+		if v.Name == "err" {
+			emit(s, "mov", "rax", "r15", "Load err")
+			s.RaxIsTOS = true
+		} else if v.Value.Typ.Pt == TYP_F64 {
+			// Load value into xmm<sp>
+			EmitLoadFloat64(s, 8, v.Offset(), "Load float "+v.Name)
+		} else {
+			EmitLoad(s, v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
+		}
+		value.IsLocalVar = true
+	}
+	value.Typ = v.Value.Typ
+	return value, nil
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
 func ParseUnary(s *State) (value *ValueDef, err error) {
 	value = &ValueDef{}
 	if s.token == TOK_ID {
-		// An id can be either a variable or a function call. A func call must returne one value
+		// An id can be either a variable or a function call. A func call must return one value
 		value, err = ParseVarOrFunc(s)
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
 		nextToken(s)
-		EmitFlushRax(s, "Begin parantesis term")
+		EmitFlushRax(s, "Begin parenthesis term")
 		value, err = ParseExpression(s)
-		EmitFlushRax(s, "End parantesis term")
+		EmitFlushRax(s, "End parenthesis term")
 		return value, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s.tokenString)
@@ -507,25 +506,24 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			value1.IsTempObj = true
 		}
 		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
-	} else {
-		for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
-			op := s.token
-			nextToken(s)
-			PushArgCode(s)
-			value2, err = ParseProd(s)
-			if err != nil {
-				return &NoValue, err
-			}
-			PushArgCode(s)
-			value1, err = GenerateOp(s, op, value1, value2)
-			ConsArgCode(s, 3, false)
-			if err != nil {
-				return &NoValue, err
-			}
-			value1.IsReturned = false
-		}
-		return value1, nil
 	}
+	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+		op := s.token
+		nextToken(s)
+		PushArgCode(s)
+		value2, err = ParseProd(s)
+		if err != nil {
+			return &NoValue, err
+		}
+		PushArgCode(s)
+		value1, err = GenerateOp(s, op, value1, value2)
+		ConsArgCode(s, 3, false)
+		if err != nil {
+			return &NoValue, err
+		}
+		value1.IsReturned = false
+	}
+	return value1, nil
 }
 
 func ParseCompareTerm(s *State) (*ValueDef, error) {
@@ -568,11 +566,11 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 	if result.Typ == nil {
 		return &NoValue, fmt.Errorf("expression type is nil - internal error")
 	}
-	endlbl := 0
+	endLabel := 0
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
 		result.IsReturned = false
-		if endlbl == 0 {
-			endlbl = NewLabel(s)
+		if endLabel == 0 {
+			endLabel = NewLabel(s)
 		}
 		op := s.token
 		if result.Typ.Pt != TYP_BOOL {
@@ -581,9 +579,9 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 		nextToken(s)
 
 		if op == TOK_LOG_OR {
-			EmitJumpTrue(s, endlbl, "")
+			EmitJumpTrue(s, endLabel, "")
 		} else if op == TOK_LOG_AND {
-			EmitJumpFalse(s, endlbl, "")
+			EmitJumpFalse(s, endLabel, "")
 		}
 
 		value2, err = ParseCompareTerm(s)
@@ -597,8 +595,8 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 	}
-	if endlbl != 0 {
-		EmitLabel(s, endlbl, "")
+	if endLabel != 0 {
+		EmitLabel(s, endLabel, "")
 	}
 	if result.Typ == nil {
 		return &NoValue, fmt.Errorf("value.type is nil - internal error")
@@ -795,10 +793,8 @@ func ParseIf(s *State) error {
 		return ParseColonQmark(s, value)
 	} else if s.token == TOK_LBRACE {
 		return ParseIfElse(s, value)
-	} else {
-		return fmt.Errorf("Expected {, got %s", s.token.Name())
 	}
-
+	return fmt.Errorf("expected {, got %s", s.token.Name())
 }
 
 func ParseFuncDef(s *State) error {

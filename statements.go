@@ -74,9 +74,7 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if len(values) > 0 {
 				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
 			}
-			if err == nil && len(s.ArgCode) > 0 {
-				OutputArgCode(s)
-			}
+			OutputArgCode(s)
 		} else {
 			err = ParseAssign(s, id)
 		}
@@ -101,7 +99,6 @@ func ParseStatement(s *State) (returned bool, err error) {
 	} else {
 		return false, fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
-	// CheckLocalSp(s, "Line "+strconv.Itoa(s.lineNum))
 	return returned, err
 }
 

@@ -11,23 +11,23 @@ import (
 )
 
 /*
-; Register Windows ABI           JKV ABI
-; 0  rax   Return value          Return value
-; 1  rcx   First argument
-; 2  rdx   Second argument
-; 3  rbx   Preserved             Size of arguments on stack (bytes)
-; 4  rsp   Stack pointer
-; 5  rbp   Preserved
-; 6  rsi   Preserved
-; 7  rdi   Preserved             Function called for syscall
-; 8  r8    Third argument
-; 9  r9    Forth argument
-; 10 r10   Used in syscall
-; 11 r11   Used in syscall
-; 12 r12   Preserved
-; 13 r13   Preserved
-; 14 r14   Preserved
-; 15 r15   Preserved              Error pointer. 0 (nil) means ok.
+ Register Windows ABI           JKV ABI
+ 0  rax   Return value          Return value
+ 1  rcx   First argument
+ 2  rdx   Second argument
+ 3  rbx   Preserved             Size of arguments on stack (bytes)
+ 4  rsp   Stack pointer
+ 5  rbp   Preserved
+ 6  rsi   Preserved
+ 7  rdi   Preserved             Function called for syscall
+ 8  r8    Third argument
+ 9  r9    Forth argument
+ 10 r10   Used in syscall
+ 11 r11   Used in syscall
+ 12 r12   Preserved
+ 13 r13   Preserved
+ 14 r14   Preserved
+ 15 r15   Preserved              Error pointer. 0 (nil) means ok.
 */
 
 const (
@@ -39,8 +39,6 @@ const (
 
 // localSp
 // RaxIsTOS
-// outputFile
-// ArgCode
 
 var CommentIndent = 40
 var spaces = "                                                                                    "
@@ -62,36 +60,16 @@ func emit(s *State, op string, dst string, src string, comment string) {
 	} else {
 		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; (SP=" + strconv.Itoa(s.localSp) + ")\n"
 	}
-	_, err := Write(s, txt)
-	if err != nil {
-		panic(err)
-	}
+	Write(s, txt)
 }
 
 func EmitTextLabel(s *State, text string) {
 	text = strings.Trim(text, ":\n ")
-	_, _ = Write(s, text+":\n")
+	Write(s, text+":\n")
 }
 
 func EmitComment(s *State, comment string) {
-	_, err := Write(s, "   ; "+comment+"\n")
-	if err != nil {
-		panic(err)
-	}
-}
-
-func EmitBlankLine(s *State) {
-	_, err := Write(s, "\n")
-	if err != nil {
-		panic(err)
-	}
-}
-
-func EmitLineNo(s *State) {
-	_, err := Write(s, "\n   ; Line "+strconv.Itoa(s.lineNum)+" "+strings.Trim(s.currentLine, "\r\n")+"  (SP="+strconv.Itoa(s.localSp)+")\n")
-	if err != nil {
-		panic(err)
-	}
+	_ = Write(s, "   ; "+comment+"\n")
 }
 
 func EmitNumericLabel(label int) string {
@@ -99,8 +77,8 @@ func EmitNumericLabel(label int) string {
 }
 
 func EmitLabel(s *State, label int, comment string) {
-	n, _ := Write(s, ".L"+strconv.Itoa(label)+":")
-	_, _ = Write(s, spaces[0:max(0, CommentIndent-n)]+"; "+comment+"\n")
+	n := Write(s, ".L"+strconv.Itoa(label)+":")
+	Write(s, spaces[0:max(0, CommentIndent-n)]+"; "+comment+"\n")
 }
 
 func EmitJump(s *State, n int, comment string) {
@@ -109,7 +87,7 @@ func EmitJump(s *State, n int, comment string) {
 
 func EmitPushTos(s *State, argNo int, funcName string) {
 	if s.RaxIsTOS {
-		_, _ = Write(s, "   push rax                             ; Push arg "+
+		Write(s, "   push rax                             ; Push arg "+
 			strconv.Itoa(argNo)+" of "+funcName+" ("+strconv.Itoa(s.localSp)+")\n")
 		s.localSp++
 		s.RaxIsTOS = false
@@ -142,7 +120,6 @@ func EmitFunction(s *State, id string) {
 	// Function prologue. Set up new frame pointer.
 	if id != "main" {
 		emit(s, "push", "rbp", "", "")
-		s.localSp++
 	}
 	emit(s, "mov", "rbp", "rsp", "")
 	s.localSp = 0
@@ -228,12 +205,11 @@ func AxName(size int) string {
 		return "eax"
 	} else if size == 8 {
 		return "rax"
-	} else {
-		panic("AxName with invalid size")
 	}
+	panic("AxName with invalid size")
 }
 
-// Assign constant float value to variable
+// EmitOpAssignFloat constant float value to variable
 func EmitOpAssignFloat(s *State, op Token, adr int, litNo int, comment string) error {
 	if op == TOK_ASSIGN {
 		emit(s, "mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "")
@@ -393,6 +369,7 @@ func EmitJumpTrue(s *State, n int, comment string) {
 	s.RaxIsTOS = false
 }
 
+// EmitAllocLocalVar will allocate a local variable
 // TODO Allow for types larger than 8 bytes. For now, use 8 bytes for all locals.
 func EmitAllocLocalVar(s *State, comment string) int {
 	// emit(s, "sub", "rsp", "8", comment)
@@ -446,9 +423,9 @@ func EmitPrintHello(s *State, format string) {
 }
 
 func EmitLitteral(s *State, litName string, litValue string) {
-	_, _ = Write(s, "alignb 8\n")
-	_, _ = Write(s, litName+" dq "+strconv.Itoa(len(litValue))+"\n")
-	_, _ = Write(s, "     db `"+litValue+"`, 00h\n")
+	Write(s, "alignb 8\n")
+	Write(s, litName+" dq "+strconv.Itoa(len(litValue))+"\n")
+	Write(s, "     db `"+litValue+"`, 00h\n")
 }
 
 func EmitFloatLitteral(s *State, litName string, litValue float64) {
@@ -460,12 +437,12 @@ func EmitFloatLitteral(s *State, litName string, litValue float64) {
 			value = value + ".0"
 		}
 	}
-	_, _ = Write(s, litName+" dq "+value+"\n")
+	Write(s, litName+" dq "+value+"\n")
 }
 
 func EmitSection(s *State, section string) {
 	section = strings.Trim(section, ".\n ")
-	_, _ = Write(s, "\nsection ."+section+"\n\n")
+	Write(s, "\nsection ."+section+"\n\n")
 }
 
 // EmitConcat will concatenate the two strings at the top of the stack
@@ -535,14 +512,13 @@ func EmitConcat(s *State, free1 bool, free2 bool) {
 	EmitComment(s, "")
 }
 
-func includeFile(s *State, txt string) error {
+func includeFile(s *State, txt string) {
 	// _, _ = Write(s, "%include \""+s.LibPath+txt+"\"\n")
 	str, err := os.ReadFile(s.LibPath + txt)
-	_, _ = Write(s, string(str))
+	Write(s, string(str))
 	if err != nil {
-		return err
+		panic("Could not read library " + txt)
 	}
-	return nil
 }
 
 func EmitPrologue(s *State) {
@@ -605,7 +581,7 @@ func EmitConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, erro
 	case TOK_DIV:
 		if val2.Typ.Pt.IsInteger() {
 			if val2.IntValue == 0 {
-				return &NoValue, fmt.Errorf("Cannot divide by zero")
+				return &NoValue, fmt.Errorf("can not divide by zero")
 			}
 			result.IntValue = val1.IntValue / val2.IntValue
 		} else if val2.Typ.Pt.IsFloat() {
@@ -738,7 +714,7 @@ func EmitCompareStringsEq(s *State, temp1 bool, temp2 bool) {
 	s.RaxIsTOS = true
 }
 
-// Compare two strings, one in rax, and one on top of stack, and drop top of stack
+// EmitCompareStringsNe compares two strings, one in rax, and one on top of stack, and drop top of stack
 func EmitCompareStringsNe(s *State, temp1 bool, temp2 bool) {
 	lbl := NewLabel(s)
 	if !s.RaxIsTOS {
@@ -790,18 +766,12 @@ func EmitFreeLocalVariables(s *State, adr int, pt PrimaryType, comment string) e
 		emit(s, "call", "_free_str", "", comment)
 		EmitLabel(s, lbl, "")
 		return nil
-	} else {
-		return fmt.Errorf("Can not free %s", TokenNames[pt])
 	}
+	return fmt.Errorf("can not free %s", TokenNames[pt])
 }
 
 func EmitPopAx(s *State, txt string) {
 	emit(s, "pop", "rax", "", txt)
-	s.localSp--
-}
-
-func EmitPop(s *State) {
-	emit(s, "add", "rsp", "8", "Remove one argument")
 	s.localSp--
 }
 
@@ -821,10 +791,4 @@ func EmitAddToSp(s *State, count int, comment string) {
 func EmitPushConstString(s *State, litNo int) {
 	emit(s, "mov", "rax", "str"+strconv.Itoa(litNo), "PushConstString")
 	s.RaxIsTOS = true
-}
-
-func CheckLocalSp(s *State, text string) {
-	if s.localSp != 0 {
-		panic("Function stack is " + strconv.Itoa(s.localSp) + " at end of " + text)
-	}
 }
