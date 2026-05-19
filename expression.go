@@ -850,8 +850,7 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	if MustFree() {
 		// Save ax because it might contain the returned value of the current function definition
-		emit("push", "rax", "", "Save rax before freeing "+strconv.Itoa(len(VarDefs))+" variables from "+fun)
-		code.LocalSp++
+		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			EmitComment("Free argument " + v.Name + " at " + strconv.Itoa(v.Offset()) + " MustFree=" + strconv.FormatBool(v.MustFree))
 			if v.Value.Typ.Pt.IsObject() && v.MustFree {
@@ -861,8 +860,7 @@ func ParseFuncDef(s *State) error {
 				}
 			}
 		}
-		emit("pop", "rax", "", "Restore rax after freeing local variables")
-		code.LocalSp--
+		EmitPopAx("Restore rax after freeing local variables")
 	}
 	// Free local variables on the stack
 	EmitComment("End of function. Drop local variables for " + f.name)

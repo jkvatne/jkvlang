@@ -762,6 +762,11 @@ func EmitFreeLocalVariables(adr int, pt PrimaryType, comment string) error {
 	return fmt.Errorf("can not free %s", TokenNames[pt])
 }
 
+func EmitPushAx(txt string) {
+	emit("push", "rax", "", txt)
+	code.LocalSp++
+}
+
 func EmitPopAx(txt string) {
 	emit("pop", "rax", "", txt)
 	code.LocalSp--
@@ -816,4 +821,12 @@ func EmitEpilogue(name string) {
 func EmitLoadErr() {
 	emit("mov", "rax", "r15", "Load err")
 	code.RaxIsTOS = true
+}
+
+func EmitStoreReturnValue(i int) {
+	emit("mov", BpRel(16+8*i), "rax", "")
+}
+
+func EmitStoreErr(err int, comment string) {
+	emit("mov", "r15", strconv.Itoa(err), "Set tos to r15 = error value")
 }

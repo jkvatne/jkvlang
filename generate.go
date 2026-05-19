@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -28,7 +27,7 @@ func GenerateAssignment(s *State, op Token, lvalue *VarDef, value *ValueDef) (er
 				err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
 			} else if lvalue.Typ.Pt.IsInteger() {
 				if lvalue.Name == "err" {
-					emit("mov", "r15", strconv.Itoa(int(value.IntValue)), "Set tos to r15 = error value")
+					EmitStoreErr(int(value.IntValue), "Assign to err")
 				} else {
 					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
