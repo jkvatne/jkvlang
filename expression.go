@@ -75,7 +75,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	}
 	id := s.tokenString
 	if id[0] > 'Z' {
-		return nil, fmt.Errorf("types must start with a capital letter: '%s'", id)
+		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}
 	nextToken(s)
 	typ, ok := TypeDefs[id]
@@ -402,18 +402,36 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	id := s.tokenString
 	nextToken(s)
 	if s.found(TOK_LPAR) {
-		// It is a function call that should return values
-		var values []*ValueDef
-		values, err = ParseFuncCall(s, id, true)
-		if err != nil {
-			return &NoValue, err
+		// t1 is the type we convert to
+		t1, ok := TypeDefs[id]
+		if ok {
+			// This is a type conversion. First parse value to convert
+			value, err = ParseExpression(s)
+			// t2 is the type we convert from
+			t2 := value.Typ
+			if CanAssign(t1.Pt, t2.Pt) {
+				value.Typ = t1
+			} else {
+				err = fmt.Errorf("can not convert types")
+			}
+			if !s.found(TOK_RPAR) {
+				return nil, fmt.Errorf("expected right parantesis")
+			}
+			return value, err
+		} else {
+			// It is a function call that should return values
+			var values []*ValueDef
+			values, err = ParseFuncCall(s, id, true)
+			if err != nil {
+				return &NoValue, err
+			}
+			if len(values) != 1 {
+				return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+			}
+			value = values[0]
+			value.IsReturned = true
+			return value, nil
 		}
-		if len(values) != 1 {
-			return nil, fmt.Errorf("expected 1 value but got %d", len(values))
-		}
-		value = values[0]
-		value.IsReturned = true
-		return value, nil
 	} else if s.token == TOK_LBRACK {
 		// TODO: It is an array
 		err = ParseArrayIndexes(s)
@@ -955,6 +973,7 @@ func ParseTypeDef(s *State) error {
 	if err != nil {
 		return err
 	}
+	typ.TypeName = id
 	AddType(id, typ)
 	return nil
 }

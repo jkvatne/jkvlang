@@ -1,0 +1,11 @@
+
+
+type Age = U8
+
+func main() {
+    a = Age(70)
+    printf("a=%d\n", a)
+    var age Age
+    age = 71
+    printf("age=%d\n", age)
+}

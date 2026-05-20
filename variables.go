@@ -134,6 +134,8 @@ func ParseVar(s *State, isConst bool) error {
 		return err
 	}
 	v := AddLocalVar(s, id, typ, isConst)
+	v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+
 	if s.token == TOK_ASSIGN {
 		nextToken(s)
 		val = s.tokenString
