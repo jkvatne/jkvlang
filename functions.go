@@ -9,6 +9,7 @@ type FuncDef struct {
 	floatParCount int
 	stackSize     int
 	builtin       bool
+	VarArg        bool
 }
 
 var FuncDefs map[string]*FuncDef
@@ -16,21 +17,21 @@ var FuncDefs map[string]*FuncDef
 func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
-	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("fflush", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true)
-	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true)
+	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
+	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
+	_, _ = AddFunc("fflush", []*VarDef{}, nil, true, false)
+	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true, true)
+	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
+	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
 }
 
-func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool) (*FuncDef, error) {
+func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
 	f := FuncDefs[id]
 	if f != nil {
 		return nil, fmt.Errorf("function %s already defined", id)
 	}
 	// New function
-	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList, builtin: builtin}
+	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	FuncDefs[id] = f
 	// Calculate size
 	f.stackSize = len(parList) + len(returnList)

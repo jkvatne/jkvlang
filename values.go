@@ -16,7 +16,7 @@ type ValueDef struct {
 	FloatLitNo  int
 	IsReturned  bool
 	Offset      int
-	IsLocalVar  bool
+	LocalVar    *VarDef
 	IsTempObj   bool
 	HasValue    bool
 }

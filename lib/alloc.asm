@@ -13,7 +13,7 @@ freestr  db `Freed     %d bytes at 0x%X\n`, 00h
 
 section .text
 
-; _alloc returns in rax a pointer to the allocated memory or null.
+; alloc returns a pointerto the allocated memory in rax.
 ; One argument is needed, in rax, and that is the requested size in bytes.
 ; Returns the pointer in rax
 global _alloc
@@ -54,8 +54,8 @@ _free_str:
 
     mov rax, [rax]                   ; Load len/cap qword
     shr rax, 32                      ; Extract capacity in the high 32bits
+    jz .L1                           ; Do not free if cap is zero
     sub [allocation_count], rax,     ; Decrement allocated count
-
 
     ; Print debug message with freed size
     ; mov rcx, freestr                 ; First argument: format string for the printed message
@@ -70,6 +70,11 @@ _free_str:
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     mov r8, rdi                      ; Argument 3, move memory pointer into r8
     call HeapFree                    ; Do the actual freeing of the memory
+    or rax, rax                      ; Check that Free returned 1
+    jnz .L1
+    mov r15, 102
+
+.L1:
     leave
     ret
 

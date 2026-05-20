@@ -8,7 +8,6 @@ import (
 type State struct {
 	text            []byte   // The whole current file being compiled
 	p               int      // Points to the current character in text
-	lineNum         int      // The current line number in text
 	currentLine     string   // The content of the current source code text line
 	AtLineEnd       bool     // Flag used for lineNum calculation
 	token           Token    // The current token as a number
@@ -28,7 +27,6 @@ type State struct {
 
 func NewState(name string, workdir string) (*State, error) {
 	s := new(State)
-	s.lineNum = 1
 	var err error
 	s.text, err = os.ReadFile(name)
 	if err != nil {

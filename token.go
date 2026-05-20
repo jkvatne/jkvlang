@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 type Token int
@@ -169,7 +171,7 @@ func isAlfaNum(ch uint8) bool {
 func nextChar(s *State) (uint8, uint8) {
 	if s.AtLineEnd {
 		s.AtLineEnd = false
-		s.lineNum++
+		code.LineNum++
 		s.currentLine = ""
 		for i := s.p; i < len(s.text); i++ {
 			if s.text[i] == '\n' {

@@ -98,7 +98,7 @@ func EmitSection(section string) {
 
 func EmitTextLabel(text string) {
 	text = strings.Trim(text, ":\n ")
-	code.Write(text + ":\n")
+	code.Write("\n" + text + ":\n")
 }
 
 func EmitComment(comment string) {
@@ -581,7 +581,7 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 		emit("mov", "rbx", "1", "Strings was equal, set rax=true")
 		EmitLabel(lbl, "")
 		if isTemp {
-			emit("mov", "rax", "r14", "")
+			emit("mov", "rax", "r14", "isTemp")
 			emit("call", "_free_str", "", "EmitCompareStrToLit")
 		}
 		emit("mov", "rax", "rbx", "Result to TOS (rax)")
@@ -759,8 +759,8 @@ func EmitLoadErr() {
 	code.RaxIsTOS = true
 }
 
-func EmitStoreReturnValue(i int) {
-	emit("mov", BpRel(16+8*i), "rax", "")
+func EmitStoreBpOfs(ofs int) {
+	emit("mov", BpRel(ofs*8), "rax", "")
 }
 
 func EmitStoreErr(err int, comment string) {

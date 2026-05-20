@@ -1,0 +1,9 @@
+// Should fail because f2 has no arguments
+
+func f2() String {
+    return "f2"
+}
+
+func main() {
+    printf("f2 returned '%s'\n", f2("xyz"))
+}

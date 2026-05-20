@@ -53,7 +53,7 @@ func CompileFile(name string, workdir string) error {
 		EmitFloatLitteral("flt"+strconv.Itoa(i+1), l)
 	}
 	if err != nil {
-		return fmt.Errorf("%s:%d %v", name, s.lineNum, err)
+		return fmt.Errorf("%s:%d %v", name, code.LineNum, err)
 	}
 	if s.CommentLevel > 0 {
 		return fmt.Errorf("missing end of comment")

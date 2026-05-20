@@ -24,6 +24,7 @@ func New(name string, workdir string) (err error) {
 	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 	fn := filepath.Join(workdir, UnitName+".asm")
 	OutputFile, err = os.Create(fn)
+	LineNum = 1
 	return err
 }
 

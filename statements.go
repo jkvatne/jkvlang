@@ -9,18 +9,18 @@ import (
 
 func ParseReturn(s *State) error {
 	f := s.currentFuncDef
-	i := 0
 	if len(code.ArgCode) > 0 {
 		panic("ArgCode was not empty")
 	}
 	if len(f.returnTypes) > 0 {
+		i := 0
 		for {
 			code.PushArgCode()
 			v, err := ParseExpression(s)
 			if err != nil {
 				return err
 			}
-			if len(f.returnTypes) <= i && len(f.returnTypes) > 0 {
+			if i >= len(f.returnTypes) && len(f.returnTypes) > 0 {
 				return fmt.Errorf("too many return values")
 			}
 			if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
@@ -28,14 +28,16 @@ func ParseReturn(s *State) error {
 			}
 			if v.HasValue {
 				if v.Typ.Pt.IsInteger() {
-					EmitPushConst(v.IntValue, "Returned value number "+strconv.Itoa(i))
+					EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
 				} else if v.Typ.Pt == TYP_STRING {
-					EmitPushStringLit(v.StringLitNo, "Returned value number "+strconv.Itoa(i))
+					EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
 				} else {
 					panic("Not implemented")
 				}
+			} else if v.LocalVar != nil {
+				v.LocalVar.MustFree = false
 			}
-			EmitStoreReturnValue(i + len(f.parameters))
+			EmitStoreBpOfs(1 + i + len(f.parameters) + len(f.returnTypes))
 			if !s.found(TOK_COMMA) {
 				break
 			}

@@ -220,12 +220,15 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == TYP_STRING {
 					EmitSkipLenCap()
-					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
-					if !value.IsLocalVar {
-						v := ""
-						v += "   mov rax, rsp  ;  Cleanup arg " + strconv.Itoa(parNo) + "\n"
+					// If it was a local variable or a constant, we should not free it.
+					// (The constant case has already been handled)
+					// But if it was a function result, it can be a pointer to a literal.
+					if value.LocalVar == nil {
+						v := "   mov rax, rsp  ;  printf() cleanup arg " + strconv.Itoa(parNo) + "\n"
 						v += "   add rax, rbx\n"
 						v += "   sub rax, " + strconv.Itoa(parNo*8-8) + "\n"
+						// v += "   mov rcx, [rax]\n"  // Check if cap is zero
+						// v += "   and rcx, 0x[rax]\n"
 						v += "   mov rax, [rax]\n"
 						v += "   sub rax, 8\n" // The stack contains a C-string pointer, so adjust it back
 						v += "   call _free_str\n\n"
@@ -243,7 +246,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				// and it is the result of a function call, then we have to free it after the call.
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
-					if !value.IsLocalVar {
+					if value.LocalVar == nil {
 						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d\n", parNo*8-8, parNo)
 						code.SetCleanupCode(str)
 					}
@@ -284,6 +287,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if err != nil {
 		s.currentFuncCall = ""
 		return nil, err
+	}
+	if !f.VarArg && len(values) != len(f.parameters) {
+		return nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
 	}
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
@@ -434,7 +440,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
-		value.IsLocalVar = true
+		value.LocalVar = v
 	}
 	value.Typ = v.Value.Typ
 	return value, nil
@@ -884,7 +890,7 @@ func ParseFuncDef(s *State) error {
 		}
 	}
 	var f *FuncDef
-	f, err = AddFunc(fun, parList, returnList, false)
+	f, err = AddFunc(fun, parList, returnList, false, false)
 	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
 	if err != nil {

@@ -1,44 +1,35 @@
-/*
+
+func f0(s String) String {
+    return "f0 "+s
+}
+
 func f1(s String) String {
-    //v = "f1 "+s                  // Alloc 38
-    return "f1 "
-    // Should free v now
+    v = "f1 "+s
+    return v
 }
 
 func f2() String {
     return "f2"
 }
 
-*/
-
-func f0(s String) String {
-    return "f0 "+s
-}
-
 func main() {
-    assert(f0("xyz")=="f0 xyz")
-    /*
-
     printf("Start free.jkv\n")
+    printf("1. Test call returning a string literal\n")
     fflush()
-    printf("f2 returned '%s'\n", f2("xyz"))
+    assert(f2()=="f2", "Failed f2=='f2'")
 
-    a = 1
-    b = 2
-    assert(a+b==3)
-
-
+    printf("2. Test free printed variable\n")
     s = "Hello "
     t = "World "
     v = s + t
-    printf("v=%s\n", v)
+    assert(v=="Hello World ", "Failed v=='Hello World '")
 
-
-    printf("OK")
+    printf("3. Test free result from f1\n")
     t = f1("xyz")
-    printf(t)
+    assert(t=="f1 xyz", "Failed xyz==")
 
-    assert(f1("xyz")=="f1 xyz.")
-    printf("f1 returned '%s'\n", f1("xyz"))
-    */
+    printf("4. Test asserts\n")
+    assert(f1("xyz")=="f1 xyz", "Failed f1()")
+    assert(f0("xyz")=="f0 xyz", "Failed f0()")
+
 }
