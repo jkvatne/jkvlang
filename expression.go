@@ -863,7 +863,7 @@ func ParseIf(s *State) error {
 	} else if s.token == TOK_LBRACE {
 		return ParseIfElse(s, value)
 	}
-	return fmt.Errorf("expected {, got %s", s.token.Name())
+	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
 }
 
 func ParseFuncDef(s *State) error {

@@ -44,6 +44,11 @@ func main() {
     } else {
         assert(false, "Error, else should not be selected")
     }
+
+    printf("5. Single line if\n")
+    if b==2 ? c=4
+    assert(c==4)
+
     printf("End of ifelse.jkv\n")
 
  }
