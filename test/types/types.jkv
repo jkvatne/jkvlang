@@ -3,22 +3,25 @@
 type Age = U8
 
 type Person = struct {
+  dummmy String
   name String
   adr String
   age Age
 }
 
 func main() {
+    printf("Start test struct types\n")
+    printf("Test %s\n", "print")
+    u = "Litteral"
+    printf("Test %s\n", u)
     p = new(Person)
     p.name = "Jan Kåre Vatne"
     p.age = 70
     printf("p.age=%d\n", p.age)
-    /*
-
-    printf("p.name=%d\n", p.name)
+    printf("p.name=%s\n", p.name)
 
     var age Age
     age = 71
     printf("age=%d\n", age)
-*/
+
 }
