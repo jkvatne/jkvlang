@@ -9,6 +9,7 @@ type VarKind int
 const (
 	ParVar VarKind = iota
 	LocalVar
+	StructField
 	RetVar
 	TempVar
 	ErrorVar
@@ -22,6 +23,9 @@ type VarDef struct {
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takse ownership.
 	MustFree    bool
 	Kind        VarKind
+	FieldOfs    int
+	FieldType   *TypeDef
+	IsIndirect  bool
 }
 
 var VarDefs map[string]*VarDef
@@ -39,12 +43,15 @@ func VarInit() {
 	VarDefs = make(map[string]*VarDef)
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
 }
+
 func (v *VarDef) Offset() int {
 	return v.Value.Offset
 }
+
 func (v *VarDef) Size() int {
 	return PrimaryTypeSizes[v.Typ.Pt]
 }
+
 func (v *VarDef) SetType(t *TypeDef) {
 	v.Typ = t
 	v.Value.Typ = t
@@ -129,7 +136,7 @@ func ParseVar(s *State, isConst bool) error {
 		}
 		nextToken(s)
 	}
-	typ, err := ParseType(s)
+	typ, err := ParseType(s, id)
 	if err != nil {
 		return err
 	}

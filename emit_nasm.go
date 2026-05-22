@@ -271,6 +271,12 @@ func EmitOpAssign(op Token, adr int, size int, value int64, comment string) erro
 	}
 	return nil
 }
+func EmitOpAssignStringLitToField(offset int, fieldOfs int, litno int) error {
+	emit("mov", "rax", DataType(8)+BpRel(offset), "")
+	emit("add", "rax", strconv.Itoa(fieldOfs), "")
+	emit("mov", "qword [rax]", "str"+strconv.Itoa(litno), "")
+	return nil
+}
 
 func EmitOpAssignString(offset int, litno int) error {
 	emit("mov", DataType(8)+BpRel(offset), "str"+strconv.Itoa(litno), "")
@@ -340,27 +346,32 @@ func EmitStoreConst(size int, value int64, offset int, comment string) {
 }
 
 func EmitLoadFloat64(size int, adr int, comment string) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", "Push TOS loading float")
-		code.LocalSp++
-	}
+	EmitFlushRax("")
 	code.RaxIsTOS = true
 	emit("mov", "rax", BpRel(adr), comment)
 }
 
+func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
+	EmitFlushRax("")
+	code.RaxIsTOS = true
+	emit("lea", "rax", BpRel(localVarOfs), "")
+	emit("add", "rax", strconv.Itoa(fieldOffset), "")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "xxx")
+}
+
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", "1 Push TOS")
-		code.LocalSp++
-	}
+	EmitFlushRax("EmitLoad push TOS")
 	code.RaxIsTOS = true
 	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 }
 
-// EmitStore will save the Top of Stack (AX) into a local variable of given size.
-// It will then clear RaxIssTos, effectively doing a pop
-func EmitStore(opcode string, size int, adr int, comment string) {
+func EmitStoreField(opcode string, size int, localVarOfs, fieldOffset int, comment string) {
+}
+
+// EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
+// It will then clear RaxIsTos, effectively doing a pop
+func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
 	emit(opcode, BpRel(adr), AxName(size), comment)
 	code.RaxIsTOS = false
 }
@@ -403,10 +414,7 @@ func EmitAllocLocalVar(comment string) int {
 }
 
 func EmitPushStringLit(lit int, comment string) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", "2 Push TOS")
-		code.LocalSp++
-	}
+	EmitFlushRax("")
 	emit("mov", "rax", "str"+strconv.Itoa(lit), comment)
 	code.RaxIsTOS = true
 }
@@ -416,10 +424,7 @@ func EmitSkipLenCap() {
 }
 
 func EmitPushConst(value int64, comment string) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", "EmitPushConst() Push TOS")
-		code.LocalSp++
-	}
+	EmitFlushRax("")
 	if value == 0 {
 		emit("xor", "rax", "rax", comment)
 	} else {
@@ -763,11 +768,39 @@ func EmitStoreBpOfs(ofs int) {
 	emit("mov", BpRel(ofs*8), "rax", "")
 }
 
-func EmitStoreErr(err int, comment string) {
+func EmitStoreErr(err int) {
 	emit("mov", "r15", strconv.Itoa(err), "Set tos to r15 = error value")
 }
 
 func EmitPopBx(comment string) {
 	emit("pop", "rbx", "", comment)
 	code.LocalSp--
+}
+
+// EmitNewStruct will create a new struct object on the heap
+// The pointer will be in the TOS (i.e. rax)
+func EmitNewStruct(s *State, t *TypeDef) {
+	emit("mov", "rax", strconv.Itoa(t.Size()), "")
+	emit("call", "_alloc", "", "Allocate new struct")
+	code.RaxIsTOS = true
+}
+
+func EmitAddToRax(s *State, ofs int) {
+	emit("add", "rax", strconv.Itoa(ofs), "")
+}
+
+func EmitIndirect(s *State) {
+	emit("mov", "rax", "[rax]", "")
+}
+
+func EmitLoadEa(s *State, localOfs int) {
+	emit("lea", "rax", BpRel(localOfs), "")
+}
+
+func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
+	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "11 "+comment)
+}
+
+func EmitAssignIndirectInt(size int, value int64, comment string) {
+	emit("mov", DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
 }

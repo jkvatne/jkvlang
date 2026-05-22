@@ -234,12 +234,6 @@ func f2(s string) string {
 }
 
 func main() {
-	x := 1.0
-	y := 2.2
-	z := 3.3
-	w := 1.0/y + (x+y/z)*(z*z*(x+y))
-	fmt.Printf("Test: %f  (should be 58.534545)\n", w)
-
 	flag.Parse()
 	wd, err := os.Getwd()
 	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)

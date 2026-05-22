@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"path/filepath"
 	"strconv"
 
@@ -40,7 +39,6 @@ func CompileFile(name string, workdir string) error {
 		} else if s.token == TOK_TYPE {
 			err = ParseTypeDefs(s)
 		} else {
-			slog.Error("Unexpected", "token", s.tokenString)
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"strconv"
 
 	"github.com/jkvatne/jkv/code"
@@ -17,23 +16,40 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
 	}
+
 	// Check types to see if the value can be assigned to the lvalue
-	if !CanAssign(lvalue.Typ.Pt, value.Typ.Pt) {
-		return fmt.Errorf("assignment expected type %s but got %s",
-			lvalue.Typ.Pt.Name(), value.Typ.Name())
+	if !CanAssignToVar(lvalue, value.Typ.Pt) {
+		return fmt.Errorf("assignment expected type %s but got %s", lvalue.Typ.Pt.Name(), value.Typ.Name())
 	}
+
 	// If the value is known (a compile time constant)
 	if value.HasValue {
-		if CanAssignConst(lvalue.Typ.Pt, value) {
-			if lvalue.Typ.Pt == TYP_STRING {
-				err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
-			} else if lvalue.Typ.Pt.IsInteger() {
-				if lvalue.Name == "err" {
-					EmitStoreErr(int(value.IntValue), "Assign to err")
+		t := lvalue.Typ.Pt
+		if t == TYP_STRUCT {
+			if lvalue.FieldType != nil {
+				t = lvalue.FieldType.Pt
+			}
+		}
+		if CanAssignConst(t, value) {
+			if t == TYP_STRING {
+				if lvalue.IsIndirect {
+					EmitFlushRax("")
+					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
+				} else if lvalue.Typ.Pt == TYP_STRUCT {
+					err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
+				} else {
+					err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
+				}
+			} else if t.IsInteger() {
+				if lvalue.IsIndirect {
+					EmitFlushRax("")
+					EmitAssignIndirectInt(value.Typ.Pt.Size(), value.IntValue, "")
+				} else if lvalue.Name == "err" {
+					EmitStoreErr(int(value.IntValue))
 				} else {
 					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
-			} else if lvalue.Typ.Pt == TYP_F64 {
+			} else if t == TYP_F64 {
 				if value.FloatLitNo == 0 {
 					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
 					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
@@ -49,38 +65,104 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			}
 
 		} else {
-			return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
+			return fmt.Errorf("cannot assign const to variable \"%s\"", lvalue.Name)
 		}
 	} else if value.Typ.Pt.IsInteger() {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
-		instr := TokenOp[op]
-		EmitStore(instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_F64 {
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRING {
-		instr := TokenOp[op]
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		EmitStore(instr, lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign to "+lvalue.Name)
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
 		lvalue.MustFree = true
+	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
 	return nil
 }
 
-func ParseType(s *State) (*TypeDef, error) {
+func ParseStruct(s *State, id string) (*TypeDef, error) {
+	s.next()
+	if !s.found(TOK_LBRACE) {
+		return nil, fmt.Errorf("expected {, found " + s.tokenString)
+	}
+	t := &TypeDef{TypeName: id, Pt: TYP_STRUCT}
+	t.Fields = make(map[string]*TypeDef)
+	t.Offsets = make(map[string]int)
+	count := 0
+	for {
+		fieldName := s.tokenString
+		_, ok := t.Fields[fieldName]
+		if ok {
+			return nil, fmt.Errorf("field \"%s\" already defined", fieldName)
+		}
+		s.next()
+		fieldTypeName := s.tokenString
+		ft, ok := TypeDefs[fieldTypeName]
+		if !ok {
+			return nil, fmt.Errorf("unknown type \"%s\"", fieldTypeName)
+		}
+		count++
+		t.Fields[fieldName] = ft
+		// fmt.Printf("name %s, type %s\n", fieldName, fieldTypeName)
+		s.next()
+		if s.token == TOK_RBRACE {
+			break
+		}
+	}
+	ofs := 0
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 8 {
+			t.Offsets[fn] = ofs
+			ofs += 8
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 4 {
+			t.Offsets[fn] = ofs
+			ofs += 4
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 2 {
+			t.Offsets[fn] = ofs
+			ofs += 2
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 1 {
+			t.Offsets[fn] = ofs
+			ofs += 1
+		}
+	}
+	t.size = (ofs + 7) & 0xFFFFFFF8
+	s.next()
+	AddType(id, t)
+	return t, nil
+}
+
+func ParseType(s *State, id string) (*TypeDef, error) {
 	var err error
 	if s.token == TOK_LBRACE {
 		return nil, nil
 	}
-	id := s.tokenString
-	if id[0] > 'Z' {
-		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
-	}
-	nextToken(s)
-	typ, ok := TypeDefs[id]
-	if !ok {
-		return nil, fmt.Errorf("unknown type: %s", id)
+	if s.token == TOK_STRUCT {
+		return ParseStruct(s, id)
+	} else {
+		id := s.tokenString
+		if id[0] > 'Z' {
+			return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
+		}
+		nextToken(s)
+		typ, ok := TypeDefs[id]
+		if !ok {
+			return nil, fmt.Errorf("unknown type: %s", id)
+		}
+		return typ, err
 	}
 	/*
 		typ := new(TypeDef)
@@ -96,7 +178,6 @@ func ParseType(s *State) (*TypeDef, error) {
 			nextToken(s)
 		}
 	*/
-	return typ, err
 }
 
 // ParseFormalParList parses the function definition and returns a list of formal parameters
@@ -112,7 +193,7 @@ func ParseFormalParList(s *State) ([]*VarDef, error) {
 		}
 		id := s.tokenString
 		nextToken(s)
-		typ, err := ParseType(s)
+		typ, err := ParseType(s, id)
 		if err != nil {
 			return parList, err
 		}
@@ -149,23 +230,76 @@ func ParseArrayIndexes(s *State) error {
 	return nil
 }
 
+// ParseStructField will evaluate the address
+// Called just after dot. Token should be a field name
+func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
+	vt := v.Typ
+	v = &VarDef{Typ: vt, Value: v.Value}
+	for {
+		fieldName := s.tokenString
+		s.next()
+		ofs, ok := vt.Offsets[fieldName]
+		vt = vt.Fields[fieldName]
+		v.Typ = vt
+		if !ok {
+			return nil, fmt.Errorf("expected field name of the struct %s but but got %s", v.Name, s.tokenString)
+		}
+		EmitAddToRax(s, ofs)
+		if s.token != TOK_DOT && s.token != TOK_LBRACK {
+			break
+		}
+		EmitIndirect(s)
+	}
+	// Now rax is the address of the value
+	return v, nil
+}
+
+func ParseIndex(s *State, v *VarDef) (*VarDef, error) {
+	return nil, fmt.Errorf("cann not assign to array yet")
+}
+
+// ParseLvalueList parses a list of lvalues to the left of = , += etc.
+// The first identifier is given in parametere id.
 func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	for {
 		lvalue := VarDefs[id]
-		if lvalue == nil {
-			// We don't yet know the type, so just use nil as type
+		if s.found(TOK_DOT) {
+			if s.token == TOK_ID {
+				EmitLoadEa(s, lvalue.Offset())
+				lvalue, err = ParseStructField(s, lvalue)
+				lvalue.IsIndirect = true
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
+			}
+		} else if s.found(TOK_RBRACE) {
+			// Handle array indexing here
+			_, err = ParseIndex(s, lvalue)
+			if err != nil {
+				return nil, err
+			}
+		} else if lvalue == nil {
+			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil, false)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
 		}
 		lvalues = append(lvalues, lvalue)
+
 		if !s.found(TOK_COMMA) {
 			break
 		}
 		if s.token != TOK_ID {
-			break
+			return nil, fmt.Errorf("expected variable name after comma, but but got %s", s.tokenString)
 		}
-		nextToken(s)
 		id = s.tokenString
+		nextToken(s)
+	}
+	for _, v := range lvalues {
+		if v.Typ == nil {
+			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+		}
 	}
 	return lvalues, err
 }
@@ -238,6 +372,8 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					EmitFlushRax("Float arg to printf")
 				} else if value.Typ.Pt.IsInteger() {
 					EmitFlushRax("Integer arg to printf")
+				} else if value.Typ.Pt == TYP_STRUCT {
+					EmitFlushRax("Struct field arg to printf")
 				} else {
 					return nil, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
@@ -254,7 +390,6 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 
 			} else {
 				// We have a simple value on the stack. Just continue.
-				slog.Debug("Simple value")
 			}
 		}
 		if s.token != TOK_COMMA {
@@ -325,19 +460,16 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 }
 
 // ParseAssign - this might be the start of a lvalue list or a function call
+// The first variable name is now in id. The current token may be . or [ or an assignment token.
 func ParseAssign(s *State, id string) error {
 	// Expect a list of lvalues
 	lvalues, err := ParseLvalueList(s, id)
 	if err != nil {
 		return err
 	}
-	for _, v := range lvalues {
-		if v.Typ == nil {
-			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
-		}
-	}
 
 	op := s.token
+
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
 		if op == TOK_ASSIGN {
 			// If there is an old object, we must free it first.
@@ -388,13 +520,13 @@ func ParseAssign(s *State, id string) error {
 		}
 		code.OutputArgCode()
 	} else {
-		return fmt.Errorf("unrecognized token \"%s\"", s.tokenString)
+		return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
 	}
 	return nil
 }
 
 // ParseVarOrFunc is called for a unary function or variable.
-// Called when en ID is encountered in an expression
+// Called when an identifier is encountered in an expression
 func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	value = &ValueDef{}
 	err = fmt.Errorf("unrecognized variable or function call")
@@ -455,6 +587,24 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		} else if v.Value.Typ.Pt == TYP_F64 {
 			// Load value into xmm<sp>
 			EmitLoadFloat64(8, v.Offset(), "Load float "+v.Name)
+		} else if v.Value.Typ.Pt == TYP_STRUCT {
+			if s.found(TOK_DOT) {
+				if s.token != TOK_ID {
+					return &NoValue, fmt.Errorf("expected field name after dot")
+				}
+				fn := s.tokenString
+				f, isok := v.Typ.Fields[fn]
+				if !isok {
+					return &NoValue, fmt.Errorf("field \"%s\" not found", fn)
+				}
+				// A struct field
+				ofs, ok := v.Typ.Offsets[fn]
+				if !ok {
+					return &NoValue, fmt.Errorf("field \"%s\" not found", fn)
+				}
+				EmitLoadField(f.Pt.Size(), v.Value.Offset, ofs)
+				s.next()
+			}
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
@@ -514,8 +664,24 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 	} else if s.token == TOK_FALSE {
 		value = &False
 		nextToken(s)
+	} else if s.token == TOK_NEW {
+		s.next()
+		if !s.found(TOK_LPAR) {
+			return nil, fmt.Errorf("expected left parantesis")
+		}
+		id := s.tokenString
+		s.next()
+		t, ok := TypeDefs[id]
+		if !ok {
+			return nil, fmt.Errorf("should have a predefined type, found %s", id)
+		}
+		value.Typ = t
+		EmitNewStruct(s, t)
+		if !s.found(TOK_RPAR) {
+			return nil, fmt.Errorf("expected right parantesis")
+		}
+		return value, nil
 	} else {
-		slog.Error("Unexpected", "token", s.tokenString)
 		return &NoValue, fmt.Errorf("unexpected token %s", s.tokenString)
 	}
 	return value, err
@@ -891,7 +1057,7 @@ func ParseFuncDef(s *State) error {
 	if !s.found(TOK_LBRACE) {
 		expectRpar := s.found(TOK_LPAR)
 		for {
-			ft, err := ParseType(s)
+			ft, err := ParseType(s, "")
 			if err != nil {
 				return err
 			}
@@ -969,7 +1135,7 @@ func ParseTypeDef(s *State) error {
 		return fmt.Errorf("expected \"=\" but got %s", s.tokenString)
 	}
 	nextToken(s)
-	typ, err := ParseType(s)
+	typ, err := ParseType(s, id)
 	if err != nil {
 		return err
 	}

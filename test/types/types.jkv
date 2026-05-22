@@ -2,10 +2,23 @@
 
 type Age = U8
 
+type Person = struct {
+  name String
+  adr String
+  age Age
+}
+
 func main() {
-    a = Age(70)
-    printf("a=%d\n", a)
+    p = new(Person)
+    p.name = "Jan Kåre Vatne"
+    p.age = 70
+    printf("p.age=%d\n", p.age)
+    /*
+
+    printf("p.name=%d\n", p.name)
+
     var age Age
     age = 71
     printf("age=%d\n", age)
+*/
 }

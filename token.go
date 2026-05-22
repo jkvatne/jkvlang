@@ -72,6 +72,7 @@ const (
 	TOK_INV_MINUS
 	TOK_INV_DIV
 	TOK_INV_MOD
+	TOK_NEW
 	TOK_SIZE
 )
 
@@ -137,6 +138,7 @@ var TokenNames = [...]string{
 	TOK_INV_MINUS:   "INV_MINUS",
 	TOK_INV_DIV:     "INV_DIV",
 	TOK_INV_MOD:     "INV_MOD",
+	TOK_NEW:         "NEW",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -446,6 +448,8 @@ func nextToken(s *State) {
 				s.token = TOK_TYPE
 			case "struct":
 				s.token = TOK_STRUCT
+			case "new":
+				s.token = TOK_NEW
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK

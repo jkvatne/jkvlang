@@ -40,6 +40,9 @@ type TypeDef struct {
 	Pt       PrimaryType
 	TypeName string
 	Basic    bool
+	size     int
+	Fields   map[string]*TypeDef
+	Offsets  map[string]int
 }
 
 var TypeDefs map[string]*TypeDef
@@ -55,6 +58,13 @@ func InitTypes() {
 	for t := TYP_NONE; t < TYP_LEN; t++ {
 		TypeDefs[PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: PrimaryTypeNames[t], Basic: true}
 	}
+}
+
+func (t *TypeDef) Size() int {
+	if t.Pt == TYP_STRUCT {
+		return t.size
+	}
+	return t.Pt.Size()
 }
 
 func (t PrimaryType) IsObject() bool {
@@ -127,6 +137,16 @@ func (t PrimaryType) Size() int {
 
 func (t *TypeDef) Name() string {
 	return t.TypeName
+}
+
+func CanAssignToVar(dstVar *VarDef, src PrimaryType) bool {
+	dst := dstVar.Typ.Pt
+	if dst == TYP_STRUCT {
+		if dstVar.FieldType != nil {
+			dst = dstVar.FieldType.Pt
+		}
+	}
+	return CanAssign(dst, src)
 }
 
 // CanAssign is true if we can assign type "src" to "dst"
