@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"unicode/utf8"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -142,11 +143,11 @@ var TokenNames = [...]string{
 	TOK_SIZE:        "SIZE",
 }
 
-func isNum(ch uint8) bool {
-	return ch >= uint8('0') && (ch <= uint8('9'))
+func isNum(ch rune) bool {
+	return ch >= '0' && ch <= '9'
 }
-func isAlfa(ch uint8) bool {
-	return ch >= uint8('A') && ch <= 'Z' || ch >= 'a' && ch <= 'z'
+func isAlfa(ch rune) bool {
+	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z'
 }
 
 func (t Token) Name() string {
@@ -166,11 +167,11 @@ func (t Token) IsLogic() bool {
 	return t == TOK_AND || t == TOK_OR
 }
 
-func isAlfaNum(ch uint8) bool {
+func isAlfaNum(ch rune) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func nextChar(s *State) (uint8, uint8) {
+func nextChar(s *State) (rune, rune) {
 	if s.AtLineEnd {
 		s.AtLineEnd = false
 		code.LineNum++
@@ -185,16 +186,16 @@ func nextChar(s *State) (uint8, uint8) {
 	if eof(s) {
 		return 0, 0
 	}
-	ch1 := s.text[s.p]
+	ch1, n := utf8.DecodeRune(s.text[s.p:])
 	if ch1 == '\n' {
 		s.AtLineEnd = true
 	}
-	s.p++
+	s.p += n
 	if s.p >= len(s.text) {
 		s.token = TOK_EOF
 		return ch1, 0
 	}
-	ch2 := s.text[s.p]
+	ch2, _ := utf8.DecodeRune(s.text[s.p:])
 	return ch1, ch2
 }
 
@@ -202,7 +203,7 @@ func eof(s *State) bool {
 	return s.p >= len(s.text)
 }
 
-func parseNumber(s *State, ch1 uint8, ch2 uint8) (uint8, uint8) {
+func parseNumber(s *State, ch1 rune, ch2 rune) (rune, rune) {
 	// Parse number
 	var hasDp bool
 	var hasExp bool

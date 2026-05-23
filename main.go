@@ -164,10 +164,7 @@ func Link(workDir string, outputName string) error {
 				args = append(args, filepath.Join(workDir, entry.Name()))
 			}
 		}
-		args = append(args, "-o", outputName, "-m64", "-lkernel32", "-lmsvcrt")
-		// C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
-		// C:/w64devkit/bin/gcc.exe
-		// OK outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
+		args = append(args, "-m64", "-lmsvcrt", "-o", outputName)
 		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
 		if len(outp) > 0 {
 			fmt.Println(string(outp))
@@ -176,10 +173,7 @@ func Link(workDir string, outputName string) error {
 			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
 		}
 	} else {
-		args = append(args, "/fo")
-		args = append(args, outputName)
-		args = append(args, "/entry=main")
-		args = append(args, "/console")
+		args = append(args, "/fo", outputName, "/entry=main", "/console")
 		if *debug {
 			args = append(args, "/debug=dbg")
 		}
@@ -193,9 +187,7 @@ func Link(workDir string, outputName string) error {
 				args = append(args, filepath.Join(workDir, entry.Name()))
 			}
 		}
-		args = append(args, "-g")
-		args = append(args, "kernel32.dll")
-		args = append(args, "msvcrt.dll")
+		args = append(args, "-g", "kernel32.dll", "msvcrt.dll")
 		// Print the arguments and the command
 		fmt.Println("Link command:")
 		fmt.Printf("../tools/golink.exe ")
