@@ -32,7 +32,7 @@ var VarDefs map[string]*VarDef
 
 func MustFree() bool {
 	for _, v := range VarDefs {
-		if v.Value.Typ.Pt == TYP_STRING && v.MustFree {
+		if v.MustFree && (v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT) {
 			return true
 		}
 	}

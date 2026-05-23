@@ -684,7 +684,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 }
 
 // EmitFreeLocalVariables will free an object in a local variable
-func EmitFreeLocalVariables(adr int, pt PrimaryType, comment string) error {
+func EmitFreeLocalVariables(adr int, pt PrimaryType, size int, comment string) error {
 	if pt == TYP_STRING {
 		// Decrement allocation count, first load size given in offset +4 (capacity)
 		emit("mov", "rax", BpRel(adr), "Load cap")
@@ -698,6 +698,11 @@ func EmitFreeLocalVariables(adr int, pt PrimaryType, comment string) error {
 		emit("mov", "rax", BpRel(adr), "")
 		emit("call", "_free_str", "", comment)
 		EmitLabel(lbl, "")
+		return nil
+	} else if pt == TYP_STRUCT {
+		emit("mov", "rax", BpRel(adr), "")
+		emit("mov", "rcx", strconv.Itoa(size), "")
+		emit("call", "_free_struct", "", comment)
 		return nil
 	}
 	return fmt.Errorf("can not free %s", TokenNames[pt])

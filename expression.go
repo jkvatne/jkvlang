@@ -79,6 +79,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
+		lvalue.MustFree = true
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
@@ -475,7 +476,7 @@ func ParseAssign(s *State, id string) error {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
 				if lv.MustFree && lv.Typ.Pt.IsObject() {
-					err = EmitFreeLocalVariables(lv.Offset(), lv.Value.Typ.Pt, "Free "+lv.Name)
+					err = EmitFreeLocalVariables(lv.Offset(), lv.Value.Typ.Pt, lv.Size(), "Free "+lv.Name)
 					if err != nil {
 						return err
 					}
@@ -1109,7 +1110,7 @@ func ParseFuncDef(s *State) error {
 		for _, v := range VarDefs {
 			EmitComment("Free argument " + v.Name + " at " + strconv.Itoa(v.Offset()) + " MustFree=" + strconv.FormatBool(v.MustFree))
 			if v.Value.Typ.Pt.IsObject() && v.MustFree {
-				err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, "Free "+v.Name)
+				err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, v.Typ.size, "Free "+v.Name)
 				if err != nil {
 					return err
 				}

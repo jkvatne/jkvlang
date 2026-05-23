@@ -41,7 +41,33 @@ _alloc:
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
 
-; _free will free the memory pointed to by rax, assuming it is a string with len/cap.
+; _free_struct will free memory with the given size..L1
+; size is actualy only used to decrement allocation_count.
+; rax is pointer to heap
+; rcx is size
+global _free_struct
+_free_struct:
+    push rbp
+    mov rbp, rsp
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 40                      ; Reserve shadow space
+    mov rdi, rax                     ; Save objecgt pointer in rdi
+
+    sub [allocation_count], rcx,     ; Decrement allocated count
+
+    call GetProcessHeap
+    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
+    mov r8, rdi                      ; Argument 3, move memory pointer into r8
+    call HeapFree                    ; Do the actual freeing of the memory
+    or rax, rax                      ; Check that Free returned 1
+    jnz .L2
+    mov r15, 103
+.L2:
+    leave
+    ret
+
+; _free_str will free the string pointed to by rax, assuming it is a string with len/cap.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
 ; No return value.
 global _free_str
@@ -56,13 +82,6 @@ _free_str:
     shr rax, 32                      ; Extract capacity in the high 32bits
     jz .L1                           ; Do not free if cap is zero
     sub [allocation_count], rax,     ; Decrement allocated count
-
-    ; Print debug message with freed size
-    ; mov rcx, freestr                 ; First argument: format string for the printed message
-    ; mov rdx, [rdi]                   ; Second argument: size
-    ; shr rdx, 32
-    ; mov r8, rdi                      ; Third argument: address
-    ; call printf                      ; Print the size of the freed object
 
     mov rax, rdi
     call GetProcessHeap
