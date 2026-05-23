@@ -25,10 +25,10 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
 		return &NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 	}
-	if val1.HasValue && val2.HasValue {
+	if val1.IsConst && val2.IsConst {
 		// If both operands are constant. Evaluate at compile time.
 		return generateConstOpConst(op, val1, val2)
-	} else if val1.HasValue || val2.HasValue {
+	} else if val1.IsConst || val2.IsConst {
 		EmitAssertTosInRax("Get TOS")
 		return generateTosOpConst(op, val1, val2)
 	} else {
@@ -40,10 +40,10 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 // generateConstOpConst will calculate the result of the operation on the two constant values
 // and return the constant result.
 // The operations are : + - * / & |  %% == != < <= > >=
-func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	var result ValueDef
+func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *ValueDef, err error) {
+	result = new(ValueDef)
 	result.Typ = widest(val1, val2).Typ
-	result.HasValue = true
+	result.IsConst = true
 	switch op {
 	case TOK_PLUS:
 		result.IntValue = val1.IntValue + val2.IntValue
@@ -104,7 +104,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, 
 		// Invalid operand
 		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
 	}
-	return &result, nil
+	return result, nil
 }
 
 func emitTosOpNos2(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
@@ -159,7 +159,7 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 // generateTosOpConst will evaluate Top Of Stack with a constant. The constant is found in val2
 func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	var err error
-	if val1.HasValue {
+	if val1.IsConst {
 		op = Inverse(op)
 	}
 	if op.IsCompare() {

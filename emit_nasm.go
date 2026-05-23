@@ -790,19 +790,19 @@ func EmitNewStruct(s *State, t *TypeDef) {
 	code.RaxIsTOS = true
 }
 
-func EmitAddToRax(s *State, ofs int) {
-	emit("add", "rax", strconv.Itoa(ofs), "")
+func EmitAddToRsi(s *State, ofs int) {
+	emit("add", "rsi", strconv.Itoa(ofs), "")
 }
 
 func EmitLoadIndirect() {
-	emit("mov", "rax", "[rax]", "")
+	emit("mov", "rax", "[rsi]", "")
 }
 func EmitStoreIndirect() {
-	emit("mov", "[rdi]", "rax", "")
+	emit("mov", "[rsi]", "rax", "")
 }
 
 func EmitLoadEa(localOfs int) {
-	emit("mov", "rax", BpRel(localOfs), "EmitLoadEa")
+	emit("mov", "rsi", BpRel(localOfs), "EmitLoadEa")
 }
 
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {

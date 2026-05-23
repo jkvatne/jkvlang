@@ -72,7 +72,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, HasValue: isConst}, Kind: LocalVar}
+		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: isConst}, Kind: LocalVar}
 		VarDefs[id] = v
 		s.VarCount++
 		v.Value.Offset = -s.VarCount * 8 // First local variable is at rbp-16, the next at rpb-24

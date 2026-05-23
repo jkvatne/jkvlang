@@ -6,6 +6,13 @@ import (
 	"strings"
 )
 
+type ConstValue struct {
+	IntValue    int64
+	BoolValue   bool
+	StringLitNo int
+	FloatLitNo  int
+}
+
 type ValueDef struct {
 	Typ         *TypeDef
 	IntValue    int64
@@ -18,23 +25,27 @@ type ValueDef struct {
 	Offset      int
 	LocalVar    *VarDef
 	IsTempObj   bool
-	HasValue    bool
+	IsConst     bool
 }
 
 var (
-	False            = ValueDef{Typ: &BoolType, HasValue: true, BoolValue: false}
-	True             = ValueDef{Typ: &BoolType, HasValue: true, IntValue: 1, BoolValue: true}
-	NoValue          = ValueDef{Typ: &NoneType, HasValue: false, BoolValue: false}
+	False            = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
+	True             = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
+	NoValue          = ValueDef{Typ: &NoneType, IsConst: false, BoolValue: false}
 	LiteralDefs      []string
 	FloatLiteralDefs []float64
 )
 
+func (v *ValueDef) HasValue() bool {
+	return v.IsConst
+}
+
 func (v *ValueDef) IsTrue() bool {
-	return v.HasValue && v.BoolValue
+	return v.IsConst && v.BoolValue
 }
 
 func (v *ValueDef) IsFalse() bool {
-	return v.HasValue && !v.BoolValue
+	return v.IsConst && !v.BoolValue
 }
 
 func LiteralInit() {
@@ -93,7 +104,7 @@ func StringToValue(s string) (value *ValueDef, err error) {
 				value.Typ = TypeDefs["I64"]
 			}
 			value.IntValue = num
-			value.HasValue = true
+			value.IsConst = true
 			return value, nil
 		}
 	}

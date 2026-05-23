@@ -26,7 +26,7 @@ func ParseReturn(s *State) error {
 			if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
 				return fmt.Errorf("returns wrong type")
 			}
-			if v.HasValue {
+			if v.IsConst {
 				if v.Typ.Pt.IsInteger() {
 					EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
 				} else if v.Typ.Pt == TYP_STRING {

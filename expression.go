@@ -11,7 +11,6 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		lvalue.SetType(value.Typ)
-		// VarDefs[lvalue.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable "+lvalue.Name)
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -23,7 +22,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	}
 
 	// If the value is known (a compile time constant)
-	if value.HasValue {
+	if value.HasValue() {
 		t := lvalue.Typ.Pt
 		if t == TYP_STRUCT {
 			if lvalue.FieldType != nil {
@@ -70,7 +69,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt.IsInteger() {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
-			EmitLoadIndirect()
+			EmitStoreIndirect()
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}
@@ -249,11 +248,11 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 		if !ok {
 			return nil, fmt.Errorf("expected field name of the struct %s but but got %s", v.Name, s.tokenString)
 		}
-		EmitAddToRax(s, ofs)
+		EmitAddToRsi(s, ofs)
 		if s.token != TOK_DOT && s.token != TOK_LBRACK {
 			break
 		}
-		EmitLoadIndirect()
+		EmitStoreIndirect()
 	}
 	// Now rax is the address of the value
 	return v, nil
@@ -329,7 +328,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		}
 		valueList = append(valueList, value)
 		code.PushCleanupCode()
-		if value.HasValue {
+		if value.HasValue() {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
@@ -509,17 +508,17 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			if lvalues[i].Value.HasValue {
+			if lvalues[i].Value.HasValue() {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
-			oldHasValue := lvalues[i].Value.HasValue
+			oldHasValue := lvalues[i].Value.HasValue()
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
-			if oldHasValue && !value.HasValue {
-				lvalues[i].Value.HasValue = false
+			if oldHasValue && !value.HasValue() {
+				lvalues[i].Value.IsConst = false
 			}
 			lvalues[i].Value.IsTempObj = false
 		}
@@ -585,7 +584,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 	if v.Typ.Pt == TYP_NONE {
 		return &NoValue, fmt.Errorf("no type for \"%s\"", id)
 	}
-	if !v.Value.HasValue {
+	if !v.Value.HasValue() {
 		// This is a local variable, not a known constant
 		if v.Name == "err" {
 			EmitLoadErr()
@@ -655,14 +654,14 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 		value.Typ = TypeDefs["F64"]
 		value.FloatValue = s.tokenFloatValue
 		value.FloatLitNo = floatLitNo
-		value.HasValue = true
+		value.IsConst = true
 		nextToken(s)
 	} else if s.token == TOK_STRING {
 		litNo := AddLiteral(s.tokenString)
 		value.Typ = TypeDefs["String"]
 		value.StringValue = s.tokenString
 		value.StringLitNo = litNo
-		value.HasValue = true
+		value.IsConst = true
 		nextToken(s)
 	} else if s.token == TOK_LBRACK {
 		for {
@@ -735,7 +734,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 	}
 	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
 		// Concatenation of two or more strings
-		if value1.HasValue {
+		if value1.HasValue() {
 			EmitPushConstString(value1.StringLitNo)
 		}
 		// Loop through all strings that are concatenated
@@ -747,7 +746,7 @@ func ParseSumTerm(s *State) (*ValueDef, error) {
 			if err != nil {
 				return &NoValue, err
 			}
-			if value2.HasValue {
+			if value2.HasValue() {
 				EmitPushStringLit(value2.StringLitNo, "Sum term push value2")
 				value2.IsTempObj = false
 			}
@@ -905,7 +904,7 @@ func ParseBlock(s *State, isTrue bool) error {
 // ParseColonQmark will parse the code after '?' or ':'
 func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
-	if !value.HasValue {
+	if !value.HasValue() {
 		L1 = code.NewLabel()
 		EmitJumpFalse(L1, "Skip block 1 if false")
 	}
@@ -917,7 +916,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	}
 
 	if s.found(TOK_COLON) {
-		if !s.HasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue() {
 			L2 = code.NewLabel()
 			EmitJump(L2, "")
 		}
@@ -927,7 +926,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		if err != nil {
 			return err
 		}
-		if !s.HasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue() {
 			EmitLabel(L2, "")
 		}
 	} else {
@@ -940,7 +939,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 func ParseIfElse(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
 	nextToken(s)
-	if !value.HasValue {
+	if !value.HasValue() {
 		L1 = code.NewLabel()
 		EmitJumpFalse(L1, "Skip block 1 if false")
 	}
@@ -956,7 +955,7 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 	}
 
 	for s.found(TOK_ELSE) {
-		if !s.HasReturned && !value.HasValue {
+		if !s.HasReturned && !value.HasValue() {
 			L2 = code.NewLabel()
 			EmitJump(L2, "Skip else block")
 		}
