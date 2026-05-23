@@ -357,7 +357,6 @@ func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 	emit("lea", "rax", BpRel(localVarOfs), "")
 	emit("add", "rax", strconv.Itoa(fieldOffset), "")
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "xxx")
-	emit("add", "rax", "8", "")
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)

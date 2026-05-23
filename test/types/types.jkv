@@ -1,5 +1,5 @@
 
-/*
+
 type Age = U8
 
 type Person = struct {
@@ -8,27 +8,27 @@ type Person = struct {
   adr String
   age Age
 }
-*/
+
 func main() {
-    s = "æøå"
-    printf("%s\n", s)
-/*
-    printf("åå Start test struct types\n")
-    printf("Test %s\n", "print")
-    u = "åå"
-    printf("Test %s\n", u)
+    printf("Start test struct types\n")
+
+    printf("1. Test struct\n")
     p = new(Person)
     p.name = "Jan Kåre Vatne"
     p.age = 70
-//    assert(p.age==70)
-//    assert(p.name=="Jan Kåre Vatne")
+    assert(p.age==70)
+    assert(p.name=="Jan Kåre Vatne")
 
     printf("p.age=%d\n", p.age)
     printf("p.name=%s\n", p.name)
 
+    printf("3. Test print utf\n")
+    printf("Test utf: %s\n", "æøå")
+
+    printf("4. Test type\n")
     var age Age
-    age = 71
+    age = 101
     printf("age=%d\n", age)
-    assert(age==71)
-*/
+    assert(age==101)
+
 }

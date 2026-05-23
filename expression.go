@@ -603,7 +603,12 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 					return &NoValue, fmt.Errorf("field \"%s\" not found", fn)
 				}
 				EmitLoadField(f.Pt.Size(), v.Value.Offset, ofs)
+				if f.Pt == TYP_STRING {
+					// EmitAddToRax(s, 8)
+				}
+				value.Typ = f
 				s.next()
+				return value, nil
 			}
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
