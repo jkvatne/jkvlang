@@ -756,6 +756,11 @@ func EmitEpilogue(name string) {
 		emit("add", "rsp", "16", "")
 		code.LocalSp -= 2
 		EmitComment("Returning error code via _exit()")
+		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
+		emit("or", "rax", "rax", "")
+		emit("jz", ".L9999", "", "")
+		emit("mov", "r15", "97", "")
+		EmitLabel(9999, "")
 		emit("mov", "rax", "r15", "Get error code")
 		emit("call", "_exit", "", "")
 	} else {

@@ -35,7 +35,7 @@ func ParseReturn(s *State) error {
 					panic("Not implemented")
 				}
 			} else if v.LocalVar != nil {
-				v.LocalVar.MustFree = false
+				v.LocalVar.Value.IsTempObj = false
 			}
 			EmitStoreBpOfs(1 + i + len(f.parameters) + len(f.returnTypes))
 			if !s.found(TOK_COMMA) {

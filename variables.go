@@ -21,18 +21,18 @@ type VarDef struct {
 	Name        string
 	level       int
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takse ownership.
-	MustFree    bool
 	Kind        VarKind
 	FieldOfs    int
 	FieldType   *TypeDef
 	IsIndirect  bool
+	IsHeap      bool
 }
 
 var VarDefs map[string]*VarDef
 
 func MustFree() bool {
 	for _, v := range VarDefs {
-		if v.MustFree && (v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT) {
+		if v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT {
 			return true
 		}
 	}

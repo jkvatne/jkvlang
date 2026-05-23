@@ -17,19 +17,21 @@ func main() {
     printf("1. Test call returning a string literal\n")
     fflush()
     assert(f2()=="f2", "Failed f2=='f2'")
-
+    fflush()
     printf("2. Test free printed variable\n")
+    fflush()
     s = "Hello "
     t = "World "
-    v = s + t
-    assert(v=="Hello World ", "Failed v=='Hello World '")
-
+    w = s + t
+    assert(w=="Hello World ", "Failed v=='Hello World '")
     printf("3. Test free result from f1\n")
+    fflush()
     t = f1("xyz")
     assert(t=="f1 xyz", "Failed xyz==")
 
     printf("4. Test asserts\n")
+    fflush()
     assert(f1("xyz")=="f1 xyz", "Failed f1()")
     assert(f0("xyz")=="f0 xyz", "Failed f0()")
-
+    printf("Finished free.jkv\n")
 }
