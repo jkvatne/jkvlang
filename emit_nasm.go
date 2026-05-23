@@ -354,7 +354,7 @@ func EmitLoadFloat64(size int, adr int, comment string) {
 func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 	EmitFlushRax("")
 	code.RaxIsTOS = true
-	emit("lea", "rax", BpRel(localVarOfs), "")
+	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
 	emit("add", "rax", strconv.Itoa(fieldOffset), "")
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "xxx")
 }
@@ -794,12 +794,15 @@ func EmitAddToRax(s *State, ofs int) {
 	emit("add", "rax", strconv.Itoa(ofs), "")
 }
 
-func EmitIndirect(s *State) {
+func EmitLoadIndirect() {
 	emit("mov", "rax", "[rax]", "")
 }
+func EmitStoreIndirect() {
+	emit("mov", "[rdi]", "rax", "")
+}
 
-func EmitLoadEa(s *State, localOfs int) {
-	emit("lea", "rax", BpRel(localOfs), "")
+func EmitLoadEa(localOfs int) {
+	emit("mov", "rax", BpRel(localOfs), "EmitLoadEa")
 }
 
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {

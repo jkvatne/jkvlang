@@ -69,7 +69,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		}
 	} else if value.Typ.Pt.IsInteger() {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
+		if lvalue.Value.Typ.Pt == TYP_STRUCT {
+			EmitLoadIndirect()
+		} else {
+			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
+		}
 	} else if value.Typ.Pt == TYP_F64 {
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRING {
@@ -249,7 +253,7 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 		if s.token != TOK_DOT && s.token != TOK_LBRACK {
 			break
 		}
-		EmitIndirect(s)
+		EmitLoadIndirect()
 	}
 	// Now rax is the address of the value
 	return v, nil
@@ -266,7 +270,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		lvalue := VarDefs[id]
 		if s.found(TOK_DOT) {
 			if s.token == TOK_ID {
-				EmitLoadEa(s, lvalue.Offset())
+				EmitLoadEa(lvalue.Offset())
 				lvalue, err = ParseStructField(s, lvalue)
 				lvalue.IsIndirect = true
 				if err != nil {
@@ -610,6 +614,10 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 				value.Typ = f
 				s.next()
 				return value, nil
+			} else {
+				// It is a struct name. Return the address in rax
+				emit("mov", "rax", BpRel(v.Value.Offset), "")
+				code.RaxIsTOS = true
 			}
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)

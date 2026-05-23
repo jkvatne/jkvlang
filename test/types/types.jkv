@@ -3,15 +3,24 @@
 type Age = U8
 
 type Person = struct {
-  dummmy String
+  no I32
   name String
   adr String
   age Age
 }
 
-func main() {
-    printf("Start test struct types\n")
+func get_person(n I32) Person {
+    p = new(Person)
+    p.no = n
+    return p
+}
 
+func main() {
+    pers = get_person(123)
+    printf("pers no=%d\n", pers.no)
+
+    /*
+    printf("Start types.jkv\n")
     printf("1. Test struct\n")
     p = new(Person)
     p.name = "Jan Kåre Vatne"
@@ -30,5 +39,5 @@ func main() {
     age = 101
     printf("age=%d\n", age)
     assert(age==101)
-
+ */
 }
