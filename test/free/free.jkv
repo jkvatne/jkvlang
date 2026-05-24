@@ -32,11 +32,9 @@ func main() {
     printf("f1('xyz')='%s'\n", f1("xyz"))
     printf("f0('xyz')='%s'\n", f0("xyz"))
 
-/*
     fflush()
     assert(f1("xyz")=="f1 xyz", "Failed f1()")
     assert(f0("xyz")=="f0 xyz", "Failed f0()")
     printf("Finished free.jkv\n")
     fflush()
-    */
 }
