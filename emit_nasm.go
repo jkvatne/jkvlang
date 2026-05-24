@@ -842,5 +842,5 @@ func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
 }
 
 func EmitAssignIndirectInt(size int, value int64, comment string) {
-	emit("mov", DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
+	emit("mov", DataType(size)+"[rsi]", strconv.Itoa(int(value)), comment)
 }

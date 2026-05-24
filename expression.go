@@ -1108,13 +1108,23 @@ func ParseFuncDef(s *State) error {
 	}
 	EmitLabel(s.returnLbl, "Return label for "+f.name)
 	// Free local variables that have objects on the heap, if any
-	if MustFree() {
+	mustFree := false
+	for _, v := range VarDefs {
+		if (v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT) && v.Value.IsTempObj {
+			mustFree = true
+		}
+	}
+
+	if mustFree {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			if v.Value.Typ.Pt == TYP_STRING && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
 				EmitFreeString("")
+			} else if v.Value.Typ.Pt == TYP_STRUCT && v.Value.IsTempObj {
+				EmitLoad(8, v.Offset(), "Free local struct "+v.Name)
+				EmitFreeStruct(v.Typ.Size(), "")
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")
