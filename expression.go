@@ -476,11 +476,11 @@ func ParseAssign(s *State, id string) error {
 		if op == TOK_ASSIGN {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
-				if lv.Typ != nil && lv.Typ.Pt.IsObject() {
-					err = EmitFreeLocalVariables(lv.Offset(), lv.Value.Typ.Pt, lv.Size(), "Free "+lv.Name)
-					if err != nil {
-						return err
-					}
+				if lv.Typ != nil && lv.Typ.Pt == TYP_STRING {
+					// Need to have pointer in rax
+					EmitLoad(8, lv.Offset(), "Load ptr to string")
+					// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
+					EmitFreeString("Free old string when assigning new")
 				}
 			}
 		}
@@ -1112,12 +1112,10 @@ func ParseFuncDef(s *State) error {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
-			EmitComment("Free argument " + v.Name + " at " + strconv.Itoa(v.Offset())) // + " MustFree=" + strconv.FormatBool(v.MustFree))
-			if v.Value.IsTempObj {                                                     // Value.Typ.Pt.IsObject() {
-				err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, v.Typ.size, "Free "+v.Name)
-				if err != nil {
-					return err
-				}
+			if v.Value.Typ.Pt == TYP_STRING {
+				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
+				EmitFreeString("")
+				// err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, v.Typ.size, "Free local "+v.Name)
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")

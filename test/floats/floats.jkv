@@ -1,6 +1,8 @@
 
 
 func main() {
+    printf("Start floats.jkv\n")
+
     x = 1.0
     y = 2.2
     z = 3.3

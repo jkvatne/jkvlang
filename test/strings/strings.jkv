@@ -16,7 +16,6 @@ func f3(s String, t String) String {
   return s+t
 }
 
-
 func g1(a String, b String, c String) String {
     return a+b+c
 }
@@ -28,8 +27,7 @@ func g2(s String, t String) String {
 
 func main() {
 
-    printf("Start tests\n")
-
+    printf("Start strings.jkv\n")
     printf("1. Test concat three strings and assign to local variable\n")
     s = "Hello "
     t = "World "
@@ -83,13 +81,11 @@ func main() {
     assert(w=="abcdefghijkl", "Failed 9")
     w = g2("abc","def")
     assert(w=="abcdef", "Failed 9")
-
     printf("10. Test concat two variables\n")
     s = "Hello "
     t = "World "
     u = s + t
     assert(u=="Hello World ", "Failed 10")
-
     printf("11. Test freeing of temporary object returned from f0\n")
     w = f0("xyz")
     assert(w=="f0 xyz", "Failed 11")
@@ -101,7 +97,6 @@ func main() {
     s = "xyz"
     v = "pre-" + s
     assert(v=="pre-xyz","Failed 13")
-
     printf("14. Test concatenation of variable and constant overwriting old local var\n")
     s = "xyz"
     v = s+"-post"
@@ -149,6 +144,6 @@ func main() {
     u = "abc"
     assert(u!="abb", "Failed 20a")
     assert("abca"!=u, "Failed 20b")
-
     printf("End of tests\n")
+
 }

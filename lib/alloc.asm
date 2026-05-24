@@ -76,18 +76,24 @@ _free_str:
     mov rbp, rsp
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 40                      ; Reserve shadow space
-    mov rdi, rax                     ; Save objecgt pointer in rdi
+    mov r12,  rax                        ; Save object pointer
 
-    mov rax, [rax]                   ; Load len/cap qword
-    shr rax, 32                      ; Extract capacity in the high 32bits
+    mov rcx, [rax]                   ; Load len/cap qword
+    shr rcx, 32                      ; Extract capacity in the high 32bits
     jz .L1                           ; Do not free if cap is zero
-    sub [allocation_count], rax,     ; Decrement allocated count
+    sub [allocation_count], rcx      ; Decrement allocated count
 
-    mov rax, rdi
+    ; Clear area to avoid double use
+    mov rdi, rax                     ; Destination pointer (buffer address)
+    xor eax, eax                     ; Value to store (0)
+    cld                              ; Clear direction flag (process forward)
+    rep stosb                        ; Repeat storing AL into [RDI] (use stosd for dwords)
+    mov rax, r12
+
     call GetProcessHeap
-    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rxx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
-    mov r8, rdi                      ; Argument 3, move memory pointer into r8
+    mov r8, r12                      ; Argument 3, move memory pointer into r8
     call HeapFree                    ; Do the actual freeing of the memory
     or rax, rax                      ; Check that Free returned 1
     jnz .L1

@@ -366,9 +366,6 @@ func EmitLoad(size int, adr int, comment string) {
 	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 }
 
-func EmitStoreField(opcode string, size int, localVarOfs, fieldOffset int, comment string) {
-}
-
 // EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
 func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
@@ -683,6 +680,35 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	code.RaxIsTOS = true
 }
 
+// EmitFreeString assumes the full address exists in rax.
+func EmitFreeString(comment string) {
+	lbl := code.NewLabel()
+	// Verify that rax is not nil
+	emit("or", "rax", "rax", "")
+	emit("jz", EmitNumericLabel(lbl), "", "")
+	// Load len/cap
+	emit("mov", "rbx", "[rax]", "")
+	// Extract cap only
+	emit("shr", "rbx", "32", "")
+	// Skip free if cap=0
+	emit("or", "rbx", "rbx", "")
+	emit("jz", EmitNumericLabel(lbl), "", "")
+	// Address is in rax. Just call _free_str
+	emit("call", "_free_str", "", comment)
+	// Exit label
+	EmitLabel(lbl, "")
+}
+
+// EmitFreeStruct assumes the full address exists in rax.
+// It will free the pointer in rax and decrement allocation_count by the size given.
+func EmitFreeStruct(size int, comment string) {
+	emit("mov", "rax", "rax", comment)
+	emit("mov", "rcx", strconv.Itoa(size), "")
+	// _free_struct assumes pointer in rax and size in rcx
+	emit("call", "_free_struct", "", "")
+}
+
+/*
 // EmitFreeLocalVariables will free an object in a local variable
 func EmitFreeLocalVariables(adr int, pt PrimaryType, size int, comment string) error {
 	if pt == TYP_STRING {
@@ -707,6 +733,7 @@ func EmitFreeLocalVariables(adr int, pt PrimaryType, size int, comment string) e
 	}
 	return fmt.Errorf("can not free %s", TokenNames[pt])
 }
+*/
 
 func EmitPushAx(txt string) {
 	emit("push", "rax", "", txt)

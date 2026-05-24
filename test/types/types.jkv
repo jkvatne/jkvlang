@@ -16,20 +16,22 @@ func get_person(n I32) Person {
 }
 
 func main() {
-    pers = get_person(123)
-    printf("pers no=%d\n", pers.no)
-
-    /*
     printf("Start types.jkv\n")
+    fflush()
     printf("1. Test struct\n")
+    fflush()
     p = new(Person)
-    p.name = "Jan Kåre Vatne"
     p.age = 70
+    p.name = "Jan Kåre Vatne"
     assert(p.age==70)
+    fflush()
     assert(p.name=="Jan Kåre Vatne")
+    fflush()
 
     printf("p.age=%d\n", p.age)
+    fflush()
     printf("p.name=%s\n", p.name)
+    fflush()
 
     printf("3. Test print utf\n")
     printf("Test utf: %s\n", "æøå")
@@ -39,5 +41,8 @@ func main() {
     age = 101
     printf("age=%d\n", age)
     assert(age==101)
- */
+
+    printf("5. Test struct returned from func\n")
+    pers = get_person(123)
+    printf("pers no=%d\n", pers.no)
 }

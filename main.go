@@ -210,7 +210,7 @@ func Run(outputName string) error {
 	out, err := exec.Command(path.Join(cwd, outputName+".exe"), "").CombinedOutput()
 	fmt.Println(string(out))
 	if err != nil {
-		fmt.Printf("The exit code was %d\n", err.(*exec.ExitError).ExitCode())
+		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())
 	}
 	return err
 }

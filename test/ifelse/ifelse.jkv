@@ -1,5 +1,7 @@
 
 func main() {
+    printf("Start ifelse.jkv\n")
+
     a = 1
     b = 2
     c = 3

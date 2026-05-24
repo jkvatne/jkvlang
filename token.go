@@ -176,11 +176,13 @@ func nextChar(s *State) (rune, rune) {
 		s.AtLineEnd = false
 		code.LineNum++
 		s.currentLine = ""
-		for i := s.p; i < len(s.text); i++ {
-			if s.text[i] == '\n' {
+		for i := s.p; i < len(s.text); {
+			ch, n := utf8.DecodeRune(s.text[i:])
+			if ch == '\n' {
 				break
 			}
-			s.currentLine += string(s.text[i])
+			s.currentLine += string(ch)
+			i += n
 		}
 	}
 	if eof(s) {

@@ -19,13 +19,11 @@ type VarDef struct {
 	Typ         *TypeDef
 	Value       ValueDef
 	Name        string
-	level       int
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takse ownership.
 	Kind        VarKind
 	FieldOfs    int
 	FieldType   *TypeDef
 	IsIndirect  bool
-	IsHeap      bool
 }
 
 var VarDefs map[string]*VarDef
