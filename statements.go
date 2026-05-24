@@ -36,7 +36,10 @@ func ParseReturn(s *State) error {
 				}
 			} else if v.LocalVar != nil {
 				v.LocalVar.Value.IsTempObj = false
+			} else {
+
 			}
+			// Save returned value into reserved slot before BP.
 			EmitStoreBpOfs(1 + i + len(f.parameters) + len(f.returnTypes))
 			if !s.found(TOK_COMMA) {
 				break

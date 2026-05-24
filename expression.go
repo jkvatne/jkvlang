@@ -1112,10 +1112,9 @@ func ParseFuncDef(s *State) error {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
-			if v.Value.Typ.Pt == TYP_STRING {
+			if v.Value.Typ.Pt == TYP_STRING && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
 				EmitFreeString("")
-				// err = EmitFreeLocalVariables(v.Offset(), v.Value.Typ.Pt, v.Typ.size, "Free local "+v.Name)
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")
