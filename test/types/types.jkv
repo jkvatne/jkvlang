@@ -17,18 +17,15 @@ func get_person(n I32) Person {
 
 func main() {
     printf("Start types.jkv\n")
+
     printf("1. Test struct\n")
     p = new(Person)
     p.age = 70
     p.name = "Jan Kåre Vatne"
     assert(p.age==70, "p.age was %d", p.age)
-    fflush()
     assert(p.name=="Jan Kåre Vatne")
-    fflush()
     printf("p.age=%d\n", p.age)
-    fflush()
     printf("p.name=%s\n", p.name)
-    fflush()
 
     printf("3. Test print utf\n")
     printf("Test utf: %s\n", "æøå")
