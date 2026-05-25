@@ -552,6 +552,24 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 				return nil, fmt.Errorf("expected right parantesis")
 			}
 			return value, err
+		} else if id == "ptr" {
+			// Handle conversion of variable to a pointer to that variable
+			if s.token != TOK_ID {
+				return nil, fmt.Errorf("expected id after (")
+			}
+			id = s.tokenString
+			s.next()
+			if !s.found(TOK_RPAR) {
+				return nil, fmt.Errorf("expected left parantesis after 'ptr'")
+			}
+			// Lookup variable
+			v, ok := VarDefs[id]
+			if !ok {
+				return nil, fmt.Errorf("expected loca variable, got %s", id)
+			}
+			ofs := v.Offset()
+			EmitGetAddrOfLocal(ofs)
+			return &PtrValue, nil
 		} else {
 			// It is a function call that should return values
 			var values []*ValueDef

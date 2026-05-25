@@ -32,6 +32,7 @@ var (
 	False            = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
 	True             = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
 	NoValue          = ValueDef{Typ: &NoneType, IsConst: false, BoolValue: false}
+	PtrValue         = ValueDef{Typ: &PtrType}
 	LiteralDefs      []string
 	FloatLiteralDefs []float64
 )
