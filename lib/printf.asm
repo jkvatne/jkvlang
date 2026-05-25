@@ -20,7 +20,8 @@ extern fflush
 global _printf  
 _printf:
     mov rdi, printf
-    jmp _syscall
+    call _syscall
+    ret
 
 global _fflush
 _fflush:

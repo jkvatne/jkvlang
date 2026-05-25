@@ -376,8 +376,10 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					EmitFlushRax("Integer arg to printf")
 				} else if value.Typ.Pt == TYP_STRUCT {
 					EmitFlushRax("Struct field arg to printf")
+				} else if value.Typ.Pt == TYP_PTR {
+					EmitFlushRax("Ptr field arg to printf")
 				} else {
-					return nil, fmt.Errorf("printf of arguments of type %s is not yet handled", value.Typ.Pt.Name())
+					return nil, fmt.Errorf("printf arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
 			} else if value.Typ.Pt.IsObject() {
 				// We have a heap object pointer on top of the stack. If the formal parameter is not "in",

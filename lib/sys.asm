@@ -27,7 +27,13 @@ global _create_file
 _create_file:
     mov rdi, CreateFileA
     mov bx, 8*7
-    jmp _syscall
+    call _syscall
+    add rax, 1
+    jnz .L2
+    mov r15, 107
+.L2:
+    sub rax, 1
+    ret
 
 _read_file:
     ; Set pointer to the number of bytes read
@@ -35,17 +41,24 @@ _read_file:
     ;mov [rsp+32], rax
     mov rdi, ReadFile
     mov bx, 8*5
-    jmp _syscall
+    call _syscall
+    or rax,rax
+    jnz .L1
+    mov r15,106
+.L1:
+    ret
 
 _write_file:
     mov rdi, WriteFile
     mov bx, 8*5
-    jmp _syscall
+    call _syscall
+    ret
 
 _close_file:
     mov rdi, CloseHandle
     mov bx, 8
-    jmp _syscall
+    call _syscall
+    ret
 
 _cptr:
     mov rax, [rsp+8]

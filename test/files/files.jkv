@@ -1,22 +1,25 @@
 
+func read(f I32, cnt I32) {
+    //ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
+}
 
 func main() {
-    fn = "./test.txt"
-    n = -1
-/*
     printf("Name: files.jkv\n")
-    text = "Hello world!\n"
+    fn = "./test.txt"
+    n = I32(0)
+    text = "Hello World!\n"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    printf("create_file returned %d\n", f)
     ok = write_file(f, cptr(text), 13, ptr(n), 0)
-    printf("ok=%d\n", ok)
+    printf("write_file ok=%d\n", ok)
     printf("written %d bytes\n", n)
     close_file(f)
- */
     dummy="----"
-    buffer=dummy+"----------"
+    buffer=dummy+"------"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
-    printf("read_file ok=%d\n", ok)
+    //ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
+    //printf("read_file ok=%d\n", ok)
+    //buf, n = read(f, 12)
     printf("read %d bytes\n", n)
     printf("Got: %s", buffer)
     close_file(f)
