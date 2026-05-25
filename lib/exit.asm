@@ -1,6 +1,6 @@
+
 ; Symbols from kernel32
 extern ExitProcess
-
 
 ; invert_err will set err to zero if there was an error
 ; and sett error to 100 if there was no errors.
@@ -14,7 +14,6 @@ _invert_err:
 .L1:
     mov r15, 0
     ret
-
 
 ; exit have one parameter - the error code, found in rax
 global _exit

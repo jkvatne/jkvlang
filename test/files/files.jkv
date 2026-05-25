@@ -1,0 +1,6 @@
+
+
+func main() {
+    fn = "./test.txt"
+    create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+}

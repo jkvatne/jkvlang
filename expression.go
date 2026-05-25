@@ -639,7 +639,7 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 		EmitFlushRax("End parenthesis term")
 		return value, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
-		value, err = StringToValue(s.tokenString)
+		value, err = StringToValue(s)
 		if err != nil {
 			return &NoValue, err
 		}

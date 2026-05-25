@@ -527,6 +527,7 @@ func EmitPrologue(libPath string) {
 	includeFile("printf.asm", libPath)
 	includeFile("alloc.asm", libPath)
 	includeFile("exit.asm", libPath)
+	includeFile("sys.asm", libPath)
 	EmitSection("text")
 	emit("global", "main", "", "")
 	code.EmitBlankLine()

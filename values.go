@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 type ConstValue struct {
@@ -16,6 +15,7 @@ type ConstValue struct {
 type ValueDef struct {
 	Typ         *TypeDef
 	IntValue    int64
+	UintValue   uint64
 	FloatValue  float64
 	BoolValue   bool
 	StringValue string
@@ -76,38 +76,27 @@ func AddLiteral(value string) int {
 	return len(LiteralDefs) - 1
 }
 
-func StringToValue(s string) (value *ValueDef, err error) {
+func StringToValue(s *State) (value *ValueDef, err error) {
 	value = &ValueDef{}
-	if strings.ContainsRune(s, '.') {
-		var num float64
-		num, err = strconv.ParseFloat(s, 64)
-		if err != nil {
-			return &NoValue, err
-		}
-		value.Typ.Pt = TYP_F64
-		value.FloatValue = num
+	value.IntValue = s.tokenIntValue
+	value.UintValue = s.tokenUintValue
+	if value.IntValue >= 0 && value.IntValue <= 255 {
+		value.Typ = TypeDefs["U8"]
+	} else if value.IntValue >= -32768 && value.IntValue <= 32767 {
+		value.Typ = TypeDefs["I16"]
+	} else if value.IntValue >= 32768 && value.IntValue <= 65536 {
+		value.Typ = TypeDefs["U16"]
+	} else if value.IntValue >= -2147483648 && value.IntValue <= 2147483647 {
+		value.Typ = TypeDefs["I32"]
+	} else if value.IntValue >= 2147483648 && value.IntValue <= 4294967296 {
+		value.Typ = TypeDefs["U32"]
+	} else if value.UintValue != 0 {
+		value.Typ = TypeDefs["U64"]
 	} else {
-		var num int64
-		num, err = strconv.ParseInt(s, 10, 64)
-		if err == nil {
-			if num >= 0 && num <= 255 {
-				value.Typ = TypeDefs["U8"]
-			} else if num >= -32768 && num <= 32767 {
-				value.Typ = TypeDefs["I16"]
-			} else if num >= 32768 && num <= 65536 {
-				value.Typ = TypeDefs["U16"]
-			} else if num >= -2147483648 && num <= 2147483647 {
-				value.Typ = TypeDefs["I32"]
-			} else if num >= 2147483648 && num <= 4294967296 {
-				value.Typ = TypeDefs["U32"]
-			} else {
-				value.Typ = TypeDefs["I64"]
-			}
-			value.IntValue = num
-			value.IsConst = true
-			return value, nil
-		}
+		value.Typ = TypeDefs["I64"]
 	}
+	value.IsConst = true
+	return value, nil
 	return &NoValue, fmt.Errorf("not a value: %s", s)
 }
 

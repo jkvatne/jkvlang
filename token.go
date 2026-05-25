@@ -146,6 +146,11 @@ var TokenNames = [...]string{
 func isNum(ch rune) bool {
 	return ch >= '0' && ch <= '9'
 }
+
+func isHex(ch rune) bool {
+	return ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
+}
+
 func isAlfa(ch rune) bool {
 	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z'
 }
@@ -210,9 +215,15 @@ func parseNumber(s *State, ch1 rune, ch2 rune) (rune, rune) {
 	var hasDp bool
 	var hasExp bool
 	var hasExpSgn bool
+	hex := false
+	if ch1 == '0' && (ch2 == 'x' || ch2 == 'X') {
+		hex = true
+		ch1, ch2 = nextChar(s)
+		ch1, ch2 = nextChar(s)
+	}
 	num := string(ch1)
 	for {
-		if isNum(ch2) {
+		if isNum(ch2) || hex && isHex(ch2) {
 			num = num + string(ch2)
 		} else if ch2 == '.' && !hasDp {
 			num = num + string(ch2)
@@ -232,12 +243,33 @@ func parseNumber(s *State, ch1 rune, ch2 rune) (rune, rune) {
 	}
 	s.tokenString = num
 	var err error
-	if hasExp || hasDp {
+	if hex {
+		s.tokenIntValue, err = strconv.ParseInt(num, 16, 64)
+		s.token = TOK_INT
+		if err == nil && s.tokenIntValue > 0 {
+			s.tokenUintValue = uint64(s.tokenIntValue)
+		}
+		if err != nil {
+			s.tokenUintValue, err = strconv.ParseUint(num, 16, 64)
+		}
+		if err != nil {
+			slog.Error("invalid integer")
+			s.token = TOK_EOF
+		}
+	} else if hasExp || hasDp {
 		s.tokenFloatValue, err = strconv.ParseFloat(num, 64)
 		if err == nil {
 			s.token = TOK_FLOAT
 		}
 	} else {
+		s.tokenIntValue, err = strconv.ParseInt(num, 10, 64)
+		if err != nil {
+			s.tokenUintValue, err = strconv.ParseUint(num, 16, 64)
+		}
+		if err != nil {
+			slog.Error("invalid integer")
+			s.token = TOK_EOF
+		}
 		s.token = TOK_INT
 	}
 	if err != nil {
