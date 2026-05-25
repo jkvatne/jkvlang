@@ -1,6 +1,8 @@
 
 
 func main() {
+    text = "Hello world!\n"
     fn = "./test.txt"
-    create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    n = write_file(f, cptr(text), 13, 0, 0)
 }

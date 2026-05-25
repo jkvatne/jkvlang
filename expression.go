@@ -66,7 +66,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		} else {
 			return fmt.Errorf("cannot assign const to variable \"%s\"", lvalue.Name)
 		}
-	} else if value.Typ.Pt.IsInteger() {
+	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == TYP_PTR {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
 			EmitStoreIndirect()
@@ -560,7 +560,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 				return &NoValue, err
 			}
 			if len(values) != 1 {
-				return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+				return nil, fmt.Errorf("expected 1 return value but got %d", len(values))
 			}
 			value = values[0]
 			value.IsReturned = true

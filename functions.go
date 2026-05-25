@@ -24,8 +24,9 @@ func FuncInit() {
 	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
 	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("create_file", []*VarDef{&strPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, nil, true, false)
+	_, _ = AddFunc("create_file", []*VarDef{&strPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("cptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("write_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
 }
 
 func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
