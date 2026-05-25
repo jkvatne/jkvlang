@@ -11,10 +11,9 @@ _syscall:
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
     mov r14, rbx
-    mov rcx, [rbp+16]     ; rcx = First argument: format string
-    sub rbx, 8
-    or rbx, rbx
-    jz .L3
+    mov rcx, [rbp+16]     ; rcx = First argument
+    sub rbx, 9
+    jc .L3
 
     mov rdx, [rbp+24]    ; dx = Second argument
     sub rbx, 8

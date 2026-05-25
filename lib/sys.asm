@@ -31,11 +31,11 @@ _create_file:
 
 _read_file:
     ; Set pointer to the number of bytes read
-    lea rax, [rsp+48]
-    mov [rsp+24], rax
+    ;lea rax, [rsp+48]
+    ;mov [rsp+32], rax
     mov rdi, ReadFile
     mov bx, 8*5
-    call _syscall
+    jmp _syscall
 
 _write_file:
     mov rdi, WriteFile
