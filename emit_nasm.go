@@ -801,8 +801,8 @@ func EmitLoadErr() {
 	code.RaxIsTOS = true
 }
 
-func EmitStoreBpOfs(ofs int) {
-	emit("mov", BpRel(ofs*8), "rax", "")
+func EmitStoreBpOfs(ofs int, comment string) {
+	emit("mov", BpRel(ofs*8), "rax", comment)
 }
 
 func EmitStoreErr(err int) {
