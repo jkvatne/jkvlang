@@ -37,12 +37,10 @@ _create_file:
     ret
 
 _read_file:
-    ; Set pointer to the number of bytes read
-    ;lea rax, [rsp+48]
-    ;mov [rsp+32], rax
     mov rdi, ReadFile
     mov bx, 8*5
     call _syscall
+    mov [rsp+8*6], rax
     or rax,rax
     jnz .L1
     mov r15,106
@@ -53,6 +51,7 @@ _write_file:
     mov rdi, WriteFile
     mov bx, 8*5
     call _syscall
+    mov [rsp+8*6], rax
     ret
 
 _close_file:

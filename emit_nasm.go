@@ -402,9 +402,8 @@ func EmitJumpTrue(n int, comment string) {
 }
 
 // EmitAllocLocalVar will allocate a local variable
-// TODO Allow for types larger than 8 bytecode. For now, use 8 bytes for all localcode.
+// TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
 func EmitAllocLocalVar(comment string) int {
-	// emit("sub", "rsp", "8", comment)
 	emit("push", "0", "", comment)
 	code.LocalSp++
 	return -8 * code.LocalSp
@@ -849,6 +848,7 @@ func EmitAssignIndirectInt(size int, value int64, comment string) {
 func EmitGetAddrOfLocal(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "")
 	emit("push", "rax", "", "")
+	code.LocalSp++
 }
 
 func EmitNewString() {
