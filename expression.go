@@ -68,6 +68,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		}
 	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == TYP_PTR {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
+		if !code.RaxIsTOS {
+			EmitPopAx("")
+		}
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
 			EmitStoreIndirect()
 		} else {
@@ -316,16 +319,16 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			break
 		}
 		// Parse the argument and save the type of the result in the value list
-		var value *ValueDef
 		if parNo > 1 {
-			code.PushArgCode()
+			code.NewArgCode()
 		}
-		value, err = ParseExpression(s)
-		if err != nil {
-			return nil, err
+		values, err1 := ParseExpression(s)
+		if err1 != nil {
+			return nil, err1
 		}
-		valueList = append(valueList, value)
+		valueList = append(valueList, values...)
 		code.PushCleanupCode()
+		value := values[0]
 		if value.HasValue() {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == TYP_STRING {
@@ -411,13 +414,13 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
-func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
+func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*TypeDef, error) {
 	s.currentFuncCall = id
 	EmitFlushRax("Push TOS before call")
 	f := FuncDefs[id]
 	if f == nil {
 		s.currentFuncCall = ""
-		return nil, fmt.Errorf("expected a function name, got: %s", id)
+		return nil, nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
 	// Parse the argument list and push each arg
@@ -425,10 +428,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	values, err := ParseActualArgList(s, f)
 	if err != nil {
 		s.currentFuncCall = ""
-		return nil, err
+		return nil, nil, err
 	}
 	if !f.VarArg && len(values) != len(f.parameters) {
-		return nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
+		return nil, nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
 	}
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
@@ -436,7 +439,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		code.ArgCode = code.ArgCode[0 : nac-1]
 	}
 	// Make space for return values. This code is added to the ArgCode stack.
-	code.PushArgCode()
+	code.NewArgCode()
 	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
 
 	code.ConsArgCode(len(values)+1, true)
@@ -451,7 +454,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		s.currentFuncCall = ""
-		return nil, nil
+		return nil, nil, nil
 	}
 	var v []*ValueDef
 	for _, t := range f.returnTypes {
@@ -460,7 +463,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	// Function results are on stack and not in RAX.
 	code.RaxIsTOS = false
 	s.currentFuncCall = ""
-	return v, nil
+	return v, f.returnTypes, nil
 }
 
 // ParseAssign - this might be the start of a lvalue list or a function call
@@ -531,8 +534,8 @@ func ParseAssign(s *State, id string) error {
 
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when an identifier is encountered in an expression
-func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
-	value = &ValueDef{}
+func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
+	var value = &ValueDef{}
 	err = fmt.Errorf("unrecognized variable or function call")
 	// We now have s.token == TOK_ID
 	id := s.tokenString
@@ -542,7 +545,11 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		t1, ok := TypeDefs[id]
 		if ok {
 			// This is a type conversion. First parse value to convert
-			value, err = ParseExpression(s)
+			values, err = ParseExpression(s)
+			if err != nil {
+				return nil, err
+			}
+			value = values[0]
 			// t2 is the type we convert from
 			t2 := value.Typ
 			if CanAssign(t1.Pt, t2.Pt) {
@@ -553,7 +560,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			if !s.found(TOK_RPAR) {
 				return nil, fmt.Errorf("expected right parantesis")
 			}
-			return value, err
+			return []*ValueDef{value}, err
 		} else if id == "ptr" {
 			// Handle conversion of variable to a pointer to that variable
 			if s.token != TOK_ID {
@@ -571,36 +578,37 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 			}
 			ofs := v.Offset()
 			EmitGetAddrOfLocal(ofs)
-			return &PtrValue, nil
+			return []*ValueDef{&PtrValue}, nil
 		} else {
 			// It is a function call that should return values
-			var values []*ValueDef
-			values, err = ParseFuncCall(s, id, true)
+			var results []*TypeDef
+			values, results, err = ParseFuncCall(s, id, true)
 			if err != nil {
-				return &NoValue, err
+				return nil, err
 			}
-			if len(values) != 1 {
-				return nil, fmt.Errorf("expected 1 return value but got %d", len(values))
+			if len(values) != len(results) {
+				return nil, fmt.Errorf("expected %d return value but got %d", len(results), len(values))
 			}
-			value = values[0]
-			value.IsReturned = true
-			return value, nil
+			for _, v := range values {
+				v.IsReturned = true
+			}
+			return values, nil
 		}
 	} else if s.token == TOK_LBRACK {
 		// TODO: It is an array
 		err = ParseArrayIndexes(s)
-		return &NoValue, fmt.Errorf("arrays are not yet implemented")
+		return nil, fmt.Errorf("arrays are not yet implemented")
 	}
 	// It is  a simple variable
 	v, ok := VarDefs[id]
 	if !ok {
-		return &NoValue, fmt.Errorf("did not find variable \"%s\"", id)
+		return nil, fmt.Errorf("did not find variable \"%s\"", id)
 	}
 	if v.Typ == nil {
-		return &NoValue, fmt.Errorf("no type for \"%s\"", id)
+		return nil, fmt.Errorf("no type for \"%s\"", id)
 	}
 	if v.Typ.Pt == TYP_NONE {
-		return &NoValue, fmt.Errorf("no type for \"%s\"", id)
+		return nil, fmt.Errorf("no type for \"%s\"", id)
 	}
 	if !v.Value.HasValue() {
 		// This is a local variable, not a known constant
@@ -612,17 +620,17 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		} else if v.Value.Typ.Pt == TYP_STRUCT {
 			if s.found(TOK_DOT) {
 				if s.token != TOK_ID {
-					return &NoValue, fmt.Errorf("expected field name after dot")
+					return nil, fmt.Errorf("expected field name after dot")
 				}
 				fn := s.tokenString
 				f, isok := v.Typ.Fields[fn]
 				if !isok {
-					return &NoValue, fmt.Errorf("field \"%s\" not found", fn)
+					return nil, fmt.Errorf("field \"%s\" not found", fn)
 				}
 				// A struct field
 				ofs, ok := v.Typ.Offsets[fn]
 				if !ok {
-					return &NoValue, fmt.Errorf("field \"%s\" not found", fn)
+					return nil, fmt.Errorf("field \"%s\" not found", fn)
 				}
 				EmitLoadField(f.Pt.Size(), v.Value.Offset, ofs)
 				if f.Pt == TYP_STRING {
@@ -630,7 +638,7 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 				}
 				value.Typ = f
 				s.next()
-				return value, nil
+				return []*ValueDef{value}, nil
 			} else {
 				// It is a struct name. Return the address in rax
 				emit("mov", "rax", BpRel(v.Value.Offset), "")
@@ -642,29 +650,38 @@ func ParseVarOrFunc(s *State) (value *ValueDef, err error) {
 		value.LocalVar = v
 	}
 	value.Typ = v.Value.Typ
-	return value, nil
+	return []*ValueDef{value}, nil
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
-func ParseUnary(s *State) (value *ValueDef, err error) {
-	value = &ValueDef{}
+func ParseUnary(s *State) ([]*ValueDef, error) {
+	var err error
+	value := &ValueDef{}
 	if s.token == TOK_ID {
 		// An id can be either a variable or a function call. A func call must return one value
-		value, err = ParseVarOrFunc(s)
+		var values []*ValueDef
+		values, err = ParseVarOrFunc(s)
+		if err != nil {
+			return nil, err
+		}
+		return values, nil
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
 		nextToken(s)
 		EmitFlushRax("Begin parenthesis term")
-		value, err = ParseExpression(s)
+		values, err2 := ParseExpression(s)
+		if err2 != nil {
+			return nil, err2
+		}
 		EmitFlushRax("End parenthesis term")
-		return value, Expect(s, TOK_RPAR)
+		return values, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s)
 		if err != nil {
-			return &NoValue, err
+			return nil, err
 		}
 		if value.Typ == nil {
-			return &NoValue, fmt.Errorf("missing integer type")
+			return nil, fmt.Errorf("missing integer type")
 		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
@@ -713,139 +730,146 @@ func ParseUnary(s *State) (value *ValueDef, err error) {
 		}
 		value.IsTempObj = true
 	} else {
-		return &NoValue, fmt.Errorf("unexpected token %s", s.tokenString)
+		return nil, fmt.Errorf("unexpected token %s", s.tokenString)
 	}
-	return value, err
+	return []*ValueDef{value}, err
 }
 
-func ParseProd(s *State) (value *ValueDef, err error) {
-	value, err = ParseUnary(s)
+func ParseProd(s *State) ([]*ValueDef, error) {
+	values1, err := ParseUnary(s)
 	if err != nil {
-		return value, err
+		return nil, err
 	}
-	var value2 *ValueDef
+	values2 := []*ValueDef{}
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
+		if len(values1) != 1 {
+			return nil, fmt.Errorf("* and / can only operate on 1 value but got %d", len(values1))
+		}
 		op := s.token
 		nextToken(s)
-		code.PushArgCode()
-		value2, err = ParseUnary(s)
+		code.NewArgCode()
+		values2, err = ParseUnary(s)
 		if err != nil {
-			return &NoValue, err
+			return nil, err
 		}
-		code.PushArgCode()
-		value, err = GenerateOp(op, value, value2)
+		if len(values2) != 1 {
+			return nil, fmt.Errorf("* and / can only operate on 1 value but got %d", len(values2))
+		}
+		code.NewArgCode()
+		values1[0], err = GenerateOp(op, values1[0], values2[0])
 		code.ConsArgCode(3, false)
 		if err != nil {
-			return &NoValue, err
+			return nil, err
 		}
-		value.IsReturned = false
+		values1[0].IsReturned = false
 	}
-	return value, nil
+	return values1, nil
 }
 
-func ParseSumTerm(s *State) (*ValueDef, error) {
+func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	// ParseProd should push rax and leave new result in rax
-	value1, err := ParseProd(s)
-	var value2 *ValueDef
+	values1, err := ParseProd(s)
 	if err != nil {
-		return &NoValue, err
+		return nil, err
 	}
-	if s.token == TOK_PLUS && value1.Typ.Pt == TYP_STRING {
+	values2 := []*ValueDef{}
+	if s.token == TOK_PLUS && values1[0].Typ.Pt == TYP_STRING {
+		if len(values1) != 1 {
+			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
+		}
 		// Concatenation of two or more strings
-		if value1.HasValue() {
-			EmitPushConstString(value1.StringLitNo)
+		if values1[0].HasValue() {
+			EmitPushConstString(values1[0].StringLitNo)
 		}
 		// Loop through all strings that are concatenated
 		for s.token == TOK_PLUS {
 			nextToken(s)
 			// ParseProd should push rax and leave new result in rax
-			code.PushArgCode()
-			value2, err = ParseProd(s)
+			code.NewArgCode()
+			values2, err = ParseProd(s)
 			if err != nil {
-				return &NoValue, err
+				return nil, err
 			}
-			if value2.HasValue() {
-				EmitPushStringLit(value2.StringLitNo, "Sum term push value2")
-				value2.IsTempObj = false
+			if values2[0].HasValue() {
+				EmitPushStringLit(values2[0].StringLitNo, "Sum term push value2")
+				values2[0].IsTempObj = false
 			}
-			if value2.Typ.Pt != TYP_STRING {
-				return &NoValue, fmt.Errorf("String can only be concatenated with another string")
+			if values2[0].Typ.Pt != TYP_STRING {
+				return nil, fmt.Errorf("String can only be concatenated with another string")
 			}
-			code.PushArgCode()
-			EmitConcat(value1.IsTempObj, value2.IsTempObj)
+			code.NewArgCode()
+			EmitConcat(values1[0].IsTempObj, values2[0].IsTempObj)
 			code.ConsArgCode(3, false)
-			value1.IsTempObj = true
+			values1[0] = &ValueDef{Typ: &StringType, IsTempObj: true}
 		}
-		return &ValueDef{Typ: &StringType, IsTempObj: true}, nil
 	}
 	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+		if len(values1) != 1 {
+			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
+		}
 		op := s.token
 		nextToken(s)
-		code.PushArgCode()
-		value2, err = ParseProd(s)
+		code.NewArgCode()
+		values2, err = ParseProd(s)
 		if err != nil {
-			return &NoValue, err
+			return nil, err
 		}
-		code.PushArgCode()
-		value1, err = GenerateOp(op, value1, value2)
+		code.NewArgCode()
+		values1[0], err = GenerateOp(op, values1[0], values2[0])
 		code.ConsArgCode(3, false)
 		if err != nil {
-			return &NoValue, err
+			return nil, err
 		}
-		value1.IsReturned = false
+		values1[0].IsReturned = false
 	}
-	return value1, nil
+	return values1, nil
 }
 
-func ParseCompareTerm(s *State) (*ValueDef, error) {
-	value1, err := ParseSumTerm(s)
+func ParseCompareTerm(s *State) ([]*ValueDef, error) {
+	values1, err := ParseSumTerm(s)
 	if err != nil {
-		return &NoValue, err
-	}
-	if value1.Typ == nil {
-		return &NoValue, fmt.Errorf("internal error, no type")
+		return nil, err
 	}
 	if s.token != TOK_LT && s.token != TOK_GT && s.token != TOK_EQ && s.token != TOK_GE && s.token != TOK_LE && s.token != TOK_NE {
 		// Not a compare operation, return value1 immediately
-		return value1, nil
+		return values1, nil
 	}
-	value1.IsReturned = false
+	values1[0].IsReturned = false
 	op := s.token
 	nextToken(s)
-	code.PushArgCode()
-	value2, err := ParseSumTerm(s)
+	code.NewArgCode()
+	values2, err := ParseSumTerm(s)
 	if err != nil {
-		return &NoValue, err
+		return nil, err
 	}
 	EmitFlushRax("Push TOS value 2")
-	code.PushArgCode()
-	result, err := GenerateOp(op, value1, value2)
+	code.NewArgCode()
+	values1[0], err = GenerateOp(op, values1[0], values2[0])
 	code.ConsArgCode(3, false)
 	if err != nil {
-		return &NoValue, err
+		return nil, err
 	}
-	return result, err
+	return values1, err
 }
 
-func ParseExpression(s *State) (result *ValueDef, err error) {
-	var value2 *ValueDef
+func ParseExpression(s *State) ([]*ValueDef, error) {
 	code.RaxIsTOS = false
-	result, err = ParseCompareTerm(s)
+	results, err := ParseCompareTerm(s)
 	if err != nil {
-		return &NoValue, err
-	}
-	if result.Typ == nil {
-		return &NoValue, fmt.Errorf("expression type is nil - internal error")
+		return nil, err
 	}
 	endLabel := 0
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
-		result.IsReturned = false
+		if len(results) != 1 {
+			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
+		}
+		results[0].IsReturned = false
 		if endLabel == 0 {
 			endLabel = code.NewLabel()
 		}
 		op := s.token
-		if result.Typ.Pt != TYP_BOOL {
-			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		if results[0].Typ.Pt != TYP_BOOL {
+			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		nextToken(s)
 
@@ -855,48 +879,44 @@ func ParseExpression(s *State) (result *ValueDef, err error) {
 			EmitJumpFalse(endLabel, "")
 		}
 
-		value2, err = ParseCompareTerm(s)
-		if err != nil {
-			return &NoValue, err
+		values2, err2 := ParseCompareTerm(s)
+		if err2 != nil {
+			return nil, err2
 		}
-		if value2.Typ == nil {
-			return &NoValue, fmt.Errorf("value2.typ is nil")
-		}
-		if value2.Typ.Pt != TYP_BOOL {
-			return &NoValue, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		if values2[0].Typ.Pt != TYP_BOOL {
+			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 	}
 	if endLabel != 0 {
 		EmitLabel(endLabel, "")
 	}
-	if result.Typ == nil {
-		return &NoValue, fmt.Errorf("value.type is nil - internal error")
+	if results[0].Typ == nil {
+		return nil, fmt.Errorf("value.type is nil - internal error")
 	}
-	return result, nil
+	return results, nil
 }
 
 // ParseExpressions will parse either a comma separated list of values,
 // or a function call returning potentially many values.
 // It is called from the ParseAssign() function
-func ParseExpressions(s *State) (results []*ValueDef, err error) {
-	var v *ValueDef
-	results = make([]*ValueDef, 0, 4)
-	code.PushArgCode()
+func ParseExpressions(s *State) ([]*ValueDef, error) {
+	var values []*ValueDef
+	code.NewArgCode()
 	n := 0
 	for {
 		n++
-		v, err = ParseExpression(s)
+		v, err := ParseExpression(s)
 		if err != nil {
 			return nil, err
 		}
-		results = append(results, v)
+		values = append(values, v...)
 		if !s.found(TOK_COMMA) {
 			break
 		}
-		code.PushArgCode()
+		code.NewArgCode()
 	}
 	code.ConsArgCode(n, false)
-	return results, nil
+	return values, nil
 }
 
 func ParseBlock(s *State, isTrue bool) error {
@@ -954,7 +974,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 }
 
 // ParseIfElse will parse the code after "if cond {"
-func ParseIfElse(s *State, value *ValueDef) (err error) {
+func ParseIfElse(s *State, value *ValueDef) error {
 	L1, L2 := 0, 0
 	nextToken(s)
 	if !value.HasValue() {
@@ -963,7 +983,7 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 	}
 
 	// Parse stm1 in "if cond { stm1 } ..."
-	err = ParseBlock(s, value.IsTrue())
+	err := ParseBlock(s, value.IsTrue())
 	if err != nil {
 		return err
 	}
@@ -984,11 +1004,14 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
 			}
-			code.PushArgCode()
-			value, err = ParseExpression(s)
+			code.NewArgCode()
+			values, err := ParseExpression(s)
 			code.OutputArgCode()
 			if err != nil {
 				return err
+			}
+			if len(values) != 1 {
+				return fmt.Errorf("Expected one value")
 			}
 			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
@@ -1045,20 +1068,23 @@ func ParseIfElse(s *State, value *ValueDef) (err error) {
 
 func ParseIf(s *State) error {
 	nextToken(s)
-	code.PushArgCode()
+	code.NewArgCode()
 	// Parse the if condition
-	value, err := ParseExpression(s)
+	values, err := ParseExpression(s)
 	if err != nil {
 		return err
 	}
-	if value.Typ.Pt != TYP_BOOL {
-		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
+	if len(values) != 1 {
+		return fmt.Errorf("Expected one value")
+	}
+	if values[0].Typ.Pt != TYP_BOOL {
+		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[values[0].Typ.Pt])
 	}
 	code.OutputArgCode()
 	if s.found(TOK_COLON) || s.found(TOK_QMARK) {
-		return ParseColonQmark(s, value)
+		return ParseColonQmark(s, values[0])
 	} else if s.token == TOK_LBRACE {
-		return ParseIfElse(s, value)
+		return ParseIfElse(s, values[0])
 	}
 	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
 }

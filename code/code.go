@@ -36,7 +36,7 @@ func CloseObjFile() error {
 	return OutputFile.Close()
 }
 
-func PushArgCode() {
+func NewArgCode() {
 	ArgCode = append(ArgCode, "")
 }
 

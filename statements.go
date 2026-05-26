@@ -12,50 +12,52 @@ func ParseReturn(s *State) error {
 	if len(code.ArgCode) > 0 {
 		panic("ArgCode was not empty")
 	}
+	i := 0
 	if len(f.returnTypes) > 0 {
-		i := 0
 		for {
-			code.PushArgCode()
-			v, err := ParseExpression(s)
+			code.NewArgCode()
+			values, err := ParseExpression(s)
 			if err != nil {
 				return err
 			}
-			if i >= len(f.returnTypes) && len(f.returnTypes) > 0 {
-				return fmt.Errorf("too many return values")
-			}
-			if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
-				return fmt.Errorf("returns wrong type")
-			}
-			if v.IsConst {
-				if v.Typ.Pt.IsInteger() {
-					EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
-				} else if v.Typ.Pt == TYP_STRING {
-					EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
-				} else {
-					panic("Not implemented")
+			for _, v := range values {
+				if v.IsConst {
+					if v.Typ.Pt.IsInteger() {
+						EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
+					} else if v.Typ.Pt == TYP_STRING {
+						EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
+					} else {
+						panic("Not implemented")
+					}
+				} else if v.LocalVar != nil {
+					v.LocalVar.Value.IsTempObj = false
 				}
-			} else if v.LocalVar != nil {
-				v.LocalVar.Value.IsTempObj = false
-			} else {
-
+				// Save returned value into reserved slot before BP.
+				EmitStoreBpOfs(len(f.parameters) + len(f.returnTypes) + i - 1)
+				i++
 			}
-			// Save returned value into reserved slot before BP.
-			EmitStoreBpOfs(1 + i + len(f.parameters) + len(f.returnTypes))
 			if !s.found(TOK_COMMA) {
 				break
 			}
-			i++
-			code.ConsArgCode(2, false)
 		}
-		if len(f.returnTypes) == 0 {
-			return fmt.Errorf("function '%s' has no return_type declaration", f.name)
+		if len(f.returnTypes) != i {
+			return fmt.Errorf("expected %d returns but got %d", len(f.returnTypes), i)
 		}
 	}
+	code.ConsArgCode(i, false)
 	code.OutputArgCode()
 	s.DidReturn = true
 	return nil
 }
 
+/*
+if i >= len(f.returnTypes) && len(f.returnTypes) > 0 {
+return fmt.Errorf("too many return values")
+}
+if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
+return fmt.Errorf("returns wrong type")
+}
+*/
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
@@ -67,8 +69,8 @@ func ParseStatement(s *State) (returned bool, err error) {
 			if len(code.ArgCode) > 0 {
 				panic("ArgCode was not empty")
 			}
-			code.PushArgCode()
-			values, err1 := ParseFuncCall(s, id, false)
+			code.NewArgCode()
+			values, _, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
 				return false, err1
 			}

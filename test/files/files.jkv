@@ -1,9 +1,22 @@
 
-func read(f I32, cnt I32) {
+func test(f I32, cnt I32) String, I32, I32 {
+    n = I32(13)
+    buffer = "abcd"
+    return buffer, n, 14
+    //ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
+}
+
+func read1(f I32, cnt I32) String, I32 {
+    n = I32(13)
+    buffer = "abcd"
+    return buffer, n
     //ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
 }
 
 func main() {
+    buf, n, m = test(11, 12)
+    printf("Got n=%d, m=%d, buf=%s\n", n, m, buf)
+/*
     printf("Name: files.jkv\n")
     fn = "./test.txt"
     n = I32(0)
@@ -19,8 +32,9 @@ func main() {
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
     //ok = read_file(f, cptr(buffer), 12, ptr(n), 0)
     //printf("read_file ok=%d\n", ok)
-    //buf, n = read(f, 12)
+    buf, n = read(f, 12)
     printf("read %d bytes\n", n)
     printf("Got: %s", buffer)
     close_file(f)
+    */
 }
