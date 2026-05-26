@@ -33,6 +33,7 @@ _create_file:
     mov r15, 107
 .L2:
     sub rax, 1
+    mov [rsp+8*8], rax
     ret
 
 _read_file:
@@ -63,6 +64,11 @@ _close_file:
 _cptr:
     mov rax, [rsp+8]
     add rax, 8            ; cptr(). Point to the string itself
+    mov [rsp+16], rax
+    ret
+
+_lptr:
+    mov rax, [rsp+8]
     mov [rsp+16], rax
     ret
 

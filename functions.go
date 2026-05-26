@@ -26,6 +26,7 @@ func FuncInit() {
 	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
 	_, _ = AddFunc("create_file", []*VarDef{&strPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("cptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("lptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("write_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("read_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("close_file", []*VarDef{&intPar}, nil, true, false)

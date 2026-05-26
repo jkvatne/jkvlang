@@ -38,3 +38,22 @@ Settings in go code:
 		args = append(args, "-o", "program.exe", "-m64", "-lkernel32", "-lmsvcrt")
 		// outp, err := exec.Command("C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe", args...).CombinedOutput()
 		outp, err := exec.Command("C:/w64devkit/bin/gcc.exe", args...).CombinedOutput()
+
+
+New sasm settings running ok:
+-f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
+$PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64 -lkernel32 -lmsvcrt
+C:/doc/compiler/tools/nasm.exe
+C:/Doc/compiler/tools/MinGW64/bin/gcc.exe
+was C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
+program.o
+
+Try utf8:
+-f win64 $SOURCE$ -l $LSTOUTPUT$ -o $PROGRAM.OBJ$
+$PROGRAM.OBJ$ $MACRO.OBJ$ -g -o $PROGRAM$ -m64 -lkernel32 -lucrt
+C:/doc/compiler/tools/nasm.exe
+C:/Doc/compiler/tools/MinGW64/bin/gcc.exe
+was C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
+program.o
+
+This fails with -lucrt

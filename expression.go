@@ -574,7 +574,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			// Lookup variable
 			v, ok := VarDefs[id]
 			if !ok {
-				return nil, fmt.Errorf("expected loca variable, got %s", id)
+				return nil, fmt.Errorf("expected local variable, got %s", id)
 			}
 			ofs := v.Offset()
 			EmitGetAddrOfLocal(ofs)
@@ -724,7 +724,20 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("should have a predefined type, found %s", id)
 		}
 		value.Typ = t
-		EmitNewStruct(s, t)
+		if id == "String" {
+			if s.found(TOK_COMMA) {
+				v, err1 := ParseExpression(s)
+				if err1 != nil {
+					return nil, err
+				}
+				if v[0].IsConst {
+					EmitPushConst(v[0].IntValue, "")
+				}
+			}
+			EmitNewString()
+		} else {
+			EmitNewStruct(s, t)
+		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parantesis")
 		}

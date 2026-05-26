@@ -850,3 +850,10 @@ func EmitGetAddrOfLocal(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "")
 	emit("push", "rax", "", "")
 }
+
+func EmitNewString() {
+	// Allocate string
+	EmitAssertTosInRax("")
+	emit("call", "_alloc", "", "Allocate new string")
+	code.RaxIsTOS = true
+}
