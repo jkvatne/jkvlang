@@ -854,6 +854,14 @@ func EmitGetAddrOfLocal(ofs int) {
 func EmitNewString() {
 	// Allocate string
 	EmitAssertTosInRax("")
+	emit("mov", "r12", "rax", "")
 	emit("call", "_alloc", "", "Allocate new string")
+	emit("mov", "rsi", "rax", "Save rax")
+	emit("mov", "rdi", "rax", "Then clear it")
+	emit("xor", "rax", "rax", "")
+	emit("mov", "rcx", "r12", "")
+	emit("cld", "", "", "")
+	emit("rep", "stosb", "", "")
+	emit("mov", "rax", "rsi", "Restore rax")
 	code.RaxIsTOS = true
 }
