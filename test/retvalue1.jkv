@@ -8,5 +8,5 @@ func fi(a Bool, c I32) I32 {
 }
 
 func main() {
-  PrintInt(fi(true, 5))
+  printf("fi()=%d\n",fi(true, 5))
 }

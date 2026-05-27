@@ -27,7 +27,7 @@ type State struct {
 	DidReturn       bool
 }
 
-func NewState(name string, workdir string) (*State, error) {
+func NewState(name string) (*State, error) {
 	s := new(State)
 	var err error
 	s.text, err = os.ReadFile(name)

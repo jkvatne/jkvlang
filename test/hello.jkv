@@ -60,56 +60,46 @@ func foo() Age {
 /* Nested comment */
 */
 
-/* Temporarily ignore the rest
+func sum(x I32, y I32) I32 {
+  a = 450
+  return y+x
+}
 
 func bar() {
-    x+=1
-    c = sum(a,b)
     a = 1.234   // Comment a
     b = 2.345   // Comment b
-    println("Hello World %s!\n")
-    x = y&z|x
+    c = sum(a,b)
+    printf("Hello World %s!\n")
+    y = 2
+    z=3
 }
 
 func main() {
-    if b {
-        println("OK")
+    a=1
+    b=2
+    c=3
+    m=1
+    if b>2 {
+        printf("OK")
     } else if a>=b || c<a {
-        println("Hi")
+        printf("Hi\n")
     } else if a==b {
         c = a-b+m
     } else if b!=c {
-        println("Lo")
+        printf("Lo")
     } else {
-        printl("else")
+        printf("else")
     }
  }
 
 
 func do(x I32) I32 {
     x = sum(x,33)
+    return x
 }
 
-func sum(x I32, y I32) I32 {
-  a = 450
-  return y+x
-}
 
 func incr(x I32) I32 {
   return x+1
 }
 
-func foo() {
-  w1 = x+y
-  w2 = x+y*z
-  w3 = x+y+z
-  w4 = (x+y)*z
-}
-
-// This should fail
-var (
-  xx I32
-  yy I32
-)
-
-*/

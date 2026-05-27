@@ -10,5 +10,5 @@ func foo(a Bool, c I16) (I32, Bool) {
 func main() {
   var n I32
   n, a = foo(true, 5)
-  PrintInt(n)
+  printf("%d\n", n)
 }

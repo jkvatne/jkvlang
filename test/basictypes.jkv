@@ -19,4 +19,7 @@ func foo() Age {
     return xU8
 }
 
+func main() {
+
+}
 

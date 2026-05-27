@@ -1,9 +1,9 @@
 
-func foo(a F32, b F64) F32 {
+func foo(a F64, b F64) F64 {
     return (a+b)*(a-b)
 }
 
 func main () {
-  w5 = foo(1.23, 3.45)
-  assert w5==-10.3896
+  x = foo(1.23, 3.45)
+  assert(x==-10.3896)
 }

@@ -1,11 +1,38 @@
 
-func foo() {
+func main() {
   x=1
   y=2
-  z=4
+  z=3
+
   w1 = x+y
+  assert(w1==3)
+
   w2 = x+y*z
+  assert(w2==7)
+
   w3 = x+y+z
+  assert(w3==6)
+
   w4 = (x+y)*z
-  w5 = (x*(z+1))>56&&x+z*4==0
+  assert(w4==9)
+
+  w5 = (y*(z+1))
+  assert(w5==8)
+
+  w6=z*4
+  printf("w6=%d\n", w6)
+
+  w7 = (x*(z+1))>=4 && x+z*4<=13
+  if w7 {
+    printf("Ok %d\n", w6)
+  }
+  assert(w7)
+  assert(w7==true)
+
+  w8=false
+  printf("w8=%d\n", w8)
+  if !w8 {
+    printf("Ok %d\n", w8)
+  }
+  assert(!w8)
 }

@@ -867,3 +867,8 @@ func EmitNewString() {
 	emit("mov", "rax", "rsi", "Restore rax pointing to string")
 	code.RaxIsTOS = true
 }
+
+func EmitNot() {
+	EmitAssertTosInRax("")
+	emit("xor", "rax", "1", "")
+}

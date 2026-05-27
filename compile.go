@@ -13,7 +13,7 @@ func CompileFile(name string, workdir string) error {
 	if err != nil {
 		return err
 	}
-	s, err := NewState(name, workdir)
+	s, err := NewState(name)
 	if err != nil {
 		return err
 	}

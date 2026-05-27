@@ -55,8 +55,10 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				} else {
 					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
 				}
+			} else if t == TYP_BOOL {
+				EmitStoreConst(1, int64(value.IntValue), lvalue.Offset(), "Assign bool")
 			} else {
-				panic("Unimplemented assignment")
+				err = fmt.Errorf("Unimplemented assignment of %s", t.Name())
 			}
 
 			if err != nil {
@@ -84,6 +86,8 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
+	} else if value.Typ.Pt == TYP_BOOL {
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
@@ -381,6 +385,8 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					EmitFlushRax("Struct field arg to printf")
 				} else if value.Typ.Pt == TYP_PTR {
 					EmitFlushRax("Ptr field arg to printf")
+				} else if value.Typ.Pt == TYP_BOOL {
+					EmitFlushRax("Bool arg to printf")
 				} else {
 					return nil, fmt.Errorf("printf arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
@@ -712,6 +718,21 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 	} else if s.token == TOK_FALSE {
 		value = &False
 		nextToken(s)
+	} else if s.token == TOK_NOT {
+		nextToken(s)
+		EmitFlushRax("Begin parenthesis term")
+		values, err2 := ParseExpression(s)
+		if err2 != nil {
+			return nil, err2
+		}
+		if len(values) != 1 {
+			return nil, fmt.Errorf("after ! we expected 1 value but got %d", len(values))
+		}
+		if values[0].Typ.Pt != TYP_BOOL {
+			return nil, fmt.Errorf("ater ! w expected boolean value but got %v", values[0].Typ.Pt)
+		}
+		EmitNot()
+		value = values[0]
 	} else if s.token == TOK_NEW {
 		s.next()
 		if !s.found(TOK_LPAR) {

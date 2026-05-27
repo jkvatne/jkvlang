@@ -169,13 +169,15 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			err = emitCompareFloatConst(op, val2.FloatLitNo)
 		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
+		} else if val1.Typ.Pt == TYP_BOOL && val2.Typ.Pt == TYP_BOOL {
+			err = emitCompareIntConst(op, val2.IntValue, false)
 		} else {
 			err = fmt.Errorf("Unknown type combination for compare")
 		}
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "")
+			err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "TosOpConst")
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			emitOpFloatConst(op, val2.FloatLitNo+val1.FloatLitNo)
@@ -274,6 +276,8 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_ASSIGN {
 		emit("mov", "rax", sval, "Assign OpIntConst")
+	} else if op == TOK_MULT {
+		emit("imul", "rax", "rax, "+sval, "")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {

@@ -74,6 +74,7 @@ const (
 	TOK_INV_DIV
 	TOK_INV_MOD
 	TOK_NEW
+	TOK_NOT
 	TOK_SIZE
 )
 
@@ -140,6 +141,7 @@ var TokenNames = [...]string{
 	TOK_INV_DIV:     "INV_DIV",
 	TOK_INV_MOD:     "INV_MOD",
 	TOK_NEW:         "NEW",
+	TOK_NOT:         "NOT",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -368,6 +370,8 @@ func nextToken(s *State) {
 		case ch1 == '+':
 			s.token = TOK_PLUS
 			s.tokenString = "+"
+		case ch1 == '!':
+			s.token = TOK_NOT
 		case ch1 == ',':
 			s.token = TOK_COMMA
 		case ch1 == '-' && isNum(ch2):
