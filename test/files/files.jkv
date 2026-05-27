@@ -38,5 +38,6 @@ func main() {
     printf("4. Test open invalid name\n")
     fn = ":::"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    invert_err()
     assert(I64(f)==-1)
 }

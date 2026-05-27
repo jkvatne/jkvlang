@@ -725,14 +725,15 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 		}
 		value.Typ = t
 		if id == "String" {
-			if s.found(TOK_COMMA) {
-				v, err1 := ParseExpression(s)
-				if err1 != nil {
-					return nil, err
-				}
-				if v[0].IsConst {
-					EmitPushConst(v[0].IntValue, "")
-				}
+			if !s.found(TOK_COMMA) {
+				return nil, fmt.Errorf("new string must have a given capacity")
+			}
+			v, err1 := ParseExpression(s)
+			if err1 != nil {
+				return nil, err
+			}
+			if v[0].IsConst {
+				EmitPushConst(v[0].IntValue, "")
 			}
 			EmitNewString()
 		} else {
