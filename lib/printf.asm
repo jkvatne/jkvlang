@@ -2,7 +2,6 @@
 ;-------------
 section .rodata
 ;-------------
-crlf               db 0Dh,0Ah,00h
 sp_mess            db "...rsp=0x%X", 0Ah, 00h
 
 ;-------------

@@ -1,6 +1,10 @@
+; syscall.asm contains the syscall function
+
 ;-------------
 section .text
 ;-------------
+
+global _syscall
 
 ; syscall will call any dll function that is reachable
 ; The address of the function should be in rdi, arg count *8 in rbx

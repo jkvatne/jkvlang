@@ -1,3 +1,4 @@
+; winerror.asm contains _win_error which calls GetLastError
 
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 

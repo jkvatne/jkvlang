@@ -1,19 +1,7 @@
+; exit.asm contains the exit(code) function
 
 ; Symbols from kernel32
 extern ExitProcess
-
-; invert_err will set err to zero if there was an error
-; and sett error to 100 if there was no errors.
-; This is used during testing to test expected assert errors.
-global _invert_err
-_invert_err:
-    or r15, r15
-    jnz .L1
-    mov r15, 100
-    ret
-.L1:
-    mov r15, 0
-    ret
 
 ; exit have one parameter - the error code, found in rax
 global _exit

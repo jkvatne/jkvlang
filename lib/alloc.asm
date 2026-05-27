@@ -1,15 +1,13 @@
+; alloc.asm   Handles memory allocation
+
 extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
 
 section .data
-dummy1 dq 0
 allocation_count   dq 0
-dummy2 dq 0
 
 section .rodata
-allocstr db `Allocated %d bytes at 0x%X\n`, 00h
-freestr  db `Freed     %d bytes at 0x%X\n`, 00h
 
 section .text
 
@@ -24,20 +22,10 @@ _alloc:
     sub rsp, 32                      ; Reserve shadow space
     add [allocation_count], rax      ; Increment total allocated count
     mov rdi, rax                     ; Save size into rdi
-    call GetProcessHeap
-    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rcx, [ProcessHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 8                       ; Arbument 2, Flags into rdx, 8 means allocated memory is zeroed
     mov r8, rdi
     call HeapAlloc
-
-    ; Print debug message with allocation size
-    ; mov rcx, allocstr                ; First argument: format string
-    ; mov rdx, rdi                     ; Second argument: size
-    ; mov r8, rax                      ; Third argument: address
-    ; mov rdi, rax                     ; Save rax
-    ; call printf
-    ; mov rax, rdi                     ; Restore rax
-
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
 

@@ -1,3 +1,5 @@
+; sysinit.asm   Initializes the program
+
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
@@ -9,6 +11,7 @@ alignb 8
 StdOutputHandle resq 1
 StdErrorHandle  resq 1
 StdInputHandle  resq 1
+ProcessHeap     resq 1
 
 ;-------------
 section .data
@@ -21,9 +24,7 @@ section .text
 
 extern GetStdHandle
 extern ExitProcess
-extern setlocale
-extern SetConsoleOutputCP
-extern SetConsoleCP
+extern GetProcessHeap
 
 global _sysinit
 _sysinit:
@@ -33,15 +34,9 @@ _sysinit:
     and rsp, -16                     ; Prologue: Align stack by clearing the 4 lsb
     sub rsp, 48                      ; Prologue: Reserve shadow space
 
-    mov rcx, 0                ; First argument in RCX (
-    mov rdx, locale_str       ; Second argument in RDX
-    ;call setlocale
-
-    mov rcx, 65001
-    ;call SetConsoleOutputCP
-
-    mov rcx, 65001
-    ;call SetConsoleCP
+    ; Get this threads local allocation heap
+    call GetProcessHeap
+    mov [ProcessHeap], rax
 
     ; Load the handle for standard output
     mov   ecx, STD_OUTPUT_HANDLE

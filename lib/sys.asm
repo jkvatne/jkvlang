@@ -1,22 +1,24 @@
+; sys.asm  Contains file IO functions
 
-; Symbols from kernel32
 extern CreateFileA
 extern CreateFileW
 extern ReadFile
 extern WriteFile
 extern CloseHandle
 
-%define CREATE_ALWAYS     2    ; Truncate old file if it exists
 %define CREATE_NEW        1    ; Fail if file exists
-%define OPEN_ALLWAYS      4
+%define CREATE_ALWAYS     2    ; Truncate old file if it exists
 %define OPEN_EXISTING     3    ; Fails if file exists
+%define OPEN_ALLWAYS      4
 %define TRUNCATE_EXISTING 5    ; Fails if file exists
 
 global _create_file
 global _write_file
 global _read_file
 global _close_file
-
+global _lptr
+global _cptr
+global _len
 
 ;-------------
 section .text
@@ -62,7 +64,7 @@ _close_file:
 
 _cptr:
     mov rax, [rsp+8]
-    add rax, 8            ; cptr(). Point to the string itself
+    add rax, 8
     mov [rsp+16], rax
     ret
 
