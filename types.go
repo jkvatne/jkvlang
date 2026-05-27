@@ -154,6 +154,9 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 	if src == dst {
 		return true
 	}
+	if src == TYP_PTR && dst == TYP_I64 {
+		return true
+	}
 	return dst == TYP_U8 && src == TYP_U8 ||
 		dst == TYP_I16 && (src == TYP_I16 || src == TYP_U8) ||
 		dst == TYP_I32 && (src == TYP_I32 || src == TYP_I16 || src == TYP_U8) ||
