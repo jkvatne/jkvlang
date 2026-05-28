@@ -154,43 +154,8 @@ func ParseStruct(s *State, id string) (*TypeDef, error) {
 	return t, nil
 }
 
-func ParseType(s *State, id string) (*TypeDef, error) {
-	var err error
-	if s.token == TOK_LBRACE {
-		return nil, nil
-	}
-	if s.token == TOK_STRUCT {
-		return ParseStruct(s, id)
-	} else {
-		id := s.tokenString
-		if id[0] > 'Z' {
-			return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
-		}
-		nextToken(s)
-		typ, ok := TypeDefs[id]
-		if !ok {
-			return nil, fmt.Errorf("unknown type: %s", id)
-		}
-		return typ, err
-	}
-	/*
-		typ := new(TypeDef)
-		if s.token == TOK_LBRACK {
-			nextToken(s)
-			if s.token == TOK_ID {
-				typ.arraySize, err = strconv.Atoi(s.tokenString)
-				nextToken(s)
-			}
-			if s.token != TOK_RBRACK {
-				return nil, fmt.Errorf("Invalid token %s", s.tokenString)
-			}
-			nextToken(s)
-		}
-	*/
-}
-
-// ParseFormalParList parses the function definition and returns a list of formal parameters
-func ParseFormalParList(s *State) ([]*VarDef, error) {
+// ParseFormalArgList parses the function definition and returns a list of formal arguments
+func ParseFormalArgList(s *State) ([]*VarDef, error) {
 	var parList []*VarDef
 	s.ParCount = 0
 	for {
@@ -1139,7 +1104,7 @@ func ParseFuncDef(s *State) error {
 	}
 	nextToken(s)
 	s.VarCount = 0
-	parList, err := ParseFormalParList(s)
+	parList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err
 	}
@@ -1244,18 +1209,86 @@ func ParseTypeDef(s *State) error {
 
 func ParseTypeDefs(s *State) error {
 	var err error
-	nextToken(s)
 	if s.token == TOK_LPAR {
-		nextToken(s)
+		s.next()
 		for s.token != TOK_RPAR {
 			err = ParseTypeDef(s)
 			if err != nil {
 				break
 			}
 		}
-		nextToken(s)
+		s.next()
 	} else {
 		err = ParseTypeDef(s)
+	}
+	return err
+}
+
+// ParseVars parses a parenthesis var declaration
+func ParseVars(s *State) error {
+	var err error
+	if s.token == TOK_LPAR {
+		s.next()
+		for s.token != TOK_RPAR {
+			err = ParseVar(s, false)
+			if err != nil {
+				return err
+			}
+		}
+		s.next()
+	} else {
+		err = ParseVar(s, false)
+	}
+	return err
+}
+
+func ParseConsts(s *State) error {
+	var err error
+	if s.token == TOK_LPAR {
+		s.next()
+		for s.token != TOK_RPAR {
+			err = ParseVar(s, true)
+			if err != nil {
+				break
+			}
+		}
+		s.next()
+	} else {
+		err = ParseVar(s, true)
+	}
+	return err
+}
+
+// ParseVar will parse a variable or constant declaration
+func ParseVar(s *State, isConst bool) error {
+	var val string
+	var err error
+	if s.token != TOK_ID {
+		return fmt.Errorf("expected id but got %s", s.tokenString)
+	}
+	id := s.tokenString
+	nextToken(s)
+	if s.token == TOK_LBRACK {
+		nextToken(s)
+		// TODO: Parse array size
+		nextToken(s)
+		if s.token != TOK_RBRACK {
+			return fmt.Errorf("expected ], got %s", s.tokenString)
+		}
+		nextToken(s)
+	}
+	typ, err := ParseType(s, id)
+	if err != nil {
+		return err
+	}
+	v := AddLocalVar(s, id, typ, isConst)
+	v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+
+	if s.token == TOK_ASSIGN {
+		nextToken(s)
+		val = s.tokenString
+		v.Value.StringValue = val
+		nextToken(s)
 	}
 	return err
 }
@@ -1283,6 +1316,28 @@ func GetTopEndLabel() int {
 func ParseBreak(s *State) error {
 	EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
 	return nil
+}
+
+// ParseLoop is a simple loop depending on break to exit.
+func ParseLoop(s *State) error {
+	startLabel := code.NewLabel()
+	endLabel := code.NewLabel()
+	EmitLabel(startLabel, "Start of loop")
+	PushLabel(startLabel, endLabel)
+	if !s.found(TOK_LBRACE) {
+		return fmt.Errorf("expected { but got %s", s.tokenString)
+	}
+	err := ParseBlock(s, false)
+	if err != nil {
+		return err
+	}
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+	}
+	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+	EmitLabel(endLabel, "Exit from loop")
+	PopLabels()
+	return err
 }
 
 func ParseFor(s *State) error {

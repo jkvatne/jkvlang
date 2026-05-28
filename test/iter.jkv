@@ -4,28 +4,29 @@ func yield(x I32) Bool {
     return true
 }
 
-func from_to(start I32, end I32) {
+func from_to(start I32, end I32)  {
     i=start
     for {
         ok = yield(i)
-        if !ok : return
-        if i>=end : return
+        if !ok : break
+        if i>=end : break
         i+=1
     }
 }
 
 func main() {
+/*
+    printf("Test iterations\n")
+    for i=from_to(0,10) {
+        printf("i=%d\n", i)
+    }
+*/
+    printf("2. Test simple loop with break")
     i=1
-    for {
+    loop {
         printf("i=%d\n", i)
         i+=1
         if i>10 : break
     }
 
-/*
-    printf("Test iterations\n")
-    for i=range(0,10) {
-        printf("i=%d\n", i)
-    }
-*/
 }

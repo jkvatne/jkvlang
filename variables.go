@@ -55,7 +55,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 	v.Value.Typ = t
 }
 
-// AddLocalPar is called from ParseFormalParList
+// AddLocalPar is called from ParseFormalArgList
 // The name "par" should be used only for formal parameters
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ, Kind: ParVar}
@@ -79,73 +79,23 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 	return v
 }
 
-// ParseVars parses a parenthesis var declaration
-func ParseVars(s *State) error {
+func ParseType(s *State, id string) (*TypeDef, error) {
 	var err error
-	nextToken(s)
-	if s.token == TOK_LPAR {
-		nextToken(s)
-		for s.token != TOK_RPAR {
-			err = ParseVar(s, false)
-			if err != nil {
-				return err
-			}
-		}
-		nextToken(s)
+	if s.token == TOK_LBRACE {
+		return nil, nil
+	}
+	if s.token == TOK_STRUCT {
+		return ParseStruct(s, id)
 	} else {
-		err = ParseVar(s, false)
-	}
-	return err
-}
-
-func ParseConsts(s *State) error {
-	var err error
-	nextToken(s)
-	if s.token == TOK_LPAR {
-		nextToken(s)
-		for s.token != TOK_RPAR {
-			err = ParseVar(s, true)
-			if err != nil {
-				break
-			}
+		id := s.tokenString
+		if id[0] > 'Z' {
+			return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 		}
 		nextToken(s)
-	} else {
-		err = ParseVar(s, true)
-	}
-	return err
-}
-
-// ParseVar will parse a variable or constant declaration
-func ParseVar(s *State, isConst bool) error {
-	var val string
-	var err error
-	if s.token != TOK_ID {
-		return fmt.Errorf("expected id but got %s", s.tokenString)
-	}
-	id := s.tokenString
-	nextToken(s)
-	if s.token == TOK_LBRACK {
-		nextToken(s)
-		// TODO: Parse array size
-		nextToken(s)
-		if s.token != TOK_RBRACK {
-			return fmt.Errorf("expected ], got %s", s.tokenString)
+		typ, ok := TypeDefs[id]
+		if !ok {
+			return nil, fmt.Errorf("unknown type: %s", id)
 		}
-		nextToken(s)
+		return typ, err
 	}
-	typ, err := ParseType(s, id)
-	if err != nil {
-		return err
-	}
-	v := AddLocalVar(s, id, typ, isConst)
-	v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
-
-	if s.token == TOK_ASSIGN {
-		nextToken(s)
-		val = s.tokenString
-		v.Value.StringValue = val
-		nextToken(s)
-	}
-	return err
 }

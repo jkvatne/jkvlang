@@ -15,11 +15,12 @@ func foo() Age {
       xU16 U16
       xU32  U32
     )
-    yI32 = 123
+    yI32 = 12345
+    xU8=123
     return xU8
 }
 
 func main() {
-
+   printf("%d\n", foo())
 }
 

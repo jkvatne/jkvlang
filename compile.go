@@ -35,9 +35,14 @@ func CompileFile(name string, workdir string) error {
 		if s.token == TOK_FUNC {
 			err = ParseFuncDef(s)
 		} else if s.token == TOK_CONST {
+			s.next()
 			err = ParseConsts(s)
 		} else if s.token == TOK_TYPE {
+			s.next()
 			err = ParseTypeDefs(s)
+		} else if s.token == TOK_VAR {
+			s.next()
+			err = ParseVars(s)
 		} else {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
