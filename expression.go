@@ -1294,6 +1294,9 @@ func ParseFor(s *State) error {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
 	err := ParseBlock(s, false)
+	if err != nil {
+		return err
+	}
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}

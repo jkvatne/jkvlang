@@ -1,14 +1,19 @@
-/*
+
+
+func yield(x I32) Bool {
+    return true
+}
+
 func from_to(start I32, end I32) {
     i=start
-    loop {
+    for {
         ok = yield(i)
-        if !ok return
-        if i>=end return
+        if !ok : return
+        if i>=end : return
         i+=1
     }
 }
-*/
+
 func main() {
     i=1
     for {

@@ -13,7 +13,9 @@ func ParseReturn(s *State) error {
 		panic("ArgCode was not empty")
 	}
 	i := 0
-	if len(f.returnTypes) > 0 {
+	if len(f.returnTypes) == 0 {
+		EmitJump(s.returnLbl, "Return")
+	} else {
 		for {
 			code.NewArgCode()
 			values, err := ParseExpression(s)
@@ -29,6 +31,8 @@ func ParseReturn(s *State) error {
 						EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
 					} else if v.Typ.Pt == TYP_STRING {
 						EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
+					} else if v.Typ.Pt == TYP_BOOL {
+						EmitPushConst(v.IntValue, "Bool const")
 					} else {
 						panic("Not implemented")
 					}
