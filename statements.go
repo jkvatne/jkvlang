@@ -65,7 +65,8 @@ return fmt.Errorf("returns wrong type")
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (returned bool, err error) {
 	s.DidReturn = false
-	if s.token == TOK_ID {
+	switch s.token {
+	case TOK_ID:
 		id := s.tokenString
 		s.next()
 		if s.found(TOK_LPAR) {
@@ -84,32 +85,38 @@ func ParseStatement(s *State) (returned bool, err error) {
 		} else {
 			err = ParseAssign(s, id)
 		}
-	} else if s.token == TOK_RETURN {
-		nextToken(s)
+	case TOK_RETURN:
+		s.next()
 		if s.HasReturned {
 			return true, fmt.Errorf("more than one return in block")
 		}
 		err = ParseReturn(s)
 		returned = true
-	} else if s.token == TOK_IF {
+	case TOK_IF:
 		err = ParseIf(s)
-	} else if s.token == TOK_SEMICOLON {
+	case TOK_SEMICOLON:
 		// Ignore
 		nextToken(s)
-	} else if s.token == TOK_VAR {
-		return false, ParseVars(s)
-	} else if s.token == TOK_TYPE {
-		return false, ParseTypeDefs(s)
-	} else if s.found(TOK_BREAK) {
-		return false, ParseBreak(s)
-	} else if s.found(TOK_CONTINUE) {
-		return false, ParseContinue(s)
-	} else if s.found(TOK_FOR) {
-		return false, ParsFor(s)
-	} else if s.found(TOK_LOOP) {
-		return false, ParseLoop(s)
-	} else {
-		return false, fmt.Errorf("unknown statement starting with %s", s.tokenString)
+	case TOK_VAR:
+		s.next()
+		err = ParseVars(s)
+	case TOK_TYPE:
+		s.next()
+		err = ParseTypeDefs(s)
+	case TOK_BREAK:
+		s.next()
+		err = ParseBreak(s)
+	case TOK_CONTINUE:
+		s.next()
+		err = ParseContinue(s)
+	case TOK_FOR:
+		s.next()
+		err = ParseFor(s)
+	case TOK_LOOP:
+		s.next()
+		err = ParseFor(s)
+	default:
+		err = fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
 	return returned, err
 }

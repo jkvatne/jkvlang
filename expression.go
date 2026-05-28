@@ -1285,7 +1285,7 @@ func ParseBreak(s *State) error {
 	return nil
 }
 
-func ParseLoop(s *State) error {
+func ParseFor(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
 	EmitLabel(startLabel, "Start of loop")
@@ -1305,8 +1305,4 @@ func ParseLoop(s *State) error {
 
 func ParseContinue(s *State) error {
 	return fmt.Errorf("Continue not implemented")
-}
-
-func ParsFor(*State) error {
-	return fmt.Errorf("For not implemented")
 }

@@ -11,7 +11,7 @@ func from_to(start I32, end I32) {
 */
 func main() {
     i=1
-    loop {
+    for {
         printf("i=%d\n", i)
         i+=1
         if i>10 : break
