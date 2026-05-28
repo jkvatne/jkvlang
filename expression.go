@@ -1259,3 +1259,54 @@ func ParseTypeDefs(s *State) error {
 	}
 	return err
 }
+
+var StartLabelStack []int
+var EndLabelStack []int
+
+func PushLabel(start, end int) {
+	StartLabelStack = append(StartLabelStack, start)
+	EndLabelStack = append(EndLabelStack, end)
+}
+func PopLabels() {
+	StartLabelStack = StartLabelStack[:len(StartLabelStack)-1]
+	EndLabelStack = EndLabelStack[:len(EndLabelStack)-1]
+}
+
+func GetTopStartLabel() int {
+	return StartLabelStack[len(StartLabelStack)-1]
+}
+
+func GetTopEndLabel() int {
+	return EndLabelStack[len(EndLabelStack)-1]
+}
+
+func ParseBreak(s *State) error {
+	EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
+	return nil
+}
+
+func ParseLoop(s *State) error {
+	startLabel := code.NewLabel()
+	endLabel := code.NewLabel()
+	EmitLabel(startLabel, "Start of loop")
+	PushLabel(startLabel, endLabel)
+	if !s.found(TOK_LBRACE) {
+		return fmt.Errorf("expected { but got %s", s.tokenString)
+	}
+	err := ParseBlock(s, false)
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+	}
+	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+	EmitLabel(endLabel, "Exit from loop")
+	PopLabels()
+	return err
+}
+
+func ParseContinue(s *State) error {
+	return fmt.Errorf("Continue not implemented")
+}
+
+func ParsFor(*State) error {
+	return fmt.Errorf("For not implemented")
+}

@@ -93,8 +93,6 @@ func ParseStatement(s *State) (returned bool, err error) {
 		returned = true
 	} else if s.token == TOK_IF {
 		err = ParseIf(s)
-	} else if s.token == TOK_FOR {
-		nextToken(s)
 	} else if s.token == TOK_SEMICOLON {
 		// Ignore
 		nextToken(s)
@@ -102,6 +100,14 @@ func ParseStatement(s *State) (returned bool, err error) {
 		return false, ParseVars(s)
 	} else if s.token == TOK_TYPE {
 		return false, ParseTypeDefs(s)
+	} else if s.found(TOK_BREAK) {
+		return false, ParseBreak(s)
+	} else if s.found(TOK_CONTINUE) {
+		return false, ParseContinue(s)
+	} else if s.found(TOK_FOR) {
+		return false, ParsFor(s)
+	} else if s.found(TOK_LOOP) {
+		return false, ParseLoop(s)
 	} else {
 		return false, fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}

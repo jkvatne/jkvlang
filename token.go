@@ -75,6 +75,9 @@ const (
 	TOK_INV_MOD
 	TOK_NEW
 	TOK_NOT
+	TOK_LOOP
+	TOK_BREAK
+	TOK_CONTINUE
 	TOK_SIZE
 )
 
@@ -142,6 +145,9 @@ var TokenNames = [...]string{
 	TOK_INV_MOD:     "INV_MOD",
 	TOK_NEW:         "NEW",
 	TOK_NOT:         "NOT",
+	TOK_LOOP:        "LOOP",
+	TOK_BREAK:       "BREAK",
+	TOK_CONTINUE:    "CONTINUE",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -489,6 +495,12 @@ func nextToken(s *State) {
 				s.token = TOK_STRUCT
 			case "new":
 				s.token = TOK_NEW
+			case "loop":
+				s.token = TOK_LOOP
+			case "continue":
+				s.token = TOK_CONTINUE
+			case "break":
+				s.token = TOK_BREAK
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK

@@ -1,0 +1,26 @@
+/*
+func from_to(start I32, end I32) {
+    i=start
+    loop {
+        ok = yield(i)
+        if !ok return
+        if i>=end return
+        i+=1
+    }
+}
+*/
+func main() {
+    i=1
+    loop {
+        printf("i=%d\n", i)
+        i+=1
+        if i>10 : break
+    }
+
+/*
+    printf("Test iterations\n")
+    for i=range(0,10) {
+        printf("i=%d\n", i)
+    }
+*/
+}
