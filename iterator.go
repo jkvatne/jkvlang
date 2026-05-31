@@ -76,6 +76,9 @@ func ParseFor(s *State) error {
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
+	// Cleare err if it is 1 as this is used to signal break using pull iterators
+	EmitClearBreakErr()
+
 	PopLabels()
 	return err
 }

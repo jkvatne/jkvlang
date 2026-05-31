@@ -389,7 +389,6 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*TypeDef, error) {
 	s.currentFuncCall = id
-	EmitFlushRax("Push TOS before call")
 	f := FuncDefs[id]
 	if id == "yield" {
 		f = s.currentFuncDef

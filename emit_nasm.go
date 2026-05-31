@@ -886,3 +886,10 @@ func EmitJumpOnError(label int) {
 	emit("or", "r15", "r15", "Check err")
 	emit("jz", ".L"+strconv.Itoa(label), "", "")
 }
+
+func EmitClearBreakErr() {
+	emit("mov", "rax", "r15", "")
+	emit("dec", "rax", "", "")
+	emit("or", "rax", "rax", "")
+	emit("cmovz", "r15", "rax", "")
+}
