@@ -213,7 +213,7 @@ func emitCompareFloats(op Token) (err error) {
 // emitCompareIntegers will compare the top two stack entries
 func emitCompareIntegers(op Token, unsigned bool) (err error) {
 	EmitPopBx("Pop next on stack into RBX")
-	emit("cmp", "rax", "rbx", "Compare and set flags")
+	emit("cmp", "rbx", "rax", "Compare and set flags")
 	return EmitJumpCond(op, unsigned)
 }
 

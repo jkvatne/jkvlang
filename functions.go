@@ -20,7 +20,9 @@ func FuncInit() {
 	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
+	_, _ = AddFunc("print", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("fflush", []*VarDef{}, nil, true, false)
+	_, _ = AddFunc("flush", []*VarDef{}, nil, true, false)
 	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
 	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)

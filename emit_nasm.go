@@ -872,3 +872,17 @@ func EmitNot() {
 	EmitAssertTosInRax("")
 	emit("xor", "rax", "1", "")
 }
+
+func EmitPushLabel(label int) {
+	emit("lea", "rax", "[rel .L"+strconv.Itoa(label)+"]", "")
+	emit("push", "rax", "", "")
+}
+
+func EmitPushFramePointer() {
+	emit("push", "rbp", "", "")
+}
+
+func EmitJumpOnError(label int) {
+	emit("or", "r15", "r15", "Check err")
+	emit("jz", ".L"+strconv.Itoa(label), "", "")
+}

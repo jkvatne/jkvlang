@@ -89,6 +89,13 @@ func ParseStatement(s *State) (returned bool, err error) {
 		} else {
 			err = ParseAssign(s, id)
 		}
+		if s.token == TOK_ELSE {
+			s.next()
+			lbl := code.NewLabel()
+			EmitJumpOnError(lbl)
+			returned, err = ParseStatement(s)
+			EmitLabel(lbl, "")
+		}
 	case TOK_RETURN:
 		s.next()
 		if s.HasReturned {
@@ -110,6 +117,9 @@ func ParseStatement(s *State) (returned bool, err error) {
 	case TOK_BREAK:
 		s.next()
 		err = ParseBreak(s)
+	case TOK_FAIL:
+		s.next()
+		err = ParseFail(s)
 	case TOK_CONTINUE:
 		s.next()
 		err = ParseContinue(s)

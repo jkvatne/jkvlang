@@ -1,0 +1,70 @@
+
+func main() {
+    print("Start 'compare.jkv'")
+	a = 1
+	b = 2
+	c = 2
+
+    // All the following compares are true
+    if b==c {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b>=a {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b>a {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b>=c {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b<=c {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if a<=b {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if a<=b {
+        assert(true)
+    } else {
+        assert(false)
+    }
+
+
+    // ALl the following should compare false
+
+	if a == b {
+		assert(false)
+	}
+	if b != c {
+		assert(false)
+	}
+	if a > b {
+		assert(false)
+	}
+	if a >= b {
+		assert(false)
+	}
+	if b < a {
+		assert(false)
+	}
+	if b <= a {
+		assert(false)
+	}
+	if b != c {
+		assert(false)
+	}
+
+}

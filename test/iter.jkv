@@ -1,32 +1,30 @@
+const DONE I32 = 1
 
-
-func yield(x I32) Bool {
-    return true
+type RangeIterator = struct {
+    start I64
+    end I64
 }
 
-func from_to(start I32, end I32)  {
-    i=start
-    for {
-        ok = yield(i)
-        if !ok : break
-        if i>=end : break
-        i+=1
-    }
+func range(start I32, end I32) RangeIterator {
+    print("range <%d, %d>", start, end)
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I64 {
+    if r.start>r.end ? fail(DONE)
+    x = r.start
+    r.start = x+1
+    return x
 }
 
 func main() {
-/*
-    printf("Test iterations\n")
-    for i=from_to(0,10) {
-        printf("i=%d\n", i)
+    r = range(1, 5)
+    for {
+        i = next(r) else break
+        print("main %d", i)
+        fflush()
     }
-*/
-    printf("2. Test simple loop with break")
-    i=1
-    loop {
-        printf("i=%d\n", i)
-        i+=1
-        if i>10 : break
-    }
-
 }

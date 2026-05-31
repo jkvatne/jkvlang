@@ -3,7 +3,7 @@
 section .rodata
 ;-------------
 sp_mess            db "...rsp=0x%X", 0Ah, 00h
-
+crlf               db 0Ch, 0Ah, 00h
 ;-------------
 section .text
 ;-------------
@@ -11,19 +11,31 @@ section .text
 extern printf
 extern fflush
 
+global _print
+_print:
+    mov rdi, printf
+    call _syscall
+    mov rax, crlf
+    mov [rsp+8], rax
+    mov rbx, 16
+    call _syscall
+    ret
+
 ; _printf is the local version of printf from msvcrt.dll
 ; All parameters are pushed on the stack. [rsp] is the format string
 ; All strings must be C-strings.
 ; Stack size should be in rbx, 8 bytes for each parameter in the format string
 ; Note that the format string has 8 bytes initial length/capacity
-global _printf  
+global _printf
 _printf:
     mov rdi, printf
     call _syscall
     ret
 
 global _fflush
+global _flush
 _fflush:
+_flush:
     push rbp              ; Save old frame pointer
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb

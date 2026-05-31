@@ -78,6 +78,7 @@ const (
 	TOK_LOOP
 	TOK_BREAK
 	TOK_CONTINUE
+	TOK_FAIL
 	TOK_SIZE
 )
 
@@ -148,6 +149,7 @@ var TokenNames = [...]string{
 	TOK_LOOP:        "LOOP",
 	TOK_BREAK:       "BREAK",
 	TOK_CONTINUE:    "CONTINUE",
+	TOK_FAIL:        "FAIL",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -323,6 +325,9 @@ func nextToken(s *State) {
 			continue
 		case ch1 == '\n':
 			s.tokenString = "<lf>"
+			continue
+		case ch1 == '\t':
+			s.tokenString = "<tab>"
 			continue
 		case ch1 == '\f':
 			continue
@@ -501,6 +506,8 @@ func nextToken(s *State) {
 				s.token = TOK_CONTINUE
 			case "break":
 				s.token = TOK_BREAK
+			case "fail":
+				s.token = TOK_FAIL
 			}
 		case ch1 == '[':
 			s.token = TOK_LBRACK

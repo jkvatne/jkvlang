@@ -7,12 +7,13 @@ import (
 type VarKind int
 
 const (
-	ParVar VarKind = iota
+	ErrorVar VarKind = iota
+	GlobalConst
+	ParVar
 	LocalVar
 	StructField
 	RetVar
 	TempVar
-	ErrorVar
 )
 
 type VarDef struct {
@@ -28,6 +29,11 @@ type VarDef struct {
 
 var VarDefs map[string]*VarDef
 
+func init() {
+	VarDefs = make(map[string]*VarDef)
+	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
+}
+
 func MustFree() bool {
 	for _, v := range VarDefs {
 		if v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT {
@@ -37,9 +43,12 @@ func MustFree() bool {
 	return false
 }
 
-func VarInit() {
-	VarDefs = make(map[string]*VarDef)
-	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
+func VarReset() {
+	for _, v := range VarDefs {
+		if v.Kind != ErrorVar && v.Kind != GlobalConst {
+			delete(VarDefs, v.Name)
+		}
+	}
 }
 
 func (v *VarDef) Offset() int {
@@ -66,7 +75,7 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
+func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
@@ -75,6 +84,9 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool) *VarDef {
 		s.VarCount++
 		v.Value.Offset = -s.VarCount * 8 // First local variable is at rbp-16, the next at rpb-24
 		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
+		if isGlobal {
+			v.Kind = GlobalConst
+		}
 	}
 	return v
 }

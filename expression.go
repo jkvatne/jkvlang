@@ -256,7 +256,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			}
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
-			lvalue = AddLocalVar(s, id, nil, false)
+			lvalue = AddLocalVar(s, id, nil, false, false)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
 		}
 		lvalues = append(lvalues, lvalue)
@@ -280,6 +280,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
+// Assumes the ( is consumed already
 func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error) {
 	parNo := 0
 	for { // each argument in the actual argument list
@@ -303,7 +304,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			if value.Typ.Pt == TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
 				EmitPushTos(parNo, f.name)
-				if f.name == "printf" {
+				if f.name == "printf" || f.name == "print" {
 					EmitSkipLenCap()
 				}
 			} else if value.Typ.Pt.IsInteger() {
@@ -324,7 +325,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			}
 		} else {
 			EmitPushTos(parNo, f.name)
-			if f.name == "printf" {
+			if f.name == "printf" || f.name == "print" {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == TYP_STRING {
 					EmitSkipLenCap()
@@ -385,11 +386,14 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
+// Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*TypeDef, error) {
 	s.currentFuncCall = id
 	EmitFlushRax("Push TOS before call")
 	f := FuncDefs[id]
-	if f == nil {
+	if id == "yield" {
+		f = s.currentFuncDef
+	} else if f == nil {
 		s.currentFuncCall = ""
 		return nil, nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
@@ -417,7 +421,11 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*T
 
 	// Do actual call
 	// ----------------------------------
-	EmitCall(id, len(values), f.builtin)
+	if id == "yield" {
+		emit("call", "r14", "", "Call yield")
+	} else {
+		EmitCall(id, len(values), f.builtin)
+	}
 
 	code.OutputCleanupCode(len(values))
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
@@ -583,6 +591,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	}
 	if !v.Value.HasValue() {
 		// This is a local variable, not a known constant
+		if v.Typ == nil {
+			return nil, fmt.Errorf("no type for \"%s\"", id)
+		}
 		if v.Name == "err" {
 			EmitLoadErr()
 		} else if v.Value.Typ.Pt == TYP_F64 {
@@ -1095,7 +1106,7 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
-	VarInit()
+	VarReset()
 	fun := s.tokenString
 	EmitFunction(fun)
 	nextToken(s)
@@ -1230,14 +1241,14 @@ func ParseVars(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, false)
+			err = ParseVar(s, false, false)
 			if err != nil {
 				return err
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, false)
+		err = ParseVar(s, false, false)
 	}
 	return err
 }
@@ -1247,20 +1258,20 @@ func ParseConsts(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, true)
+			err = ParseVar(s, true, true)
 			if err != nil {
 				break
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, true)
+		err = ParseVar(s, true, true)
 	}
 	return err
 }
 
 // ParseVar will parse a variable or constant declaration
-func ParseVar(s *State, isConst bool) error {
+func ParseVar(s *State, isConst bool, isGlobal bool) error {
 	var val string
 	var err error
 	if s.token != TOK_ID {
@@ -1281,86 +1292,16 @@ func ParseVar(s *State, isConst bool) error {
 	if err != nil {
 		return err
 	}
-	v := AddLocalVar(s, id, typ, isConst)
+	v := AddLocalVar(s, id, typ, isConst, isGlobal)
 	v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 
 	if s.token == TOK_ASSIGN {
 		nextToken(s)
 		val = s.tokenString
 		v.Value.StringValue = val
+		v.Value.IntValue = s.tokenIntValue
+		v.Value.FloatValue = s.tokenFloatValue
 		nextToken(s)
 	}
 	return err
-}
-
-var StartLabelStack []int
-var EndLabelStack []int
-
-func PushLabel(start, end int) {
-	StartLabelStack = append(StartLabelStack, start)
-	EndLabelStack = append(EndLabelStack, end)
-}
-func PopLabels() {
-	StartLabelStack = StartLabelStack[:len(StartLabelStack)-1]
-	EndLabelStack = EndLabelStack[:len(EndLabelStack)-1]
-}
-
-func GetTopStartLabel() int {
-	return StartLabelStack[len(StartLabelStack)-1]
-}
-
-func GetTopEndLabel() int {
-	return EndLabelStack[len(EndLabelStack)-1]
-}
-
-func ParseBreak(s *State) error {
-	EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
-	return nil
-}
-
-// ParseLoop is a simple loop depending on break to exit.
-func ParseLoop(s *State) error {
-	startLabel := code.NewLabel()
-	endLabel := code.NewLabel()
-	EmitLabel(startLabel, "Start of loop")
-	PushLabel(startLabel, endLabel)
-	if !s.found(TOK_LBRACE) {
-		return fmt.Errorf("expected { but got %s", s.tokenString)
-	}
-	err := ParseBlock(s, false)
-	if err != nil {
-		return err
-	}
-	if !s.found(TOK_RBRACE) {
-		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-	}
-	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
-	PopLabels()
-	return err
-}
-
-func ParseFor(s *State) error {
-	startLabel := code.NewLabel()
-	endLabel := code.NewLabel()
-	EmitLabel(startLabel, "Start of loop")
-	PushLabel(startLabel, endLabel)
-	if !s.found(TOK_LBRACE) {
-		return fmt.Errorf("expected { but got %s", s.tokenString)
-	}
-	err := ParseBlock(s, false)
-	if err != nil {
-		return err
-	}
-	if !s.found(TOK_RBRACE) {
-		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-	}
-	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
-	PopLabels()
-	return err
-}
-
-func ParseContinue(s *State) error {
-	return fmt.Errorf("Continue not implemented")
 }
