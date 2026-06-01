@@ -1,0 +1,61 @@
+
+func main() {
+    x = 13
+    y = 3
+
+    // 1. Unary minus
+    z=-5
+    assert(z==-5)
+    w=-z
+    assert(w==5)
+    w = 10 - (-z)
+    assert(w==5)
+
+    // 2. Difference
+    assert(13-y==10, "Failed 13-y")
+    assert(x-3==10, "Failed x-3")
+    assert(13-3==10, "Failed 13-3")
+    assert(x-y==10, "Failed x-y")
+
+    // 3. Division (Three different combinations of const and var)
+    assert(13/y==4, "Failed  13/y")
+    assert(x/3==4, "Failed x/3")
+    assert(13/3==4, "Failed 13/3")
+    assert(x/y==4, "Failed x/y")
+
+    // 4. Mod
+    assert(13%y==1, "Failed 13%%y")
+    assert(x%3==1, "Failed x%%3")
+    assert(13%3==1, "Failed 13%%3")
+    assert(x%y==1, "Failed x%%y")
+
+    // 5. Sum
+    assert(13+y==16, "Failed 13+y")
+    assert(x+3==16, "Failed x+3")
+    assert(13+3==16, "Failed 13+3")
+    assert(x+y==16, "Failed x+y")
+
+    // 6. Multiply
+    assert(13*y==39, "Failed 13*y")
+    assert(x*3==39, "Failed x*3")
+    assert(13*3==39, "Failed 13*3")
+    assert(x*y==39, "Failed x*y")
+
+    // 7. Logical and
+    assert(13&y==1, "Failed 13&y")
+    assert(x&3==1, "Failed x&3")
+    assert(13&3==1, "Failed 13&3")
+    assert(x&y==1, "Failed x&y")
+
+    // 8. Logical or
+    assert(13|y==15, "Failed 13|y")
+    assert(x|3==15, "Failed x|3")
+    assert(13|3==15, "Failed 13|3")
+    assert(x|y==15, "Failed x|y")
+
+    // 9. Logical xor
+    assert(13^y==14, "Failed 13^y")
+    assert(x^3==14, "Failed x^3")
+    assert(13^3==14, "Failed 13^3")
+    assert(x^y==14, "Failed x^y")
+}

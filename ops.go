@@ -33,7 +33,7 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 		return generateTosOpConst(op, val1, val2)
 	} else if val1.IsConst {
 		EmitAssertTosInRax("Get TOS")
-		return generateTosOpConst(op, val2, val1)
+		return generateTosOpConst(Inverse(op), val2, val1)
 	} else {
 		EmitAssertTosInRax("Get TOS")
 		return emitTosOpNos(op, val1, val2)
@@ -79,6 +79,8 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 		result.IntValue = val1.IntValue & val2.IntValue
 	case TOK_OR:
 		result.IntValue = val1.IntValue | val2.IntValue
+	case TOK_XOR:
+		result.IntValue = val1.IntValue ^ val2.IntValue
 	case TOK_LOG_OR:
 		result.Typ = &BoolType
 		result.BoolValue = val1.BoolValue || val2.BoolValue
@@ -229,6 +231,8 @@ func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 
 // emitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
+// We assume TOS is in rax. Then NOS will be popped to rbx.
+// For subtraction we should calculate NOS-TOS or rbx-rax
 func emitIntegerOp(op Token) {
 	EmitPopBx("")
 	if op == TOK_DIV {
@@ -240,6 +244,9 @@ func emitIntegerOp(op Token) {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+	} else if op == TOK_MINUS {
+		emit("xchg", "rax", "rbx", "")
+		emit("sub", "rax", "rbx", "Integer op")
 	} else {
 		instruction := TokenOp[op]
 		if instruction == "" {
@@ -259,10 +266,10 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("mov", "rbx", sval, "Get divisor from stack into RBX")
+		emit("mov", "rbx", sval, "Get constant divisor into RBX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_INV_DIV {
-		emit("mov", "rbx", sval, "Get divisor from stack into RBX")
+		emit("mov", "rbx", sval, "Get constant divisor into RBX")
 		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
@@ -281,6 +288,11 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 		emit("mov", "rax", sval, "Assign OpIntConst")
 	} else if op == TOK_MULT {
 		emit("imul", "rax", "rax, "+sval, "")
+	} else if op == TOK_INV_MINUS {
+		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
+		emit("neg", "rax", "", "")
+	} else if op == TOK_MINUS {
+		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {

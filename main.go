@@ -268,15 +268,11 @@ func main() {
 		fmt.Printf("could expand working directory " + err.Error())
 		os.Exit(1)
 	}
-	CreateBuildDir(*buildDir)
 
 	// Now compile the source files into asm files
 	if *oneFile != "" {
 		fmt.Printf("=== Compiling %s ===\n", *oneFile)
-		err = CompileFile(*oneFile, *buildDir)
-		if err == nil {
-			err = LinkRun(*buildDir, *oneFile)
-		}
+		err = Build(*buildDir, *oneFile)
 	} else if *test {
 		n := 0
 		n, err = CompileTests(*sourceDir, *buildDir)

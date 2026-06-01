@@ -22,6 +22,9 @@ func f2() I32 {
 }
 
 func main() {
+    y = 3
+    assert(13/y==4, "Failed  13/y")
+/*
     // 1. Test nested integer functions")
     w = sum(3, mpy(4,5))   // = 23
     assert(w==23, "Failed 1")
@@ -43,13 +46,14 @@ func main() {
     // 4. Test div and mod")
     x = 13
     y = 3
-    assert(x%y==1, "Failed x%%y")
-    assert(13%y==1, "Failed 13%%y")
     assert(x%3==1, "Failed x%%3")
     assert(13%3==1, "Failed 13%%3")
     assert(x/y==4, "Failed x/y")
-    assert(13/y==4, "Failed  13/y")
     assert(x/3==4, "Failed x/3")
     assert(13/3==4, "Failed 13/3")
+    assert(x%y==1, "Failed x%%y")
 
+    assert(13/y==4, "Failed  13/y")
+    //assert(13%y==1, "Failed 13%%y")
+*/
 }

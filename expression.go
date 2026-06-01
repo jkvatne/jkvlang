@@ -10,7 +10,12 @@ import (
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		lvalue.SetType(value.Typ)
+		if value.Typ.Pt == TYP_U8 || value.Typ.Pt == TYP_U16 || value.Typ.Pt == TYP_I16 {
+			// Default to I32 when assigning smaller types to a local variable
+			lvalue.SetType(&I32Type)
+		} else {
+			lvalue.SetType(value.Typ)
+		}
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -739,6 +744,23 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("expected right parantesis")
 		}
 		value.IsTempObj = true
+
+	} else if s.token == TOK_MINUS {
+		s.next()
+		v, err3 := ParseUnary(s)
+		if err3 != nil {
+			return nil, err3
+		}
+		if len(v) != 1 {
+			return nil, fmt.Errorf("Unary minus on invalid value")
+		}
+		if v[0].HasValue() {
+			v[0].IntValue = -v[0].IntValue
+			v[0].FloatValue = -v[0].FloatValue
+		} else {
+			EmitNegate()
+		}
+		value = v[0]
 	} else {
 		return nil, fmt.Errorf("unexpected token %s", s.tokenString)
 	}
@@ -813,7 +835,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 			values1[0] = &ValueDef{Typ: &StringType, IsTempObj: true}
 		}
 	}
-	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR {
+	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR || s.token == TOK_XOR {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
 		}

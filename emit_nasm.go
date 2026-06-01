@@ -166,6 +166,7 @@ func EmitFunction(id string) {
 var TokenOp = map[Token]string{
 	TOK_AND:        "and",
 	TOK_OR:         "or",
+	TOK_XOR:        "xor",
 	TOK_PLUS:       "add",
 	TOK_MINUS:      "sub",
 	TOK_MULT:       "mul",
@@ -901,4 +902,9 @@ func EmitClearBreakErr() {
 	emit("dec", "rax", "", "")
 	emit("or", "rax", "rax", "")
 	emit("cmovz", "r15", "rax", "")
+}
+
+func EmitNegate() {
+	EmitAssertTosInRax("")
+	emit("neg", "rax", "", "")
 }

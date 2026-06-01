@@ -79,6 +79,7 @@ const (
 	TOK_BREAK
 	TOK_CONTINUE
 	TOK_FAIL
+	TOK_XOR
 	TOK_SIZE
 )
 
@@ -150,6 +151,7 @@ var TokenNames = [...]string{
 	TOK_BREAK:       "BREAK",
 	TOK_CONTINUE:    "CONTINUE",
 	TOK_FAIL:        "FAIL",
+	TOK_XOR:         "XOR",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -175,7 +177,9 @@ func (t Token) IsCompare() bool {
 
 func (t Token) IsAritmetic() bool {
 	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
-		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD
+		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD ||
+		t == TOK_AND || t == TOK_OR || t == TOK_XOR
+
 }
 
 func (t Token) IsLogic() bool {
@@ -385,8 +389,8 @@ func nextToken(s *State) {
 			s.token = TOK_NOT
 		case ch1 == ',':
 			s.token = TOK_COMMA
-		case ch1 == '-' && isNum(ch2):
-			ch1, ch2 = parseNumber(s, ch1, ch2)
+		// case ch1 == '-' && isNum(ch2):
+		//	ch1, ch2 = parseNumber(s, ch1, ch2)
 		case ch1 == '-' && ch2 == '-':
 			ch1, ch2 = nextChar(s)
 			s.tokenString = "--"
@@ -524,6 +528,9 @@ func nextToken(s *State) {
 		case ch1 == '|':
 			s.token = TOK_OR
 			s.tokenString = "|"
+		case ch1 == '^':
+			s.token = TOK_XOR
+			s.tokenString = "^"
 		case ch1 == '}':
 			s.token = TOK_RBRACE
 			s.tokenString = "}"
