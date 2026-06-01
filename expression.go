@@ -958,7 +958,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	}
 
 	// Parse stm1 in if cond ? stm1 : stm2
-	_, err = ParseStatement(s)
+	err = ParseStatement(s)
 	if err != nil {
 		return err
 	}
@@ -970,7 +970,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 		}
 		EmitLabel(L1, "")
 		// Parse stm2 in if cond ? stm1 : stm2
-		_, err = ParseStatement(s)
+		err = ParseStatement(s)
 		if err != nil {
 			return err
 		}
@@ -1160,7 +1160,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
 	if !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
-		return fmt.Errorf("function definition does not return a value")
+		// return fmt.Errorf("function definition does not return a value")
 	}
 	EmitLabel(s.returnLbl, "Return label for "+f.name)
 	// Free local variables that have objects on the heap, if any

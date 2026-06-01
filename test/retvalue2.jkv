@@ -1,14 +1,17 @@
 
-func foo(a Bool, c I16) (I32, Bool) {
+func foo(a Bool, c I16) (I32, I32) {
     if a {
-        return c, a
+        return c+1, c+2
     } else {
-        return c*2, a
+        return c*2, c*3
     }
 }
 
 func main() {
-  var n I32
-  n, a = foo(true, 5)
-  printf("%d\n", n)
+    x, y = foo(false, 5)
+    assert(x==10)
+    assert(y==15)
+    x, y = foo(true, 5)
+    assert(x==6)
+    assert(y==7)
 }

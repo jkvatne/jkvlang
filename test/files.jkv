@@ -12,30 +12,30 @@ func read_string(f I32, cnt I32) String {
 }
 
 func main() {
-    printf("1. Test returning 3 results\n")
+    // 1. Test returning 3 results
     buf, n, m = test(11, 12)
     assert(n==13)
     assert(m==14)
     assert(buf=="abcd")
 
-    printf("2. Test write to file\n")
+    // 2. Test write to file
     fn = "./test.txt"
     n = I32(0)
-    text = "Hello World!\n"
+    text = "Hello World!"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    printf("create_file handel=%d\n", f)
+    print("create_file handel=%d", f)
     ok = write_file(f, cptr(text), 13, ptr(n), 0)
     assert(ok==1)
     assert(n==13)
     assert(I64(f)!=-1)
     close_file(f)
 
-    printf("3. Test read back file using read_string\n")
+    // 3. Test read back file using read_string
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
     buffer = read_string(f, 12)
     assert(buffer=="Hello World!")
 
-    printf("4. Test open invalid name\n")
+    // 4. Test open invalid name
     fn = ":::"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
     invert_err()

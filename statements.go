@@ -67,8 +67,7 @@ return fmt.Errorf("returns wrong type")
 */
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
-func ParseStatement(s *State) (returned bool, err error) {
-	s.DidReturn = false
+func ParseStatement(s *State) (err error) {
 	switch s.token {
 	case TOK_ID:
 		id := s.tokenString
@@ -80,10 +79,10 @@ func ParseStatement(s *State) (returned bool, err error) {
 			code.NewArgCode()
 			values, _, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
-				return false, err1
+				return err1
 			}
 			if len(values) > 0 {
-				return false, fmt.Errorf("function '%s' has returns a value that is never used", id)
+				return fmt.Errorf("function '%s' has returns a value that is never used", id)
 			}
 			code.OutputArgCode()
 		} else {
@@ -93,16 +92,12 @@ func ParseStatement(s *State) (returned bool, err error) {
 			s.next()
 			lbl := code.NewLabel()
 			EmitJumpOnError(lbl)
-			returned, err = ParseStatement(s)
+			err = ParseStatement(s)
 			EmitLabel(lbl, "")
 		}
 	case TOK_RETURN:
 		s.next()
-		if s.HasReturned {
-			return true, fmt.Errorf("more than one return in block")
-		}
 		err = ParseReturn(s)
-		returned = true
 	case TOK_IF:
 		err = ParseIf(s)
 	case TOK_SEMICOLON:
@@ -132,28 +127,17 @@ func ParseStatement(s *State) (returned bool, err error) {
 	default:
 		err = fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
-	return returned, err
+	return err
 }
 
 func ParseStatements(s *State) error {
-	s.HasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
-		if s.DidReturn {
-			EmitJump(s.returnLbl, "Jump to return")
-			s.DidReturn = false
-		}
 		code.EmitLineNo(s.currentLine, code.LocalSp)
-		returned, err := ParseStatement(s)
+		err := ParseStatement(s)
 		if err != nil {
 			return err
 		}
 		EmitPrintSp()
-		if returned {
-			if s.HasReturned {
-				return fmt.Errorf("statements after return")
-			}
-			s.HasReturned = true
-		}
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
 		}

@@ -1,46 +1,37 @@
 
 
 func main() {
-    printf("Start floats.jkv\n")
-
     x = 1.0
     y = 2.2
     z = 3.3
 
-    printf("1.0/y=%f\n", 1.0/y)
-    printf("x+y/z=%f\n",x+y/z)
-    w = 1.0/y+(x+y/z)*(z*z*(x+y))
-    printf("w = 1.0/y+(x+y/z)*(z*z*(x+y)) = %f\n", w)
-
-    printf("1. Test var div const\n")
-    printf("x=%0.2f, y=%0.2f\n", x, y)
+    // 1. Test var div const
+    print("x=%0.2f, y=%0.2f", x, y)
     z = x / 2.2
-    printf("z = x/2.2 = %f\n", z)
     assert(z>0.454545 && z<0.454546, "Failed x/2.2")
-    printf("2. Test const div var\n")
+
+    // 2. Test const div var
     z = 1.0/y
-    printf("z = 1.0/y = %f\n", z)
     assert(z>0.454545 && z<0.454546, "Failed 1.0/y")
-    printf("3. Test const dif const\n")
+
+    // 3. Test const dif const
     z = 1.0 / 2.2
-    printf("z = 1.0/2.2 = %f\n", z)
     assert(z>0.454545 && z<0.454546, "Failed 1.0/2.0")
+
+    // 4. Test divide var by var
     z = x/y
-    printf("4. Test divide var by var\n")
-    printf("z = x/y = %f\n", z)
     assert(z>0.454545 && z<0.454546, "Failed x/y")
 
-    printf("5. Test printf with float args\n")
+    // 5. Test print with float args
     i = 3
-    // printf("x=%f (should be 1.000000)\n", x)
     r = x+y
-    printf("r=%f (should be 3.000000\n", r)
-    printf("x=%f r=%f (should be 1.00000 and 7.0000)\n", x,r)
-    printf("%d %d %d %d (should be 1 2 3 4)\n", 1,2, i, 4)
-    printf("%s, %f, %d, %s, %f (should be 1, 1.0, 3, 4, 2.2)\n", "1", x, i, "4", y)
-    printf("Floats %f, %f, %f, %f, %f, %f, %f, %f\n", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
+    print("r=%f (should be 3.000000", r)
+    print("x=%f r=%f (should be 1.00000 and 7.0000)", x,r)
+    print("%d %d %d %d (should be 1 2 3 4)", 1,2, i, 4)
+    print("%s, %f, %d, %s, %f (should be 1, 1.0, 3, 4, 2.2)", "1", x, i, "4", y)
+    print("Floats %f, %f, %f, %f, %f, %f, %f, %f", 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0)
 
-    printf("6. Test float compare\n")
+    // 6. Test float compare
     y = 5.0
     assert(y>10.0, "Intentionally failed y>0")
     invert_err()
@@ -60,44 +51,38 @@ func main() {
     assert(y!=5.0, "Intentionally failed y!=5")
     invert_err()
 
-    printf("7. Test float addition/subtraction\n")
+    // 7. Test float addition/subtraction
     assert(x+1.0==2.0)
     assert(1.0+x==2.0)
     assert(1.0+x==2.0)
     y = 2.2
     w = x+y
-    printf("w=%f\n", w)
     // The expression is not exactly equal to 3.2. Use > and <
     assert(w>3.1999 && w<3.20001, "Failed w==3.2, got %f", w)
 
-    printf("9. Divide by float zero\n")
+    // 8. Divide by float zero
     zero = 0.0
     w2 = x/zero
-    printf("x/0.0=%f\n", w2)
+    print("x/0.0=%f", w2)
 
-    printf("8. Test nested parantesises\n")
+   // 9. Test nested parantesises
     x = 1.0
     y = 2.2
     z = 3.3
-    printf("z=%f, y=%f, z=%f\n", x,y,z)
 
     w = (0.5+(x+y)*z+0.5)
-    printf("w=%f (Should be 11.56)\n", w)
     assert(w==11.56)
 
     w = 1.0/y+(x+y/z)*(z*z*(x+y))
-    printf("w = 1.0/y+(x+y/z)*(z*z*(x+y)) = %f\n", w)
     assert (w>=58.534544 && w<=58.534546)
 
     w =z*(x+y)
-    printf("Should be 10.56: %f\n", w)
     assert(w==10.56)
 
     w = (z*z*(x+y))
-    printf("(z*z*(x+y))=%f (should be 34.848)\n",w)
     assert(w==34.848)
 
-    printf("10. Compare two variables. All theese should succeed\n")
+    // 10. Compare two variables. All theese should succeed
     a = 1.234
     b = 2.345
     assert(a<b, "58. Failed compare float %f<%f", a, b)
@@ -107,18 +92,18 @@ func main() {
     assert(b==b, "60. Failed compare equal %f==%f", a, b)
     assert(a!=b, "60. Failed compare equal %f==%f", a, b)
 
-    printf("11. Compare two variables. All theese should fail\n")
+    // 11. Compare two variables. All theese should fail
     a = 1.234
     b = 2.345
-    assert(a>b, "58. Intentionally failed compare float %f<%f", a, b)
+    assert(a>b)
     invert_err()
-    assert(b>a, "61. Intentionally failed compare float %f>%f", a, b)
+    assert(b>a)
     invert_err()
-    assert(b<=a, "62. Intentionally failed compare float %f>=%f", a, b)
+    assert(b<=a)
     invert_err()
-    assert(b!=b, "60. Intentionally failed compare equal %f==%f", a, b)
+    assert(b!=b)
     invert_err()
-    assert(a==b, "60. Intentionally failed compare equal %f==%f", a, b)
+    assert(a==b)
     invert_err()
 
 }

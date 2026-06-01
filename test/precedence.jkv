@@ -20,19 +20,12 @@ func main() {
   assert(w5==8)
 
   w6=z*4
-  printf("w6=%d\n", w6)
+  assert(w6==12)
 
   w7 = (x*(z+1))>=4 && x+z*4<=13
-  if w7 {
-    printf("Ok %d\n", w6)
-  }
   assert(w7)
-  assert(w7==true)
 
   w8=false
-  printf("w8=%d\n", w8)
-  if !w8 {
-    printf("Ok %d\n", w8)
-  }
   assert(!w8)
+
 }

@@ -233,7 +233,6 @@ func Link(workDir string, outputName string) error {
 func Run(outputName string) error {
 	cwd, _ := os.Getwd()
 	fmt.Printf("Running \"%s\" in \"%s\"\n", outputName, cwd)
-	fmt.Printf("--------------------------------------\n")
 	out, err := exec.Command(path.Join(cwd, outputName), "").CombinedOutput()
 	fmt.Println(string(out))
 	if err != nil {

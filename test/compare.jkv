@@ -6,6 +6,43 @@ func main() {
 	c = 2
 
     // All the following compares are true
+    if b==2 {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if 2==b {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b>a {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b>=c {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if b<=c {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if a<=b {
+        assert(true)
+    } else {
+        assert(false)
+    }
+    if a<=b {
+        assert(true)
+    } else {
+        assert(false)
+    }
+
+    // All the following compares are true
     if b==c {
         assert(true)
     } else {

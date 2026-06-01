@@ -21,6 +21,7 @@ func foo() Age {
 }
 
 func main() {
-   printf("%d\n", foo())
+   assert(foo()==123)
+   assert(123==foo())
 }
 

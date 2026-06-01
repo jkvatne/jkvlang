@@ -6,7 +6,6 @@ type RangeIterator = struct {
 }
 
 func range(start I32, end I32) RangeIterator {
-    print("range <%d, %d>", start, end)
     r = new(RangeIterator)
     r.start = start
     r.end = end
@@ -24,7 +23,8 @@ func main() {
     r = range(1, 5)
     for {
         i = next(r) else break
-        print("main %d", i)
+        printf("%d,", i)
         fflush()
     }
+    print("-")
 }

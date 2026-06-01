@@ -12,29 +12,24 @@ func f2() String {
 }
 
 func main() {
-    printf("Start free.jkv\n")
-
-    printf("1. Test call returning a string literal\n")
+    // 1. Test call returning a string literal
     assert(f2()=="f2", "Failed f2=='f2'")
 
-    printf("2. Test free printed variable\n")
+    // 2. Test free printed variable
     fflush()
     s = "Hello "
     t = "World "
     w = s + t
     assert(w=="Hello World ", "Failed v=='Hello World '")
-    printf("3. Test free result from f1\n")
+
+    // 3. Test free result from f1
     fflush()
     t = f1("xyz")
     assert(t=="f1 xyz", "Failed xyz==")
 
-    printf("4. Test asserts\n")
-    printf("f1('xyz')='%s'\n", f1("xyz"))
-    printf("f0('xyz')='%s'\n", f0("xyz"))
-
     fflush()
     assert(f1("xyz")=="f1 xyz", "Failed f1()")
     assert(f0("xyz")=="f0 xyz", "Failed f0()")
-    printf("Finished free.jkv\n")
     fflush()
+
 }

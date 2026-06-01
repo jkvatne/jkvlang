@@ -28,9 +28,12 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	if val1.IsConst && val2.IsConst {
 		// If both operands are constant. Evaluate at compile time.
 		return generateConstOpConst(op, val1, val2)
-	} else if val1.IsConst || val2.IsConst {
+	} else if val2.IsConst {
 		EmitAssertTosInRax("Get TOS")
 		return generateTosOpConst(op, val1, val2)
+	} else if val1.IsConst {
+		EmitAssertTosInRax("Get TOS")
+		return generateTosOpConst(op, val2, val1)
 	} else {
 		EmitAssertTosInRax("Get TOS")
 		return emitTosOpNos(op, val1, val2)
@@ -213,14 +216,14 @@ func emitCompareFloats(op Token) (err error) {
 // emitCompareIntegers will compare the top two stack entries
 func emitCompareIntegers(op Token, unsigned bool) (err error) {
 	EmitPopBx("Pop next on stack into RBX")
-	emit("cmp", "rbx", "rax", "Compare and set flags")
+	emit("cmp", "rbx", "rax", "Compare two ints")
 	return EmitJumpCond(op, unsigned)
 }
 
 // emitCompareIntConst will compare top of stack with a constant
 func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
-	emit("cmp", "rax", sval, "Compare and set flags")
+	emit("cmp", "rax", sval, "Compare int with const")
 	return EmitJumpCond(op, unsigned)
 }
 

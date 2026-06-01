@@ -767,8 +767,17 @@ func EmitPushConstString(litNo int) {
 func EmitEpilogue(name string) {
 	if name == "main" {
 		EmitPrintSp()
+		oklbl := code.NewLabel()
+		errlbl := code.NewLabel()
+		emit("or", "r15", "r15", "")
+		emit("jnz", ".L"+strconv.Itoa(errlbl), "", "Jump if zero flag is set")
+		emit("mov", "rax", "[allocation_count]", "")
+		emit("or", "rax", "rax", "")
+		emit("jz", ".L"+strconv.Itoa(oklbl), "", "Jump if zero flag is set")
+		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
 		// Print remaining allocation
-		EmitComment("main() returning. Printing allocation count.")
+		EmitLabel(errlbl, "")
+		EmitComment("main() returning. Printing allocation count end err.")
 		emit("push", "r15", "", "")
 		code.LocalSp++
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
@@ -782,7 +791,7 @@ func EmitEpilogue(name string) {
 		emit("call", "_fflush", "", "")
 		emit("add", "rsp", "16", "")
 		code.LocalSp -= 2
-		EmitComment("Returning error code via _exit()")
+		EmitLabel(oklbl, "End of printing errors, returning error code via _exit()")
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
 		emit("or", "rax", "rax", "")
 		emit("jz", ".L9999", "", "")

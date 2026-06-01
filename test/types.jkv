@@ -16,27 +16,22 @@ func get_person(n I32) Person {
 }
 
 func main() {
-    printf("Start types.jkv\n")
-
-    printf("1. Test struct\n")
+    // 1. Test struct
     p = new(Person)
     p.age = 70
     p.name = "Jan Kåre Vatne"
     assert(p.age==70, "p.age was %d", p.age)
     assert(p.name=="Jan Kåre Vatne")
-    printf("p.age=%d\n", p.age)
-    printf("p.name=%s\n", p.name)
 
-    printf("3. Test print utf\n")
-    printf("Test utf: %s\n", "æøå")
+    // 3. Test print utf
+    print("Test utf: %s", "æøå")
 
-    printf("4. Test type\n")
+    // 4. Test type
     var age Age
     age = 101
-    printf("age=%d\n", age)
     assert(age==101)
 
-    printf("5. Test struct returned from func\n")
+    // 5. Test struct returned from func
     pers = get_person(123)
-    printf("pers no=%d\n", pers.no)
+    assert(pers.no==123)
 }
