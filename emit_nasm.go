@@ -262,7 +262,11 @@ func EmitOpAssign(op Token, adr int, size int, value int64, comment string) erro
 	}
 	if instr == "imul" {
 		emit("mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
-		emit("movzx", "rbx", DataType(size)+BpRel(adr), comment)
+		if size == 4 {
+			emit("mov", "ebx", DataType(size)+BpRel(adr), comment)
+		} else {
+			emit("mov", "rbx", DataType(size)+BpRel(adr), comment)
+		}
 		emit("imul", "rbx", "", "")
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")

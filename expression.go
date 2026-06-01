@@ -392,14 +392,14 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
 // Assumes id and ( is already consumed
-func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*TypeDef, error) {
+func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
 	f := FuncDefs[id]
 	if id == "yield" {
 		f = s.currentFuncDef
 	} else if f == nil {
 		s.currentFuncCall = ""
-		return nil, nil, fmt.Errorf("expected a function name, got: %s", id)
+		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
 	// Parse the argument list and push each arg
@@ -407,10 +407,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*T
 	values, err := ParseActualArgList(s, f)
 	if err != nil {
 		s.currentFuncCall = ""
-		return nil, nil, err
+		return nil, err
 	}
 	if !f.VarArg && len(values) != len(f.parameters) {
-		return nil, nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
+		return nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
 	}
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
@@ -437,16 +437,16 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, []*T
 	if !returnSomething || len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		s.currentFuncCall = ""
-		return nil, nil, nil
+		return nil, nil
 	}
-	var v []*ValueDef
+	var results []*ValueDef
 	for _, t := range f.returnTypes {
-		v = append(v, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
+		results = append(results, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
 	}
 	// Function results are on stack and not in RAX.
 	code.RaxIsTOS = false
 	s.currentFuncCall = ""
-	return v, f.returnTypes, nil
+	return results, nil
 }
 
 // ParseAssign - this might be the start of a lvalue list or a function call
@@ -564,16 +564,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			return []*ValueDef{&PtrValue}, nil
 		} else {
 			// It is a function call that should return values
-			var results []*TypeDef
-			values, results, err = ParseFuncCall(s, id, true)
+			values, err = ParseFuncCall(s, id, true)
 			if err != nil {
 				return nil, err
-			}
-			if len(values) != len(results) {
-				return nil, fmt.Errorf("expected %d return value but got %d", len(results), len(values))
-			}
-			for _, v := range values {
-				v.IsReturned = true
 			}
 			return values, nil
 		}
@@ -800,6 +793,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 
 func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	// ParseProd should push rax and leave new result in rax
+	s.IsBinary = false
 	values1, err := ParseProd(s)
 	if err != nil {
 		return nil, err
@@ -842,6 +836,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 		op := s.token
 		nextToken(s)
 		code.NewArgCode()
+		s.IsBinary = true
 		values2, err = ParseProd(s)
 		if err != nil {
 			return nil, err

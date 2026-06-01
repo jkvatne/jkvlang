@@ -77,7 +77,7 @@ func ParseStatement(s *State) (err error) {
 				panic("ArgCode was not empty")
 			}
 			code.NewArgCode()
-			values, _, err1 := ParseFuncCall(s, id, false)
+			values, err1 := ParseFuncCall(s, id, false)
 			if err1 != nil {
 				return err1
 			}

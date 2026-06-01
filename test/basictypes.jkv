@@ -2,8 +2,8 @@
 type Age = U8
 
 func bar() Age {
-    x = 123
-    return x
+    //x = Age(123)
+    //return x
 }
 
 func foo() Age {

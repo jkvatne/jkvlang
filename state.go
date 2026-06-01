@@ -25,6 +25,7 @@ type State struct {
 	CommentLevel    int
 	returnLbl       int
 	DidReturn       bool
+	IsBinary        bool
 }
 
 func NewState(name string) (*State, error) {

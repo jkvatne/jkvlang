@@ -32,6 +32,12 @@ func ParseBreak(s *State) error {
 	return nil
 }
 
+func ParseContinue(s *State) error {
+	sl := GetTopStartLabel()
+	EmitJump(sl, "Continue")
+	return fmt.Errorf("Continue not implemented")
+}
+
 func ParseFail(s *State) error {
 	if !s.found(TOK_LPAR) {
 		return fmt.Errorf("Expected '(' after 'fail'")
@@ -59,7 +65,7 @@ func ParseFail(s *State) error {
 }
 
 // ParseLoop is a simple loop depending on break to exit.
-func ParseFor(s *State) error {
+func ParseLoop(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
 	EmitLabel(startLabel, "Start of loop")
@@ -83,13 +89,53 @@ func ParseFor(s *State) error {
 	return err
 }
 
-/*
 func ParseFor(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
+	EmitLabel(startLabel, "Start of loop")
 	PushLabel(startLabel, endLabel)
-	id := s.tokenString
-	s.next()
+
+	if !s.found(TOK_LBRACE) {
+		id := s.tokenString
+		lvalues, err := ParseLvalueList(s, id) // Args to yield
+		if len(lvalues) == 0 {
+			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
+		}
+		if !s.found(TOK_ASSIGN) {
+			return fmt.Errorf("expected '=' but got %s", s.tokenString)
+		}
+		// Now parse the function returning the range
+		if !s.found(TOK_ID) {
+			return fmt.Errorf("expected function name but got %s", s.tokenString)
+		}
+		id = s.tokenString
+		results, err := ParseFuncCall(s, id, true)
+		if err != nil {
+			return err
+		}
+		if len(results) != 1 {
+			return fmt.Errorf("expected a single state in for-loop")
+		}
+
+	}
+	err := ParseBlock(s, false)
+	if err != nil {
+		return err
+	}
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+	}
+	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+	EmitLabel(endLabel, "Exit from loop")
+	// Cleare err if it is 1 as this is used to signal break using pull iterators
+	EmitClearBreakErr()
+
+	PopLabels()
+	return err
+}
+
+/*
+
 	lvalues, err := ParseLvalueList(s, id) // Args to yield
 	if len(lvalues) == 0 {
 		return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
@@ -144,8 +190,5 @@ func ParseFor(s *State) error {
 	PopLabels()
 	return err
 }
-*/
 
-func ParseContinue(s *State) error {
-	return fmt.Errorf("Continue not implemented")
-}
+*/
