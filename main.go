@@ -179,7 +179,28 @@ func Link(workDir string, outputName string) error {
 	}
 	// Calculate all arguments to the linker
 	var args []string
-	if *UseGcc {
+	if true {
+		entries, err := os.ReadDir(workDir)
+		if err != nil {
+			return fmt.Errorf("collecting obj files error %s", err.Error())
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
+				args = append(args, filepath.Join(workDir, entry.Name()))
+			}
+		}
+		args = append(args, "-lkernel32", "-lmsvcrt")
+		outputPath := path.Join(workDir, outputName)
+		args = append(args, "-m64", "-o", outputPath)
+		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
+		if len(outp) > 0 {
+			fmt.Println(string(outp))
+		}
+		if err != nil {
+			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
+		}
+
+	} else if *UseGcc {
 		// Add all object files to argument list
 		entries, err := os.ReadDir(workDir)
 		if err != nil {
@@ -190,8 +211,9 @@ func Link(workDir string, outputName string) error {
 				args = append(args, filepath.Join(workDir, entry.Name()))
 			}
 		}
+		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
 		outputPath := path.Join(workDir, outputName)
-		args = append(args, "-m64", "-lmsvcrt", "-o", outputPath)
+		args = append(args, "-DUCRT", "-m64", "-o", outputPath)
 		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
 		if len(outp) > 0 {
 			fmt.Println(string(outp))
@@ -200,7 +222,8 @@ func Link(workDir string, outputName string) error {
 			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
 		}
 	} else {
-		args = append(args, "/fo", outputName, "/entry=main", "/console")
+		outputPath := path.Join(workDir, outputName)
+		args = append(args, "/fo", outputPath, "/entry=main", "/console")
 		if *debug {
 			args = append(args, "/debug=dbg")
 		}
@@ -214,10 +237,10 @@ func Link(workDir string, outputName string) error {
 				args = append(args, filepath.Join(workDir, entry.Name()))
 			}
 		}
-		args = append(args, "-g", "kernel32.dll", "msvcrt.dll")
+		args = append(args, "-g", "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
 		// Print the arguments and the command
 		fmt.Println("Link command:")
-		fmt.Printf("../tools/golink.exe ")
+		fmt.Printf("link.exe ")
 		for _, s := range args {
 			fmt.Printf(" %s", s)
 		}

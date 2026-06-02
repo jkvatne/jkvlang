@@ -20,7 +20,11 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
+    a  = 1.11
+    b = 0.0
+    print("%f", a/b)
     sum = 0
+
     r = range(10, 15)
     loop {
         i = next(r) else break
