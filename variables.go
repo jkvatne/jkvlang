@@ -25,6 +25,7 @@ type VarDef struct {
 	FieldOfs    int
 	FieldType   *TypeDef
 	IsIndirect  bool
+	BlockLevel  int
 }
 
 var VarDefs map[string]*VarDef
@@ -32,6 +33,15 @@ var VarDefs map[string]*VarDef
 func init() {
 	VarDefs = make(map[string]*VarDef)
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
+}
+
+func HasLocalVars(s *State) bool {
+	for _, v := range VarDefs {
+		if v.Kind >= ParVar {
+			return true
+		}
+	}
+	return false
 }
 
 func MustFree() bool {
@@ -79,7 +89,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool)
 	v := VarDefs[id]
 	if v == nil {
 		// New variable.
-		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: isConst}, Kind: LocalVar}
+		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: isConst}, Kind: LocalVar, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		s.VarCount++
 		v.Value.Offset = -s.VarCount * 8 // First local variable is at rbp-16, the next at rpb-24
@@ -89,6 +99,18 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool)
 		}
 	}
 	return v
+}
+
+func DeleteLocalVar(id string) {
+	delete(VarDefs, id)
+}
+
+func DeleteBlockVars(s *State) {
+	for _, v := range VarDefs {
+		if v.BlockLevel == s.BlockLevel {
+			delete(VarDefs, v.Name)
+		}
+	}
 }
 
 func ParseType(s *State, id string) (*TypeDef, error) {

@@ -26,6 +26,7 @@ type State struct {
 	returnLbl       int
 	DidReturn       bool
 	IsBinary        bool
+	BlockLevel      int
 }
 
 func NewState(name string) (*State, error) {

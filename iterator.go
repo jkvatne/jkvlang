@@ -97,7 +97,7 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 		id := s.tokenString
 		lvalue := VarDefs[id]
 		if lvalue != nil {
-			return nil, fmt.Errorf("Shadowing variable " + id)
+			return nil, fmt.Errorf("Loop variable shadowing " + id)
 		}
 		lvalue = AddLocalVar(s, id, nil, false, false)
 		lvalues = append(lvalues, lvalue)
@@ -117,6 +117,9 @@ func ParseFor(s *State) error {
 	if !s.found(TOK_LBRACE) {
 		EmitAllocLocalVar("Loop state")
 		lvalues, err = ParseLoopVars(s)
+		if err != nil {
+			return err
+		}
 		if len(lvalues) == 0 {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
@@ -174,65 +177,10 @@ func ParseFor(s *State) error {
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
 		EmitPopAx("Pop address of loop state")
 		EmitFreeStruct(16, "Free loop state")
-	}
-	return err
-}
-
-/*
-
-	lvalues, err := ParseLvalueList(s, id) // Args to yield
-	if len(lvalues) == 0 {
-		return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
-	}
-	if !s.found(TOK_ASSIGN) {
-		return fmt.Errorf("expected '=' but got %s", s.tokenString)
-	}
-	// Now we should have the iterator function call
-	if s.token != TOK_ID {
-		return fmt.Errorf("expected iterator but got %s", s.tokenString)
-	}
-	// id is iterator function name.
-	id = s.tokenString
-	s.next()
-	if !s.found(TOK_LPAR) {
-		return fmt.Errorf("expected '(', but got %s", s.tokenString)
-	}
-
-	EmitPushLabel(startLabel)
-	EmitPushFramePointer()
-
-	code.OutputArgCode()
-	code.NewArgCode()
-	values, results, err := ParseFuncCall(s, id, true)
-	if err != nil {
-		return err
-	}
-	code.OutputArgCode()
-	if len(results) != len(lvalues) {
-		return fmt.Errorf("expected %d results, but got %d", len(lvalues), len(results))
-	}
-	for i := 0; i < len(lvalues); i++ {
-		if lvalues[i].Typ == nil {
-			lvalues[i].Typ = results[i]
-			lvalues[i].Value.Typ = results[i]
+		// Remove local loop variables
+		for _, v := range lvalues {
+			DeleteLocalVar(v.Name)
 		}
 	}
-	fmt.Printf("%d %d\n", len(values), len(results))
-	if !s.found(TOK_LBRACE) {
-		return fmt.Errorf("expected { but got %s", s.tokenString)
-	}
-	EmitLabel(startLabel, "Start of loop")
-	err = ParseBlock(s, false)
-	if err != nil {
-		return err
-	}
-	if !s.found(TOK_RBRACE) {
-		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-	}
-	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
-	PopLabels()
 	return err
 }
-
-*/

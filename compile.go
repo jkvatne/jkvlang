@@ -47,6 +47,9 @@ func CompileFile(name string, workdir string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}
+	if HasLocalVars(s) {
+		fmt.Printf("At end of code there is still local variables\n")
+	}
 	EmitSection("rodata")
 	for i, l := range LiteralDefs {
 		// ALl strings must be aligned to qword

@@ -940,6 +940,7 @@ func ParseExpressions(s *State) ([]*ValueDef, error) {
 	return values, nil
 }
 
+// ParseBlock assumes that { has been consumed (by s.found())
 func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
 		s.noCode++
@@ -947,6 +948,7 @@ func ParseBlock(s *State, isTrue bool) error {
 	if len(code.ArgCode) > 0 {
 		panic("ParseBlock: ArgCode was not empty")
 	}
+	s.BlockLevel++
 	err := ParseStatements(s)
 	if err != nil {
 		return err
@@ -957,6 +959,8 @@ func ParseBlock(s *State, isTrue bool) error {
 			panic("negative noCode")
 		}
 	}
+	DeleteBlockVars(s)
+	s.BlockLevel--
 	return nil
 }
 
@@ -1042,10 +1046,9 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			}
 			L1 = code.NewLabel()
 			EmitJumpFalse(L1, "jump if condition was false")
-			if s.token != TOK_LBRACE {
+			if !s.found(TOK_LBRACE) {
 				return fmt.Errorf("expected { after if but got %s", s.tokenString)
 			}
-			nextToken(s)
 			// Parsing 'else if' statements
 			err = ParseBlock(s, value.IsFalse())
 			if err != nil {
@@ -1062,8 +1065,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				L2 = 0
 			}
 			nextToken(s)
-		} else if s.token == TOK_LBRACE {
-			nextToken(s)
+		} else if s.found(TOK_LBRACE) {
 			// Else without if
 			err = ParseBlock(s, value.IsFalse())
 			if err != nil {
@@ -1111,6 +1113,8 @@ func ParseIf(s *State) error {
 }
 
 func ParseFuncDef(s *State) error {
+	s.BlockLevel++
+	startLevel := s.BlockLevel
 	nextToken(s)
 	code.LocalSp = 0
 	if s.token != TOK_ID {
@@ -1202,6 +1206,15 @@ func ParseFuncDef(s *State) error {
 	EmitEpilogue(f.name)
 	code.OutputArgCode()
 	nextToken(s)
+	// Delete parameters from pardef
+	for _, p := range parList {
+		DeleteLocalVar(p.Name)
+	}
+	DeleteBlockVars(s)
+	if startLevel != s.BlockLevel {
+		return fmt.Errorf("Block level wrong on exit from " + fun)
+	}
+	s.BlockLevel--
 	s.currentFuncDef = nil
 	return nil
 }
