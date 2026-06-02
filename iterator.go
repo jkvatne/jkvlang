@@ -170,8 +170,10 @@ func ParseFor(s *State) error {
 		emit("mov", "r15", "0", "")
 		// Cleare err if it is 1 as this is used to signal break using pull iterators
 		EmitClearBreakErr()
-
 		PopLabels()
+		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
+		EmitPopAx("Pop address of loop state")
+		EmitFreeStruct(16, "Free loop state")
 	}
 	return err
 }

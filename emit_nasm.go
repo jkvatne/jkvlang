@@ -707,38 +707,10 @@ func EmitFreeString(comment string) {
 // EmitFreeStruct assumes the full address exists in rax.
 // It will free the pointer in rax and decrement allocation_count by the size given.
 func EmitFreeStruct(size int, comment string) {
-	emit("mov", "rax", "rax", comment)
 	emit("mov", "rcx", strconv.Itoa(size), "")
 	// _free_struct assumes pointer in rax and size in rcx
 	emit("call", "_free_struct", "", "")
 }
-
-/*
-// EmitFreeLocalVariables will free an object in a local variable
-func EmitFreeLocalVariables(adr int, pt PrimaryType, size int, comment string) error {
-	if pt == TYP_STRING {
-		// Decrement allocation count, first load size given in offset +4 (capacity)
-		emit("mov", "rax", BpRel(adr), "Load cap")
-		emit("mov", "rax", "[rax]", "")
-		emit("shr", "rax", "32", "")
-		// Skip free if cap=0
-		lbl := code.NewLabel()
-		emit("or", "rax", "rax", "")
-		emit("jz", EmitNumericLabel(lbl), "", "")
-		// Load the offset from the variable in local stack frame with offset given by adr
-		emit("mov", "rax", BpRel(adr), "")
-		emit("call", "_free_str", "", comment)
-		EmitLabel(lbl, "")
-		return nil
-	} else if pt == TYP_STRUCT {
-		emit("mov", "rax", BpRel(adr), "")
-		emit("mov", "rcx", strconv.Itoa(size), "")
-		emit("call", "_free_struct", "", comment)
-		return nil
-	}
-	return fmt.Errorf("can not free %s", TokenNames[pt])
-}
-*/
 
 func EmitPushAx(txt string) {
 	emit("push", "rax", "", txt)

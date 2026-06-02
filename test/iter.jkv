@@ -20,11 +20,20 @@ func next(r RangeIterator) I64 {
 }
 
 func main() {
+    j=0
+    loop {
+       j=j+1
+       printf("%d,", j)
+       if j>5 : break
+    }
+    print("")
+
     for i = range(2,5) {
         printf("%d,", i)
         fflush()
     }
     print("")
+
 /*
     r = range(1, 5)
     loop {

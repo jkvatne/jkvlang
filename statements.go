@@ -123,7 +123,7 @@ func ParseStatement(s *State) (err error) {
 		err = ParseFor(s)
 	case TOK_LOOP:
 		s.next()
-		err = ParseFor(s)
+		err = ParseLoop(s)
 	default:
 		err = fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
