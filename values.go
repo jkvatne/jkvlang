@@ -65,9 +65,6 @@ func AddFloatLiteral(value float64) int {
 }
 
 func AddLiteral(value string) int {
-	if value == "" {
-		return -1
-	}
 	for i, s := range LiteralDefs {
 		if s == value {
 			return i

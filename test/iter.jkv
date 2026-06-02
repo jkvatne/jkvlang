@@ -24,7 +24,7 @@ func main() {
         printf("%d,", i)
         fflush()
     }
-    print(";")
+    print("")
 /*
     r = range(1, 5)
     loop {
