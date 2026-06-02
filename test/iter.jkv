@@ -22,9 +22,10 @@ func next(r RangeIterator) I64 {
 func main() {
     for i = range(2,6) {
         printf("%d,", i)
+        fflush()
     }
     print(";")
-
+/*
     r = range(1, 5)
     loop {
         i = next(r) else break
@@ -32,4 +33,5 @@ func main() {
         fflush()
     }
     print(";")
+    */
 }

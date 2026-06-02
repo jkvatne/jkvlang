@@ -395,9 +395,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
 	f := FuncDefs[id]
-	if id == "yield" {
-		f = s.currentFuncDef
-	} else if f == nil {
+	if f == nil {
 		s.currentFuncCall = ""
 		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
@@ -425,11 +423,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 
 	// Do actual call
 	// ----------------------------------
-	if id == "yield" {
-		emit("call", "r14", "", "Call yield")
-	} else {
-		EmitCall(id, len(values), f.builtin)
-	}
+	EmitCall(id, len(values), f.builtin)
 
 	code.OutputCleanupCode(len(values))
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")

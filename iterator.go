@@ -92,23 +92,28 @@ func ParseLoop(s *State) error {
 func ParseFor(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
-	EmitLabel(startLabel, "Start of loop")
 	PushLabel(startLabel, endLabel)
-
+	var lvalues []*VarDef
+	var err error
 	if !s.found(TOK_LBRACE) {
 		id := s.tokenString
-		lvalues, err := ParseLvalueList(s, id) // Args to yield
+		lvalues, err = ParseLvalueList(s, id)
 		if len(lvalues) == 0 {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
+		s.next()
 		if !s.found(TOK_ASSIGN) {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
 		}
 		// Now parse the function returning the range
+		id = s.tokenString
 		if !s.found(TOK_ID) {
 			return fmt.Errorf("expected function name but got %s", s.tokenString)
 		}
-		id = s.tokenString
+		if !s.found(TOK_LPAR) {
+			return fmt.Errorf("expected '(' but got %s", s.tokenString)
+		}
+		code.NewArgCode()
 		results, err := ParseFuncCall(s, id, true)
 		if err != nil {
 			return err
@@ -116,17 +121,41 @@ func ParseFor(s *State) error {
 		if len(results) != 1 {
 			return fmt.Errorf("expected a single state in for-loop")
 		}
-
+		code.OutputArgCode()
+		f := FuncDefs["next"]
+		if f == nil {
+			return fmt.Errorf("range must have a next function")
+		}
+		lvalues[0].Typ = f.returnTypes[0]
+		VarDefs[lvalues[0].Name].Value.Typ = f.returnTypes[0]
 	}
-	err := ParseBlock(s, false)
+	if !s.found(TOK_LBRACE) {
+		return fmt.Errorf("expected '{' but got %s", s.tokenString)
+	}
+
+	// Insert call to next before for block
+	EmitLabel(startLabel, "Start of loop")
+	emit("push", "0", "", "Reserve space for return value from next")
+	emit("mov", "rax", "[rsp+8]", "")
+	emit("push", "rax", "", "")
+	EmitCall("next", 1, false)
+	emit("add", "rsp", "8", "Drop argument to next")
+	code.LocalSp--
+	// Assign result to loop variable
+	EmitPopAx("")
+	EmitStoreBpOfs(lvalues[0].Offset()/8, "Save value to loop variable")
+	err = ParseBlock(s, false)
 	if err != nil {
 		return err
 	}
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
+	emit("or", "r15", "r15", "")
+	emit("jnz", ".L"+strconv.Itoa(endLabel), "", "")
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
+	emit("mov", "r15", "0", "")
 	// Cleare err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 
