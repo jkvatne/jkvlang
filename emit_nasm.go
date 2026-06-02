@@ -65,7 +65,7 @@ func emit(op string, dst string, src string, comment string) {
 	if src != "" {
 		txt = txt + " " + src
 	}
-	if comment != "" && !strings.Contains(comment, "->") {
+	if !strings.Contains(comment, "->") {
 		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + Sp(0) + "\n"
 	} else {
 		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + "\n"

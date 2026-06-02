@@ -30,7 +30,6 @@ func main() {
     print("=%d", sum)
     assert(sum==75)
 
-/*
     sum = 0
     for i = range(2,5) {
         printf("%d+", i)
@@ -39,6 +38,7 @@ func main() {
     print("=%d", sum)
     assert(sum==14)
 
+/*
     sum=0
     for i = range(2,5) {
         printf("%d+", i)
