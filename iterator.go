@@ -89,6 +89,25 @@ func ParseLoop(s *State) error {
 	return err
 }
 
+func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
+	for {
+		if s.token != TOK_ID {
+			return nil, fmt.Errorf("Loop variables expected")
+		}
+		id := s.tokenString
+		lvalue := VarDefs[id]
+		if lvalue != nil {
+			return nil, fmt.Errorf("Shadowing variable " + id)
+		}
+		lvalue = AddLocalVar(s, id, nil, false, false)
+		lvalues = append(lvalues, lvalue)
+		if !s.found(TOK_COMMA) {
+			break
+		}
+	}
+	return lvalues, nil
+}
+
 func ParseFor(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
@@ -96,8 +115,8 @@ func ParseFor(s *State) error {
 	var lvalues []*VarDef
 	var err error
 	if !s.found(TOK_LBRACE) {
-		id := s.tokenString
-		lvalues, err = ParseLvalueList(s, id)
+		EmitAllocLocalVar("Loop state")
+		lvalues, err = ParseLoopVars(s)
 		if len(lvalues) == 0 {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
@@ -106,7 +125,7 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
 		}
 		// Now parse the function returning the range
-		id = s.tokenString
+		id := s.tokenString
 		if !s.found(TOK_ID) {
 			return fmt.Errorf("expected function name but got %s", s.tokenString)
 		}
@@ -128,38 +147,32 @@ func ParseFor(s *State) error {
 		}
 		lvalues[0].Typ = f.returnTypes[0]
 		VarDefs[lvalues[0].Name].Value.Typ = f.returnTypes[0]
-	}
-	if !s.found(TOK_LBRACE) {
-		return fmt.Errorf("expected '{' but got %s", s.tokenString)
-	}
 
-	// Insert call to next before for block
-	EmitLabel(startLabel, "Start of loop")
-	emit("push", "0", "", "Reserve space for return value from next")
-	emit("mov", "rax", "[rsp+8]", "")
-	emit("push", "rax", "", "")
-	EmitCall("next", 1, false)
-	emit("add", "rsp", "8", "Drop argument to next")
-	code.LocalSp--
-	// Assign result to loop variable
-	EmitPopAx("")
-	EmitStoreBpOfs(lvalues[0].Offset()/8, "Save value to loop variable")
-	err = ParseBlock(s, false)
-	if err != nil {
-		return err
-	}
-	if !s.found(TOK_RBRACE) {
-		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-	}
-	emit("or", "r15", "r15", "")
-	emit("jnz", ".L"+strconv.Itoa(endLabel), "", "")
-	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
-	emit("mov", "r15", "0", "")
-	// Cleare err if it is 1 as this is used to signal break using pull iterators
-	EmitClearBreakErr()
+		// Insert call to next before for block
+		EmitLabel(startLabel, "Start of loop")
+		EmitCall("next", 1, false)
+		code.LocalSp--
+		// Assign result to loop variable
+		if !s.found(TOK_LBRACE) {
+			return fmt.Errorf("expected '{' but got %s", s.tokenString)
+		}
+		emit("or", "r15", "r15", "")
+		emit("jnz", ".L"+strconv.Itoa(endLabel), "", "")
+		err = ParseBlock(s, false)
+		if err != nil {
+			return err
+		}
+		if !s.found(TOK_RBRACE) {
+			return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+		}
+		EmitJump(GetTopStartLabel(), "Jump to start of loop")
+		EmitLabel(endLabel, "Exit from loop")
+		emit("mov", "r15", "0", "")
+		// Cleare err if it is 1 as this is used to signal break using pull iterators
+		EmitClearBreakErr()
 
-	PopLabels()
+		PopLabels()
+	}
 	return err
 }
 

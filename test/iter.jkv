@@ -20,7 +20,7 @@ func next(r RangeIterator) I64 {
 }
 
 func main() {
-    for i = range(2,6) {
+    for i = range(2,5) {
         printf("%d,", i)
         fflush()
     }
