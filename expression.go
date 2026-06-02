@@ -627,7 +627,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
-func ParseUnary(s *State) ([]*ValueDef, error) {
+func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 	var err error
 	value := &ValueDef{}
 	if s.token == TOK_ID {
@@ -650,6 +650,9 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 		return values, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s)
+		if hasUnaryMinus {
+			s.tokenIntValue = -s.tokenIntValue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -658,6 +661,9 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 		}
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
+		if hasUnaryMinus {
+			s.tokenFloatValue = -s.tokenFloatValue
+		}
 		floatLitNo := AddFloatLiteral(s.tokenFloatValue)
 		value.Typ = TypeDefs["F64"]
 		value.FloatValue = s.tokenFloatValue
@@ -734,7 +740,7 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 
 	} else if s.token == TOK_MINUS {
 		s.next()
-		v, err3 := ParseUnary(s)
+		v, err3 := ParseUnary(s, true)
 		if err3 != nil {
 			return nil, err3
 		}
@@ -755,7 +761,7 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 }
 
 func ParseProd(s *State) ([]*ValueDef, error) {
-	values1, err := ParseUnary(s)
+	values1, err := ParseUnary(s, false)
 	if err != nil {
 		return nil, err
 	}
@@ -767,7 +773,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 		op := s.token
 		nextToken(s)
 		code.NewArgCode()
-		values2, err = ParseUnary(s)
+		values2, err = ParseUnary(s, false)
 		if err != nil {
 			return nil, err
 		}

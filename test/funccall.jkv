@@ -6,4 +6,6 @@ func foo(a F64, b F64) F64 {
 func main () {
   x = foo(1.23, 3.45)
   assert(x==-10.3896)
+  assert(x>=-10.3897, ">=")
+  assert(x<=-10.3895, "<=")
 }
