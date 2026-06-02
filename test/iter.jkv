@@ -1,8 +1,8 @@
 const DONE I32 = 1
 
 type RangeIterator = struct {
-    start I64
-    end I64
+    start I32
+    end I32
 }
 
 func range(start I32, end I32) RangeIterator {
@@ -12,7 +12,7 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-func next(r RangeIterator) I64 {
+func next(r RangeIterator) I32 {
     if r.start>r.end ? fail(DONE)
     x = r.start
     r.start = x+1
@@ -20,32 +20,67 @@ func next(r RangeIterator) I64 {
 }
 
 func main() {
-
+    sum = 0
     r = range(10, 15)
     loop {
         i = next(r) else break
-        printf("%d,", i)
+        printf("%d+", i)
+        sum+=i
+    }
+    print("=%d", sum)
+    assert(sum==75)
+
+/*
+    sum = 0
+    for i = range(2,5) {
+        printf("%d+", i)
+        sum+=i
+    }
+    print("=%d", sum)
+    assert(sum==14)
+
+    sum=0
+    for i = range(2,5) {
+        printf("%d+", i)
+        sum+=i
+    }
+    print("=%d", sum)
+    assert(sum==14)
+
+    sum = 0
+    r = range(10, 15)
+    loop {
+        i = next(r) else break
+        printf("%d+", i)
+        sum+=i
         fflush()
     }
-    print("")
-
+    print("=%d", sum)
+    assert(sum==75)
     j=0
+    sum=0
     loop {
        j=j+1
-       printf("%d,", j)
+       //printf("%d+", j)
+       sum+=j
        if j>5 : break
     }
-    print("")
+    //print("=%d", sum)
+    assert(sum==21)
 
+    sum=0
     for i = range(2,5) {
-        printf("%d,", i)
+        printf("%d+", i)
+        sum+=i
         fflush()
     }
-    print("")
+    print("=%d", sum)
 
     for i = range(12,15) {
-        printf("%d,", i)
+        printf("%d+", i)
         fflush()
+        sum+=i
     }
-    print("")
+    print("==%d", sum)
+*/
 }

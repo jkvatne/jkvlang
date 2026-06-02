@@ -53,12 +53,13 @@ func MustFree() bool {
 	return false
 }
 
-func VarReset() {
+func VarReset(s *State) {
 	for _, v := range VarDefs {
 		if v.Kind != ErrorVar && v.Kind != GlobalConst {
 			delete(VarDefs, v.Name)
 		}
 	}
+	s.LocalVarCount = 0
 }
 
 func (v *VarDef) Offset() int {
@@ -91,8 +92,8 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool)
 		// New variable.
 		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: isConst}, Kind: LocalVar, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
-		s.VarCount++
-		v.Value.Offset = -s.VarCount * 8 // First local variable is at rbp-16, the next at rpb-24
+		s.LocalVarCount++
+		v.Value.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
 		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
 		if isGlobal {
 			v.Kind = GlobalConst
@@ -101,14 +102,16 @@ func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool)
 	return v
 }
 
-func DeleteLocalVar(id string) {
+func DeleteLocalVar(s *State, id string) {
+	s.LocalVarCount--
 	delete(VarDefs, id)
 }
 
 func DeleteBlockVars(s *State) {
 	for _, v := range VarDefs {
 		if v.BlockLevel == s.BlockLevel {
-			delete(VarDefs, v.Name)
+			DeleteLocalVar(s, v.Name)
+			EmitPopAx("Drop stack allocation for local variable " + v.Name)
 		}
 	}
 }

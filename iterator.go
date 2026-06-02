@@ -64,31 +64,6 @@ func ParseFail(s *State) error {
 	return nil
 }
 
-// ParseLoop is a simple loop depending on break to exit.
-func ParseLoop(s *State) error {
-	startLabel := code.NewLabel()
-	endLabel := code.NewLabel()
-	EmitLabel(startLabel, "Start of loop")
-	PushLabel(startLabel, endLabel)
-	if !s.found(TOK_LBRACE) {
-		return fmt.Errorf("expected { but got %s", s.tokenString)
-	}
-	err := ParseBlock(s, false)
-	if err != nil {
-		return err
-	}
-	if !s.found(TOK_RBRACE) {
-		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-	}
-	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
-	// Cleare err if it is 1 as this is used to signal break using pull iterators
-	EmitClearBreakErr()
-
-	PopLabels()
-	return err
-}
-
 func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	for {
 		if s.token != TOK_ID {
@@ -115,7 +90,6 @@ func ParseFor(s *State) error {
 	var lvalues []*VarDef
 	var err error
 	if !s.found(TOK_LBRACE) {
-		EmitAllocLocalVar("Loop state")
 		lvalues, err = ParseLoopVars(s)
 		if err != nil {
 			return err
@@ -123,6 +97,10 @@ func ParseFor(s *State) error {
 		if len(lvalues) == 0 {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
+		for _, l := range lvalues {
+			EmitAllocLocalVar("Allocate loop variable " + l.Name)
+		}
+
 		s.next()
 		if !s.found(TOK_ASSIGN) {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
@@ -150,11 +128,9 @@ func ParseFor(s *State) error {
 		}
 		lvalues[0].Typ = f.returnTypes[0]
 		VarDefs[lvalues[0].Name].Value.Typ = f.returnTypes[0]
-
-		// Insert call to next before for block
+		// Insert call next() before for block
 		EmitLabel(startLabel, "Start of loop")
 		EmitCall("next", 1, false)
-		code.LocalSp--
 		// Assign result to loop variable
 		if !s.found(TOK_LBRACE) {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)
@@ -176,11 +152,36 @@ func ParseFor(s *State) error {
 		PopLabels()
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
 		EmitPopAx("Pop address of loop state")
-		EmitFreeStruct(16, "Free loop state")
+		EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
 		// Remove local loop variables
 		for _, v := range lvalues {
-			DeleteLocalVar(v.Name)
+			EmitPopAx("Pop loop variable")
+			DeleteLocalVar(s, v.Name)
 		}
 	}
+	return err
+}
+
+// ParseLoop is a simple loop depending on break to exit.
+func ParseLoop(s *State) error {
+	startLabel := code.NewLabel()
+	endLabel := code.NewLabel()
+	EmitLabel(startLabel, "Start of loop")
+	PushLabel(startLabel, endLabel)
+	if !s.found(TOK_LBRACE) {
+		return fmt.Errorf("expected { but got %s", s.tokenString)
+	}
+	err := ParseBlock(s, false)
+	if err != nil {
+		return err
+	}
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+	}
+	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+	EmitLabel(endLabel, "Exit from loop")
+	// Cleare err if it is 1 as this is used to signal break using pull iterators
+	EmitClearBreakErr()
+	PopLabels()
 	return err
 }

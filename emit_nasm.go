@@ -65,10 +65,10 @@ func emit(op string, dst string, src string, comment string) {
 	if src != "" {
 		txt = txt + " " + src
 	}
-	if comment != "" {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + "\n"
+	if comment != "" && !strings.Contains(comment, "->") {
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + Sp(0) + "\n"
 	} else {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "\n"
+		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + "\n"
 	}
 	code.Write(txt)
 }
@@ -118,11 +118,17 @@ func EmitJump(n int, comment string) {
 	emit("jmp", ".L"+strconv.Itoa(n), "", comment)
 }
 
+func Sp(delta int) string {
+	if delta == 0 {
+		return " (" + strconv.Itoa(code.LocalSp) + ")"
+	}
+	code.LocalSp += delta
+	return " (" + strconv.Itoa(code.LocalSp-delta) + "->" + strconv.Itoa(code.LocalSp) + ")"
+}
 func EmitPushTos(argNo int, funcName string) {
 	if code.RaxIsTOS {
 		code.Write("   push rax                             ; Push arg " +
-			strconv.Itoa(argNo) + " of " + funcName + " (" + strconv.Itoa(code.LocalSp) + ")\n")
-		code.LocalSp++
+			strconv.Itoa(argNo) + " of " + funcName + Sp(1) + "\n")
 		code.RaxIsTOS = false
 	}
 }
@@ -132,8 +138,7 @@ func EmitCall(id string, nPar int, builtin bool) {
 		id = "_" + id
 	}
 	if nPar > 0 && code.RaxIsTOS {
-		emit("push", "rax", "", "Push TOS from rax to stack")
-		code.LocalSp++
+		emit("push", "rax", "", "Push TOS from rax to stack"+Sp(1))
 	}
 	// The following is needed only for variadic functioncode.
 	if nPar > 0 {
@@ -151,11 +156,12 @@ func EmitFunction(id string) {
 		panic("LocalSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
+	code.LocalSp = 0
+	EmitComment("Setting localsp=0")
 	if id != "main" {
-		emit("push", "rbp", "", "")
+		emit("push", "rbp", "", ""+Sp(1))
 	}
 	emit("mov", "rbp", "rsp", "")
-	code.LocalSp = 0
 	if id == "main" {
 		EmitPrintSp()
 		emit("call", "_sysinit", "", "")
@@ -184,8 +190,7 @@ func xmm(sp int) string {
 
 func EmitPushFloatLit(litNo int) {
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
-	emit("push", "rax", "", "Push old tos in rax")
-	code.LocalSp++
+	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
 	code.RaxIsTOS = false
 }
 
@@ -360,8 +365,8 @@ func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 	EmitFlushRax("")
 	code.RaxIsTOS = true
 	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
-	emit("add", "rax", strconv.Itoa(fieldOffset), "")
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "xxx")
+	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Move value to field")
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)
@@ -409,8 +414,7 @@ func EmitJumpTrue(n int, comment string) {
 // EmitAllocLocalVar will allocate a local variable
 // TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
 func EmitAllocLocalVar(comment string) int {
-	emit("push", "0", "", comment)
-	code.LocalSp++
+	emit("push", "0", "", comment+Sp(1))
 	return -8 * code.LocalSp
 }
 
@@ -436,16 +440,14 @@ func EmitPushConst(value int64, comment string) {
 
 func EmitFlushRax(comment string) {
 	if code.RaxIsTOS {
-		emit("push", "rax", "", comment)
-		code.LocalSp++
+		emit("push", "rax", "", comment+Sp(1))
 		code.RaxIsTOS = false
 	}
 }
 
 func EmitAssertTosInRax(comment string) {
 	if !code.RaxIsTOS {
-		emit("pop", "rax", "", comment)
-		code.LocalSp--
+		emit("pop", "rax", "", comment+Sp(-1))
 		code.RaxIsTOS = true
 	}
 }
@@ -483,8 +485,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	emit("call", "_alloc", "", "Allocate new string")
 	// Save pointer in r9 and rdi for later use
 	emit("mov", "rdi", "rax", "Save pointer in rdi for later use")
-	emit("push", "rax", "", "Save pointer on stack for later use")
-	code.LocalSp++
+	emit("push", "rax", "", "Save pointer on stack for later use"+Sp(1))
 	// Save new capacity/length
 	emit("mov", "rsi", "r12", "First string length")
 	emit("add", "rsi", "r14", "Add second length")
@@ -516,8 +517,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
 	EmitPopAx("Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
-	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
-	code.LocalSp--
+	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax"+Sp(-1))
 	code.RaxIsTOS = true
 	EmitComment("End of EmitConcat")
 	EmitComment("")
@@ -628,8 +628,7 @@ func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
 	emit("cld", "", "", "")
 	emit("repe", "cmpsb", "", "")
-	emit("pop", "rax", "", "Get nos ptr")
-	code.LocalSp--
+	emit("pop", "rax", "", "Get nos ptr"+Sp(-1))
 	emit("mov", "rbx", "0", "Initialize result to false")
 	emit("jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit("mov", "ecx", "[rax]", "Get nos length")
@@ -661,8 +660,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
 	emit("cld", "", "", "")
 	emit("repe", "cmpsb", "", "")
-	emit("pop", "rax", "", "Get nos ptr")
-	code.LocalSp--
+	emit("pop", "rax", "", "Get nos ptr"+Sp(-1))
 	emit("mov", "rbx", "1", "Initialize result to true")
 	emit("jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
 	emit("mov", "ecx", "[rax]", "Get nos length")
@@ -713,13 +711,11 @@ func EmitFreeStruct(size int, comment string) {
 }
 
 func EmitPushAx(txt string) {
-	emit("push", "rax", "", txt)
-	code.LocalSp++
+	emit("push", "rax", "", txt+Sp(1))
 }
 
 func EmitPopAx(txt string) {
-	emit("pop", "rax", "", txt)
-	code.LocalSp--
+	emit("pop", "rax", "", txt+Sp(-1))
 }
 
 // EmitAddToSp adjusts stack pointer. Count is in qwordcode.
@@ -728,11 +724,10 @@ func EmitPopAx(txt string) {
 func EmitAddToSp(count int, comment string) {
 	if count > 0 {
 		// Stack grows downward
-		emit("sub", "rsp", strconv.Itoa(count*8), comment)
+		emit("sub", "rsp", strconv.Itoa(count*8), comment+Sp(count))
 	} else if count < 0 {
-		emit("add", "rsp", strconv.Itoa(-count*8), comment)
+		emit("add", "rsp", strconv.Itoa(-count*8), comment+Sp(count))
 	}
-	code.LocalSp += count
 }
 
 func EmitPushConstString(litNo int) {
@@ -752,32 +747,27 @@ func EmitEpilogue(name string) {
 		emit("or", "rax", "rax", "")
 		emit("jz", ".L"+strconv.Itoa(oklbl), "", "Jump if zero flag is set")
 		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
-		// Print remaining allocation
-		EmitLabel(errlbl, "")
 		EmitComment("main() returning. Printing allocation count end err.")
-		emit("push", "r15", "", "")
-		code.LocalSp++
+		emit("push", "r15", "", ""+Sp(1))
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
-		emit("push", "rax", "", "")
-		code.LocalSp++
+		emit("push", "rax", "", ""+Sp(1))
 		emit("mov", "rax", "alloc_size_str+8", "")
-		emit("push", "rax", "", "")
-		code.LocalSp++
+		emit("push", "rax", "", ""+Sp(1))
 		emit("mov", "rbx", "24", "")
 		emit("call", "_printf", "", "")
 		emit("call", "_fflush", "", "")
-		emit("add", "rsp", "16", "")
-		code.LocalSp -= 2
+		emit("add", "rsp", "24", ""+Sp(-3))
 		EmitLabel(oklbl, "End of printing errors, returning error code via _exit()")
-		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
+		emit("mov", "rax", "[allocation_count]", "Check that allocation count is zero")
 		emit("or", "rax", "rax", "")
 		emit("jz", ".L9999", "", "")
-		emit("mov", "r15", "97", "")
+		emit("mov", "r15", "97", "If not zero, exit code=97")
 		EmitLabel(9999, "")
 		emit("mov", "rax", "r15", "Get error code")
 		emit("call", "_exit", "", "")
 	} else {
 		emit("leave", "", "", "")
+		code.LocalSp--
 		emit("ret", "", "", "return from "+name)
 	}
 }
@@ -796,8 +786,7 @@ func EmitStoreErr(err int) {
 }
 
 func EmitPopBx(comment string) {
-	emit("pop", "rbx", "", comment)
-	code.LocalSp--
+	emit("pop", "rbx", "", comment+Sp(-1))
 }
 
 // EmitNewStruct will create a new struct object on the heap
@@ -815,8 +804,18 @@ func EmitAddToRsi(s *State, ofs int) {
 func EmitLoadIndirect() {
 	emit("mov", "rax", "[rsi]", "")
 }
-func EmitStoreIndirect() {
-	emit("mov", "[rsi]", "rax", "")
+func EmitStoreIndirect(size int) {
+	if size == 8 {
+		emit("mov", "[rsi]", "rax", "")
+	} else if size == 4 {
+		emit("mov", "dword [rsi]", "eax", "")
+	} else if size == 2 {
+		emit("mov", "word [rsi]", "ax", "")
+	} else if size == 1 {
+		emit("mov", "byte [rsi]", "al", "")
+	} else {
+		panic("Internal error - store indirect with wrong size")
+	}
 }
 
 func EmitLoadEa(localOfs int) {
@@ -833,8 +832,7 @@ func EmitAssignIndirectInt(size int, value int64, comment string) {
 
 func EmitGetAddrOfLocal(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "")
-	emit("push", "rax", "", "")
-	code.LocalSp++
+	emit("push", "rax", "", ""+Sp(1))
 }
 
 func EmitNewString() {
@@ -861,11 +859,11 @@ func EmitNot() {
 
 func EmitPushLabel(label int) {
 	emit("lea", "rax", "[rel .L"+strconv.Itoa(label)+"]", "")
-	emit("push", "rax", "", "")
+	emit("push", "rax", "", ""+Sp(1))
 }
 
 func EmitPushFramePointer() {
-	emit("push", "rbp", "", "")
+	emit("push", "rbp", "", ""+Sp(1))
 }
 
 func EmitJumpOnError(label int) {
@@ -874,7 +872,7 @@ func EmitJumpOnError(label int) {
 }
 
 func EmitClearBreakErr() {
-	emit("mov", "rax", "r15", "")
+	emit("mov", "rax", "r15", "Clear r15 if it was 1")
 	emit("dec", "rax", "", "")
 	emit("or", "rax", "rax", "")
 	emit("cmovz", "r15", "rax", "")

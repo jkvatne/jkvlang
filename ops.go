@@ -315,8 +315,7 @@ func emitOpFloatConst(op Token, litNo int) {
 func emitFloatOp(op Token) {
 	EmitAssertTosInRax("Get TOS")
 	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
-	emit("pop", "rax", "", "EmitFloatOp pop nos")
-	code.LocalSp--
+	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
 	emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
 	doFloatOp(op)
 }

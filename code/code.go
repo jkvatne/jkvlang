@@ -119,7 +119,7 @@ func Write(txt string) int {
 }
 
 func EmitLineNo(currentLine string, localSp int) {
-	Write("\n   ; Line " + strconv.Itoa(LineNum) + " " + strings.Trim(currentLine, "\r\n") + "  (SP=" + strconv.Itoa(localSp) + ")\n")
+	Write("\n   ; Line " + strconv.Itoa(LineNum) + " " + strings.Trim(currentLine, "\r\n") + "\n")
 }
 
 func EmitBlankLine() {

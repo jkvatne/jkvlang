@@ -79,7 +79,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitPopAx("")
 		}
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
-			EmitStoreIndirect()
+			EmitStoreIndirect(lvalue.Typ.Pt.Size())
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}
@@ -227,7 +227,8 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 		if s.token != TOK_DOT && s.token != TOK_LBRACK {
 			break
 		}
-		EmitStoreIndirect()
+		// EmitStoreIndirect(vt)  ????
+		return nil, fmt.Errorf("Internal error")
 	}
 	// Now rax is the address of the value
 	return v, nil
@@ -1123,10 +1124,11 @@ func ParseFuncDef(s *State) error {
 	startLevel := s.BlockLevel
 	nextToken(s)
 	code.LocalSp = 0
+	EmitComment("Setting local SP=0")
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
-	VarReset()
+	VarReset(s)
 	fun := s.tokenString
 	EmitFunction(fun)
 	nextToken(s)
@@ -1134,7 +1136,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	nextToken(s)
-	s.VarCount = 0
+	s.LocalVarCount = 0
 	parList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err
@@ -1207,16 +1209,20 @@ func ParseFuncDef(s *State) error {
 		EmitPopAx("Restore rax after freeing local variables")
 	}
 	// Free local variables on the stack
-	EmitComment("End of function. Drop local variables for " + f.name)
-	EmitAddToSp(-code.LocalSp, "Drop local variables")
+	DeleteBlockVars(s)
 	EmitEpilogue(f.name)
+	if code.LocalSp != 0 {
+		// return fmt.Errorf("Stack error")
+		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
+		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
+	}
 	code.OutputArgCode()
 	nextToken(s)
 	// Delete parameters from pardef
 	for _, p := range parList {
-		DeleteLocalVar(p.Name)
+		DeleteLocalVar(s, p.Name)
 	}
-	DeleteBlockVars(s)
+
 	if startLevel != s.BlockLevel {
 		return fmt.Errorf("Block level wrong on exit from " + fun)
 	}

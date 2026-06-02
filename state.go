@@ -16,7 +16,7 @@ type State struct {
 	tokenIntValue   int64
 	tokenUintValue  uint64
 	noCode          int      // Used to skip code generation in constant if/else statements.
-	VarCount        int      // The number of local variables in each level.
+	LocalVarCount   int      // The number of local variables in each level.
 	HasReturned     bool     // Used to avoid jumps after return statement and checking for dead code
 	currentFuncDef  *FuncDef // The current function being compiled. Nested function definitions is not allowed.
 	currentFuncCall string
