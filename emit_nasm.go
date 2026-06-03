@@ -368,7 +368,7 @@ func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 	code.RaxIsTOS = true
 	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
 	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Move value to field")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value from field")
 }
 
 // EmitLoad will push a local variable onto the stack (into AX)
@@ -806,15 +806,15 @@ func EmitAddToRsi(s *State, ofs int) {
 func EmitLoadIndirect() {
 	emit("mov", "rax", "[rsi]", "")
 }
-func EmitStoreIndirect(size int) {
+func EmitStoreIndirect(op string, size int) {
 	if size == 8 {
-		emit("mov", "[rsi]", "rax", "")
+		emit(op, "[rsi]", "rax", "")
 	} else if size == 4 {
-		emit("mov", "dword [rsi]", "eax", "")
+		emit(op, "dword [rsi]", "eax", "")
 	} else if size == 2 {
-		emit("mov", "word [rsi]", "ax", "")
+		emit(op, "word [rsi]", "ax", "")
 	} else if size == 1 {
-		emit("mov", "byte [rsi]", "al", "")
+		emit(op, "byte [rsi]", "al", "")
 	} else {
 		panic("Internal error - store indirect with wrong size")
 	}

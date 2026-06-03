@@ -77,9 +77,10 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		if !code.RaxIsTOS {
 			EmitPopAx("Assigning TOS to lvalue")
+			code.RaxIsTOS = true
 		}
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
-			EmitStoreIndirect(lvalue.Typ.Pt.Size())
+			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}

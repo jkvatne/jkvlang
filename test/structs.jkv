@@ -12,21 +12,23 @@ type Person = struct {
 
 
 func update(p Person) {
-    p.age+=p.inc
+    p.age+= p.inc
 }
 
 func main() {
     p = new(Person)
-    p.name = "Jan Kåre Vatne"
     p.age = 70
     p.inc = 1
-    p.age = p.inc + p.age
+    p.age += p.inc
+    assert(p.age==71, "Failed, p.age was %d not 71", p.age)
 
+    p.name = "Jan Kåre Vatne"
     assert(p.age==71, "Failed, p.age was %d, not 71", p.age)
-    p.inc = 1
     p.age = p.inc + p.age
     assert(p.age==72, "Failed, p.age was %d not 72", p.age)
     assert(p.name=="Jan Kåre Vatne")
+    p.inc=2
+    update(p)
+    assert(p.age==74, "Failed, p.age was %d not 74", p.age)
 
-    p.inc = 2
 }
