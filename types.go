@@ -206,3 +206,7 @@ func (t PrimaryType) IsUnsigned() bool {
 func (t PrimaryType) IsFloat() bool {
 	return t == TYP_F32 || t == TYP_F64
 }
+
+func (t PrimaryType) IsNumber() bool {
+	return t.IsFloat() || t.IsInteger()
+}

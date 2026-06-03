@@ -183,10 +183,13 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "TosOpConst")
-		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() && val1.Typ.Pt.Name() == val2.Typ.Pt.Name() {
+		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
-			emitOpFloatConst(op, val2.FloatLitNo+val1.FloatLitNo)
+			floatLitNo := AddFloatLiteral(val1.FloatValue + val2.FloatValue)
+			emitOpFloatConst(op, floatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
+		} else {
+			err = fmt.Errorf("Unknown type combination for '%s'", op.Name())
 		}
 		return &ValueDef{Typ: val1.Typ}, err
 	}
