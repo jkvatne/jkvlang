@@ -8,9 +8,13 @@ func bar(a F64, b F64) F64 {
 }
 
 func main() {
+    c=3.3
+    x=1
+    y=x+c
+    assert(y==4.3)
+
     a=1.1
     b=2.2
-    c=3.3
     d=0.0
     if a>1.0 {
         if c<10.0 {
@@ -21,4 +25,6 @@ func main() {
         d=foo(b,c)
     }
     assert(d>-2.631 && d<-2.629)
+    z = d+2.63
+    print("z=%g", z)
 }

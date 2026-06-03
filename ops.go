@@ -143,19 +143,27 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 				EmitCompareStringsNe(val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
 			}
+		} else {
+			return nil, fmt.Errorf("compare with invalid operands: %s", TokenNames[op])
 		}
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			emitIntegerOp(op)
 			return val1, nil
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			emitFloatOp(op)
+			emitFloatOp(op, true, true)
 			return val1, nil
-		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
-			if op == TOK_PLUS {
-				EmitConcat(val1.IsTempObj, val2.IsTempObj)
-				return val1, nil
-			}
+		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING && op == TOK_PLUS {
+			EmitConcat(val1.IsTempObj, val2.IsTempObj)
+			return val1, nil
+		} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsFloat() {
+			emitFloatOp(op, false, true)
+			return val2, nil
+		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsInteger() {
+			emitFloatOp(op, false, true)
+			return val1, nil
+		} else {
+			return nil, fmt.Errorf("invalid combination of operands to '%s'", TokenNames[op])
 		}
 	}
 	return &NoValue, fmt.Errorf("operation %s not implemented", op.Name())
@@ -315,11 +323,19 @@ func emitOpFloatConst(op Token, litNo int) {
 }
 
 // emitFloatOp will generate a stack operation on the top two stack entries
-func emitFloatOp(op Token) {
+func emitFloatOp(op Token, op1float bool, op2float bool) {
 	EmitAssertTosInRax("Get TOS")
-	emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
+	if op2float {
+		emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
+	} else {
+		emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
+	}
 	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+	if op1float {
+		emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+	} else {
+		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
+	}
 	doFloatOp(op)
 }
 
