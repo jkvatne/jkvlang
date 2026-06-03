@@ -8,4 +8,6 @@ func main () {
   assert(x==-10.3896)
   assert(x>=-10.3897, ">=")
   assert(x<=-10.3895, "<=")
+  y = foo(1.23, 3.45)
+  assert(y==-10.3896)
 }

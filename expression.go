@@ -84,7 +84,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}
 	} else if value.Typ.Pt == TYP_F64 {
+		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
+		code.RaxIsTOS = false
 	} else if value.Typ.Pt == TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
@@ -1200,6 +1202,7 @@ func ParseFuncDef(s *State) error {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
+			code.RaxIsTOS = false
 			if v.Value.Typ.Pt == TYP_STRING && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
 				EmitFreeString("")
@@ -1217,6 +1220,7 @@ func ParseFuncDef(s *State) error {
 		// return fmt.Errorf("Stack error")
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
+		return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
 	nextToken(s)
