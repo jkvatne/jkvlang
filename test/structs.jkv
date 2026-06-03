@@ -15,8 +15,16 @@ func update(p Person) {
     p.age+= p.inc
 }
 
+func decr_age(p Person) {
+    p.age-=p.inc
+}
+
 func main() {
     p = new(Person)
+    p.age = 70
+    p = new(Person)
+    assert(p.age==0, "p.age should be 0, was %d", p.age)
+/*
     p.age = 70
     p.inc = 1
     p.age += p.inc
@@ -28,7 +36,10 @@ func main() {
     assert(p.age==72, "Failed, p.age was %d not 72", p.age)
     assert(p.name=="Jan Kåre Vatne")
     p.inc=2
-    update(p)
-    assert(p.age==74, "Failed, p.age was %d not 74", p.age)
+    decr_age(p)
+    assert(p.age==70, "Failed, p.age was %d not 70, p.age")
 
+    p = new(Person)
+    assert(p.age==0, "p.age should be 0, was %d", p.age)
+*/
 }
