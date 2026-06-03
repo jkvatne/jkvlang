@@ -9,12 +9,14 @@ import (
 
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
+	wasNew := false
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		if value.Typ.Pt == TYP_U8 || value.Typ.Pt == TYP_U16 || value.Typ.Pt == TYP_I16 {
 			// Default to I32 when assigning smaller types to a local variable
 			lvalue.SetType(&I32Type)
 		} else {
 			lvalue.SetType(value.Typ)
+			wasNew = true
 		}
 	}
 	if lvalue.Typ == nil {
@@ -94,7 +96,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		// Free old value if it exists
-		EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.size, "Free if "+lvalue.Name+" exists")
+		if !wasNew {
+			EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.size, "Free if "+lvalue.Name+" exists")
+		}
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_BOOL {
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)

@@ -887,13 +887,13 @@ func EmitNegate() {
 
 // EmitFreeIfExists must preserve rax, because it contains pointer to the new struct
 func EmitFreeIfExists(offset int, size int, txt string) {
-	emit("push", "rax", "", "")
+	emit("mov", "r12", "rax", "")
 	emit("mov", "rax", BpRel(offset), txt)
-	emit("or", "rax", "rax", "")
-	lbl := code.NewLabel()
-	emit("jz", ".L"+strconv.Itoa(lbl), "", "")
+	// emit("or", "rax", "rax", "")
+	// lbl := code.NewLabel()
+	// emit("jz", ".L"+strconv.Itoa(lbl), "", "")
 	emit("mov", "rcx", strconv.Itoa(size), "")
 	emit("call", "_free_struct", "", "")
-	EmitLabel(lbl, "")
-	emit("pop", "rax", "", "")
+	// EmitLabel(lbl, "")
+	emit("mov", "rax", "r12", "")
 }
