@@ -705,9 +705,10 @@ func EmitFreeString(comment string) {
 // EmitFreeStruct assumes the full address exists in rax.
 // It will free the pointer in rax and decrement allocation_count by the size given.
 func EmitFreeStruct(size int, comment string) {
-	emit("mov", "rcx", strconv.Itoa(size), "")
+	emit("mov", "rcx", strconv.Itoa(size), "EmitFreeStruct")
 	// _free_struct assumes pointer in rax and size in rcx
 	emit("call", "_free_struct", "", "")
+	code.RaxIsTOS = false
 }
 
 func EmitPushAx(txt string) {

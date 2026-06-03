@@ -23,15 +23,15 @@ func main() {
     assert(p.age==70, "p.age was %d", p.age)
     assert(p.name=="Jan Kåre Vatne")
 
-    // 3. Test print utf
+    // 2. Test print utf
     print("Test utf: %s", "æøå")
 
-    // 4. Test type
+    // 3. Test type
     var age Age
     age = 101
     assert(age==101)
 
-    // 5. Test struct returned from func
+    // 4. Test struct returned from func
     pers = get_person(123)
     assert(pers.no==123)
 }
