@@ -182,6 +182,8 @@ var TokenOp = map[Token]string{
 	TOK_AND_ASGN:   "and",
 	TOK_ASSIGN:     "mov",
 	TOK_MULT_ASGN:  "imul",
+	TOK_SHL:        "shl",
+	TOK_SHR:        "shr",
 }
 
 func xmm(sp int) string {

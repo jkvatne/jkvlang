@@ -527,6 +527,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		t1, ok := TypeDefs[id]
 		if ok {
 			// This is a type conversion. First parse value to convert
+			if code.RaxIsTOS {
+				EmitPushAx("")
+			}
 			values, err = ParseExpression(s)
 			if err != nil {
 				return nil, err
@@ -536,8 +539,10 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			t2 := value.Typ
 			if CanAssign(t1.Pt, t2.Pt) {
 				value.Typ = t1
+			} else if t1.Pt == TYP_I64 && t2.Pt == TYP_F64 {
+				value.Typ = t1
 			} else {
-				err = fmt.Errorf("can not convert types")
+				err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
 			}
 			if !s.found(TOK_RPAR) {
 				return nil, fmt.Errorf("expected right parantesis")
@@ -834,7 +839,8 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 			values1[0] = &ValueDef{Typ: &StringType, IsTempObj: true}
 		}
 	}
-	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR || s.token == TOK_XOR {
+	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR || s.token == TOK_XOR ||
+		s.token == TOK_SHL || s.token == TOK_SHR {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
 		}

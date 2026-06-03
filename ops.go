@@ -81,6 +81,16 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 		result.IntValue = val1.IntValue | val2.IntValue
 	case TOK_XOR:
 		result.IntValue = val1.IntValue ^ val2.IntValue
+	case TOK_SHL:
+		if val2.IntValue > 64 {
+			return nil, fmt.Errorf("can not shift by more than 64 bits")
+		}
+		result.IntValue = val1.IntValue << val2.IntValue
+	case TOK_SHR:
+		if val2.IntValue > 64 {
+			return nil, fmt.Errorf("can not shift by more than 64 bits")
+		}
+		result.IntValue = val1.IntValue >> val2.IntValue
 	case TOK_LOG_OR:
 		result.Typ = &BoolType
 		result.BoolValue = val1.BoolValue || val2.BoolValue
@@ -190,7 +200,15 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "TosOpConst")
+			x := val2.IntValue + val1.IntValue
+			if x > 0x7FFFFFFFF || x < -0x7FFFFFFFF {
+				// err = fmt.Errorf("invalid integer combination for arithmetic")
+				EmitPushConst(x, "")
+				_, err2 := emitTosOpNos(op, val2, val2)
+				return &ValueDef{Typ: val2.Typ}, err2
+			} else {
+				err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "TosOpConst")
+			}
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			floatLitNo := AddFloatLiteral(val1.FloatValue + val2.FloatValue)

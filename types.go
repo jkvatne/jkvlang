@@ -164,7 +164,9 @@ func CanAssign(dst PrimaryType, src PrimaryType) bool {
 		dst == TYP_I64 && (src == TYP_I32 || src == TYP_U32 || src == TYP_U16 || src == TYP_I16 || src == TYP_U8) ||
 		dst == TYP_U16 && (src == TYP_U16 || src == TYP_U8) ||
 		dst == TYP_U32 && (src == TYP_U32 || src == TYP_U16 || src == TYP_U8) ||
-		dst == TYP_F64 || dst == TYP_F32
+		dst == TYP_F64 || dst == TYP_F32 ||
+		src == TYP_I64 || dst == TYP_U64 ||
+		src == TYP_U64 || dst == TYP_I64
 }
 
 // CanAssignConst : Given a constant value, can we assign it to the dst variable?

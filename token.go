@@ -80,6 +80,8 @@ const (
 	TOK_CONTINUE
 	TOK_FAIL
 	TOK_XOR
+	TOK_SHL
+	TOK_SHR
 	TOK_SIZE
 )
 
@@ -152,6 +154,8 @@ var TokenNames = [...]string{
 	TOK_CONTINUE:    "CONTINUE",
 	TOK_FAIL:        "FAIL",
 	TOK_XOR:         "XOR",
+	TOK_SHL:         "SHL",
+	TOK_SHR:         "SHR",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -178,7 +182,7 @@ func (t Token) IsCompare() bool {
 func (t Token) IsAritmetic() bool {
 	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
 		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD ||
-		t == TOK_AND || t == TOK_OR || t == TOK_XOR
+		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR
 
 }
 
@@ -442,6 +446,10 @@ func nextToken(s *State) {
 			s.tokenString = "<="
 			ch1, ch2 = nextChar(s)
 			s.token = TOK_LE
+		case ch1 == '<' && ch2 == '<':
+			s.tokenString = "<<"
+			ch1, ch2 = nextChar(s)
+			s.token = TOK_SHL
 		case ch1 == '<':
 			s.token = TOK_LT
 			s.tokenString = "<"
@@ -456,6 +464,10 @@ func nextToken(s *State) {
 			ch1, ch2 = nextChar(s)
 			s.tokenString = ">="
 			s.token = TOK_GE
+		case ch1 == '>' && ch2 == '>':
+			ch1, ch2 = nextChar(s)
+			s.tokenString = ">>"
+			s.token = TOK_SHR
 		case ch1 == '>':
 			s.tokenString = ">"
 			s.token = TOK_GT
