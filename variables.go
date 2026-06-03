@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 type VarKind int
@@ -86,18 +88,24 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func AddLocalVar(s *State, id string, typ *TypeDef, isConst bool, isGlobal bool) *VarDef {
+func AddGlobalConst(s *State, id string, typ *TypeDef) (*VarDef, error) {
+	v := VarDefs[id]
+	if v != nil {
+		return nil, fmt.Errorf("Constant '%s' is re-declared", id)
+	}
+	v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: true}, Kind: GlobalConst, BlockLevel: 0}
+	VarDefs[id] = v
+	return v, nil
+}
+
+func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
-		// New variable.
-		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: isConst}, Kind: LocalVar, BlockLevel: s.BlockLevel}
+		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: false}, Kind: LocalVar, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		s.LocalVarCount++
 		v.Value.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
-		// fmt.Printf("AddLocalVar(%s)  offs=%d  s.localSp=%d\n", v.Name, v.Offset, s.localSp)
-		if isGlobal {
-			v.Kind = GlobalConst
-		}
+		v.Kind = LocalVar
 	}
 	return v
 }
@@ -107,11 +115,21 @@ func DeleteLocalVar(s *State, id string) {
 	delete(VarDefs, id)
 }
 
+func FreeBlockVars(s *State) {
+	for _, v := range VarDefs {
+		if v.BlockLevel == s.BlockLevel {
+			EmitPopAx("FreeBlockVars:  " + v.Name)
+			// Hack to avoid double free:
+			code.LocalSp++
+		}
+	}
+}
+
 func DeleteBlockVars(s *State) {
 	for _, v := range VarDefs {
 		if v.BlockLevel == s.BlockLevel {
 			DeleteLocalVar(s, v.Name)
-			EmitPopAx("Drop stack allocation for local variable " + v.Name)
+			EmitPopAx("DeleteBlockVars:  " + v.Name)
 		}
 	}
 }

@@ -76,7 +76,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == TYP_PTR {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		if !code.RaxIsTOS {
-			EmitPopAx("")
+			EmitPopAx("Assigning TOS to lvalue")
 		}
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
 			EmitStoreIndirect(lvalue.Typ.Pt.Size())
@@ -262,7 +262,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			}
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
-			lvalue = AddLocalVar(s, id, nil, false, false)
+			lvalue = AddLocalVar(s, id, nil)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
 		}
 		lvalues = append(lvalues, lvalue)
@@ -1276,14 +1276,14 @@ func ParseVars(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, false, false)
+			err = ParseVar(s, false)
 			if err != nil {
 				return err
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, false, false)
+		err = ParseVar(s, false)
 	}
 	return err
 }
@@ -1293,20 +1293,20 @@ func ParseConsts(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, true, true)
+			err = ParseVar(s, true)
 			if err != nil {
 				break
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, true, true)
+		err = ParseVar(s, true)
 	}
 	return err
 }
 
 // ParseVar will parse a variable or constant declaration
-func ParseVar(s *State, isConst bool, isGlobal bool) error {
+func ParseVar(s *State, isGlobal bool) error {
 	var val string
 	var err error
 	if s.token != TOK_ID {
@@ -1327,8 +1327,16 @@ func ParseVar(s *State, isConst bool, isGlobal bool) error {
 	if err != nil {
 		return err
 	}
-	v := AddLocalVar(s, id, typ, isConst, isGlobal)
-	v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+	var v *VarDef
+	if isGlobal {
+		v, err = AddGlobalConst(s, id, typ)
+		if err != nil {
+			return err
+		}
+	} else {
+		v := AddLocalVar(s, id, typ)
+		v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+	}
 
 	if s.token == TOK_ASSIGN {
 		nextToken(s)

@@ -28,6 +28,7 @@ func GetTopEndLabel() int {
 }
 
 func ParseBreak(s *State) error {
+	FreeBlockVars(s)
 	EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
 	return nil
 }
@@ -74,7 +75,7 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 		if lvalue != nil {
 			return nil, fmt.Errorf("Loop variable shadowing " + id)
 		}
-		lvalue = AddLocalVar(s, id, nil, false, false)
+		lvalue = AddLocalVar(s, id, nil)
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {
 			break
@@ -90,6 +91,7 @@ func ParseFor(s *State) error {
 	var lvalues []*VarDef
 	var err error
 	if !s.found(TOK_LBRACE) {
+		s.BlockLevel++
 		lvalues, err = ParseLoopVars(s)
 		if err != nil {
 			return err
@@ -98,9 +100,9 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
 		for _, l := range lvalues {
-			EmitAllocLocalVar("Allocate loop variable " + l.Name)
+			ofs := EmitAllocLocalVar("Allocate loop variable " + l.Name)
+			l.Value.Offset = ofs
 		}
-
 		s.next()
 		if !s.found(TOK_ASSIGN) {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
@@ -158,6 +160,8 @@ func ParseFor(s *State) error {
 			EmitPopAx("Pop loop variable")
 			DeleteLocalVar(s, v.Name)
 		}
+		DeleteBlockVars(s)
+		s.BlockLevel--
 	}
 	return err
 }

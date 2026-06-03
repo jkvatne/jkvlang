@@ -837,7 +837,7 @@ func EmitGetAddrOfLocal(ofs int) {
 
 func EmitNewString() {
 	// Allocate string
-	EmitAssertTosInRax("")
+	EmitAssertTosInRax("NewString")
 	emit("mov", "r12", "rax", "new string capacity")
 	emit("call", "_alloc", "", "Allocate new string")
 	emit("mov", "rsi", "rax", "Save rax")
@@ -853,7 +853,7 @@ func EmitNewString() {
 }
 
 func EmitNot() {
-	EmitAssertTosInRax("")
+	EmitAssertTosInRax("Value to 'Not'")
 	emit("xor", "rax", "1", "")
 }
 
@@ -879,6 +879,6 @@ func EmitClearBreakErr() {
 }
 
 func EmitNegate() {
-	EmitAssertTosInRax("")
+	EmitAssertTosInRax("Value to 'Negate'")
 	emit("neg", "rax", "", "")
 }
