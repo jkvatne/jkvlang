@@ -156,12 +156,12 @@ func EmitFunction(id string) {
 		panic("LocalSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
-	code.LocalSp = 0
 	EmitComment("Setting localsp=0")
 	if id != "main" {
 		emit("push", "rbp", "", ""+Sp(1))
 	}
 	emit("mov", "rbp", "rsp", "")
+	code.LocalSp = 0
 	if id == "main" {
 		EmitPrintSp()
 		emit("call", "_sysinit", "", "")
@@ -767,7 +767,6 @@ func EmitEpilogue(name string) {
 		emit("call", "_exit", "", "")
 	} else {
 		emit("leave", "", "", "")
-		code.LocalSp--
 		emit("ret", "", "", "return from "+name)
 	}
 }
@@ -881,4 +880,17 @@ func EmitClearBreakErr() {
 func EmitNegate() {
 	EmitAssertTosInRax("Value to 'Negate'")
 	emit("neg", "rax", "", "")
+}
+
+// EmitFreeIfExists must preserve rax, because it contains pointer to the new struct
+func EmitFreeIfExists(offset int, size int, txt string) {
+	emit("push", "rax", "", "")
+	emit("mov", "rax", BpRel(offset), txt)
+	emit("or", "rax", "rax", "")
+	lbl := code.NewLabel()
+	emit("jz", ".L"+strconv.Itoa(lbl), "", "")
+	emit("mov", "rcx", strconv.Itoa(size), "")
+	emit("call", "_free_struct", "", "")
+	EmitLabel(lbl, "")
+	emit("pop", "rax", "", "")
 }

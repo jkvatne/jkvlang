@@ -90,6 +90,8 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		// Free old value if it exists
+		EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.Pt.Size(), "Free if "+lvalue.Name+" exists")
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
 	} else if value.Typ.Pt == TYP_BOOL {
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)

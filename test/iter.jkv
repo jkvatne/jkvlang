@@ -20,7 +20,6 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-
     r = range(10, 15)
     sum = 0
     loop {
@@ -39,7 +38,6 @@ func main() {
     print("=%d", sum)
     assert(sum==14)
 
-/*
     sum=0
     for i = range(2,5) {
         printf("%d+", i)
@@ -48,25 +46,15 @@ func main() {
     print("=%d", sum)
     assert(sum==14)
 
-    sum = 0
-    r = range(10, 15)
-    loop {
-        i = next(r) else break
-        printf("%d+", i)
-        sum+=i
-        fflush()
-    }
-    print("=%d", sum)
-    assert(sum==75)
     j=0
     sum=0
     loop {
        j=j+1
-       //printf("%d+", j)
+       printf("%d+", j)
        sum+=j
        if j>5 : break
     }
-    //print("=%d", sum)
+    print("=%d", sum)
     assert(sum==21)
 
     sum=0
@@ -76,6 +64,7 @@ func main() {
         fflush()
     }
     print("=%d", sum)
+    assert(sum==14)
 
     for i = range(12,15) {
         printf("%d+", i)
@@ -83,5 +72,16 @@ func main() {
         sum+=i
     }
     print("==%d", sum)
-*/
+    assert(sum==68)
+
+    r = range(10, 15)
+    sum = 0
+    loop {
+        i = next(r) else break
+        printf("%d+", i)
+        sum+=i
+        fflush()
+    }
+    print("=%d", sum)
+    assert(sum==75)
 }
