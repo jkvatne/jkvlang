@@ -271,31 +271,33 @@ func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 // We assume TOS is in rax. Then NOS will be popped to rbx.
 // For subtraction we should calculate NOS-TOS or rbx-rax
 func emitIntegerOp(op Token) {
-	EmitPopBx("IntegerOp " + op.Name())
+	emit("pop", "rcx", "", Sp(-1))
 	if op == TOK_DIV {
-		emit("xchg", "rax", "rbx", "")
+		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
-		emit("xchg", "rax", "rbx", "")
+		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_MINUS {
-		emit("xchg", "rax", "rbx", "")
-		emit("sub", "rax", "rbx", "Integer op")
+		emit("xchg", "rax", "rcx", "")
+		emit("sub", "rax", "rcx", "Integer op")
 	} else if op == TOK_AND_NOT {
 		emit("not", "rax", "", "")
-		emit("and", "rax", "rbx", "AndNot")
+		emit("and", "rax", "rcx", "AndNot")
 	} else {
 		instruction := TokenOp[op]
 		if instruction == "" {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
 		if op == TOK_MULT {
-			emit("mul", "rbx", "", "Integer op mul")
+			emit("mul", "rcx", "", "Integer op mul")
+		} else if op == TOK_SHL || op == TOK_SHR {
+			emit(instruction, "rax", "cl", "Integer op")
 		} else {
-			emit(instruction, "rax", "rbx", "Integer op")
+			emit(instruction, "rax", "rcx", "Integer op")
 		}
 	}
 	code.RaxIsTOS = true

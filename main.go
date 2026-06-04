@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/bits"
 	"os"
 	"os/exec"
 	"path"
@@ -275,6 +276,10 @@ func f2(s string) string {
 }
 
 func main() {
+	m := uint64(0x7ff)
+	l := bits.Len64(m)
+	fmt.Printf("%d bits\n", l)
+
 	flag.Parse()
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)

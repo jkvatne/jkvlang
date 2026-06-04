@@ -52,6 +52,8 @@ var NoneType = TypeDef{Pt: TYP_NONE, TypeName: "None", Basic: true}
 var PtrType = TypeDef{Pt: TYP_PTR, TypeName: "Ptr", Basic: true}
 var I32Type = TypeDef{Pt: TYP_I32, TypeName: "I32", Basic: true}
 var I64Type = TypeDef{Pt: TYP_I64, TypeName: "I64", Basic: true}
+var U64Type = TypeDef{Pt: TYP_U64, TypeName: "U64", Basic: true}
+var F64Type = TypeDef{Pt: TYP_F64, TypeName: "F64", Basic: true}
 var StringType = TypeDef{Pt: TYP_STRING, TypeName: "String", Basic: true}
 
 func InitTypes() {
