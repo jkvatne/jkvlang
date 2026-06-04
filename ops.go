@@ -201,13 +201,13 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			x := val2.IntValue + val1.IntValue
-			if x > 0x7FFFFFFFF || x < -0x7FFFFFFFF {
+			if x > 0x7FFFFFFF || x < -0x7FFFFFFF {
 				// err = fmt.Errorf("invalid integer combination for arithmetic")
 				EmitPushConst(x, "")
 				_, err2 := emitTosOpNos(op, val2, val2)
 				return &ValueDef{Typ: val2.Typ}, err2
 			} else {
-				err = emitOpIntConst(op, val2.IntValue+val1.IntValue, "TosOpConst")
+				err = emitOpIntConst(op, x, "TosOpConst")
 			}
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
@@ -292,6 +292,9 @@ func emitIntegerOp(op Token) {
 // emitOpIntConst will evaluate tos=tos op <constant>
 // It uses 64bit integer values on the 64 bit rax register
 func emitOpIntConst(op Token, value int64, comment string) error {
+	if value < -0x7FFFFFFF || value > 0x7FFFFFFFF {
+		return fmt.Errorf("value out of range: %d", value)
+	}
 	sval := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")

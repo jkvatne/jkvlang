@@ -2,6 +2,7 @@
 
 
 func main() {
+
     x = 1.0
     i = I64(x)
     c = i & I64(0x7fff000000000000)
@@ -26,4 +27,10 @@ func main() {
     b = a<<2
     assert(b==60)
 
+    // Operating on 64bit values
+    ui = 0xabcdefab12345678
+    uu = ui>>32
+    ul = ui & 0xFFFFFFFF
+    print("Splitting 0xabcdefab12345678 into %x and %x", uu, ul)
+    print("Splitting 0xabcdefab12345678 into %x and %x", ui>>32, ui&0xFFFFFFFF)
 }

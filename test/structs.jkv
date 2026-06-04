@@ -24,7 +24,7 @@ func main() {
     p.age = 70
     p = new(Person)
     assert(p.age==0, "p.age should be 0, was %d", p.age)
-/*
+
     p.age = 70
     p.inc = 1
     p.age += p.inc
@@ -41,5 +41,5 @@ func main() {
 
     p = new(Person)
     assert(p.age==0, "p.age should be 0, was %d", p.age)
-*/
+
 }

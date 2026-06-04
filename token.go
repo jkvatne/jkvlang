@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 	"unicode/utf8"
 
@@ -194,7 +195,7 @@ func isAlfaNum(ch rune) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func nextChar(s *State) (rune, rune) {
+func nextChar(s *State) {
 	if s.AtLineEnd {
 		s.AtLineEnd = false
 		code.LineNum++
@@ -209,91 +210,91 @@ func nextChar(s *State) (rune, rune) {
 		}
 	}
 	if eof(s) {
-		return 0, 0
+		return
 	}
-	ch1, n := utf8.DecodeRune(s.text[s.p:])
-	if ch1 == '\n' {
+	n := 0
+	s.ch1, n = utf8.DecodeRune(s.text[s.p:])
+	if s.ch1 == '\n' {
 		s.AtLineEnd = true
 	}
 	s.p += n
 	if s.p >= len(s.text) {
 		s.token = TOK_EOF
-		return ch1, 0
+		s.ch2 = 0
+		return
 	}
-	ch2, _ := utf8.DecodeRune(s.text[s.p:])
-	return ch1, ch2
+	s.ch2, _ = utf8.DecodeRune(s.text[s.p:])
 }
 
 func eof(s *State) bool {
 	return s.p >= len(s.text)
 }
 
-func parseNumber(s *State, ch1 rune, ch2 rune) (rune, rune) {
-	// Parse number
+// Range for 64 bit signed integer = -9223372036854775808 ... 9223372036854775807
+// Range for 64 bit unsigned integer = 0 ... 18446744073709551615
+
+func parseNumber(s *State) {
+	var err error
 	var hasDp bool
 	var hasExp bool
 	var hasExpSgn bool
-	hex := false
-	if ch1 == '0' && (ch2 == 'x' || ch2 == 'X') {
+	var hex bool
+	var base = 10
+	if s.ch1 == '0' && (s.ch2 == 'x' || s.ch2 == 'X') {
+		base = 16
+		nextChar(s)
+		nextChar(s)
 		hex = true
-		ch1, ch2 = nextChar(s)
-		ch1, ch2 = nextChar(s)
 	}
-	num := string(ch1)
+	num := string(s.ch1)
 	for {
-		if isNum(ch2) || hex && isHex(ch2) {
-			num = num + string(ch2)
-		} else if ch2 == '.' && !hasDp {
-			num = num + string(ch2)
+		if isNum(s.ch2) || hex && isHex(s.ch2) {
+			num = num + string(s.ch2)
+		} else if s.ch2 == '.' && !hasDp {
+			num = num + string(s.ch2)
 			hasDp = true
-		} else if ch2 == 'e' || ch2 == 'E' {
-			num = num + string(ch2)
-			ch1, ch2 = nextChar(s)
+		} else if s.ch2 == 'e' || s.ch2 == 'E' {
+			num = num + string(s.ch2)
+			nextChar(s)
 			hasExp = true
-			hasExpSgn = ch1 == '-' || ch2 == '+'
-		} else if ((ch2 == '+') || (ch2 == '-')) && hasExp && !hasExpSgn {
-			num = num + string(ch2)
+			hasExpSgn = s.ch1 == '-' || s.ch2 == '+'
+		} else if ((s.ch2 == '+') || (s.ch2 == '-')) && hasExp && !hasExpSgn {
+			num = num + string(s.ch2)
 			hasExpSgn = true
 		} else {
 			break
 		}
-		ch1, ch2 = nextChar(s)
+		nextChar(s)
 	}
 	s.tokenString = num
-	var err error
-	if hex {
-		s.tokenIntValue, err = strconv.ParseInt(num, 16, 64)
-		s.token = TOK_INT
-		if err == nil && s.tokenIntValue > 0 {
-			s.tokenUintValue = uint64(s.tokenIntValue)
-		}
+	s.ConstValue.Unsigned = false
+	s.ConstValue.Float = false
+	if hasExp || hasDp {
+		var f float64
+		f, err = strconv.ParseFloat(num, 64)
 		if err != nil {
-			s.tokenUintValue, err = strconv.ParseUint(num, 16, 64)
+			s.token = TOK_INVALID
 		}
-		if err != nil {
-			slog.Error("invalid integer")
-			s.token = TOK_EOF
-		}
-	} else if hasExp || hasDp {
-		s.tokenFloatValue, err = strconv.ParseFloat(num, 64)
-		if err == nil {
-			s.token = TOK_FLOAT
-		}
+		s.token = TOK_FLOAT
+		s.ConstValue.Bits = math.Float64bits(f)
+		s.ConstValue.Float = true
 	} else {
-		s.tokenIntValue, err = strconv.ParseInt(num, 10, 64)
-		if err != nil {
-			s.tokenUintValue, err = strconv.ParseUint(num, 16, 64)
-		}
-		if err != nil {
-			slog.Error("invalid integer")
-			s.token = TOK_EOF
-		}
+		var i int64
+		var u uint64
+		i, err = strconv.ParseInt(num, base, 64)
+		s.ConstValue.Bits = uint64(i)
 		s.token = TOK_INT
+		// If conversion failed, try parsing it as an unsigned number
+		if err != nil {
+			u, err = strconv.ParseUint(num, 16, 64)
+			if err != nil {
+				fmt.Printf("Error parsing %s as integer: %s\n", num, err)
+				s.token = TOK_INVALID
+			}
+			s.ConstValue.Bits = u
+			s.ConstValue.Unsigned = true
+		}
 	}
-	if err != nil {
-		s.token = TOK_INVALID
-	}
-	return ch1, ch2
 }
 
 func (s *State) found(tokens ...Token) bool {
@@ -325,163 +326,163 @@ func nextToken(s *State) {
 		if eof(s) {
 			return
 		}
-		ch1, ch2 := nextChar(s)
-		s.tokenString = string(ch1)
+		nextChar(s)
+		s.tokenString = string(s.ch1)
 		switch {
-		case ch1 == '\r':
+		case s.ch1 == '\r':
 			s.tokenString = "<cr>"
 			continue
-		case ch1 == '\n':
+		case s.ch1 == '\n':
 			s.tokenString = "<lf>"
 			continue
-		case ch1 == '\t':
+		case s.ch1 == '\t':
 			s.tokenString = "<tab>"
 			continue
-		case ch1 == '\f':
+		case s.ch1 == '\f':
 			continue
-		case ch1 == ' ':
+		case s.ch1 == ' ':
 			continue
-		case ch1 == '!' && ch2 == '=':
+		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
-			ch1, ch2 = nextChar(s)
+			nextChar(s)
 			s.token = TOK_NE
-		case ch1 == '"':
+		case s.ch1 == '"':
 			s.tokenString = ""
 			for {
-				ch1, ch2 = nextChar(s)
-				if ch1 == '"' || ch1 == 0 {
+				nextChar(s)
+				if s.ch1 == '"' || s.ch1 == 0 {
 					break
 				}
-				s.tokenString += string(ch1)
+				s.tokenString += string(s.ch1)
 			}
 			s.token = TOK_STRING
-		case ch1 == '&' && ch2 == '&':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '&' && s.ch2 == '&':
+			nextChar(s)
 			s.token = TOK_LOG_AND
 			s.tokenString = "&&"
-		case ch1 == '&':
+		case s.ch1 == '&':
 			s.token = TOK_AND
 			s.tokenString = "&"
-		case ch1 == '(':
+		case s.ch1 == '(':
 			s.token = TOK_LPAR
 			s.tokenString = "("
-		case ch1 == ')':
+		case s.ch1 == ')':
 			s.token = TOK_RPAR
 			s.tokenString = ")"
-		case ch1 == '*' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '*' && s.ch2 == '=':
+			nextChar(s)
 			s.tokenString = "*="
 			s.token = TOK_MULT_ASGN
-		case ch1 == '*':
+		case s.ch1 == '*':
 			s.token = TOK_MULT
 			s.tokenString = "*"
-		case ch1 == '%':
+		case s.ch1 == '%':
 			s.token = TOK_MOD
 			s.tokenString = "%"
-		case ch1 == '+' && ch2 == '+':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '+' && s.ch2 == '+':
+			nextChar(s)
 			s.token = TOK_PLUS_PLUS
 			s.tokenString = "++"
-		case ch1 == '+' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '+' && s.ch2 == '=':
+			nextChar(s)
 			s.tokenString = "+="
 			s.token = TOK_PLUS_ASGN
-		case ch1 == '+':
+		case s.ch1 == '+':
 			s.token = TOK_PLUS
 			s.tokenString = "+"
-		case ch1 == '!':
+		case s.ch1 == '!':
 			s.token = TOK_NOT
-		case ch1 == ',':
+		case s.ch1 == ',':
 			s.token = TOK_COMMA
-		// case ch1 == '-' && isNum(ch2):
-		//	ch1, ch2 = parseNumber(s, ch1, ch2)
-		case ch1 == '-' && ch2 == '-':
-			ch1, ch2 = nextChar(s)
+		// case s.ch1 == '-' && isNum(s.ch2):
+		//	s.ch1, s.ch2 = parseNumber(s, s.ch1, s.ch2)
+		case s.ch1 == '-' && s.ch2 == '-':
+			nextChar(s)
 			s.tokenString = "--"
 			s.token = TOK_MINUS_MINUS
-		case ch1 == '-' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '-' && s.ch2 == '=':
+			nextChar(s)
 			s.token = TOK_MINUS_ASGN
 			s.tokenString = "-="
-		case ch1 == '-':
+		case s.ch1 == '-':
 			s.token = TOK_MINUS
-		case ch1 == '.':
+		case s.ch1 == '.':
 			s.token = TOK_DOT
-		case ch1 == '/' && ch2 == '/':
+		case s.ch1 == '/' && s.ch2 == '/':
 			// Skip comment
-			for ch1 != '\n' && !eof(s) {
-				ch1, ch2 = nextChar(s)
+			for s.ch1 != '\n' && !eof(s) {
+				nextChar(s)
 			}
 			continue
-		case ch1 == '/' && ch2 == '*':
+		case s.ch1 == '/' && s.ch2 == '*':
 			// Skip /* */ comment
 			s.CommentLevel = 1
 			for !eof(s) && s.CommentLevel > 0 {
-				ch1, ch2 = nextChar(s)
-				if ch1 == '/' && ch2 == '*' {
+				nextChar(s)
+				if s.ch1 == '/' && s.ch2 == '*' {
 					s.CommentLevel++
-				} else if ch1 == '*' && ch2 == '/' {
+				} else if s.ch1 == '*' && s.ch2 == '/' {
 					s.CommentLevel--
 				}
 			}
-			ch1, ch2 = nextChar(s)
+			nextChar(s)
 			continue
-		case ch1 == '/' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '/' && s.ch2 == '=':
+			nextChar(s)
 			s.tokenString = "/="
 			s.token = TOK_DIV_ASGN
-		case ch1 == '/':
+		case s.ch1 == '/':
 			s.tokenString = "/"
 			s.token = TOK_DIV
-		case isNum(ch1):
-			ch1, ch2 = parseNumber(s, ch1, ch2)
-		case ch1 == ':':
+		case isNum(s.ch1):
+			parseNumber(s)
+		case s.ch1 == ':':
 			s.tokenString = ":"
 			s.token = TOK_COLON
-		case ch1 == ';':
+		case s.ch1 == ';':
 			s.tokenString = ";"
 			s.token = TOK_SEMICOLON
 			continue
-		case ch1 == '<' && ch2 == '=':
+		case s.ch1 == '<' && s.ch2 == '=':
 			s.tokenString = "<="
-			ch1, ch2 = nextChar(s)
+			nextChar(s)
 			s.token = TOK_LE
-		case ch1 == '<' && ch2 == '<':
+		case s.ch1 == '<' && s.ch2 == '<':
 			s.tokenString = "<<"
-			ch1, ch2 = nextChar(s)
+			nextChar(s)
 			s.token = TOK_SHL
-		case ch1 == '<':
+		case s.ch1 == '<':
 			s.token = TOK_LT
 			s.tokenString = "<"
-		case ch1 == '=' && ch2 == '=':
+		case s.ch1 == '=' && s.ch2 == '=':
 			s.tokenString = "=="
-			ch1, ch2 = nextChar(s)
+			nextChar(s)
 			s.token = TOK_EQ
-		case ch1 == '=':
+		case s.ch1 == '=':
 			s.tokenString = "="
 			s.token = TOK_ASSIGN
-		case ch1 == '>' && ch2 == '=':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '>' && s.ch2 == '=':
+			nextChar(s)
 			s.tokenString = ">="
 			s.token = TOK_GE
-		case ch1 == '>' && ch2 == '>':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '>' && s.ch2 == '>':
+			nextChar(s)
 			s.tokenString = ">>"
 			s.token = TOK_SHR
-		case ch1 == '>':
+		case s.ch1 == '>':
 			s.tokenString = ">"
 			s.token = TOK_GT
-		case ch1 == '?':
+		case s.ch1 == '?':
 			s.tokenString = "?"
 			s.token = TOK_QMARK
-		case ch1 == '@':
+		case s.ch1 == '@':
 			s.tokenString = "@"
 			s.token = TOK_AT
-		case isAlfa(ch1):
-			value := string(ch1)
-			for isAlfaNum(ch2) || ch2 == '_' {
-				ch1, ch2 = nextChar(s)
-				value += string(ch1)
+		case isAlfa(s.ch1):
+			value := string(s.ch1)
+			for isAlfaNum(s.ch2) || s.ch2 == '_' {
+				nextChar(s)
+				value += string(s.ch1)
 			}
 			s.tokenString = value
 			s.token = TOK_ID
@@ -525,29 +526,29 @@ func nextToken(s *State) {
 			case "fail":
 				s.token = TOK_FAIL
 			}
-		case ch1 == '[':
+		case s.ch1 == '[':
 			s.token = TOK_LBRACK
 			s.tokenString = "["
-		case ch1 == ']':
+		case s.ch1 == ']':
 			s.tokenString = "]"
 			s.token = TOK_RBRACK
-		case ch1 == '{':
+		case s.ch1 == '{':
 			s.token = TOK_LBRACE
-		case ch1 == '|' && ch2 == '|':
-			ch1, ch2 = nextChar(s)
+		case s.ch1 == '|' && s.ch2 == '|':
+			nextChar(s)
 			s.token = TOK_LOG_OR
 			s.tokenString = "||"
-		case ch1 == '|':
+		case s.ch1 == '|':
 			s.token = TOK_OR
 			s.tokenString = "|"
-		case ch1 == '^':
+		case s.ch1 == '^':
 			s.token = TOK_XOR
 			s.tokenString = "^"
-		case ch1 == '}':
+		case s.ch1 == '}':
 			s.token = TOK_RBRACE
 			s.tokenString = "}"
 		default:
-			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", ch1))
+			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", s.ch1))
 		}
 		break
 	}

@@ -279,7 +279,16 @@ func EmitOpAssign(op Token, adr int, size int, value int64, comment string) erro
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
 
 	} else {
-		emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
+		if value > 0x7FFFFFFF || value < -0x7FFFFFFF {
+			if instr == "mov" {
+				emit(instr, DataType(4)+BpRel(adr), strconv.FormatInt(value&0xFFFFFFFF, 10), comment)
+				emit(instr, DataType(4)+BpRel(adr+4), strconv.FormatInt((value>>32)&0xFFFFFFFF, 10), comment)
+			} else {
+				return fmt.Errorf("value out of range")
+			}
+		} else {
+			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
+		}
 	}
 	return nil
 }

@@ -6,15 +6,15 @@ import (
 )
 
 type State struct {
-	text            []byte  // The whole current file being compiled
-	p               int     // Points to the current character in text
-	currentLine     string  // The content of the current source code text line
-	AtLineEnd       bool    // Flag used for lineNum calculation
-	token           Token   // The current token as a number
-	tokenString     string  // The current token as a string
-	tokenFloatValue float64 // The current token as a float (if it is a number)
-	tokenIntValue   int64
-	tokenUintValue  uint64
+	ch1             rune
+	ch2             rune
+	text            []byte // The whole current file being compiled
+	p               int    // Points to the current character in text
+	currentLine     string // The content of the current source code text line
+	AtLineEnd       bool   // Flag used for lineNum calculation
+	token           Token  // The current token as a number
+	tokenString     string // The current token as a string
+	ConstValue      ConstValue
 	noCode          int      // Used to skip code generation in constant if/else statements.
 	LocalVarCount   int      // The number of local variables in each level.
 	HasReturned     bool     // Used to avoid jumps after return statement and checking for dead code
@@ -25,7 +25,6 @@ type State struct {
 	CommentLevel    int
 	returnLbl       int
 	DidReturn       bool
-	IsBinary        bool
 	BlockLevel      int
 }
 

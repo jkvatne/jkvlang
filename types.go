@@ -198,7 +198,7 @@ func AddType(name string, typ *TypeDef) {
 }
 
 func (t PrimaryType) IsInteger() bool {
-	return t == TYP_I32 || t == TYP_U32 || t == TYP_U16 || t == TYP_I16 || t == TYP_U8 || t == TYP_I64
+	return t == TYP_I32 || t == TYP_U32 || t == TYP_U16 || t == TYP_I16 || t == TYP_U8 || t == TYP_I64 || t == TYP_U64
 }
 
 func (t PrimaryType) IsUnsigned() bool {

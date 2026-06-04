@@ -294,6 +294,9 @@ func main() {
 
 	// Now compile the source files into asm files
 	if *oneFile != "" {
+		if !strings.Contains(*oneFile, ".") {
+			*oneFile += ".jkv"
+		}
 		fmt.Printf("=== Compiling %s ===\n", *oneFile)
 		err = Build(*buildDir, *oneFile)
 	} else if *test {

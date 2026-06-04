@@ -5,9 +5,9 @@ func foo(a F64, b F64) F64 {
 
 func main () {
   x = foo(1.23, 3.45)
-  assert(x==-10.3896)
-  assert(x>=-10.3897, ">=")
-  assert(x<=-10.3895, "<=")
+  assert(x==-10.3896, "Failed 1")
+  assert(x>=-10.3897, "Failed >=")
+  assert(x<=-10.3895, "Failed <=")
   y = foo(1.23, 3.45)
-  assert(y==-10.3896)
+  assert(y==-10.3896, "Failed 4")
 }

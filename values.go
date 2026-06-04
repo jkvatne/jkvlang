@@ -6,10 +6,10 @@ import (
 )
 
 type ConstValue struct {
-	IntValue    int64
-	BoolValue   bool
-	StringLitNo int
-	FloatLitNo  int
+	Bits        uint64
+	Unsigned    bool
+	Float       bool
+	StringValue string
 }
 
 type ValueDef struct {
@@ -17,6 +17,7 @@ type ValueDef struct {
 	IntValue    int64
 	UintValue   uint64
 	FloatValue  float64
+	Unsigned    bool
 	BoolValue   bool
 	StringValue string
 	StringLitNo int
@@ -76,8 +77,8 @@ func AddLiteral(value string) int {
 
 func StringToValue(s *State) (value *ValueDef, err error) {
 	value = &ValueDef{}
-	value.IntValue = s.tokenIntValue
-	value.UintValue = s.tokenUintValue
+	value.IntValue = int64(s.ConstValue.Bits)
+	value.UintValue = s.ConstValue.Bits
 	if value.IntValue >= 0 && value.IntValue <= 255 {
 		value.Typ = TypeDefs["U8"]
 	} else if value.IntValue >= -32768 && value.IntValue <= 32767 {

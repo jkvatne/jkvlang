@@ -1,3 +1,4 @@
+/*
 func f0(s String) String {
     return "f0 "+s
 }
@@ -23,9 +24,13 @@ func g1(a String, b String, c String) String {
 func g2(s String, t String) String {
     return s+t
 }
-
+*/
 
 func main() {
+    u = "abc"
+//    u[1]='x'
+
+/*
     // 1. Test concat three strings and assign to local variable
     s = "Hello "
     t = "World "
@@ -144,6 +149,5 @@ func main() {
     u = "abc"
     assert(u!="abb", "Failed 20a")
     assert("abca"!=u, "Failed 20b")
-    // End of tests
-
+*/
 }

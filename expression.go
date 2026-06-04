@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/jkvatne/jkv/code"
@@ -63,7 +64,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
 				}
 			} else if t == TYP_BOOL {
-				EmitStoreConst(1, int64(value.IntValue), lvalue.Offset(), "Assign bool")
+				EmitStoreConst(1, value.IntValue, lvalue.Offset(), "Assign bool")
 			} else {
 				err = fmt.Errorf("Unimplemented assignment of %s", t.Name())
 			}
@@ -243,8 +244,16 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 	return v, nil
 }
 
-func ParseIndex(s *State, v *VarDef) (*VarDef, error) {
-	return nil, fmt.Errorf("cann not assign to array yet")
+func ParseIndex(s *State, v *VarDef) (*ValueDef, error) {
+	values, err := ParseExpression(s)
+	if err != nil {
+		return nil, err
+	}
+	if len(values) != 1 {
+		return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+	}
+	return values[0], nil
+	// return nil, fmt.Errorf("cann not assign to array yet")
 }
 
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
@@ -263,9 +272,11 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			} else {
 				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
 			}
-		} else if s.found(TOK_RBRACE) {
-			// Handle array indexing here
+		} else if s.found(TOK_LBRACK) {
+			// Calculate offset into rax
 			_, err = ParseIndex(s, lvalue)
+			// Load variable address into SI
+			EmitLoadEa(lvalue.Offset())
 			if err != nil {
 				return nil, err
 			}
@@ -666,7 +677,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 	} else if s.token == TOK_INT {
 		value, err = StringToValue(s)
 		if hasUnaryMinus {
-			s.tokenIntValue = -s.tokenIntValue
+			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
 		}
 		if err != nil {
 			return nil, err
@@ -677,11 +688,12 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		nextToken(s)
 	} else if s.token == TOK_FLOAT {
 		if hasUnaryMinus {
-			s.tokenFloatValue = -s.tokenFloatValue
+			v := -math.Float64frombits(s.ConstValue.Bits)
+			s.ConstValue.Bits = math.Float64bits(v)
 		}
-		floatLitNo := AddFloatLiteral(s.tokenFloatValue)
+		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
+		floatLitNo := AddFloatLiteral(value.FloatValue)
 		value.Typ = TypeDefs["F64"]
-		value.FloatValue = s.tokenFloatValue
 		value.FloatLitNo = floatLitNo
 		value.IsConst = true
 		nextToken(s)
@@ -808,7 +820,6 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 
 func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	// ParseProd should push rax and leave new result in rax
-	s.IsBinary = false
 	values1, err := ParseProd(s)
 	if err != nil {
 		return nil, err
@@ -852,7 +863,6 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 		op := s.token
 		nextToken(s)
 		code.NewArgCode()
-		s.IsBinary = true
 		values2, err = ParseProd(s)
 		if err != nil {
 			return nil, err
@@ -1359,8 +1369,8 @@ func ParseVar(s *State, isGlobal bool) error {
 		nextToken(s)
 		val = s.tokenString
 		v.Value.StringValue = val
-		v.Value.IntValue = s.tokenIntValue
-		v.Value.FloatValue = s.tokenFloatValue
+		v.Value.IntValue = int64(s.ConstValue.Bits)
+		v.Value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
 		nextToken(s)
 	}
 	return err
