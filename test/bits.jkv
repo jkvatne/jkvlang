@@ -3,26 +3,44 @@ const (
 	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
 )
 
-/*
-
 // unpack64 returns m, e such that f = m * 2**e.
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
 func unpack64(f F64) (U64, I32) {
-	b = U64(f)
-	m = 1<<63 | (b&(1<<52-1))<<F64_SHIFT_EXP
-	e = int((b >> 52) & (1<<F64_SHIFT_EXP - 1))
+	//b = U64(f)
+	m = (U64(f)&0xfffffffffffff) | 0x10000000000000
+	e = I32((U64(f) >> 52) & (1<<11 - 1))
+	return m>>32, e
+
+	/*
 	if e == 0 {
-		m = m & (^ (1 << 63))
-		e = F64_MIN_EXP
-		s = 64 - bits.Len64(m)
+		m = m &^ (1 << 63)
+		e = -1085+
+		s = 0
+		//s = 64 - bits.Len64(m)
 		return m << s, e - s
 	}
-	return m, (e - 1) + F64_MIN_EXP
+	return m, (e - 1) -1085
+	*/
 }
-*/
 
 func main() {
+    f = 1.5
+
+    x , y = unpack64(1.5)
+
+	e = I32((U64(f) >> 52) & (1<<11 - 1))
+    assert(e==0x3ff, "Failed, e=%x")
+
+	e = I32((U64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
+    assert(e==0x3ff, "Failed, e=%x")
+
+
+/*
+
+    // 1. Verify &^ (and-not)
+    a = 15 &^ 1
+    assert(a==14)
 
     // 1. Verify shift operations
     a = 15
@@ -54,6 +72,10 @@ func main() {
     assert(uu==0xabcdefab, "Failed, uu=0x%x", uu)
     assert(ul==0x12345678, "Failed, ul=0x%x", ul)
 
-    //m,e = unpack64(x)
-    //print("m=%d, e=%d", m,e)
+    // 5. AndNot
+    a = 15 &^ 1
+    assert(a==14)
+    // m,e = unpack64(x)
+    // print("m=%d, e=%d", m,e)
+    */
 }

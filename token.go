@@ -83,6 +83,7 @@ const (
 	TOK_XOR
 	TOK_SHL
 	TOK_SHR
+	TOK_AND_NOT
 	TOK_SIZE
 )
 
@@ -157,6 +158,7 @@ var TokenNames = [...]string{
 	TOK_XOR:         "XOR",
 	TOK_SHL:         "SHL",
 	TOK_SHR:         "SHR",
+	TOK_AND_NOT:     "AND_NOT",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -183,12 +185,12 @@ func (t Token) IsCompare() bool {
 func (t Token) IsAritmetic() bool {
 	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
 		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD ||
-		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR
+		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR || t == TOK_AND_NOT
 
 }
 
 func (t Token) IsLogic() bool {
-	return t == TOK_AND || t == TOK_OR
+	return t == TOK_AND || t == TOK_OR || t == TOK_AND_NOT
 }
 
 func isAlfaNum(ch rune) bool {
@@ -360,6 +362,10 @@ func nextToken(s *State) {
 			nextChar(s)
 			s.token = TOK_LOG_AND
 			s.tokenString = "&&"
+		case s.ch1 == '&' && s.ch2 == '^':
+			nextChar(s)
+			s.token = TOK_AND_NOT
+			s.tokenString = "&^"
 		case s.ch1 == '&':
 			s.token = TOK_AND
 			s.tokenString = "&"

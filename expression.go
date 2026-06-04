@@ -647,6 +647,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
 		value.LocalVar = v
+	} else {
+		value = &v.Value
 	}
 	value.Typ = v.Value.Typ
 	return []*ValueDef{value}, nil
@@ -793,7 +795,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 		return nil, err
 	}
 	values2 := []*ValueDef{}
-	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD {
+	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD || s.token == TOK_SHL || s.token == TOK_SHR || s.token == TOK_AND_NOT || s.token == TOK_AND {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("* and / can only operate on 1 value but got %d", len(values1))
 		}
@@ -855,8 +857,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 			values1[0] = &ValueDef{Typ: &StringType, IsTempObj: true}
 		}
 	}
-	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_AND || s.token == TOK_OR || s.token == TOK_XOR ||
-		s.token == TOK_SHL || s.token == TOK_SHR {
+	for s.token == TOK_PLUS || s.token == TOK_MINUS || s.token == TOK_OR || s.token == TOK_XOR {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
 		}

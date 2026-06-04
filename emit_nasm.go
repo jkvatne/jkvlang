@@ -184,6 +184,7 @@ var TokenOp = map[Token]string{
 	TOK_MULT_ASGN:  "imul",
 	TOK_SHL:        "shl",
 	TOK_SHR:        "shr",
+	TOK_AND_NOT:    "andnot",
 }
 
 func xmm(sp int) string {
@@ -277,7 +278,6 @@ func EmitOpAssign(op Token, adr int, size int, value int64, comment string) erro
 		emit("imul", "rbx", "", "")
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
-
 	} else {
 		if value > 0x7FFFFFFF || value < -0x7FFFFFFF {
 			if instr == "mov" {

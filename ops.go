@@ -77,6 +77,8 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 		}
 	case TOK_AND:
 		result.IntValue = val1.IntValue & val2.IntValue
+	case TOK_AND_NOT:
+		result.IntValue = val1.IntValue &^ val2.IntValue
 	case TOK_OR:
 		result.IntValue = val1.IntValue | val2.IntValue
 	case TOK_XOR:
@@ -269,7 +271,7 @@ func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 // We assume TOS is in rax. Then NOS will be popped to rbx.
 // For subtraction we should calculate NOS-TOS or rbx-rax
 func emitIntegerOp(op Token) {
-	EmitPopBx("")
+	EmitPopBx("IntegerOp " + op.Name())
 	if op == TOK_DIV {
 		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
@@ -282,6 +284,9 @@ func emitIntegerOp(op Token) {
 	} else if op == TOK_MINUS {
 		emit("xchg", "rax", "rbx", "")
 		emit("sub", "rax", "rbx", "Integer op")
+	} else if op == TOK_AND_NOT {
+		emit("not", "rax", "", "")
+		emit("and", "rax", "rbx", "AndNot")
 	} else {
 		instruction := TokenOp[op]
 		if instruction == "" {
@@ -293,6 +298,7 @@ func emitIntegerOp(op Token) {
 			emit(instruction, "rax", "rbx", "Integer op")
 		}
 	}
+	code.RaxIsTOS = true
 }
 
 // emitOpIntConst will evaluate tos=tos op <constant>
@@ -338,6 +344,7 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 		}
 		emit(instr, "rax", strconv.FormatInt(value, 10), comment)
 	}
+	code.RaxIsTOS = true
 	return nil
 }
 
