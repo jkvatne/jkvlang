@@ -1367,11 +1367,25 @@ func ParseVar(s *State, isGlobal bool) error {
 
 	if s.token == TOK_ASSIGN {
 		nextToken(s)
-		val = s.tokenString
+		if s.token == TOK_MINUS {
+			nextToken(s)
+			if s.token != TOK_INT && s.token != TOK_FLOAT {
+				return fmt.Errorf("expected int or float, got %s", s.tokenString)
+			}
+			val = "-" + s.tokenString
+			if s.ConstValue.Float {
+				f := -math.Float64frombits(s.ConstValue.Bits)
+				s.ConstValue.Bits = math.Float64bits(f)
+			} else {
+				s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+			}
+		} else {
+			val = s.tokenString
+		}
 		v.Value.StringValue = val
 		v.Value.IntValue = int64(s.ConstValue.Bits)
 		v.Value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
 		nextToken(s)
 	}
-	return err
+	return nil
 }

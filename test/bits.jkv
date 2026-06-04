@@ -1,36 +1,59 @@
+const (
+    F64_SHIFT_EXP I32 = 11    // 64 - 53
+	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
+)
 
+/*
 
+// unpack64 returns m, e such that f = m * 2**e.
+// The caller is expected to have handled 0, NaN, and ±Inf already.
+// To unpack a F32 f, use unpack64(F64(f)).
+func unpack64(f F64) (U64, I32) {
+	b = U64(f)
+	m = 1<<63 | (b&(1<<52-1))<<F64_SHIFT_EXP
+	e = int((b >> 52) & (1<<F64_SHIFT_EXP - 1))
+	if e == 0 {
+		m = m & (^ (1 << 63))
+		e = F64_MIN_EXP
+		s = 64 - bits.Len64(m)
+		return m << s, e - s
+	}
+	return m, (e - 1) + F64_MIN_EXP
+}
+*/
 
 func main() {
 
-    x = 1.0
-    i = I64(x)
-    c = i & I64(0x7fff000000000000)
-    c = c>>52
-    print("Exponent for %f is %x", x, c)
-
-    x = 1.0
-    y = 1.00001
-    z = y-x
-    w = x-y
-    i = I64(x+y) & I64(0x7fff000000000000)
-    j = I64(w) & I64(0x7fff000000000000)
-    print("0x%x 0x%x", i>>52, j>>52)
-    e1 = i>>52
-    e2 = j>>52
-    print("0x%x 0x%x", e1, e2)
-    print("de=%d", e2-e1)
+    // 1. Verify shift operations
     a = 15
     b = a >> 1
     assert(b==7)
-
     b = a<<2
     assert(b==60)
 
-    // Operating on 64bit values
+   // 2. Extract exponent from F64
+    x = 1.0
+    i = U64(x)
+    c = (i & 0x7fff000000000000) >> 52
+    assert(c==0x3ff, "Failed 2, Exponent for %f is %x", x, c)
+
+    // 3. Test exponent for sum/diff
+    x = 1.00000
+    y = 1.00001
+    e1 = (U64(x+y) & 0x7fff000000000000) >> 52
+    e2 = (U64(x-y) & 0x7fff000000000000) >> 52
+    assert(e1==0x400)
+    assert(e2==0x3EE, "Failed 3, Exp for x+y=0x%x;  Exp for x-y=0x%x", e1, e2)
+
+    // 4. Printing and splitting 64bit values
     ui = 0xabcdefab12345678
     uu = ui>>32
     ul = ui & 0xFFFFFFFF
     print("Splitting 0xabcdefab12345678 into %x and %x", uu, ul)
     print("Splitting 0xabcdefab12345678 into %x and %x", ui>>32, ui&0xFFFFFFFF)
+    assert(uu==0xabcdefab, "Failed, uu=0x%x", uu)
+    assert(ul==0x12345678, "Failed, ul=0x%x", ul)
+
+    //m,e = unpack64(x)
+    //print("m=%d, e=%d", m,e)
 }
