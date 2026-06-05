@@ -901,7 +901,6 @@ func ParseCompareTerm(s *State) ([]*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	EmitFlushRax("Push TOS value 2")
 	code.NewArgCode()
 	values1[0], err = GenerateOp(op, values1[0], values2[0])
 	code.ConsArgCode(3, false)
