@@ -110,7 +110,6 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 }
 
 func ParseStruct(s *State, id string) (*TypeDef, error) {
-	s.next()
 	if !s.found(TOK_LBRACE) {
 		return nil, fmt.Errorf("expected {, found " + s.tokenString)
 	}
@@ -181,8 +180,8 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 			return parList, fmt.Errorf("expected argument name but got %s", s.tokenString)
 		}
 		id := s.tokenString
-		nextToken(s)
-		typ, err := ParseType(s, id)
+		s.next()
+		typ, err := ParseType(s)
 		if err != nil {
 			return parList, err
 		}
@@ -1173,7 +1172,7 @@ func ParseFuncDef(s *State) error {
 	if !s.found(TOK_LBRACE) {
 		expectRpar := s.found(TOK_LPAR)
 		for {
-			ft, err := ParseType(s, "")
+			ft, err := ParseType(s)
 			if err != nil {
 				return err
 			}
@@ -1268,11 +1267,10 @@ func ParseTypeDef(s *State) error {
 	}
 	id := s.tokenString
 	nextToken(s)
-	if s.token != TOK_ASSIGN {
+	if !s.found(TOK_ASSIGN) {
 		return fmt.Errorf("expected \"=\" but got %s", s.tokenString)
 	}
-	nextToken(s)
-	typ, err := ParseType(s, id)
+	typ, err := ParseType(s)
 	if err != nil {
 		return err
 	}
@@ -1283,15 +1281,13 @@ func ParseTypeDef(s *State) error {
 
 func ParseTypeDefs(s *State) error {
 	var err error
-	if s.token == TOK_LPAR {
-		s.next()
-		for s.token != TOK_RPAR {
+	if s.found(TOK_LPAR) {
+		for !s.found(TOK_RPAR) {
 			err = ParseTypeDef(s)
 			if err != nil {
 				break
 			}
 		}
-		s.next()
 	} else {
 		err = ParseTypeDef(s)
 	}
@@ -1346,12 +1342,11 @@ func ParseVar(s *State, isGlobal bool) error {
 		nextToken(s)
 		// TODO: Parse array size
 		nextToken(s)
-		if s.token != TOK_RBRACK {
+		if !s.found(TOK_RBRACK) {
 			return fmt.Errorf("expected ], got %s", s.tokenString)
 		}
-		nextToken(s)
 	}
-	typ, err := ParseType(s, id)
+	typ, err := ParseType(s)
 	if err != nil {
 		return err
 	}

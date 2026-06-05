@@ -91,7 +91,7 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 func AddGlobalConst(s *State, id string, typ *TypeDef) (*VarDef, error) {
 	v := VarDefs[id]
 	if v != nil {
-		return nil, fmt.Errorf("Constant '%s' is re-declared", id)
+		return nil, fmt.Errorf("constant '%s' is re-declared", id)
 	}
 	v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: true}, Kind: GlobalConst, BlockLevel: 0}
 	VarDefs[id] = v
@@ -134,23 +134,20 @@ func DeleteBlockVars(s *State) {
 	}
 }
 
-func ParseType(s *State, id string) (*TypeDef, error) {
+// ParseType expects that the current token is an id for a new or existing type
+func ParseType(s *State) (*TypeDef, error) {
 	var err error
-	if s.token == TOK_LBRACE {
-		return nil, nil
-	}
-	if s.token == TOK_STRUCT {
+	id := s.tokenString
+	if s.found(TOK_STRUCT) {
 		return ParseStruct(s, id)
-	} else {
-		id := s.tokenString
-		if id[0] > 'Z' {
-			return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
-		}
-		nextToken(s)
-		typ, ok := TypeDefs[id]
-		if !ok {
-			return nil, fmt.Errorf("unknown type: %s", id)
-		}
-		return typ, err
 	}
+	nextToken(s)
+	if id[0] > 'Z' {
+		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
+	}
+	typ, ok := TypeDefs[id]
+	if !ok {
+		return nil, fmt.Errorf("unknown type: %s", id)
+	}
+	return typ, err
 }
