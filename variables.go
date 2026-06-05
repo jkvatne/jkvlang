@@ -126,11 +126,15 @@ func FreeBlockVars(s *State) {
 }
 
 func DeleteBlockVars(s *State) {
+	n := 0
 	for _, v := range VarDefs {
 		if v.BlockLevel == s.BlockLevel {
 			DeleteLocalVar(s, v.Name)
-			EmitPopAx("DeleteBlockVars:  " + v.Name)
+			n++
 		}
+	}
+	if n > 0 {
+		EmitAddToSp(-n, "Delete block vars")
 	}
 }
 
