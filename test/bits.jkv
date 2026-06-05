@@ -1,3 +1,4 @@
+
 const (
     F64_SHIFT_EXP I32 = 11    // 64 - 53
 	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
@@ -20,17 +21,26 @@ func unpack64(f F64) (U64, I32) {
 }
 
 func main() {
-    x = 13
-    y = 3
-    z =x*y
-    print("%d", z)
-    /*
-    assert(x*y==39, "Failed x*y")
+
+    l1 = bitlen(127)
+    assert(l1==7, "Failed, bitlen(127) was %d", l1)
+
+    z = 15
+    l2 = bitlen(z)
+    assert(l2==4, "Failed, bitlen(15) was %d", l2)
+
+    assert(bitlen(1)==1, "Failed, bitlen(1) was %d", bitlen(1))
+    assert(bitlen(0)==0, "Failed, bitlen(0) was %d", bitlen(0))
+
+    a = 13
+    b = 3
+    c =a*b
+    // print("%d", c)
+    assert(a*b==39, "Failed a*b")
+
+    a , b = unpack64(1.5)
 
     f = 1.5
-
-    x , y = unpack64(1.5)
-
 	e = I32((U64(f) >> 52) & (1<<11 - 1))
     assert(e==0x3ff, "Failed, e=%x")
 
@@ -40,7 +50,7 @@ func main() {
     m = U64(1)<<63 | (U64(f)&(1<<52-1))<<F64_SHIFT_EXP
     uu = m>>32
     ul = m & 0xFFFFFFFF
-    print("Splitting mantissa into %x and %x", uu, ul)
+    //print("Splitting mantissa into %x and %x", uu, ul)
     assert(uu==0xC0000000)
     assert(ul==0x00000000)
 
@@ -48,18 +58,19 @@ func main() {
     mantissa = 1<<63 | (U64(f)&(1<<52-1))<<F64_SHIFT_EXP
     uu = mantissa>>32
     ul = mantissa & 0xFFFFFFFF
-    print("Splitting mantissa into %x and %x", uu, ul)
+    assert(uu==0xC0000000,"Intentionally failed because mantissa is I32")
+    invert_err()
 
     // 1. Verify &^ (and-not)
     a = 15 &^ 1
-    assert(a==14)
+    assert(a==14, "Failed 3")
 
     // 1. Verify shift operations
     a = 15
     b = a >> 1
-    assert(b==7)
+    assert(b==7, "Failed 4")
     b = a<<2
-    assert(b==60)
+    assert(b==60,"Failed 5")
 
    // 2. Extract exponent from F64
     x = 1.0
@@ -79,15 +90,21 @@ func main() {
     ui = 0xabcdefab12345678
     uu = ui>>32
     ul = ui & 0xFFFFFFFF
-    print("Splitting 0xabcdefab12345678 into %x and %x", uu, ul)
-    print("Splitting 0xabcdefab12345678 into %x and %x", ui>>32, ui&0xFFFFFFFF)
+    //print("Splitting 0xabcdefab12345678 into %x and %x", uu, ul)
+    //print("Splitting 0xabcdefab12345678 into %x and %x", ui>>32, ui&0xFFFFFFFF)
     assert(uu==0xabcdefab, "Failed, uu=0x%x", uu)
     assert(ul==0x12345678, "Failed, ul=0x%x", ul)
 
     // 5. AndNot
     a = 15 &^ 1
     assert(a==14)
-    // m,e = unpack64(x)
-    // print("m=%d, e=%d", m,e)
-    */
+
+    // 6. Unpack
+    x = 1.75
+    m,e = unpack64(x)
+    uu = m>>32
+    ul = m & 0xFFFFFFFF
+    //print("mantissa=0x%8x%08x, exp=%d", uu,ul,e)
+    assert(m==0xe000000000000000)
+    assert(e==-63)
 }

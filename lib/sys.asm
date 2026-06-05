@@ -19,6 +19,7 @@ global _close_file
 global _lptr
 global _cptr
 global _len
+global _bitlen
 
 ;-------------
 section .text
@@ -76,5 +77,15 @@ _lptr:
 _len:
     mov rax, [rax]
     and rax, 0x7FFFFFFF
+    ret
+
+_bitlen:
+    mov rcx, [rsp+8]
+    bsr rax, rcx
+    jnz  .L1
+    mov rax, -1
+.L1:
+    inc rax
+    mov [rsp+16], rax
     ret
 

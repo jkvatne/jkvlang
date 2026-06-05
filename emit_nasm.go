@@ -906,11 +906,3 @@ func EmitFreeIfExists(offset int, size int, txt string) {
 	// EmitLabel(lbl, "")
 	emit("mov", "rax", "r12", "")
 }
-
-func EmitFindLen64(txt string) {
-	emit("bsr", "rbx", "rax", "")
-	l := code.NewLabel()
-	emit("jnz", "L"+strconv.Itoa(code.LabelNo), "", "")
-	EmitLabel(l, "")
-	emit("xor", "rax", "rax", "")
-}

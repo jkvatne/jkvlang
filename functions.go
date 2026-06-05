@@ -18,7 +18,7 @@ func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
 	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
-	uintPar := VarDef{Typ: &U64Type, Name: "uintarg"}
+	// uintPar := VarDef{Typ: &U64Type, Name: "uintarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("print", []*VarDef{&strPar}, nil, true, true)
@@ -33,7 +33,7 @@ func FuncInit() {
 	_, _ = AddFunc("write_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("read_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("close_file", []*VarDef{&intPar}, nil, true, false)
-	_, _ = AddFunc("bitlen", []*VarDef{&uintPar}, []*TypeDef{&F64Type}, true, false)
+	_, _ = AddFunc("bitlen", []*VarDef{&intPar}, []*TypeDef{&I32Type}, true, false)
 }
 
 func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {

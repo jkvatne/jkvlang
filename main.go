@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/bits"
 	"os"
 	"os/exec"
@@ -24,6 +25,8 @@ var (
 	oneFile   = flag.String("file", "", "Compile a single file")
 	debug     = flag.Bool("debug", false, "Enable debug mode")
 	UseGcc    = flag.Bool("gcc", true, "Use gcc")
+	UseUcrt   = flag.Bool("ucrt", false, "Use gcc")
+	UseGoLink = flag.Bool("golink", false, "Use gcc")
 	PrintSp   = flag.Bool("sp", false, "Print program SP")
 )
 
@@ -92,30 +95,7 @@ func CompileDir(inputPath string, workDir string) error {
 	return LinkRun(workDir, outputName)
 }
 
-// CompileDir will compile all source files in the given directory
-// and put the object files in the outputPath
-func CompileFailDir(inputPath string, workDir string) error {
-	// Make sure output directory is empty
-	_ = os.RemoveAll(workDir)
-	err := os.Mkdir(workDir, os.ModePerm)
-	entries, err := os.ReadDir(inputPath)
-	if err != nil {
-		return fmt.Errorf("fatal error %s", err.Error())
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := filepath.Join(inputPath, entry.Name())
-			err = CompileFile(name, workDir)
-			if err == nil {
-				return fmt.Errorf("Expected %s to return error when compiled, but it did not", name)
-			}
-			fmt.Printf("File %s failed with error %v\n", name, err)
-		}
-	}
-	return nil
-}
-
-// Compile all files in the test directory
+// CompileTests will compile all files in the test directory
 // Files starting with err_ should intentionally fail
 // Uses the build directory for outputs
 func CompileTests(inputPath string, workDir string) (int, error) {
@@ -133,13 +113,13 @@ func CompileTests(inputPath string, workDir string) (int, error) {
 				if strings.Contains(name, "err_") {
 					err = Build(workDir, name)
 					if err == nil {
-						return n, fmt.Errorf("Expected %s to return error when compiled, but it did not", name)
+						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
 					}
 					fmt.Printf("File %s failed with error %v\n", name, err)
 				} else {
 					err = Build(workDir, name)
 					if err != nil {
-						return n, fmt.Errorf("Error in  %s : %s", name, err.Error())
+						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
 				}
 			}
@@ -175,81 +155,62 @@ func Assemble(workDir string) error {
 // Link will link all obj files and generate an exe file
 func Link(workDir string, outputName string) error {
 	// Make sure the output name includes .exe
-	if !strings.Contains(outputName, ".") {
+	if !strings.HasSuffix(outputName, ".exe") {
 		outputName += ".exe"
 	}
-	// Calculate all arguments to the linker
-	var args []string
-	if true {
-		entries, err := os.ReadDir(workDir)
-		if err != nil {
-			return fmt.Errorf("collecting obj files error %s", err.Error())
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
-				args = append(args, filepath.Join(workDir, entry.Name()))
-			}
-		}
-		args = append(args, "-lkernel32", "-lmsvcrt")
-		outputPath := path.Join(workDir, outputName)
-		args = append(args, "-m64", "-o", outputPath)
-		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
-		if len(outp) > 0 {
-			fmt.Println(string(outp))
-		}
-		if err != nil {
-			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
-		}
 
-	} else if *UseGcc {
-		// Add all object files to argument list
-		entries, err := os.ReadDir(workDir)
-		if err != nil {
-			return fmt.Errorf("collecting obj files error %s", err.Error())
+	// Add all object files to argument list
+	var args []string
+	entries, err := os.ReadDir(workDir)
+	if err != nil {
+		return fmt.Errorf("collecting obj files error %s", err.Error())
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
+			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
-				args = append(args, filepath.Join(workDir, entry.Name()))
-			}
-		}
+	}
+
+	outputPath := path.Join(workDir, outputName)
+	LinkerName := "../tools/"
+	if *UseGcc {
+		LinkerName += "MinGW64/bin/gcc.exe"
+		args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+	} else if *UseUcrt {
+		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
-		outputPath := path.Join(workDir, outputName)
 		args = append(args, "-DUCRT", "-m64", "-o", outputPath)
-		outp, err := exec.Command("../tools/MinGW64/bin/gcc.exe", args...).CombinedOutput()
-		if len(outp) > 0 {
-			fmt.Println(string(outp))
-		}
-		if err != nil {
-			return fmt.Errorf("linking %s error: %s", outputName, err.Error())
-		}
-	} else {
-		outputPath := path.Join(workDir, outputName)
+	} else if *UseGoLink {
+		LinkerName = "golink.exe"
 		args = append(args, "/fo", outputPath, "/entry=main", "/console")
 		if *debug {
 			args = append(args, "/debug=dbg")
 		}
-		// Add all object files to argument list
-		entries, err := os.ReadDir(workDir)
-		if err != nil {
-			return fmt.Errorf("collecting obj files error %s", err.Error())
-		}
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
-				args = append(args, filepath.Join(workDir, entry.Name()))
-			}
-		}
 		args = append(args, "-g", "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
 		// Print the arguments and the command
-		fmt.Println("Link command:")
-		fmt.Printf("link.exe ")
-		for _, s := range args {
-			fmt.Printf(" %s", s)
-		}
-		fmt.Printf("\n")
-		// Now start the linker
-		outp, err := exec.Command("../tools/golink.exe", args...).CombinedOutput()
-		fmt.Println(string(outp))
+	} else {
+		fmt.Printf("Must specify either gcc, golink or ucrt")
 	}
+
+	// Print link command line to console
+	fmt.Printf(LinkerName + " ")
+	for _, s := range args {
+		fmt.Printf(" %s", s)
+	}
+	fmt.Printf("\n")
+
+	// Now start the linker
+	output, err := exec.Command(LinkerName, args...).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("linking %s error: %s", outputName, err.Error())
+	}
+
+	// Print linker output to console
+	fmt.Printf("\n")
+	if len(output) > 0 {
+		fmt.Println(string(output))
+	}
+
 	return nil
 }
 
@@ -265,20 +226,31 @@ func Run(outputName string) error {
 	return err
 }
 
-func f1(s string) string {
-	t := "f1 "
-	return t + s
-}
-
-func f2(s string) string {
-	t := " f2"
-	return s + t
+// unpack64 returns m, e such that f = m * 2**e.
+// The caller is expected to have handled 0, NaN, and ±Inf already.
+// To unpack a float32 f, use unpack64(float64(f)).
+func unpack64(f float64) (uint64, int) {
+	const shift = 64 - 53
+	const minExp = -(1074 + shift)
+	b := math.Float64bits(f)
+	m := 1<<63 | (b&(1<<52-1))<<shift
+	e := int((b >> 52) & (1<<shift - 1))
+	if e == 0 {
+		m &^= 1 << 63
+		e = minExp
+		s := 64 - bits.Len64(m)
+		return m << s, e - s
+	}
+	return m, (e - 1) + minExp
 }
 
 func main() {
 	m := uint64(0x7ff)
-	l := bits.Len64(m)
-	fmt.Printf("%d bits\n", l)
+	e := bits.Len64(m)
+	fmt.Printf("%d bits\n", e)
+
+	m, e = unpack64(1.75)
+	fmt.Printf("m=0x%x, e=%d\n", m, e)
 
 	flag.Parse()
 	// Set logger to not prepend any time/date
