@@ -232,7 +232,7 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 		if !ok {
 			return nil, fmt.Errorf("expected field name of the struct %s but but got %s", v.Name, s.tokenString)
 		}
-		EmitAddToRsi(s, ofs)
+		EmitAddToRsi(ofs)
 		if s.token != TOK_DOT && s.token != TOK_LBRACK {
 			break
 		}
@@ -682,9 +682,6 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if hasUnaryMinus {
 			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
 		}
-		if err != nil {
-			return nil, err
-		}
 		if value.Typ == nil {
 			return nil, fmt.Errorf("missing integer type")
 		}
@@ -761,7 +758,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			}
 			EmitNewString()
 		} else {
-			EmitNewStruct(s, t)
+			EmitNewStruct(t)
 		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")
@@ -1354,7 +1351,7 @@ func ParseVar(s *State, isGlobal bool) error {
 	}
 	var v *VarDef
 	if isGlobal {
-		v, err = AddGlobalConst(s, id, typ)
+		v, err = AddGlobalConst(id, typ)
 		if err != nil {
 			return err
 		}

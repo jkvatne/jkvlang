@@ -128,7 +128,7 @@ func CommonType(t1 PrimaryType, t2 PrimaryType) (*TypeDef, error) {
 	if t2 == TYP_U32 && (t1 <= TYP_U16 || t1 == TYP_I32) {
 		return &TypeDef{Pt: TYP_I64, TypeName: PrimaryTypeNames[TYP_I64], Basic: true}, nil
 	}
-	return nil, fmt.Errorf("Common type not found for %s and %s", t1.Name(), t2.Name())
+	return nil, fmt.Errorf("common type not found for %s and %s", t1.Name(), t2.Name())
 }
 
 func (t PrimaryType) Name() string {

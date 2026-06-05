@@ -3,6 +3,7 @@
 extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
+global ProcessHeap
 
 section .data
 allocation_count   dq 0

@@ -37,7 +37,7 @@ func init() {
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
 }
 
-func HasLocalVars(s *State) bool {
+func HasLocalVars() bool {
 	for _, v := range VarDefs {
 		if v.Kind >= ParVar {
 			return true
@@ -88,7 +88,7 @@ func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func AddGlobalConst(s *State, id string, typ *TypeDef) (*VarDef, error) {
+func AddGlobalConst(id string, typ *TypeDef) (*VarDef, error) {
 	v := VarDefs[id]
 	if v != nil {
 		return nil, fmt.Errorf("constant '%s' is re-declared", id)

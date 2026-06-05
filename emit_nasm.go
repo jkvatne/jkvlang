@@ -254,7 +254,7 @@ func AxName(size int) string {
 // EmitOpAssignFloat constant float value to variable
 func EmitOpAssignFloat(op Token, adr int, litNo int, comment string) error {
 	if op == TOK_ASSIGN {
-		emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "")
+		emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", comment)
 		emit("mov", BpRel(adr), "rax", "")
 	} else {
 		panic("Float assign operation not implemented")
@@ -326,9 +326,8 @@ func BpRel(offset int) string {
 		return "[rbp-" + ofs + "]"
 	} else if offset > 15 {
 		return "[rbp+" + ofs + "]"
-	} else {
-		panic("Bp relative addressing with zero offset")
 	}
+	panic("Bp relative addressing with zero offset")
 }
 
 func DataType(size int) string {
@@ -363,7 +362,7 @@ func MovOpcode(size int) string {
 // EmitStoreConst will store a constant of given size into a local variable at [BP+offset]
 func EmitStoreConst(size int, value int64, offset int, comment string) {
 	num := strconv.FormatInt(value, 10)
-	emit("mov", DataType(size)+BpRel(offset), num, "")
+	emit("mov", DataType(size)+BpRel(offset), num, comment)
 }
 
 func EmitLoadFloat(size int, adr int, comment string) {
@@ -408,8 +407,8 @@ func EmitJumpFalse(n int, comment string) {
 	if !code.RaxIsTOS {
 		panic("TOS not in AX")
 	}
-	emit("or", "al", "al", "Set zero flag if rax is zero")
-	emit("jz", ".L"+strconv.Itoa(n), "", comment)
+	emit("or", "al", "al", comment)
+	emit("jz", ".L"+strconv.Itoa(n), "", "")
 	// Implicit pop of TOS
 	code.RaxIsTOS = false
 }
@@ -420,8 +419,8 @@ func EmitJumpTrue(n int, comment string) {
 	if !code.RaxIsTOS {
 		panic("TOS not in AX")
 	}
-	emit("or", "al", "al", "Set zero flag if rax is zero")
-	emit("jnz", ".L"+strconv.Itoa(n), "", "Jump if zero flag is set")
+	emit("or", "al", "al", comment)
+	emit("jnz", ".L"+strconv.Itoa(n), "", "")
 	// Implicit pop of TOS
 	code.RaxIsTOS = false
 }
@@ -465,16 +464,6 @@ func EmitAssertTosInRax(comment string) {
 		emit("pop", "rax", "", comment+Sp(-1))
 		code.RaxIsTOS = true
 	}
-}
-
-func EmitPrintHello(format string) {
-	emit("mov", "ecx", "-11", "STD_OUTPUT_HANDLE (.11)")
-	emit("call", "GetStdHandle", "", "Handle returned in rax")
-	emit("mov", "rcx", "rax", "1.arg - console handle")
-	emit("mov", "rdx", "[rel msg]", "2.arg - pointer to message")
-	emit("mov", "r8", "20", "3.arg - console handle")
-	emit("xor", "r9", "r9", "4.arg - console handle")
-	emit("mov", "qword [3sp+32]", "0", "5.arg - console handle")
 }
 
 // EmitConcat will concatenate the two strings at the top of the stack
@@ -629,9 +618,8 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 		emit("mov", "rax", "rbx", "Result to TOS (rax)")
 		code.RaxIsTOS = true
 		return nil
-	} else {
-		return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
 	}
+	return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
 }
 
 func EmitCompareStringsEq(temp1 bool, temp2 bool) {
@@ -720,7 +708,7 @@ func EmitFreeString(comment string) {
 // EmitFreeStruct assumes the full address exists in rax.
 // It will free the pointer in rax and decrement allocation_count by the size given.
 func EmitFreeStruct(size int, comment string) {
-	emit("mov", "rcx", strconv.Itoa(size), "EmitFreeStruct")
+	emit("mov", "rcx", strconv.Itoa(size), comment)
 	// _free_struct assumes pointer in rax and size in rcx
 	emit("call", "_free_struct", "", "")
 	code.RaxIsTOS = false
@@ -806,13 +794,13 @@ func EmitPopBx(comment string) {
 
 // EmitNewStruct will create a new struct object on the heap
 // The pointer will be in the TOS (i.e. rax)
-func EmitNewStruct(s *State, t *TypeDef) {
+func EmitNewStruct(t *TypeDef) {
 	emit("mov", "rax", strconv.Itoa(t.Size()), "")
 	emit("call", "_alloc", "", "Allocate new struct")
 	code.RaxIsTOS = true
 }
 
-func EmitAddToRsi(s *State, ofs int) {
+func EmitAddToRsi(ofs int) {
 	emit("add", "rsi", strconv.Itoa(ofs), "")
 }
 

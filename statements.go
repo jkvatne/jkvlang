@@ -57,14 +57,6 @@ func ParseReturn(s *State) error {
 	return nil
 }
 
-/*
-if i >= len(f.returnTypes) && len(f.returnTypes) > 0 {
-return fmt.Errorf("too many return values")
-}
-if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
-return fmt.Errorf("returns wrong type")
-}
-*/
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (err error) {
@@ -117,7 +109,7 @@ func ParseStatement(s *State) (err error) {
 		err = ParseFail(s)
 	case TOK_CONTINUE:
 		s.next()
-		err = ParseContinue(s)
+		err = ParseContinue()
 	case TOK_FOR:
 		s.next()
 		err = ParseFor(s)
@@ -132,7 +124,7 @@ func ParseStatement(s *State) (err error) {
 
 func ParseStatements(s *State) error {
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
-		code.EmitLineNo(s.currentLine, code.LocalSp)
+		code.EmitLineNo(s.currentLine)
 		err := ParseStatement(s)
 		if err != nil {
 			return err
@@ -143,6 +135,6 @@ func ParseStatements(s *State) error {
 		}
 		code.RaxIsTOS = false
 	}
-	code.EmitLineNo(s.currentLine, code.LocalSp)
+	code.EmitLineNo(s.currentLine)
 	return nil
 }

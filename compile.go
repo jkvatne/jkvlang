@@ -47,7 +47,7 @@ func CompileFile(name string, workdir string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 	}
-	if HasLocalVars(s) && err == nil {
+	if HasLocalVars() && err == nil {
 		fmt.Printf("At end of code there is still local variables\n")
 	}
 	EmitSection("rodata")

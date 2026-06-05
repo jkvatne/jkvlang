@@ -118,7 +118,7 @@ func Write(txt string) int {
 	return len(txt)
 }
 
-func EmitLineNo(currentLine string, localSp int) {
+func EmitLineNo(currentLine string) {
 	Write("\n   ; Line " + strconv.Itoa(LineNum) + " " + strings.Trim(currentLine, "\r\n") + "\n")
 }
 

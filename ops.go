@@ -23,7 +23,7 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	}
 	// For user defined types, both must be identical, or one operand must be a basic type.
 	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
-		return &NoValue, fmt.Errorf("Operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
+		return &NoValue, fmt.Errorf("operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 	}
 	if val1.IsConst && val2.IsConst {
 		// If both operands are constant. Evaluate at compile time.
@@ -124,19 +124,6 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 	return result, nil
 }
 
-func emitTosOpNos2(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	EmitPopBx("Pop arg 2 into RBX")
-	if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-	} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-	}
-	return &NoValue, nil
-}
-
-// generateTosOpConst2 uses inverted op if first argument is a const
-func generateTosOpConst2(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	return &NoValue, nil
-}
-
 // emitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS")
@@ -197,7 +184,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		} else if val1.Typ.Pt == TYP_BOOL && val2.Typ.Pt == TYP_BOOL {
 			err = emitCompareIntConst(op, val2.IntValue, false)
 		} else {
-			err = fmt.Errorf("Unknown type combination for compare")
+			err = fmt.Errorf("unknown type combination for compare")
 		}
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
@@ -217,7 +204,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			emitOpFloatConst(op, floatLitNo)
 			return &ValueDef{Typ: val1.Typ}, nil
 		} else {
-			err = fmt.Errorf("Unknown type combination for '%s'", op.Name())
+			err = fmt.Errorf("unknown type combination for '%s'", op.Name())
 		}
 		return &ValueDef{Typ: val1.Typ}, err
 	}

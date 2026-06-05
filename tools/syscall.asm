@@ -318,8 +318,8 @@ get_win_error:
 ; Generate a 32 bit quasi-random integer
 ; Warning: This generates a deterministic quasi-random sequence with a fixed seed
 ; It can be used for tests where a repeatable squence is needed
-global qrand
-qrand:
+global qrand32
+qrand32:
     mov eax, [next32]
     imul eax, 1103515245 ; Common multiplier (used by glibc)
     add eax, 12345       ; Common increment

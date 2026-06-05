@@ -33,15 +33,15 @@ func ParseBreak(s *State) error {
 	return nil
 }
 
-func ParseContinue(s *State) error {
+func ParseContinue() error {
 	sl := GetTopStartLabel()
 	EmitJump(sl, "Continue")
-	return fmt.Errorf("Continue not implemented")
+	return fmt.Errorf("continue not implemented")
 }
 
 func ParseFail(s *State) error {
 	if !s.found(TOK_LPAR) {
-		return fmt.Errorf("Expected '(' after 'fail'")
+		return fmt.Errorf("expected '(' after 'fail'")
 	}
 	if s.token == TOK_ID {
 		id := s.tokenString
@@ -54,13 +54,13 @@ func ParseFail(s *State) error {
 	} else if s.token == TOK_INT {
 		c := VarDefs[s.tokenString]
 		if !c.Typ.Pt.IsInteger() {
-			return fmt.Errorf("Expected integer parameter for 'fail'")
+			return fmt.Errorf("expected integer parameter for 'fail'")
 		}
 		EmitStoreErr(int(c.Value.IntValue))
 		EmitJump(s.returnLbl, "Failed with const")
 	}
 	if !s.found(TOK_RPAR) {
-		return fmt.Errorf("Expected ')' after 'fail'")
+		return fmt.Errorf("expected ')' after 'fail'")
 	}
 	return nil
 }
@@ -68,12 +68,12 @@ func ParseFail(s *State) error {
 func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	for {
 		if s.token != TOK_ID {
-			return nil, fmt.Errorf("Loop variables expected")
+			return nil, fmt.Errorf("loop variables expected")
 		}
 		id := s.tokenString
 		lvalue := VarDefs[id]
 		if lvalue != nil {
-			return nil, fmt.Errorf("Loop variable shadowing " + id)
+			return nil, fmt.Errorf("loop variable shadowing " + id)
 		}
 		lvalue = AddLocalVar(s, id, nil)
 		lvalues = append(lvalues, lvalue)
@@ -149,7 +149,7 @@ func ParseFor(s *State) error {
 		EmitJump(GetTopStartLabel(), "Jump to start of loop")
 		EmitLabel(endLabel, "Exit from loop")
 		emit("mov", "r15", "0", "")
-		// Cleare err if it is 1 as this is used to signal break using pull iterators
+		// Clear err if it is 1 as this is used to signal break using pull iterators
 		EmitClearBreakErr()
 		PopLabels()
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
@@ -184,7 +184,7 @@ func ParseLoop(s *State) error {
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
-	// Cleare err if it is 1 as this is used to signal break using pull iterators
+	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
 	return err
