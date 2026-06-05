@@ -277,9 +277,9 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			// v, err = ParseIndex(s)
 			// Load variable address into SI
 			// EmitLoadEa(lvalue.Offset())
-			if err != nil {
-				return nil, err
-			}
+			// if err != nil {
+			//	return nil, err
+			// }
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
@@ -614,7 +614,10 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoadErr()
 		} else if v.Value.Typ.Pt == TYP_F64 {
 			// Load value into xmm<sp>
-			EmitLoadFloat64(8, v.Offset(), "Load float "+v.Name)
+			EmitLoadFloat(8, v.Offset(), "Load float "+v.Name)
+		} else if v.Value.Typ.Pt == TYP_F32 {
+			// Load value into xmm<sp>
+			EmitLoadFloat(4, v.Offset(), "Load float "+v.Name)
 		} else if v.Value.Typ.Pt == TYP_STRUCT {
 			if s.found(TOK_DOT) {
 				if s.token != TOK_ID {
@@ -672,7 +675,10 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		EmitFlushRax("End parenthesis term")
 		return values, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
-		value, err = StringToValue(s)
+		value = &ValueDef{IsConst: true}
+		value.IntValue = int64(s.ConstValue.Bits)
+		value.UintValue = s.ConstValue.Bits
+		value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
 		if hasUnaryMinus {
 			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
 		}
@@ -1365,7 +1371,7 @@ func ParseVar(s *State, isGlobal bool) error {
 				return fmt.Errorf("expected int or float, got %s", s.tokenString)
 			}
 			val = "-" + s.tokenString
-			if s.ConstValue.Float {
+			if s.ConstValue.Pt.IsFloat() {
 				f := -math.Float64frombits(s.ConstValue.Bits)
 				s.ConstValue.Bits = math.Float64bits(f)
 			} else {

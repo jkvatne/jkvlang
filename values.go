@@ -1,14 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 )
 
 type ConstValue struct {
 	Bits        uint64
-	Unsigned    bool
-	Float       bool
+	Pt          PrimaryType
 	StringValue string
 }
 
@@ -73,30 +71,6 @@ func AddLiteral(value string) int {
 	}
 	LiteralDefs = append(LiteralDefs, value)
 	return len(LiteralDefs) - 1
-}
-
-func StringToValue(s *State) (value *ValueDef, err error) {
-	value = &ValueDef{}
-	value.IntValue = int64(s.ConstValue.Bits)
-	value.UintValue = s.ConstValue.Bits
-	if value.IntValue >= 0 && value.IntValue <= 255 {
-		value.Typ = TypeDefs["U8"]
-	} else if value.IntValue >= -32768 && value.IntValue <= 32767 {
-		value.Typ = TypeDefs["I16"]
-	} else if value.IntValue >= 32768 && value.IntValue <= 65536 {
-		value.Typ = TypeDefs["U16"]
-	} else if value.IntValue >= -2147483648 && value.IntValue <= 2147483647 {
-		value.Typ = TypeDefs["I32"]
-	} else if value.IntValue >= 2147483648 && value.IntValue <= 4294967296 {
-		value.Typ = TypeDefs["U32"]
-	} else if value.UintValue != 0 {
-		value.Typ = TypeDefs["U64"]
-	} else {
-		value.Typ = TypeDefs["I64"]
-	}
-	value.IsConst = true
-	return value, nil
-	return &NoValue, fmt.Errorf("not a value: %s", s)
 }
 
 func widest(v1 *ValueDef, v2 *ValueDef) *ValueDef {

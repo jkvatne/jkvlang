@@ -366,10 +366,14 @@ func EmitStoreConst(size int, value int64, offset int, comment string) {
 	emit("mov", DataType(size)+BpRel(offset), num, "")
 }
 
-func EmitLoadFloat64(size int, adr int, comment string) {
+func EmitLoadFloat(size int, adr int, comment string) {
 	EmitFlushRax("")
 	code.RaxIsTOS = true
-	emit("mov", "rax", BpRel(adr), comment)
+	if size == 8 {
+		emit("mov", "rax", BpRel(adr), comment)
+	} else if size == 4 {
+		emit("mov", "rax", "dword "+BpRel(adr), comment)
+	}
 }
 
 func EmitLoadField(size int, localVarOfs int, fieldOffset int) {

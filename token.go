@@ -232,8 +232,24 @@ func eof(s *State) bool {
 	return s.p >= len(s.text)
 }
 
+// TypeFromNumber will guess the type based on the value of the number
 // Range for 64 bit signed integer = -9223372036854775808 ... 9223372036854775807
 // Range for 64 bit unsigned integer = 0 ... 18446744073709551615
+func TypeFromNumber(x int64) PrimaryType {
+	if x >= 0 && x <= 255 {
+		return TYP_U8
+	} else if x >= -32768 && x <= 32767 {
+		return TYP_I16
+	} else if x <= 65536 {
+		return TYP_U16
+	} else if x >= -2147483648 && x <= 2147483647 {
+		return TYP_I32
+	} else if x <= 4294967296 {
+		return TYP_U32
+	}
+	// Default to I64
+	return TYP_I64
+}
 
 func parseNumber(s *State) {
 	var err error
@@ -269,8 +285,6 @@ func parseNumber(s *State) {
 		nextChar(s)
 	}
 	s.tokenString = num
-	s.ConstValue.Unsigned = false
-	s.ConstValue.Float = false
 	if hasExp || hasDp {
 		var f float64
 		f, err = strconv.ParseFloat(num, 64)
@@ -279,12 +293,13 @@ func parseNumber(s *State) {
 		}
 		s.token = TOK_FLOAT
 		s.ConstValue.Bits = math.Float64bits(f)
-		s.ConstValue.Float = true
+		s.ConstValue.Pt = TYP_F64
 	} else {
 		var i int64
 		var u uint64
 		i, err = strconv.ParseInt(num, base, 64)
 		s.ConstValue.Bits = uint64(i)
+		s.ConstValue.Pt = TypeFromNumber(i)
 		s.token = TOK_INT
 		// If conversion failed, try parsing it as an unsigned number
 		if err != nil {
@@ -293,8 +308,9 @@ func parseNumber(s *State) {
 				fmt.Printf("Error parsing %s as integer: %s\n", num, err)
 				s.token = TOK_INVALID
 			}
+			// We have a constant that is out of range for I64.
 			s.ConstValue.Bits = u
-			s.ConstValue.Unsigned = true
+			s.ConstValue.Pt = TYP_U64
 		}
 	}
 }

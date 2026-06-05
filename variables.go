@@ -22,7 +22,7 @@ type VarDef struct {
 	Typ         *TypeDef
 	Value       ValueDef
 	Name        string
-	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takse ownership.
+	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takes ownership.
 	Kind        VarKind
 	FieldOfs    int
 	FieldType   *TypeDef
