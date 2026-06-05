@@ -19,12 +19,12 @@ func main() {
     if a>1.0 {
         if c<10.0 {
             d=bar(a,b)
-            print("d=%f", d)
+            assert(d>-2.631 && d<-2.629, "d=%f", d)
         }
     } else {
         d=foo(b,c)
     }
     assert(d>-2.631 && d<-2.629)
     z = d+2.63
-    print("z=%g", z)
+    assert(z>-1e-15 && z<1e-15, "Failed z=%g", z)
 }

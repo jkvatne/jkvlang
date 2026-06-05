@@ -8,5 +8,5 @@ func fi(a Bool, c I32) I32 {
 }
 
 func main() {
-  print("fi()=%d",fi(true, 5))
+  assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
 }

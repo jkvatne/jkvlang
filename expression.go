@@ -66,7 +66,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			} else if t == TYP_BOOL {
 				EmitStoreConst(1, value.IntValue, lvalue.Offset(), "Assign bool")
 			} else {
-				err = fmt.Errorf("Unimplemented assignment of %s", t.Name())
+				err = fmt.Errorf("unimplemented assignment of %s", t.Name())
 			}
 
 			if err != nil {
@@ -237,13 +237,13 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 			break
 		}
 		// EmitStoreIndirect(vt)  ????
-		return nil, fmt.Errorf("Internal error")
+		return nil, fmt.Errorf("internal error in ParseStructField")
 	}
 	// Now rax is the address of the value
 	return v, nil
 }
 
-func ParseIndex(s *State, v *VarDef) (*ValueDef, error) {
+func ParseIndex(s *State) (*ValueDef, error) {
 	values, err := ParseExpression(s)
 	if err != nil {
 		return nil, err
@@ -252,11 +252,10 @@ func ParseIndex(s *State, v *VarDef) (*ValueDef, error) {
 		return nil, fmt.Errorf("expected 1 value but got %d", len(values))
 	}
 	return values[0], nil
-	// return nil, fmt.Errorf("cann not assign to array yet")
 }
 
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
-// The first identifier is given in parametere id.
+// The first identifier is given in parameter id.
 func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	for {
 		lvalue := VarDefs[id]
@@ -264,18 +263,20 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			if s.token == TOK_ID {
 				EmitLoadEa(lvalue.Offset())
 				lvalue, err = ParseStructField(s, lvalue)
-				lvalue.IsIndirect = true
 				if err != nil {
 					return nil, err
 				}
+				lvalue.IsIndirect = true
 			} else {
 				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
 			}
 		} else if s.found(TOK_LBRACK) {
 			// Calculate offset into rax
-			_, err = ParseIndex(s, lvalue)
+			// TODO
+			// var v *ValueDef
+			// v, err = ParseIndex(s)
 			// Load variable address into SI
-			EmitLoadEa(lvalue.Offset())
+			// EmitLoadEa(lvalue.Offset())
 			if err != nil {
 				return nil, err
 			}
@@ -464,7 +465,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 }
 
 // ParseAssign - this might be the start of a lvalue list or a function call
-// The first variable name is now in id. The current token may be . or [ or an assignment token.
+// The first variable name is now in id. The current token may be '.' or '[' or an assignment token.
 func ParseAssign(s *State, id string) error {
 	// Expect a list of lvalues
 	lvalues, err := ParseLvalueList(s, id)
@@ -560,7 +561,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 				err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
 			}
 			if !s.found(TOK_RPAR) {
-				return nil, fmt.Errorf("expected right parantesis")
+				return nil, fmt.Errorf("expected right parentheses")
 			}
 			return []*ValueDef{value}, err
 		} else if id == "ptr" {
@@ -571,7 +572,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			id = s.tokenString
 			s.next()
 			if !s.found(TOK_RPAR) {
-				return nil, fmt.Errorf("expected left parantesis after 'ptr'")
+				return nil, fmt.Errorf("expected left parenthesis after 'ptr'")
 			}
 			// Lookup variable
 			v, ok := VarDefs[id]
@@ -581,14 +582,13 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			ofs := v.Offset()
 			EmitGetAddrOfLocal(ofs)
 			return []*ValueDef{&PtrValue}, nil
-		} else {
-			// It is a function call that should return values
-			values, err = ParseFuncCall(s, id, true)
-			if err != nil {
-				return nil, err
-			}
-			return values, nil
 		}
+		// It is a function call that should return values
+		values, err = ParseFuncCall(s, id, true)
+		if err != nil {
+			return nil, err
+		}
+		return values, nil
 	} else if s.token == TOK_LBRACK {
 		// TODO: It is an array
 		err = ParseArrayIndexes(s)
@@ -621,8 +621,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 					return nil, fmt.Errorf("expected field name after dot")
 				}
 				fn := s.tokenString
-				f, isok := v.Typ.Fields[fn]
-				if !isok {
+				f, isOk := v.Typ.Fields[fn]
+				if !isOk {
 					return nil, fmt.Errorf("field \"%s\" not found", fn)
 				}
 				// A struct field
@@ -631,17 +631,13 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 					return nil, fmt.Errorf("field \"%s\" not found", fn)
 				}
 				EmitLoadField(f.Pt.Size(), v.Value.Offset, ofs)
-				if f.Pt == TYP_STRING {
-					// EmitAddToRax(s, 8)
-				}
 				value.Typ = f
 				s.next()
 				return []*ValueDef{value}, nil
-			} else {
-				// It is a struct name. Return the address in rax
-				emit("mov", "rax", BpRel(v.Value.Offset), "")
-				code.RaxIsTOS = true
 			}
+			// It is a struct name. Return the address in rax
+			emit("mov", "rax", BpRel(v.Value.Offset), "")
+			code.RaxIsTOS = true
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
@@ -730,14 +726,14 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("after ! we expected 1 value but got %d", len(values))
 		}
 		if values[0].Typ.Pt != TYP_BOOL {
-			return nil, fmt.Errorf("ater ! w expected boolean value but got %v", values[0].Typ.Pt)
+			return nil, fmt.Errorf("after ! we expected boolean value but got %v", values[0].Typ.Pt)
 		}
 		EmitNot()
 		value = values[0]
 	} else if s.token == TOK_NEW {
 		s.next()
 		if !s.found(TOK_LPAR) {
-			return nil, fmt.Errorf("expected left parantesis")
+			return nil, fmt.Errorf("expected left parenthesis")
 		}
 		id := s.tokenString
 		s.next()
@@ -762,7 +758,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			EmitNewStruct(s, t)
 		}
 		if !s.found(TOK_RPAR) {
-			return nil, fmt.Errorf("expected right parantesis")
+			return nil, fmt.Errorf("expected right parenthesis")
 		}
 		value.IsTempObj = true
 
@@ -773,7 +769,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, err3
 		}
 		if len(v) != 1 {
-			return nil, fmt.Errorf("Unary minus on invalid value")
+			return nil, fmt.Errorf("unary minus on invalid value")
 		}
 		if v[0].HasValue() {
 			v[0].IntValue = -v[0].IntValue
@@ -793,7 +789,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	values2 := []*ValueDef{}
+	var values2 []*ValueDef
 	for s.token == TOK_MULT || s.token == TOK_DIV || s.token == TOK_MOD || s.token == TOK_SHL || s.token == TOK_SHR || s.token == TOK_AND_NOT || s.token == TOK_AND {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("* and / can only operate on 1 value but got %d", len(values1))
@@ -825,7 +821,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	values2 := []*ValueDef{}
+	var values2 []*ValueDef
 	if s.token == TOK_PLUS && values1[0].Typ.Pt == TYP_STRING {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
@@ -848,7 +844,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 				values2[0].IsTempObj = false
 			}
 			if values2[0].Typ.Pt != TYP_STRING {
-				return nil, fmt.Errorf("String can only be concatenated with another string")
+				return nil, fmt.Errorf("string can only be concatenated with another string")
 			}
 			code.NewArgCode()
 			EmitConcat(values1[0].IsTempObj, values2[0].IsTempObj)
@@ -1068,7 +1064,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				return err
 			}
 			if len(values) != 1 {
-				return fmt.Errorf("Expected one value")
+				return fmt.Errorf("expected one value")
 			}
 			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
@@ -1130,7 +1126,7 @@ func ParseIf(s *State) error {
 		return err
 	}
 	if len(values) != 1 {
-		return fmt.Errorf("Expected one value")
+		return fmt.Errorf("expected one value")
 	}
 	if values[0].Typ.Pt != TYP_BOOL {
 		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[values[0].Typ.Pt])
@@ -1245,7 +1241,7 @@ func ParseFuncDef(s *State) error {
 	}
 	code.OutputArgCode()
 	nextToken(s)
-	// Delete parameters from pardef
+	// Delete parameters
 	for _, p := range parList {
 		DeleteLocalVar(s, p.Name)
 	}
@@ -1357,7 +1353,7 @@ func ParseVar(s *State, isGlobal bool) error {
 			return err
 		}
 	} else {
-		v := AddLocalVar(s, id, typ)
+		v = AddLocalVar(s, id, typ)
 		v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 	}
 
@@ -1377,6 +1373,9 @@ func ParseVar(s *State, isGlobal bool) error {
 			}
 		} else {
 			val = s.tokenString
+		}
+		if v == nil {
+			return fmt.Errorf("internal error in ParseVar")
 		}
 		v.Value.StringValue = val
 		v.Value.IntValue = int64(s.ConstValue.Bits)
