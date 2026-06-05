@@ -119,17 +119,19 @@ func EmitJump(n int, comment string) {
 }
 
 func Sp(delta int) string {
+	ss := "-" + code.StackState()
 	if delta == 0 {
-		return " (" + strconv.Itoa(code.LocalSp) + ")"
+		return " (" + strconv.Itoa(code.LocalSp) + ")" + ss
 	}
 	code.LocalSp += delta
-	return " (" + strconv.Itoa(code.LocalSp-delta) + "->" + strconv.Itoa(code.LocalSp) + ")"
+	return " (" + strconv.Itoa(code.LocalSp-delta) + "->" + strconv.Itoa(code.LocalSp) + ")" + ss
 }
+
 func EmitPushTos(argNo int, funcName string) {
-	if code.RaxIsTOS {
+	if code.AxIsTos() {
 		code.Write("   push rax                             ; Push arg " +
 			strconv.Itoa(argNo) + " of " + funcName + Sp(1) + "\n")
-		code.RaxIsTOS = false
+		code.SetSp()
 	}
 }
 
@@ -137,7 +139,7 @@ func EmitCall(id string, nPar int, builtin bool) {
 	if builtin {
 		id = "_" + id
 	}
-	if nPar > 0 && code.RaxIsTOS {
+	if nPar > 0 && code.AxIsTos() {
 		emit("push", "rax", "", "Push TOS from rax to stack"+Sp(1))
 	}
 	// The following is needed only for variadic functioncode.
@@ -158,7 +160,7 @@ func EmitFunction(id string) {
 	// Function prologue. Set up new frame pointer.
 	EmitComment("Setting localsp=0")
 	if id != "main" {
-		emit("push", "rbp", "", ""+Sp(1))
+		emit("push", "rbp", "", "")
 	}
 	emit("mov", "rbp", "rsp", "")
 	code.LocalSp = 0
@@ -166,7 +168,7 @@ func EmitFunction(id string) {
 		EmitPrintSp()
 		emit("call", "_sysinit", "", "")
 	}
-	code.RaxIsTOS = false
+	code.SetUndef()
 }
 
 var TokenOp = map[Token]string{
@@ -194,7 +196,7 @@ func xmm(sp int) string {
 func EmitPushFloatLit(litNo int) {
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
 	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
-	code.RaxIsTOS = false
+	code.SetSp()
 }
 
 func EmitJumpCond(op Token, unsignedOrFloat bool) error {
@@ -234,7 +236,7 @@ func EmitJumpCond(op Token, unsignedOrFloat bool) error {
 	}
 	emit("mov", "rax", "0", "Return false if we did not jump")
 	EmitLabel(lbl, "")
-	code.RaxIsTOS = true
+	code.SetAx()
 	return nil
 }
 
@@ -254,7 +256,9 @@ func AxName(size int) string {
 // EmitOpAssignFloat constant float value to variable
 func EmitOpAssignFloat(op Token, adr int, litNo int, comment string) error {
 	if op == TOK_ASSIGN {
+		code.SetAx()
 		emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", comment)
+		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 	} else {
 		panic("Float assign operation not implemented")
@@ -366,8 +370,8 @@ func EmitStoreConst(size int, value int64, offset int, comment string) {
 }
 
 func EmitLoadFloat(size int, adr int, comment string) {
-	EmitFlushRax("")
-	code.RaxIsTOS = true
+	EmitFlushRax("Before LoadFloat")
+	code.SetAx()
 	if size == 8 {
 		emit("mov", "rax", BpRel(adr), comment)
 	} else if size == 4 {
@@ -376,8 +380,8 @@ func EmitLoadFloat(size int, adr int, comment string) {
 }
 
 func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
-	EmitFlushRax("")
-	code.RaxIsTOS = true
+	EmitFlushRax("Before LoadField")
+	code.SetAx()
 	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
 	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value from field")
@@ -386,7 +390,7 @@ func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
 	EmitFlushRax("EmitLoad push TOS")
-	code.RaxIsTOS = true
+	code.SetAx()
 	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 }
 
@@ -394,7 +398,7 @@ func EmitLoad(size int, adr int, comment string) {
 // It will then clear RaxIsTos, effectively doing a pop
 func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
 	emit(opcode, BpRel(adr), AxName(size), comment)
-	code.RaxIsTOS = false
+	code.SetSp()
 }
 
 func EmitStoreF64(adr int, comment string) {
@@ -404,38 +408,38 @@ func EmitStoreF64(adr int, comment string) {
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
 func EmitJumpFalse(n int, comment string) {
-	if !code.RaxIsTOS {
+	if !code.AxIsTos() {
 		panic("TOS not in AX")
 	}
 	emit("or", "al", "al", comment)
 	emit("jz", ".L"+strconv.Itoa(n), "", "")
 	// Implicit pop of TOS
-	code.RaxIsTOS = false
+	code.SetUndef()
 }
 
 // EmitJumpTrue will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
 func EmitJumpTrue(n int, comment string) {
-	if !code.RaxIsTOS {
+	if !code.AxIsTos() {
 		panic("TOS not in AX")
 	}
 	emit("or", "al", "al", comment)
 	emit("jnz", ".L"+strconv.Itoa(n), "", "")
 	// Implicit pop of TOS
-	code.RaxIsTOS = false
+	code.SetUndef()
 }
 
 // EmitAllocLocalVar will allocate a local variable
 // TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
 func EmitAllocLocalVar(comment string) int {
-	emit("push", "0", "", comment+Sp(1))
+	emit("sub", "rsp", "8", comment+Sp(1))
 	return -8 * code.LocalSp
 }
 
 func EmitPushStringLit(lit int, comment string) {
-	EmitFlushRax("")
+	EmitFlushRax("Before PushStringLit")
+	code.SetAx()
 	emit("mov", "rax", "str"+strconv.Itoa(lit), comment)
-	code.RaxIsTOS = true
 }
 
 func EmitSkipLenCap() {
@@ -443,26 +447,26 @@ func EmitSkipLenCap() {
 }
 
 func EmitPushConst(value int64, comment string) {
-	EmitFlushRax("")
+	EmitFlushRax("Before PushConst")
+	code.SetAx()
 	if value == 0 {
 		emit("xor", "rax", "rax", comment)
 	} else {
 		emit("mov", "rax", strconv.FormatInt(value, 10), "PushConst "+comment)
 	}
-	code.RaxIsTOS = true
 }
 
 func EmitFlushRax(comment string) {
-	if code.RaxIsTOS {
-		emit("push", "rax", "", comment+Sp(1))
-		code.RaxIsTOS = false
+	if code.AxIsTos() {
+		emit("push", "rax", "", "Flush ax: "+comment+Sp(1))
+		code.SetUndef()
 	}
 }
 
 func EmitAssertTosInRax(comment string) {
-	if !code.RaxIsTOS {
+	if !code.AxIsTos() {
+		code.SetAx()
 		emit("pop", "rax", "", comment+Sp(-1))
-		code.RaxIsTOS = true
 	}
 }
 
@@ -473,7 +477,7 @@ func EmitAssertTosInRax(comment string) {
 func EmitConcat(free1 bool, free2 bool) {
 	EmitComment("")
 	EmitComment("Start of EmitConcat")
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before concat string")
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
 	emit("mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
 	emit("mov", "rbx", "rdx", "Get string 1 ptr into rbx")
@@ -522,8 +526,6 @@ func EmitConcat(free1 bool, free2 bool) {
 	EmitPopAx("Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
 	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax"+Sp(-1))
-	code.RaxIsTOS = true
-	EmitComment("End of EmitConcat")
 	EmitComment("")
 }
 
@@ -572,7 +574,7 @@ func Inverse(op Token) Token {
 
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
 func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before compare string")
 	if op == TOK_EQ {
 		emit("mov", "r14", "rax", "CompareStrings, save rax to r14")
 		emit("mov", "rdi", "rax", "Save rax to rdi")
@@ -596,7 +598,6 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 			emit("call", "_free_str", "", "EmitCompareStrToLit")
 		}
 		emit("mov", "rax", "rbx", "Result to TOS (rax)")
-		code.RaxIsTOS = true
 		return nil
 	} else if op == TOK_NE {
 		lbl := code.NewLabel()
@@ -616,7 +617,6 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 		emit("mov", "rbx", "0", "Strings was equal, set rax=false")
 		EmitLabel(lbl, "unequal")
 		emit("mov", "rax", "rbx", "Result to TOS (rax)")
-		code.RaxIsTOS = true
 		return nil
 	}
 	return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
@@ -625,7 +625,7 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	// Compare two strings, one in rax, and one on top of stack, and drop top of stack
 	lbl := code.NewLabel()
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before compare strings eq")
 	emit("mov", "rdi", "rax", "Save tos")
 	emit("mov", "rsi", "[rsp]", "Get nos")
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
@@ -651,13 +651,12 @@ func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 		emit("call", "_free_str", "", "")
 	}
 	emit("mov", "rax", "rbx", "Result to TOS (rax)")
-	code.RaxIsTOS = true
 }
 
 // EmitCompareStringsNe compares two strings, one in rax, and one on top of stack, and drop top of stack
 func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	lbl := code.NewLabel()
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before compare strings NE")
 	emit("mov", "rdi", "rax", "Save tos")
 	emit("mov", "rsi", "[rsp]", "Get nos")
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
@@ -683,7 +682,6 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 		emit("call", "_free_str", "", "")
 	}
 	emit("mov", "rax", "rbx", "Result to TOS (rax)")
-	code.RaxIsTOS = true
 }
 
 // EmitFreeString assumes the full address exists in rax.
@@ -703,6 +701,7 @@ func EmitFreeString(comment string) {
 	emit("call", "_free_str", "", comment)
 	// Exit label
 	EmitLabel(lbl, "")
+	code.SetUndef()
 }
 
 // EmitFreeStruct assumes the full address exists in rax.
@@ -711,7 +710,7 @@ func EmitFreeStruct(size int, comment string) {
 	emit("mov", "rcx", strconv.Itoa(size), comment)
 	// _free_struct assumes pointer in rax and size in rcx
 	emit("call", "_free_struct", "", "")
-	code.RaxIsTOS = false
+	code.SetUndef()
 }
 
 func EmitPushAx(txt string) {
@@ -735,8 +734,9 @@ func EmitAddToSp(count int, comment string) {
 }
 
 func EmitPushConstString(litNo int) {
+	EmitFlushRax("Before NewStruct")
+	code.SetAx()
 	emit("mov", "rax", "str"+strconv.Itoa(litNo), "PushConstString")
-	code.RaxIsTOS = true
 }
 
 // EmitEpilogue - restores frame pointer and exit
@@ -754,9 +754,9 @@ func EmitEpilogue(name string) {
 		EmitComment("main() returning. Printing allocation count end err.")
 		emit("push", "r15", "", ""+Sp(1))
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
-		emit("push", "rax", "", ""+Sp(1))
+		emit("push", "rax", "", "d"+Sp(1))
 		emit("mov", "rax", "alloc_size_str+8", "")
-		emit("push", "rax", "", ""+Sp(1))
+		emit("push", "rax", "", "c"+Sp(1))
 		emit("mov", "rbx", "24", "")
 		emit("call", "_printf", "", "")
 		emit("call", "_fflush", "", "")
@@ -776,8 +776,9 @@ func EmitEpilogue(name string) {
 }
 
 func EmitLoadErr() {
+	EmitFlushRax("Before NewStruct")
+	code.SetAx()
 	emit("mov", "rax", "r15", "Load err")
-	code.RaxIsTOS = true
 }
 
 func EmitStoreBpOfs(ofs int, comment string) {
@@ -795,9 +796,10 @@ func EmitPopBx(comment string) {
 // EmitNewStruct will create a new struct object on the heap
 // The pointer will be in the TOS (i.e. rax)
 func EmitNewStruct(t *TypeDef) {
+	EmitFlushRax("Before NewStruct")
+	code.SetAx()
 	emit("mov", "rax", strconv.Itoa(t.Size()), "")
 	emit("call", "_alloc", "", "Allocate new struct")
-	code.RaxIsTOS = true
 }
 
 func EmitAddToRsi(ofs int) {
@@ -835,12 +837,12 @@ func EmitAssignIndirectInt(size int, value int64, comment string) {
 
 func EmitGetAddrOfLocal(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "")
-	emit("push", "rax", "", ""+Sp(1))
+	emit("push", "rax", "", "b"+Sp(1))
 }
 
 func EmitNewString() {
 	// Allocate string
-	EmitAssertTosInRax("NewString")
+	EmitAssertTosInRax("Before NewString")
 	emit("mov", "r12", "rax", "new string capacity")
 	emit("call", "_alloc", "", "Allocate new string")
 	emit("mov", "rsi", "rax", "Save rax")
@@ -851,22 +853,13 @@ func EmitNewString() {
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")
 	emit("mov", "[rsi]", "r12", "Store capacity")
+	code.SetAx()
 	emit("mov", "rax", "rsi", "Restore rax pointing to string")
-	code.RaxIsTOS = true
 }
 
 func EmitNot() {
 	EmitAssertTosInRax("Value to 'Not'")
 	emit("xor", "rax", "1", "")
-}
-
-func EmitPushLabel(label int) {
-	emit("lea", "rax", "[rel .L"+strconv.Itoa(label)+"]", "")
-	emit("push", "rax", "", ""+Sp(1))
-}
-
-func EmitPushFramePointer() {
-	emit("push", "rbp", "", ""+Sp(1))
 }
 
 func EmitJumpOnError(label int) {

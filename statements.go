@@ -41,6 +41,7 @@ func ParseReturn(s *State) error {
 				}
 				// Save returned value into reserved slot before BP.
 				EmitStoreBpOfs(len(f.parameters)+2+i, "Save returned value nr "+strconv.Itoa(i+1))
+				code.SetSp()
 				i++
 			}
 			if !s.found(TOK_COMMA) {
@@ -133,7 +134,7 @@ func ParseStatements(s *State) error {
 		if s.token == TOK_SEMICOLON {
 			nextToken(s)
 		}
-		code.RaxIsTOS = false
+		code.SetUndef()
 	}
 	code.EmitLineNo(s.currentLine)
 	return nil

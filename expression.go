@@ -40,7 +40,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		if CanAssignConst(t, value) {
 			if t == TYP_STRING {
 				if lvalue.IsIndirect {
-					EmitFlushRax("")
+					EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == TYP_STRUCT {
 					err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
@@ -49,11 +49,14 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				}
 			} else if t.IsInteger() {
 				if lvalue.IsIndirect {
-					EmitFlushRax("")
+					EmitFlushRax("Before AssignIndirectInt")
 					EmitAssignIndirectInt(value.Typ.Pt.Size(), value.IntValue, "")
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
 				} else {
+					if lvalue.Offset() == 0 {
+						return fmt.Errorf("Test")
+					}
 					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if t == TYP_F64 {
@@ -78,22 +81,24 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		}
 	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == TYP_PTR {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
-		if !code.RaxIsTOS {
+		if !code.AxIsTos() {
 			EmitPopAx("Assigning TOS to lvalue")
-			code.RaxIsTOS = true
+			code.SetAx()
 		}
 		if lvalue.Value.Typ.Pt == TYP_STRUCT {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}
+		code.SetUndef()
 	} else if value.Typ.Pt == TYP_F64 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
-		code.RaxIsTOS = false
+		code.SetUndef()
 	} else if value.Typ.Pt == TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
+		code.SetUndef()
 	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		// Free old value if it exists
@@ -101,7 +106,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.size, "Free if "+lvalue.Name+" exists")
 		}
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
+		code.SetUndef()
 	} else if value.Typ.Pt == TYP_BOOL {
+		code.SetUndef()
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
@@ -459,7 +466,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		results = append(results, &ValueDef{Typ: t, IsReturned: true, IsTempObj: t.Pt.IsObject()})
 	}
 	// Function results are on stack and not in RAX.
-	code.RaxIsTOS = false
+	code.SetSp()
 	s.currentFuncCall = ""
 	return results, nil
 }
@@ -543,8 +550,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		t1, ok := TypeDefs[id]
 		if ok {
 			// This is a type conversion. First parse value to convert
-			if code.RaxIsTOS {
-				EmitPushAx("")
+			if code.AxIsTos() {
+				EmitPushAx("ParseVarOrFunc")
 			}
 			values, err = ParseExpression(s)
 			if err != nil {
@@ -640,7 +647,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			}
 			// It is a struct name. Return the address in rax
 			emit("mov", "rax", BpRel(v.Value.Offset), "")
-			code.RaxIsTOS = true
+			code.SetAx()
 		} else {
 			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
 		}
@@ -667,12 +674,12 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
 		nextToken(s)
-		EmitFlushRax("Begin parenthesis term")
+		// EmitFlushRax("Begin parenthesis term")
 		values, err2 := ParseExpression(s)
 		if err2 != nil {
 			return nil, err2
 		}
-		EmitFlushRax("End parenthesis term")
+		// EmitFlushRax("End parenthesis term")
 		return values, Expect(s, TOK_RPAR)
 	} else if s.token == TOK_INT {
 		value = &ValueDef{IsConst: true}
@@ -720,7 +727,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		nextToken(s)
 	} else if s.token == TOK_NOT {
 		nextToken(s)
-		EmitFlushRax("Begin parenthesis term")
+		// EmitFlushRax("Begin parenthesis term")
 		values, err2 := ParseExpression(s)
 		if err2 != nil {
 			return nil, err2
@@ -905,7 +912,6 @@ func ParseCompareTerm(s *State) ([]*ValueDef, error) {
 }
 
 func ParseExpression(s *State) ([]*ValueDef, error) {
-	code.RaxIsTOS = false
 	results, err := ParseCompareTerm(s)
 	if err != nil {
 		return nil, err
@@ -1165,7 +1171,7 @@ func ParseFuncDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	code.RaxIsTOS = len(parList) > 1
+	code.SetUndef()
 	// Parse the return type list of the function, if any
 	var returnList []*TypeDef
 	if !s.found(TOK_LBRACE) {
@@ -1195,7 +1201,6 @@ func ParseFuncDef(s *State) error {
 		return err
 	}
 	// Now parse all the statements in the function
-	code.RaxIsTOS = len(parList) > 0
 	s.DidReturn = false
 	err = ParseStatements(s)
 	if err != nil {
@@ -1222,7 +1227,7 @@ func ParseFuncDef(s *State) error {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
-			code.RaxIsTOS = false
+			code.SetSp()
 			if v.Value.Typ.Pt == TYP_STRING && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
 				EmitFreeString("")

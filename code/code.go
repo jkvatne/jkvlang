@@ -7,9 +7,17 @@ import (
 	"strings"
 )
 
+type stackState uint8
+
+const (
+	undef stackState = iota
+	sp
+	ax
+)
+
 var (
+	state       stackState
 	LabelNo     int
-	RaxIsTOS    bool
 	LocalSp     int
 	LineNum     int
 	UnitName    string
@@ -17,6 +25,36 @@ var (
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	CleanupCode []string
 )
+
+func StackState() string {
+	if state == ax {
+		return "ax"
+	} else if state == sp {
+		return "sp"
+	} else {
+		return "??"
+	}
+}
+
+func SetAx() {
+	state = ax
+}
+
+func SetSp() {
+	state = sp
+}
+
+func SetUndef() {
+	state = undef
+}
+
+func AxIsTos() bool {
+	return state == ax
+}
+
+func SpIsTos() bool {
+	return state == sp
+}
 
 func New(name string, workdir string) (err error) {
 	ArgCode = make([]string, 0, 64)

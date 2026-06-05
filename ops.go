@@ -29,13 +29,13 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 		// If both operands are constant. Evaluate at compile time.
 		return generateConstOpConst(op, val1, val2)
 	} else if val2.IsConst {
-		EmitAssertTosInRax("Get TOS")
+		EmitAssertTosInRax("Get TOS before TosOpConst2")
 		return generateTosOpConst(op, val1, val2)
 	} else if val1.IsConst {
-		EmitAssertTosInRax("Get TOS")
+		EmitAssertTosInRax("Get TOS before TosOpConst1")
 		return generateTosOpConst(Inverse(op), val2, val1)
 	} else {
-		EmitAssertTosInRax("Get TOS")
+		EmitAssertTosInRax("Get TOS before TosOpNos")
 		return emitTosOpNos(op, val1, val2)
 	}
 }
@@ -126,7 +126,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 
 // emitTosOpNos will generate code for the operation op on the two top entries on the stack.
 func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS befor TosOpNos")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err := emitCompareIntegers(op, false)
@@ -213,7 +213,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 
 // emitCompareFloatConst compares float in rax with float constant
 func emitCompareFloatConst(op Token, litNo int) (err error) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before compare float const")
 	emit("movq", xmm(1), "rax", "")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "Load float value from literal")
 	emit("movq", xmm(2), "rax", "")
@@ -224,7 +224,7 @@ func emitCompareFloatConst(op Token, litNo int) (err error) {
 
 // emitCompareFloats compares two floats.
 func emitCompareFloats(op Token) (err error) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before compare floats")
 	emit("movq", xmm(2), "rax", "")
 	EmitPopAx("")
 	emit("movq", xmm(1), "rax", "")
@@ -258,6 +258,9 @@ func emitCompareIntConst(op Token, value int64, unsigned bool) error {
 // We assume TOS is in rax. Then NOS will be popped to rbx.
 // For subtraction we should calculate NOS-TOS or rbx-rax
 func emitIntegerOp(op Token) {
+	if !code.AxIsTos() {
+		panic("emitIntegerOp assumes RaxIsTOS=true")
+	}
 	emit("pop", "rcx", "", Sp(-1))
 	if op == TOK_DIV {
 		emit("xchg", "rax", "rcx", "")
@@ -287,12 +290,14 @@ func emitIntegerOp(op Token) {
 			emit(instruction, "rax", "rcx", "Integer op")
 		}
 	}
-	code.RaxIsTOS = true
 }
 
 // emitOpIntConst will evaluate tos=tos op <constant>
 // It uses 64bit integer values on the 64 bit rax register
 func emitOpIntConst(op Token, value int64, comment string) error {
+	if !code.AxIsTos() {
+		panic("emitOpIntConst assumes RaxIsTOS=true")
+	}
 	if value < -0x7FFFFFFF || value > 0x7FFFFFFFF {
 		return fmt.Errorf("value out of range: %d", value)
 	}
@@ -333,12 +338,11 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 		}
 		emit(instr, "rax", strconv.FormatInt(value, 10), comment)
 	}
-	code.RaxIsTOS = true
 	return nil
 }
 
 func emitOpFloatConst(op Token, litNo int) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before float op const")
 	emit("movq", xmm(1), "rax", "EmitOpFloatConst move tos in rax to xmm1")
 	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "emitOpFloatConst")
 	emit("movq", xmm(2), "rax", "EmitOpFloatConst mov nos to xmm2")
@@ -347,7 +351,7 @@ func emitOpFloatConst(op Token, litNo int) {
 
 // emitFloatOp will generate a stack operation on the top two stack entries
 func emitFloatOp(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS")
+	EmitAssertTosInRax("Get TOS before FloatOp")
 	if op2float {
 		emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
 	} else {
@@ -377,6 +381,6 @@ func doFloatOp(op Token) {
 	} else {
 		panic("EmitFloatOp not implemented for " + op.Name())
 	}
+	code.SetAx()
 	emit("movq", "rax", xmm(1), "Move float result into rax")
-	code.RaxIsTOS = true
 }
