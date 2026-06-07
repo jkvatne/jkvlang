@@ -1,0 +1,10 @@
+
+func main () {
+    // 1. Test concat three strings and assign to local variable
+    s = "Hello "
+    t = "World"
+    w = s+t
+    assert(w=="Hello World", "Failed concat")
+    assert(s=="Hello ", "Failed access to old s")
+    print("%s", w)
+}

@@ -1,4 +1,4 @@
-/*
+
 func f0(s String) String {
     return "f0 "+s
 }
@@ -24,67 +24,53 @@ func g1(a String, b String, c String) String {
 func g2(s String, t String) String {
     return s+t
 }
-*/
+
 
 func main() {
     u = "abc"
 //    u[1]='x'
 
-/*
+    // 4. Test asserts that fail compare strings that are different size or different content
+    assert(f0("xyz")=="f0 xyz", "Should not fail")
+    assert(f0("axyz")=="f0 xyz", "Intentionally fail")
+    invert_err()
+    assert(f0("ayz")=="f0 xyz", "Intentionally fail")
+    invert_err()
+
+    // 18. Test string compare equal and not equal
+    u = "abc"
+    v = "abcs"
+    s = "abc"
+    assert(u!=v, "Fail 18a")
+    assert(u!=s, "Intentional fail 18b")
+    invert_err()
+    assert(u==v, "Intentional fail 18c")
+    invert_err()
+    assert(u==s, "Fail 18d")
+
     // 1. Test concat three strings and assign to local variable
     s = "Hello "
     t = "World "
     u = "and goodbye!"
     w = s+t+u
     assert(w=="Hello World and goodbye!", "Failed 1")
+    assert(s=="Hello ", "Failed access to old s")
 
-    // 2. Test integer summation
-    x = 2
-    y = 3
-    z = x+y+1
-    assert(z==6, "Failed 2")
-
-    // 3. Test integer + and *
-    x = 4
-    y = 5
-    z = x*y+5*2
-    assert(z==30, "Failed 3")
-
-    // 4. Test integer + and *
-    x = 4
-    y = 5
-    a = 2
-    b = 4
-    z = x*y+a*b
-    assert(z==28, "Failed 4")
-
-    // 5. Test concatenated function calls
+    // 2. Test concatenated function calls
     w = f1("F1")+f2("F2")
     assert(w=="f1 F1F2 f2", "Failed 5")
 
-    // 6. Test nested function calls
+    // 3. Test nested function calls
     w = f1(f2("F1F2"))+f2("F2")
     assert(w=="f1 F1F2 f2F2 f2", "Failed 6")
 
-    // "7. Test concat three strings and assign to local variable
-    s = "Hello "
-    t = "World "
-    u = "and goodbye!"
-    w = s+t+u
-    assert(w=="Hello World and goodbye!")
-
-    // 8. Test asserts that fail compare strings that are different size or different content
-    assert(f0("xyz")=="f0 xyz", "Should not fail")
-    //assert(f0("axyz")=="f0 xyz", "Should fail")
-    //assert(f0("ayz")=="f0 xyz", "Should fail")
-
-    // 9. Test nested functions
+    // 5. Test nested functions
     w = g1("abc", g2("def", "ghi"),"jkl")
     assert(w=="abcdefghijkl", "Failed 9")
     w = g2("abc","def")
     assert(w=="abcdef", "Failed 9")
 
-    // 10. Test concat two variables
+    // 6. Test concat two variables
     s = "Hello "
     t = "World "
     u = s + t
@@ -123,16 +109,6 @@ func main() {
     assert(u==v,"Failed 17b")
     assert(v==u,"Failed 17c")
 
-    // 18. Test string compare equal and not equal
-    u = "abc"
-    v = "abcs"
-    s = "abc"
-    assert(u!=v, "Fail 18a")
-    assert(u!=s, "Intentional fail 18b")
-    invert_err()
-    assert(u==v, "Intentional fail 18c")
-    invert_err()
-    assert(u==s, "Fail 18d")
 
     // 19. Test if equal
     u = "abc"
@@ -149,5 +125,5 @@ func main() {
     u = "abc"
     assert(u!="abb", "Failed 20a")
     assert("abca"!=u, "Failed 20b")
-*/
+
 }

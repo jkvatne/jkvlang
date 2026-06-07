@@ -136,7 +136,6 @@ func OutputArgCode() {
 	if len(ArgCode) == 0 {
 		return
 	}
-	// _, _ = Write(s, ArgCode[0], true)
 	_, _ = OutputFile.WriteString(ArgCode[0])
 	ArgCode = nil
 }

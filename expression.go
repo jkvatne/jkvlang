@@ -357,6 +357,10 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
+			if parNo == 1 && f.name == "print" {
+				// Check that the first parameter is a constant string literal
+				return nil, fmt.Errorf("print's first parameter must be a constant string")
+			}
 			EmitPushTos(parNo, f.name)
 			if f.name == "printf" || f.name == "print" {
 				// We have a value on the stack (TOS). printf needs special handling.
@@ -1153,7 +1157,6 @@ func ParseFuncDef(s *State) error {
 	startLevel := s.BlockLevel
 	nextToken(s)
 	code.LocalSp = 0
-	EmitComment("Setting local SP=0")
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
