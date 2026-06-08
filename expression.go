@@ -213,18 +213,6 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 	return parList, nil
 }
 
-func ParseArrayIndexes(s *State) error {
-	// Assuming s.token==TOK_LBRACK
-	for {
-		nextToken(s)
-		if s.token != TOK_RBRACK {
-			break
-		}
-	}
-	nextToken(s)
-	return nil
-}
-
 // ParseStructField will evaluate the address
 // Called just after dot. Token should be a field name
 func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
@@ -248,17 +236,6 @@ func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
 	}
 	// Now rax is the address of the value
 	return v, nil
-}
-
-func ParseIndex(s *State) (*ValueDef, error) {
-	values, err := ParseExpression(s)
-	if err != nil {
-		return nil, err
-	}
-	if len(values) != 1 {
-		return nil, fmt.Errorf("expected 1 value but got %d", len(values))
-	}
-	return values[0], nil
 }
 
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
@@ -541,71 +518,89 @@ func ParseAssign(s *State, id string) error {
 	return nil
 }
 
-// ParseVarOrFunc is called for a unary function or variable.
-// Called when an identifier is encountered in an expression
-func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
-	var value = &ValueDef{}
-	err = fmt.Errorf("unrecognized variable or function call")
-	// We now have s.token == TOK_ID
-	id := s.tokenString
-	nextToken(s)
-	if s.found(TOK_LPAR) {
-		// t1 is the type we convert to
-		t1, ok := TypeDefs[id]
-		if ok {
-			// This is a type conversion. First parse value to convert
-			if code.AxIsTos() {
-				EmitPushAx("ParseVarOrFunc")
-			}
-			values, err = ParseExpression(s)
-			if err != nil {
-				return nil, err
-			}
-			value = values[0]
-			// t2 is the type we convert from
-			t2 := value.Typ
-			if CanAssign(t1.Pt, t2.Pt) {
-				value.Typ = t1
-			} else if t1.Pt == TYP_I64 && t2.Pt == TYP_F64 {
-				value.Typ = t1
-			} else {
-				err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
-			}
-			if !s.found(TOK_RPAR) {
-				return nil, fmt.Errorf("expected right parentheses")
-			}
-			return []*ValueDef{value}, err
-		} else if id == "ptr" {
-			// Handle conversion of variable to a pointer to that variable
-			if s.token != TOK_ID {
-				return nil, fmt.Errorf("expected id after (")
-			}
-			id = s.tokenString
-			s.next()
-			if !s.found(TOK_RPAR) {
-				return nil, fmt.Errorf("expected left parenthesis after 'ptr'")
-			}
-			// Lookup variable
-			v, ok := VarDefs[id]
-			if !ok {
-				return nil, fmt.Errorf("expected local variable, got %s", id)
-			}
-			ofs := v.Offset()
-			EmitGetAddrOfLocal(ofs)
-			return []*ValueDef{&PtrValue}, nil
-		}
-		// It is a function call that should return values
-		values, err = ParseFuncCall(s, id, true)
-		if err != nil {
-			return nil, err
-		}
-		return values, nil
-	} else if s.token == TOK_LBRACK {
-		// TODO: It is an array
-		err = ParseArrayIndexes(s)
-		return nil, fmt.Errorf("arrays are not yet implemented")
+func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) {
+	// This is a type conversion. First parse value to convert
+	if code.AxIsTos() {
+		EmitPushAx("ParseVarOrFunc")
 	}
+	values, err = ParseExpression(s)
+	if err != nil {
+		return nil, err
+	}
+	value := values[0]
+	// t2 is the type we convert from
+	t2 := value.Typ
+	if CanAssign(t1.Pt, t2.Pt) {
+		value.Typ = t1
+	} else if t1.Pt == TYP_I64 && t2.Pt == TYP_F64 {
+		value.Typ = t1
+	} else {
+		err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
+	}
+	if !s.found(TOK_RPAR) {
+		return nil, fmt.Errorf("expected right parentheses")
+	}
+	return []*ValueDef{value}, err
+}
+
+// ParsePointer handles conversion of variable to a pointer to that variable
+func ParsePointer(s *State, id string) (values []*ValueDef, err error) {
+	if s.token != TOK_ID {
+		return nil, fmt.Errorf("expected id after (")
+	}
+	id = s.tokenString
+	s.next()
+	if !s.found(TOK_RPAR) {
+		return nil, fmt.Errorf("expected left parenthesis after 'ptr'")
+	}
+	// Lookup variable
+	v, ok := VarDefs[id]
+	if !ok {
+		return nil, fmt.Errorf("expected local variable, got %s", id)
+	}
+	ofs := v.Offset()
+	EmitGetAddrOfLocal(ofs)
+	return []*ValueDef{&PtrValue}, nil
+}
+
+func ParseIndex(s *State, id string) (values []*ValueDef, err error) {
+	v, ok := VarDefs[id]
+	if !ok {
+		return nil, fmt.Errorf("did not find variable \"%s\"", id)
+	}
+	if v.Typ.Pt != TYP_STRING {
+		return nil, fmt.Errorf("expected string or array, got %s", v.Typ.Pt.Name())
+	}
+	values, err = ParseExpression(s)
+	if err != nil {
+		return nil, err
+	}
+	if len(values) != 1 {
+		return nil, fmt.Errorf("expected 1 value but got %d", len(values))
+	}
+	if !s.found(TOK_RBRACK) {
+		return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
+	}
+	if values[0].HasValue() {
+		// Index is a constant. Push local var address
+		code.SetAx()
+		emit("mov", "rax", BpRel(v.Offset()), "")
+		emit("add", "rax", strconv.Itoa(int(values[0].IntValue)+8), "")
+		values[0].IsConst = false
+		values[0].Typ = &U8Type
+	} else {
+
+	}
+	if v.Typ.Pt == TYP_STRING {
+		emit("mov", "al", "[rax]", "")
+		emit("and", "rax", strconv.Itoa(255), "")
+	}
+	return values, nil
+}
+
+func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 	// It is  a simple variable
+	var value = &ValueDef{}
 	v, ok := VarDefs[id]
 	if !ok {
 		return nil, fmt.Errorf("did not find variable \"%s\"", id)
@@ -661,6 +656,31 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	}
 	value.Typ = v.Value.Typ
 	return []*ValueDef{value}, nil
+}
+
+// ParseVarOrFunc is called for a unary function or variable.
+// Called when an identifier is encountered in an expression
+func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
+	err = fmt.Errorf("unrecognized variable or function call")
+	// We now have s.token == TOK_ID
+	id := s.tokenString
+	nextToken(s)
+	if s.found(TOK_LPAR) {
+		// t1 is the type we convert to
+		t1, ok := TypeDefs[id]
+		if ok {
+			return ParseTypeConversion(s, t1)
+		} else if id == "ptr" {
+			return ParsePointer(s, id)
+		} else {
+			return ParseFuncCall(s, id, true)
+		}
+	} else if s.found(TOK_LBRACK) {
+		// It is an array
+		return ParseIndex(s, id)
+	} else {
+		return ParseSimpleVar(s, id)
+	}
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call

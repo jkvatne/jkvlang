@@ -77,6 +77,7 @@ _lptr:
 _len:
     mov rax, [rax]
     and rax, 0x7FFFFFFF
+    mov [rsp+16], rax
     ret
 
 _bitlen:

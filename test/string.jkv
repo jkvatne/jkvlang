@@ -1,10 +1,19 @@
 
 func main () {
-    // 1. Test concat three strings and assign to local variable
+
+    // 3. Index
     s = "Hello "
+    k = s[1]
+    print("k=0x%02x", k)
+/*
+    // 1. Test concat three strings and assign to local variable
     t = "World"
     w = s+t
     assert(w=="Hello World", "Failed concat")
     assert(s=="Hello ", "Failed access to old s")
     print("%s", w)
+
+    // 2. Calling len
+    print("len(w)=%d", len(w))
+*/
 }
