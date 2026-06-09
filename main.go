@@ -61,6 +61,7 @@ func LinkRun(workDir string, outputName string) (err error) {
 }
 
 func Build(workDir string, fileName string) (err error) {
+	fmt.Printf("Compiling '%s'\n", fileName)
 	outputName := strings.TrimSuffix(filepath.Base(fileName), ".jkv") + ".exe"
 	// Make sure output directory is empty
 	CreateBuildDir(workDir)
@@ -193,12 +194,13 @@ func Link(workDir string, outputName string) error {
 	}
 
 	// Print link command line to console
-	fmt.Printf(LinkerName + " ")
-	for _, s := range args {
-		fmt.Printf(" %s", s)
-	}
-	fmt.Printf("\n")
-
+	/*
+		fmt.Printf(LinkerName + " ")
+		for _, s := range args {
+			fmt.Printf(" %s", s)
+		}
+		fmt.Printf("\n")
+	*/
 	// Now start the linker
 	output, err := exec.Command(LinkerName, args...).CombinedOutput()
 	if err != nil {
@@ -206,7 +208,6 @@ func Link(workDir string, outputName string) error {
 	}
 
 	// Print linker output to console
-	fmt.Printf("\n")
 	if len(output) > 0 {
 		fmt.Println(string(output))
 	}
@@ -276,7 +277,6 @@ func main() {
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		fmt.Printf("=== Compiling %s ===\n", *oneFile)
 		err = Build(*buildDir, *oneFile)
 	} else if *test {
 		n := 0

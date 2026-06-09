@@ -12,7 +12,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	wasNew := false
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		if value.Typ.Pt == TYP_U8 || value.Typ.Pt == TYP_U16 || value.Typ.Pt == TYP_I16 {
+		if value.Typ.Pt == code.TYP_U8 || value.Typ.Pt == code.TYP_U16 || value.Typ.Pt == code.TYP_I16 {
 			// Default to I32 when assigning smaller types to a local variable
 			lvalue.SetType(&I32Type)
 		} else {
@@ -32,17 +32,17 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// If the value is known (a compile time constant)
 	if value.HasValue() {
 		t := lvalue.Typ.Pt
-		if t == TYP_STRUCT {
+		if t == code.TYP_STRUCT {
 			if lvalue.FieldType != nil {
 				t = lvalue.FieldType.Pt
 			}
 		}
 		if CanAssignConst(t, value) {
-			if t == TYP_STRING {
+			if t == code.TYP_STRING {
 				if lvalue.IsIndirect {
 					EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
-				} else if lvalue.Typ.Pt == TYP_STRUCT {
+				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
 					err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
 				} else {
 					err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
@@ -59,14 +59,14 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					}
 					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
-			} else if t == TYP_F64 {
+			} else if t == code.TYP_F64 {
 				if value.FloatLitNo == 0 {
 					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
 					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
 				} else {
 					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
 				}
-			} else if t == TYP_BOOL {
+			} else if t == code.TYP_BOOL {
 				EmitStoreConst(1, value.IntValue, lvalue.Offset(), "Assign bool")
 			} else {
 				err = fmt.Errorf("unimplemented assignment of %s", t.Name())
@@ -79,35 +79,35 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		} else {
 			return fmt.Errorf("cannot assign const to variable \"%s\"", lvalue.Name)
 		}
-	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == TYP_PTR {
+	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == code.TYP_PTR {
 		// The value is on the top of the stack (rax). Save it to the lvalue.
 		if !code.AxIsTos() {
 			EmitPopAx("Assigning TOS to lvalue")
 			code.SetAx()
 		}
-		if lvalue.Value.Typ.Pt == TYP_STRUCT {
+		if lvalue.Value.Typ.Pt == code.TYP_STRUCT {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 		}
 		code.SetUndef()
-	} else if value.Typ.Pt == TYP_F64 {
+	} else if value.Typ.Pt == code.TYP_F64 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
 		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
 		code.SetUndef()
-	} else if value.Typ.Pt == TYP_STRING {
+	} else if value.Typ.Pt == code.TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
 		code.SetUndef()
-	} else if value.Typ.Pt == TYP_STRUCT && op == TOK_ASSIGN {
+	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		// Free old value if it exists
 		if !wasNew {
-			EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.size, "Free if "+lvalue.Name+" exists")
+			EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
 		}
 		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
 		code.SetUndef()
-	} else if value.Typ.Pt == TYP_BOOL {
+	} else if value.Typ.Pt == code.TYP_BOOL {
 		code.SetUndef()
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
 	} else {
@@ -120,7 +120,7 @@ func ParseStruct(s *State, id string) (*TypeDef, error) {
 	if !s.found(TOK_LBRACE) {
 		return nil, fmt.Errorf("expected {, found " + s.tokenString)
 	}
-	t := &TypeDef{TypeName: id, Pt: TYP_STRUCT}
+	t := &TypeDef{TypeName: id, Pt: code.TYP_STRUCT}
 	t.Fields = make(map[string]*TypeDef)
 	t.Offsets = make(map[string]int)
 	count := 0
@@ -169,7 +169,7 @@ func ParseStruct(s *State, id string) (*TypeDef, error) {
 			ofs += 1
 		}
 	}
-	t.size = (ofs + 7) & 0xFFFFFFF8
+	t.StructSize = (ofs + 7) & 0xFFFFFFF8
 	s.next()
 	AddType(id, t)
 	return t, nil
@@ -255,10 +255,17 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
 			}
 		} else if s.found(TOK_LBRACK) {
-			// Calculate offset into rax
-			_, err = ParseIndex(s, id)
+			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
+			var index *ValueDef
+			index, err = ParseIndex(s, id)
+			if !s.found(TOK_RBRACK) {
+				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
+			}
+			elementSize := index.Typ.Element.Size()
 			// Load variable address into SI
-			EmitLoadEa(lvalue.Offset())
+			emit("mov", "rsi", BpRel(lvalue.Offset()), "EmitLoadEa")
+			fmt.Printf("%d\n", elementSize)
+			// Multiply by element size
 			if err != nil {
 				return nil, err
 			}
@@ -309,7 +316,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		value := values[0]
 		if value.HasValue() {
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
-			if value.Typ.Pt == TYP_STRING {
+			if value.Typ.Pt == code.TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
 				EmitPushTos(parNo, f.name)
 				if f.name == "printf" || f.name == "print" {
@@ -318,14 +325,14 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(value.IntValue, "")
 				EmitPushTos(parNo, f.name)
-			} else if value.Typ.Pt == TYP_BOOL {
+			} else if value.Typ.Pt == code.TYP_BOOL {
 				if value.BoolValue {
 					EmitPushConst(1, "")
 				} else {
 					EmitPushConst(0, "")
 				}
 				EmitPushTos(parNo, f.name)
-			} else if value.Typ.Pt == TYP_F64 {
+			} else if value.Typ.Pt == code.TYP_F64 {
 				EmitPushFloatLit(value.FloatLitNo)
 			} else {
 				// TODO: Handle F32 etc.
@@ -339,7 +346,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			EmitPushTos(parNo, f.name)
 			if f.name == "printf" || f.name == "print" {
 				// We have a value on the stack (TOS). printf needs special handling.
-				if value.Typ.Pt == TYP_STRING {
+				if value.Typ.Pt == code.TYP_STRING {
 					EmitSkipLenCap()
 					// If it was a local variable or a constant, we should not free it.
 					// (The constant case has already been handled)
@@ -355,15 +362,15 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 						v += "   call _free_str\n\n"
 						code.SetCleanupCode(v)
 					}
-				} else if value.Typ.Pt == TYP_F64 || value.Typ.Pt == TYP_F32 {
+				} else if value.Typ.Pt == code.TYP_F64 || value.Typ.Pt == code.TYP_F32 {
 					EmitFlushRax("Float arg to printf")
 				} else if value.Typ.Pt.IsInteger() {
 					EmitFlushRax("Integer arg to printf")
-				} else if value.Typ.Pt == TYP_STRUCT {
+				} else if value.Typ.Pt == code.TYP_STRUCT {
 					EmitFlushRax("Struct field arg to printf")
-				} else if value.Typ.Pt == TYP_PTR {
+				} else if value.Typ.Pt == code.TYP_PTR {
 					EmitFlushRax("Ptr field arg to printf")
-				} else if value.Typ.Pt == TYP_BOOL {
+				} else if value.Typ.Pt == code.TYP_BOOL {
 					EmitFlushRax("Bool arg to printf")
 				} else {
 					return nil, fmt.Errorf("printf arguments of type %s is not yet handled", value.Typ.Pt.Name())
@@ -465,7 +472,7 @@ func ParseAssign(s *State, id string) error {
 		if op == TOK_ASSIGN {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
-				if lv.Typ != nil && lv.Typ.Pt == TYP_STRING {
+				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
 					// Need to have pointer in rax
 					EmitLoad(8, lv.Offset(), "Load ptr to string")
 					// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
@@ -530,7 +537,7 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 	t2 := value.Typ
 	if CanAssign(t1.Pt, t2.Pt) {
 		value.Typ = t1
-	} else if t1.Pt == TYP_I64 && t2.Pt == TYP_F64 {
+	} else if t1.Pt == code.TYP_I64 && t2.Pt == code.TYP_F64 {
 		value.Typ = t1
 	} else {
 		err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
@@ -568,7 +575,7 @@ func ParseIndex(s *State, id string) (value *ValueDef, err error) {
 	if !ok {
 		return nil, fmt.Errorf("did not find variable \"%s\"", id)
 	}
-	if v.Typ.Pt != TYP_STRING {
+	if v.Typ.Pt != code.TYP_STRING {
 		return nil, fmt.Errorf("expected string or array, got %s", v.Typ.Pt.Name())
 	}
 	values, err := ParseExpression(s)
@@ -577,9 +584,6 @@ func ParseIndex(s *State, id string) (value *ValueDef, err error) {
 	}
 	if len(values) != 1 {
 		return nil, fmt.Errorf("expected 1 value but got %d", len(values))
-	}
-	if !s.found(TOK_RBRACK) {
-		return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 	}
 	return values[0], nil
 }
@@ -594,7 +598,7 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 	if v.Typ == nil {
 		return nil, fmt.Errorf("no type for \"%s\"", id)
 	}
-	if v.Typ.Pt == TYP_NONE {
+	if v.Typ.Pt == code.TYP_NONE {
 		return nil, fmt.Errorf("no type for \"%s\"", id)
 	}
 	if !v.Value.HasValue() {
@@ -604,13 +608,13 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 		}
 		if v.Name == "err" {
 			EmitLoadErr()
-		} else if v.Value.Typ.Pt == TYP_F64 {
+		} else if v.Value.Typ.Pt == code.TYP_F64 {
 			// Load value into xmm<sp>
 			EmitLoadFloat(8, v.Offset(), "Load float "+v.Name)
-		} else if v.Value.Typ.Pt == TYP_F32 {
+		} else if v.Value.Typ.Pt == code.TYP_F32 {
 			// Load value into xmm<sp>
 			EmitLoadFloat(4, v.Offset(), "Load float "+v.Name)
-		} else if v.Value.Typ.Pt == TYP_STRUCT {
+		} else if v.Value.Typ.Pt == code.TYP_STRUCT {
 			if s.found(TOK_DOT) {
 				if s.token != TOK_ID {
 					return nil, fmt.Errorf("expected field name after dot")
@@ -675,9 +679,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	nextToken(s)
 	if s.found(TOK_LPAR) {
 		// t1 is the type we convert to
-		t1, ok := TypeDefs[id]
+		typ, ok := TypeDefs[id]
 		if ok {
-			return ParseTypeConversion(s, t1)
+			return ParseTypeConversion(s, typ)
 		} else if id == "ptr" {
 			return ParsePointer(s, id)
 		} else {
@@ -686,11 +690,24 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	} else if s.found(TOK_LBRACK) {
 		// It is an array
 		index, err2 := ParseIndex(s, id)
-		v := VarDefs[id]
+		if !s.found(TOK_RBRACK) {
+			return nil, fmt.Errorf("missing right bracket")
+		}
 		if err2 != nil {
 			return nil, err2
 		}
-		value, err := LoadIndexedVar(1, v.Offset(), index)
+		v, ok := VarDefs[id]
+		if !ok {
+			return nil, fmt.Errorf("did not find variable \"%s\"", id)
+		}
+		var size int
+		if v.Typ.Pt == code.TYP_STRING {
+			size = 1
+		} else if v.Typ.Pt == code.TYP_SLICE {
+			size = v.Typ.Element.Size()
+		}
+		fmt.Printf("Variable %s is %s, element size is %d\n", v.Name, v.Typ.Name(), size)
+		value, err := LoadIndexedVar(size, v.Offset(), index)
 		return []*ValueDef{value}, err
 	} else {
 		return ParseSimpleVar(s, id)
@@ -773,7 +790,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if len(values) != 1 {
 			return nil, fmt.Errorf("after ! we expected 1 value but got %d", len(values))
 		}
-		if values[0].Typ.Pt != TYP_BOOL {
+		if values[0].Typ.Pt != code.TYP_BOOL {
 			return nil, fmt.Errorf("after ! we expected boolean value but got %v", values[0].Typ.Pt)
 		}
 		EmitNot()
@@ -870,7 +887,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 		return nil, err
 	}
 	var values2 []*ValueDef
-	if s.token == TOK_PLUS && values1[0].Typ.Pt == TYP_STRING {
+	if s.token == TOK_PLUS && values1[0].Typ.Pt == code.TYP_STRING {
 		if len(values1) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
 		}
@@ -891,7 +908,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 				EmitPushStringLit(values2[0].StringLitNo, "Sum term push value2")
 				values2[0].IsTempObj = false
 			}
-			if values2[0].Typ.Pt != TYP_STRING {
+			if values2[0].Typ.Pt != code.TYP_STRING {
 				return nil, fmt.Errorf("string can only be concatenated with another string")
 			}
 			code.NewArgCode()
@@ -963,7 +980,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 			endLabel = code.NewLabel()
 		}
 		op := s.token
-		if results[0].Typ.Pt != TYP_BOOL {
+		if results[0].Typ.Pt != code.TYP_BOOL {
 			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		nextToken(s)
@@ -978,7 +995,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		if err2 != nil {
 			return nil, err2
 		}
-		if values2[0].Typ.Pt != TYP_BOOL {
+		if values2[0].Typ.Pt != code.TYP_BOOL {
 			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 	}
@@ -1115,8 +1132,8 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
 			}
-			if value.Typ.Pt != TYP_BOOL {
-				return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[value.Typ.Pt])
+			if value.Typ.Pt != code.TYP_BOOL {
+				return fmt.Errorf("expected boolean but got %s", code.PrimaryTypeNames[value.Typ.Pt])
 			}
 			L1 = code.NewLabel()
 			EmitJumpFalse(L1, "jump if condition was false")
@@ -1174,8 +1191,8 @@ func ParseIf(s *State) error {
 	if len(values) != 1 {
 		return fmt.Errorf("expected one value")
 	}
-	if values[0].Typ.Pt != TYP_BOOL {
-		return fmt.Errorf("expected boolean but got %s", PrimaryTypeNames[values[0].Typ.Pt])
+	if values[0].Typ.Pt != code.TYP_BOOL {
+		return fmt.Errorf("expected boolean but got %s", code.PrimaryTypeNames[values[0].Typ.Pt])
 	}
 	code.OutputArgCode()
 	if s.found(TOK_COLON) || s.found(TOK_QMARK) {
@@ -1254,7 +1271,10 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	mustFree := false
 	for _, v := range VarDefs {
-		if (v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT) && v.Value.IsTempObj {
+		if v.Value.Typ == nil {
+			return fmt.Errorf("variable %s must have a type", v.Name)
+		}
+		if (v.Value.Typ.Pt == code.TYP_STRING || v.Value.Typ.Pt == code.TYP_STRUCT) && v.Value.IsTempObj {
 			mustFree = true
 		}
 	}
@@ -1264,10 +1284,10 @@ func ParseFuncDef(s *State) error {
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			code.SetSp()
-			if v.Value.Typ.Pt == TYP_STRING && v.Value.IsTempObj {
+			if v.Value.Typ.Pt == code.TYP_STRING && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
 				EmitFreeString("")
-			} else if v.Value.Typ.Pt == TYP_STRUCT && v.Value.IsTempObj {
+			} else if v.Value.Typ.Pt == code.TYP_STRUCT && v.Value.IsTempObj {
 				EmitLoad(8, v.Offset(), "Free local struct "+v.Name)
 				EmitFreeStruct(v.Typ.Size(), "")
 			}

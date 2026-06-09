@@ -29,9 +29,9 @@ func ParseReturn(s *State) error {
 				if v.IsConst {
 					if v.Typ.Pt.IsInteger() {
 						EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
-					} else if v.Typ.Pt == TYP_STRING {
+					} else if v.Typ.Pt == code.TYP_STRING {
 						EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
-					} else if v.Typ.Pt == TYP_BOOL {
+					} else if v.Typ.Pt == code.TYP_BOOL {
 						EmitPushConst(v.IntValue, "Bool const")
 					} else {
 						panic("Not implemented")

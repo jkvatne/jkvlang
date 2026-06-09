@@ -235,20 +235,20 @@ func eof(s *State) bool {
 // TypeFromNumber will guess the type based on the value of the number
 // Range for 64 bit signed integer = -9223372036854775808 ... 9223372036854775807
 // Range for 64 bit unsigned integer = 0 ... 18446744073709551615
-func TypeFromNumber(x int64) PrimaryType {
+func TypeFromNumber(x int64) code.PrimaryType {
 	if x >= 0 && x <= 255 {
-		return TYP_U8
+		return code.TYP_U8
 	} else if x >= -32768 && x <= 32767 {
-		return TYP_I16
+		return code.TYP_I16
 	} else if x <= 65536 {
-		return TYP_U16
+		return code.TYP_U16
 	} else if x >= -2147483648 && x <= 2147483647 {
-		return TYP_I32
+		return code.TYP_I32
 	} else if x <= 4294967296 {
-		return TYP_U32
+		return code.TYP_U32
 	}
 	// Default to I64
-	return TYP_I64
+	return code.TYP_I64
 }
 
 func parseNumber(s *State) {
@@ -293,7 +293,7 @@ func parseNumber(s *State) {
 		}
 		s.token = TOK_FLOAT
 		s.ConstValue.Bits = math.Float64bits(f)
-		s.ConstValue.Pt = TYP_F64
+		s.ConstValue.Pt = code.TYP_F64
 	} else {
 		var i int64
 		var u uint64
@@ -310,7 +310,7 @@ func parseNumber(s *State) {
 			}
 			// We have a constant that is out of range for I64.
 			s.ConstValue.Bits = u
-			s.ConstValue.Pt = TYP_U64
+			s.ConstValue.Pt = code.TYP_U64
 		}
 	}
 }

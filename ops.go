@@ -15,10 +15,10 @@ import (
 // There are 4 different cases: const op const, tos op const, const op tos, tos op nos
 func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	// Convert int values to float in case of mixed types.
-	if val1.Typ.Pt != TYP_F64 && val1.Typ.Pt != TYP_F32 {
+	if val1.Typ.Pt != code.TYP_F64 && val1.Typ.Pt != code.TYP_F32 {
 		val1.FloatValue = float64(val1.IntValue)
 	}
-	if val2.Typ.Pt != TYP_F64 && val2.Typ.Pt != TYP_F32 {
+	if val2.Typ.Pt != code.TYP_F64 && val2.Typ.Pt != code.TYP_F32 {
 		val2.FloatValue = float64(val2.IntValue)
 	}
 	// For user defined types, both must be identical, or one operand must be a basic type.
@@ -134,7 +134,7 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			err := emitCompareFloats(op)
 			return &ValueDef{Typ: &BoolType}, err
-		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING {
 			if op == TOK_EQ {
 				EmitCompareStringsEq(val1.IsTempObj, val2.IsTempObj)
 				return &ValueDef{Typ: &BoolType}, nil
@@ -152,7 +152,7 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			emitFloatOp(op, true, true)
 			return val1, nil
-		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING && op == TOK_PLUS {
+		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING && op == TOK_PLUS {
 			EmitConcat(val1.IsTempObj, val2.IsTempObj)
 			return val1, nil
 		} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsFloat() {
@@ -179,9 +179,9 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			err = emitCompareIntConst(op, val2.IntValue, false)
 		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
 			err = emitCompareFloatConst(op, val2.FloatLitNo)
-		} else if val1.Typ.Pt == TYP_STRING && val2.Typ.Pt == TYP_STRING {
+		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
-		} else if val1.Typ.Pt == TYP_BOOL && val2.Typ.Pt == TYP_BOOL {
+		} else if val1.Typ.Pt == code.TYP_BOOL && val2.Typ.Pt == code.TYP_BOOL {
 			err = emitCompareIntConst(op, val2.IntValue, false)
 		} else {
 			err = fmt.Errorf("unknown type combination for compare")

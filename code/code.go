@@ -1,6 +1,7 @@
 package code
 
 import (
+	"go/constant"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -13,9 +14,62 @@ const (
 	undef stackState = iota
 	sp
 	ax
+	cc
 )
 
+type PrimaryType int
+
+//goland:noinspection ALL,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage,GoSnakeCaseUsage
+const (
+	TYP_NONE PrimaryType = iota
+	TYP_BOOL
+	TYP_U8
+	TYP_I16
+	TYP_U16
+
+	TYP_I32
+	TYP_U32
+	TYP_RUNE
+	TYP_I64
+	TYP_U64
+
+	TYP_F32
+	TYP_F64
+	TYP_STRING
+	TYP_STRUCT
+	TYP_FUNC
+
+	TYP_MAP
+	TYP_SET
+	TYP_PTR
+	TYP_ERROR
+	TYP_SLICE
+
+	TYP_COUNT
+)
+
+var PrimaryTypeNames = [...]string{
+	"None", "Bool", "U8", "I16", "U16",
+	"I32", "U32", "Rune", "I64", "U64",
+	"F32", "F64", "String", "Struct", "Func",
+	"Map", "Set", "Ptr", "Error", "Slice",
+	"<unused>"}
+
+var PrimaryTypeSizes = [...]int{
+	0, 1, 1, 2, 2,
+	4, 4, 4, 8, 8,
+	4, 8, 8, 8, 8,
+	8, 8, 8, 8, 8,
+	0}
+
+type Value struct {
+	Bits        uint64
+	Pt          PrimaryType
+	StringValue string
+}
+
 var (
+	constValue  constant.Value
 	state       stackState
 	LabelNo     int
 	LocalSp     int
@@ -25,6 +79,34 @@ var (
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	CleanupCode []string
 )
+
+func (t PrimaryType) IsObject() bool {
+	return t == TYP_STRUCT || t == TYP_STRING || t == TYP_MAP || t == TYP_SET
+}
+
+func (t PrimaryType) Name() string {
+	return PrimaryTypeNames[t]
+}
+
+func (t PrimaryType) Size() int {
+	return PrimaryTypeSizes[t]
+}
+
+func (t PrimaryType) IsInteger() bool {
+	return t == TYP_I32 || t == TYP_U32 || t == TYP_U16 || t == TYP_I16 || t == TYP_U8 || t == TYP_I64 || t == TYP_U64
+}
+
+func (t PrimaryType) IsUnsigned() bool {
+	return t == TYP_U32 || t == TYP_U16 || t == TYP_U8 || t == TYP_U64
+}
+
+func (t PrimaryType) IsFloat() bool {
+	return t == TYP_F32 || t == TYP_F64
+}
+
+func (t PrimaryType) IsNumber() bool {
+	return t.IsFloat() || t.IsInteger()
+}
 
 func StackState() string {
 	if state == ax {

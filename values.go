@@ -2,11 +2,13 @@ package main
 
 import (
 	"strconv"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 type ConstValue struct {
 	Bits        uint64
-	Pt          PrimaryType
+	Pt          code.PrimaryType
 	StringValue string
 }
 
@@ -81,16 +83,16 @@ func widest(v1 *ValueDef, v2 *ValueDef) *ValueDef {
 }
 
 func ValueAsString(v ValueDef) string {
-	if v.Typ.Pt == TYP_U8 || v.Typ.Pt == TYP_U16 || v.Typ.Pt == TYP_U32 || v.Typ.Pt == TYP_I16 || v.Typ.Pt == TYP_I32 || v.Typ.Pt == TYP_I64 {
+	if v.Typ.Pt == code.TYP_U8 || v.Typ.Pt == code.TYP_U16 || v.Typ.Pt == code.TYP_U32 || v.Typ.Pt == code.TYP_I16 || v.Typ.Pt == code.TYP_I32 || v.Typ.Pt == code.TYP_I64 {
 		return strconv.FormatInt(v.IntValue, 10)
-	} else if v.Typ.Pt == TYP_BOOL {
+	} else if v.Typ.Pt == code.TYP_BOOL {
 		if v.BoolValue {
 			return "true"
 		}
 		return "false"
-	} else if v.Typ.Pt == TYP_F64 {
+	} else if v.Typ.Pt == code.TYP_F64 {
 		return strconv.FormatFloat(v.FloatValue, 'g', -1, 64)
-	} else if v.Typ.Pt == TYP_F32 {
+	} else if v.Typ.Pt == code.TYP_F32 {
 		return strconv.FormatFloat(v.FloatValue, 'g', -1, 32)
 	}
 	return v.StringValue

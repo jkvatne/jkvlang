@@ -6,49 +6,28 @@ import (
 	"github.com/jkvatne/jkv/code"
 )
 
-type VarKind int
-
-const (
-	ErrorVar VarKind = iota
-	GlobalConst
-	ParVar
-	LocalVar
-	StructField
-	RetVar
-	TempVar
-)
-
 type VarDef struct {
 	Typ         *TypeDef
 	Value       ValueDef
 	Name        string
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takes ownership.
-	Kind        VarKind
 	FieldOfs    int
 	FieldType   *TypeDef
 	IsIndirect  bool
 	BlockLevel  int
+	IsGlobal    bool
 }
 
 var VarDefs map[string]*VarDef
 
 func init() {
 	VarDefs = make(map[string]*VarDef)
-	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, Kind: ErrorVar, Value: ValueDef{Typ: &I64Type}}
-}
-
-func HasLocalVars() bool {
-	for _, v := range VarDefs {
-		if v.Kind >= ParVar {
-			return true
-		}
-	}
-	return false
+	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, IsGlobal: true, Value: ValueDef{Typ: &I64Type}}
 }
 
 func MustFree() bool {
 	for _, v := range VarDefs {
-		if v.Value.Typ.Pt == TYP_STRING || v.Value.Typ.Pt == TYP_STRUCT {
+		if v.Value.Typ.Pt == code.TYP_STRING || v.Value.Typ.Pt == code.TYP_STRUCT {
 			return true
 		}
 	}
@@ -57,7 +36,10 @@ func MustFree() bool {
 
 func VarReset(s *State) {
 	for _, v := range VarDefs {
-		if v.Kind != ErrorVar && v.Kind != GlobalConst {
+		if v.Typ == nil {
+			continue // panic("v.Typ is nil")
+		}
+		if v.Typ.Pt != code.TYP_ERROR && !v.IsGlobal {
 			delete(VarDefs, v.Name)
 		}
 	}
@@ -69,7 +51,7 @@ func (v *VarDef) Offset() int {
 }
 
 func (v *VarDef) Size() int {
-	return PrimaryTypeSizes[v.Typ.Pt]
+	return code.PrimaryTypeSizes[v.Typ.Pt]
 }
 
 func (v *VarDef) SetType(t *TypeDef) {
@@ -80,7 +62,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 // AddLocalPar is called from ParseFormalArgList
 // The name "par" should be used only for formal parameters
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
-	v := &VarDef{Name: name, Typ: typ, Kind: ParVar}
+	v := &VarDef{Name: name, Typ: typ}
 	s.ParCount++
 	v.Value.Offset = 8 + s.ParCount*8
 	v.Value.Typ = typ
@@ -93,7 +75,7 @@ func AddGlobalConst(id string, typ *TypeDef) (*VarDef, error) {
 	if v != nil {
 		return nil, fmt.Errorf("constant '%s' is re-declared", id)
 	}
-	v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: true}, Kind: GlobalConst, BlockLevel: 0}
+	v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: true}, IsGlobal: true, BlockLevel: 0}
 	VarDefs[id] = v
 	return v, nil
 }
@@ -101,11 +83,10 @@ func AddGlobalConst(id string, typ *TypeDef) (*VarDef, error) {
 func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
-		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: false}, Kind: LocalVar, BlockLevel: s.BlockLevel}
+		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: false}, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		s.LocalVarCount++
 		v.Value.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
-		v.Kind = LocalVar
 	}
 	return v
 }
