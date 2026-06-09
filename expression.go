@@ -256,14 +256,12 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			}
 		} else if s.found(TOK_LBRACK) {
 			// Calculate offset into rax
-			// TODO
-			// var v *ValueDef
-			// v, err = ParseIndex(s)
+			_, err = ParseIndex(s, id)
 			// Load variable address into SI
-			// EmitLoadEa(lvalue.Offset())
-			// if err != nil {
-			//	return nil, err
-			// }
+			EmitLoadEa(lvalue.Offset())
+			if err != nil {
+				return nil, err
+			}
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
@@ -563,7 +561,9 @@ func ParsePointer(s *State, id string) (values []*ValueDef, err error) {
 	return []*ValueDef{&PtrValue}, nil
 }
 
-func ParseIndex(s *State, id string) (values []*ValueDef, err error) {
+// ParseIndex will parse the expression inside [] after a local variable
+// and leave the resulting address in TOS or as a constant in the returned value.
+func ParseIndex(s *State, id string) (value *ValueDef, err error) {
 	v, ok := VarDefs[id]
 	if !ok {
 		return nil, fmt.Errorf("did not find variable \"%s\"", id)
@@ -571,7 +571,7 @@ func ParseIndex(s *State, id string) (values []*ValueDef, err error) {
 	if v.Typ.Pt != TYP_STRING {
 		return nil, fmt.Errorf("expected string or array, got %s", v.Typ.Pt.Name())
 	}
-	values, err = ParseExpression(s)
+	values, err := ParseExpression(s)
 	if err != nil {
 		return nil, err
 	}
@@ -581,21 +581,7 @@ func ParseIndex(s *State, id string) (values []*ValueDef, err error) {
 	if !s.found(TOK_RBRACK) {
 		return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 	}
-	if values[0].HasValue() {
-		// Index is a constant. Push local var address
-		code.SetAx()
-		emit("mov", "rax", BpRel(v.Offset()), "")
-		emit("add", "rax", strconv.Itoa(int(values[0].IntValue)+8), "")
-		values[0].IsConst = false
-		values[0].Typ = &U8Type
-	} else {
-
-	}
-	if v.Typ.Pt == TYP_STRING {
-		emit("mov", "al", "[rax]", "")
-		emit("and", "rax", strconv.Itoa(255), "")
-	}
-	return values, nil
+	return values[0], nil
 }
 
 func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
@@ -658,6 +644,28 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 	return []*ValueDef{value}, nil
 }
 
+// LoadIndexedVar assumes the index value is TOS (or a constant in value.IntValue if value.IsConst
+// It will multiply the index by the size (which can be 1,2,4 or 8) and add it to the address.
+// This function is for local variables only, so the address is given by the offset from the frame pointer (rbp).
+// We want:  RBX = (RCX * 4) + RAX + 16
+// Assembly: lea rbx, [rax + rcx * 4 + 16]
+func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, error) {
+	if index.HasValue() {
+		// Index is a constant. Load ea and add size*index
+		ofs := int(index.IntValue) * size
+		emit("mov", "rax", BpRel(frameOffset), "")
+		emit("add", "rax", strconv.Itoa(ofs), "")
+		value := &ValueDef{Typ: &U8Type}
+		if size == 1 {
+			emit("movzx", "eax", "byte [rax+8]", "")
+		}
+		code.SetAx()
+		return value, nil
+	} else {
+		return nil, fmt.Errorf("Not implemented")
+	}
+}
+
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when an identifier is encountered in an expression
 func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
@@ -677,7 +685,13 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		}
 	} else if s.found(TOK_LBRACK) {
 		// It is an array
-		return ParseIndex(s, id)
+		index, err2 := ParseIndex(s, id)
+		v := VarDefs[id]
+		if err2 != nil {
+			return nil, err2
+		}
+		value, err := LoadIndexedVar(1, v.Offset(), index)
+		return []*ValueDef{value}, err
 	} else {
 		return ParseSimpleVar(s, id)
 	}
