@@ -13,6 +13,8 @@ func CompileFile(name string, workdir string) error {
 	if err != nil {
 		return err
 	}
+	InitVardefs()
+	InitTypes()
 	s, err := NewState(name)
 	if err != nil {
 		return err

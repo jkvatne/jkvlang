@@ -101,7 +101,7 @@ func ParseFor(s *State) error {
 		}
 		for _, l := range lvalues {
 			ofs := EmitAllocLocalVar("Allocate loop variable " + l.Name)
-			l.Value.Offset = ofs
+			l.Offset = ofs
 		}
 		s.next()
 		if !s.found(TOK_ASSIGN) {

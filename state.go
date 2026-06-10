@@ -26,6 +26,7 @@ type State struct {
 	returnLbl       int
 	DidReturn       bool
 	BlockLevel      int
+	FileName        string
 }
 
 func NewState(name string) (*State, error) {
@@ -35,5 +36,6 @@ func NewState(name string) (*State, error) {
 	if err != nil {
 		slog.Error("Could not open file %s : %s", name, err.Error())
 	}
+	s.FileName = name
 	return s, err
 }

@@ -23,7 +23,6 @@ type ValueDef struct {
 	StringLitNo int
 	FloatLitNo  int
 	IsReturned  bool
-	Offset      int
 	LocalVar    *VarDef
 	IsTempObj   bool
 	IsConst     bool
@@ -37,6 +36,13 @@ var (
 	LiteralDefs      []string
 	FloatLiteralDefs []float64
 )
+
+func (v *ValueDef) Offset() int {
+	if v.LocalVar != nil {
+		return v.LocalVar.Offset
+	}
+	return 0
+}
 
 func (v *ValueDef) HasValue() bool {
 	return v.IsConst

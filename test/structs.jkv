@@ -38,6 +38,7 @@ func main() {
     p.inc=2
     decr_age(p)
     assert(p.age==70, "Failed, p.age was %d not 70, p.age")
+    print("Name=%s", p.name)
 
     p = new(Person)
     assert(p.age==0, "p.age should be 0, was %d", p.age)

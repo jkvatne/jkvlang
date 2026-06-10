@@ -33,8 +33,8 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if value.HasValue() {
 		t := lvalue.Typ.Pt
 		if t == code.TYP_STRUCT {
-			if lvalue.FieldType != nil {
-				t = lvalue.FieldType.Pt
+			if lvalue != nil {
+				t = lvalue.Typ.Pt
 			}
 		}
 		if CanAssignConst(t, value) {
@@ -43,9 +43,10 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
-					err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
+					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
+					panic("Test")
 				} else {
-					err = EmitOpAssignString(lvalue.Offset(), value.StringLitNo)
+					err = EmitOpAssignString(lvalue.Offset, value.StringLitNo)
 				}
 			} else if t.IsInteger() {
 				if lvalue.IsIndirect {
@@ -54,20 +55,20 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
 				} else {
-					if lvalue.Offset() == 0 {
+					if lvalue.Offset == 0 {
 						return fmt.Errorf("Test")
 					}
-					err = EmitOpAssign(op, lvalue.Offset(), lvalue.Typ.Pt.Size(), value.IntValue, "")
+					err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if t == code.TYP_F64 {
 				if value.FloatLitNo == 0 {
 					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
-					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
+					err = EmitOpAssignFloat(op, lvalue.Offset, value.FloatLitNo, "")
 				} else {
-					err = EmitOpAssignFloat(op, lvalue.Offset(), value.FloatLitNo, "")
+					err = EmitOpAssignFloat(op, lvalue.Offset, value.FloatLitNo, "")
 				}
 			} else if t == code.TYP_BOOL {
-				EmitStoreConst(1, value.IntValue, lvalue.Offset(), "Assign bool")
+				EmitStoreConst(1, value.IntValue, lvalue.Offset, "Assign bool")
 			} else {
 				err = fmt.Errorf("unimplemented assignment of %s", t.Name())
 			}
@@ -85,31 +86,31 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitPopAx("Assigning TOS to lvalue")
 			code.SetAx()
 		}
-		if lvalue.Value.Typ.Pt == code.TYP_STRUCT {
+		if lvalue.Typ.Pt == code.TYP_STRUCT {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else {
-			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
+			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 		}
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_F64 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
-		EmitStoreF64(lvalue.Offset(), "Assign F64 to "+lvalue.Name)
+		EmitStoreF64(lvalue.Offset, "Assign F64 to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign string to "+lvalue.Name)
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		// Free old value if it exists
 		if !wasNew {
-			EmitFreeIfExists(lvalue.Offset(), lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
+			EmitFreeIfExists(lvalue.Offset, lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
 		}
-		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign struct to "+lvalue.Name)
+		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		code.SetUndef()
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset(), "Assign int to "+lvalue.Name)
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
@@ -245,7 +246,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		lvalue := VarDefs[id]
 		if s.found(TOK_DOT) {
 			if s.token == TOK_ID {
-				EmitLoadEa(lvalue.Offset())
+				EmitLoadEa(lvalue.Offset)
 				lvalue, err = ParseStructField(s, lvalue)
 				if err != nil {
 					return nil, err
@@ -263,7 +264,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			}
 			elementSize := index.Typ.Element.Size()
 			// Load variable address into SI
-			emit("mov", "rsi", BpRel(lvalue.Offset()), "EmitLoadEa")
+			emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
 			fmt.Printf("%d\n", elementSize)
 			// Multiply by element size
 			if err != nil {
@@ -287,7 +288,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	}
 	for _, v := range lvalues {
 		if v.Typ == nil {
-			VarDefs[v.Name].Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+			VarDefs[v.Name].Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 		}
 	}
 	return lvalues, err
@@ -474,7 +475,7 @@ func ParseAssign(s *State, id string) error {
 			for _, lv := range lvalues {
 				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
 					// Need to have pointer in rax
-					EmitLoad(8, lv.Offset(), "Load ptr to string")
+					EmitLoad(8, lv.Offset, "Load ptr to string")
 					// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
 					EmitFreeString("Free old string when assigning new")
 				}
@@ -563,7 +564,7 @@ func ParsePointer(s *State, id string) (values []*ValueDef, err error) {
 	if !ok {
 		return nil, fmt.Errorf("expected local variable, got %s", id)
 	}
-	ofs := v.Offset()
+	ofs := v.Offset
 	EmitGetAddrOfLocal(ofs)
 	return []*ValueDef{&PtrValue}, nil
 }
@@ -590,7 +591,6 @@ func ParseIndex(s *State, id string) (value *ValueDef, err error) {
 
 func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 	// It is  a simple variable
-	var value = &ValueDef{}
 	v, ok := VarDefs[id]
 	if !ok {
 		return nil, fmt.Errorf("did not find variable \"%s\"", id)
@@ -601,6 +601,7 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 	if v.Typ.Pt == code.TYP_NONE {
 		return nil, fmt.Errorf("no type for \"%s\"", id)
 	}
+	var value = &ValueDef{Typ: v.Typ}
 	if !v.Value.HasValue() {
 		// This is a local variable, not a known constant
 		if v.Typ == nil {
@@ -608,13 +609,13 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 		}
 		if v.Name == "err" {
 			EmitLoadErr()
-		} else if v.Value.Typ.Pt == code.TYP_F64 {
+		} else if v.Typ.Pt == code.TYP_F64 {
 			// Load value into xmm<sp>
-			EmitLoadFloat(8, v.Offset(), "Load float "+v.Name)
-		} else if v.Value.Typ.Pt == code.TYP_F32 {
+			EmitLoadFloat(8, v.Offset, "Load float "+v.Name)
+		} else if v.Typ.Pt == code.TYP_F32 {
 			// Load value into xmm<sp>
-			EmitLoadFloat(4, v.Offset(), "Load float "+v.Name)
-		} else if v.Value.Typ.Pt == code.TYP_STRUCT {
+			EmitLoadFloat(4, v.Offset, "Load float "+v.Name)
+		} else if v.Typ.Pt == code.TYP_STRUCT {
 			if s.found(TOK_DOT) {
 				if s.token != TOK_ID {
 					return nil, fmt.Errorf("expected field name after dot")
@@ -629,22 +630,21 @@ func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
 				if !ok {
 					return nil, fmt.Errorf("field \"%s\" not found", fn)
 				}
-				EmitLoadField(f.Pt.Size(), v.Value.Offset, ofs)
+				EmitLoadField(f.Pt.Size(), v.Offset, ofs)
 				value.Typ = f
 				s.next()
 				return []*ValueDef{value}, nil
 			}
 			// It is a struct name. Return the address in rax
-			emit("mov", "rax", BpRel(v.Value.Offset), "")
+			emit("mov", "rax", BpRel(v.Offset), "")
 			code.SetAx()
 		} else {
-			EmitLoad(v.Typ.Pt.Size(), v.Offset(), "Load variable "+v.Name)
+			EmitLoad(v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
 		}
 		value.LocalVar = v
 	} else {
 		value = &v.Value
 	}
-	value.Typ = v.Value.Typ
 	return []*ValueDef{value}, nil
 }
 
@@ -707,7 +707,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			size = v.Typ.Element.Size()
 		}
 		fmt.Printf("Variable %s is %s, element size is %d\n", v.Name, v.Typ.Name(), size)
-		value, err := LoadIndexedVar(size, v.Offset(), index)
+		value, err := LoadIndexedVar(size, v.Offset, index)
 		return []*ValueDef{value}, err
 	} else {
 		return ParseSimpleVar(s, id)
@@ -1271,10 +1271,10 @@ func ParseFuncDef(s *State) error {
 	// Free local variables that have objects on the heap, if any
 	mustFree := false
 	for _, v := range VarDefs {
-		if v.Value.Typ == nil {
+		if v.Typ == nil {
 			return fmt.Errorf("variable %s must have a type", v.Name)
 		}
-		if (v.Value.Typ.Pt == code.TYP_STRING || v.Value.Typ.Pt == code.TYP_STRUCT) && v.Value.IsTempObj {
+		if (v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT) && v.Value.IsTempObj {
 			mustFree = true
 		}
 	}
@@ -1284,11 +1284,11 @@ func ParseFuncDef(s *State) error {
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			code.SetSp()
-			if v.Value.Typ.Pt == code.TYP_STRING && v.Value.IsTempObj {
-				EmitLoad(8, v.Offset(), "Free local variable string "+v.Name)
+			if v.Typ.Pt == code.TYP_STRING && v.Value.IsTempObj {
+				EmitLoad(8, v.Offset, "Free local variable string "+v.Name)
 				EmitFreeString("")
-			} else if v.Value.Typ.Pt == code.TYP_STRUCT && v.Value.IsTempObj {
-				EmitLoad(8, v.Offset(), "Free local struct "+v.Name)
+			} else if v.Typ.Pt == code.TYP_STRUCT && v.Value.IsTempObj {
+				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
 				EmitFreeStruct(v.Typ.Size(), "")
 			}
 		}
@@ -1418,7 +1418,7 @@ func ParseVar(s *State, isGlobal bool) error {
 		}
 	} else {
 		v = AddLocalVar(s, id, typ)
-		v.Value.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+		v.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 	}
 
 	if s.token == TOK_ASSIGN {

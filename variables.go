@@ -11,18 +11,21 @@ type VarDef struct {
 	Value       ValueDef
 	Name        string
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takes ownership.
-	FieldOfs    int
-	FieldType   *TypeDef
 	IsIndirect  bool
 	BlockLevel  int
 	IsGlobal    bool
+	Offset      int
 }
 
 var VarDefs map[string]*VarDef
 
-func init() {
+func InitVardefs() {
 	VarDefs = make(map[string]*VarDef)
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, IsGlobal: true, Value: ValueDef{Typ: &I64Type}}
+}
+
+func init() {
+	InitVardefs()
 }
 
 func MustFree() bool {
@@ -46,10 +49,6 @@ func VarReset(s *State) {
 	s.LocalVarCount = 0
 }
 
-func (v *VarDef) Offset() int {
-	return v.Value.Offset
-}
-
 func (v *VarDef) Size() int {
 	return code.PrimaryTypeSizes[v.Typ.Pt]
 }
@@ -64,8 +63,7 @@ func (v *VarDef) SetType(t *TypeDef) {
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
 	v := &VarDef{Name: name, Typ: typ}
 	s.ParCount++
-	v.Value.Offset = 8 + s.ParCount*8
-	v.Value.Typ = typ
+	v.Offset = 8 + s.ParCount*8
 	VarDefs[name] = v
 	return v
 }
@@ -86,7 +84,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 		v = &VarDef{Name: id, Typ: typ, Value: ValueDef{Typ: typ, IsConst: false}, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		s.LocalVarCount++
-		v.Value.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
+		v.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
 	}
 	return v
 }
