@@ -688,7 +688,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 func EmitFreeString(comment string) {
 	lbl := code.NewLabel()
 	// Verify that rax is not nil
-	emit("or", "rax", "rax", "")
+	emit("or", "rax", "rax", "EmitFreeString")
 	emit("jz", EmitNumericLabel(lbl), "", "")
 	// Load len/cap
 	emit("mov", "rbx", "[rax]", "")

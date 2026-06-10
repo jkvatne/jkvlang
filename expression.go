@@ -470,21 +470,17 @@ func ParseAssign(s *State, id string) error {
 	op := s.token
 
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
-		/* if op == TOK_ASSIGN {
+		if op == TOK_ASSIGN {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
 				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
-					if lv.Value.IsIndirect {
-
-					} else {
-						// Need to have pointer in rax
+					if !lv.Value.IsIndirect {
 						EmitLoad(8, lv.Offset, "Load ptr to string")
-						// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
 						EmitFreeString("Free old string when assigning new")
 					}
 				}
 			}
-		}*/
+		}
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
