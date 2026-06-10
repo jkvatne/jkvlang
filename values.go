@@ -26,6 +26,7 @@ type ValueDef struct {
 	LocalVar    *VarDef
 	IsTempObj   bool
 	IsConst     bool
+	IsIndirect  bool
 }
 
 var (

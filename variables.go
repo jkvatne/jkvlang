@@ -11,7 +11,6 @@ type VarDef struct {
 	Value       ValueDef
 	Name        string
 	IsInputType bool // The variable is a formal parameter with the "in" specifier, meaning the function takes ownership.
-	IsIndirect  bool
 	BlockLevel  int
 	IsGlobal    bool
 	Offset      int

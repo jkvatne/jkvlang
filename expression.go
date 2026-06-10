@@ -39,7 +39,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		}
 		if CanAssignConst(t, value) {
 			if t == code.TYP_STRING {
-				if lvalue.IsIndirect {
+				if lvalue.Value.IsIndirect {
 					EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
@@ -49,7 +49,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					err = EmitOpAssignString(lvalue.Offset, value.StringLitNo)
 				}
 			} else if t.IsInteger() {
-				if lvalue.IsIndirect {
+				if lvalue.Value.IsIndirect {
 					EmitFlushRax("Before AssignIndirectInt")
 					EmitAssignIndirectInt(value.Typ.Pt.Size(), value.IntValue, "")
 				} else if lvalue.Name == "err" {
@@ -86,7 +86,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitPopAx("Assigning TOS to lvalue")
 			code.SetAx()
 		}
-		if lvalue.Typ.Pt == code.TYP_STRUCT {
+		if lvalue.Value.IsIndirect {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
@@ -251,7 +251,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 				if err != nil {
 					return nil, err
 				}
-				lvalue.IsIndirect = true
+				lvalue.Value.IsIndirect = true
 			} else {
 				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
 			}

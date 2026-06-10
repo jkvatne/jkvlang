@@ -109,11 +109,11 @@ func (t *TypeDef) Name() string {
 
 func CanAssignToVar(dstVar *VarDef, src code.PrimaryType) bool {
 	dst := dstVar.Typ.Pt
-	if dst == code.TYP_STRUCT {
+	if dst == src {
 		// if dstVar.FieldType != nil {
 		//	dst = dstVar.FieldType.Pt
 		// }
-		panic("Test")
+		return true
 	}
 	return CanAssign(dst, src)
 }
