@@ -828,7 +828,7 @@ func EmitLoadEa(localOfs int) {
 }
 
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
-	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "11 "+comment)
+	emit("mov", DataType(size)+"[rsi]", "str"+strconv.Itoa(litNo), "11 "+comment)
 }
 
 func EmitAssignIndirectInt(size int, value int64, comment string) {

@@ -470,17 +470,21 @@ func ParseAssign(s *State, id string) error {
 	op := s.token
 
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
-		if op == TOK_ASSIGN {
+		/* if op == TOK_ASSIGN {
 			// If there is an old object, we must free it first.
 			for _, lv := range lvalues {
 				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
-					// Need to have pointer in rax
-					EmitLoad(8, lv.Offset, "Load ptr to string")
-					// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
-					EmitFreeString("Free old string when assigning new")
+					if lv.Value.IsIndirect {
+
+					} else {
+						// Need to have pointer in rax
+						EmitLoad(8, lv.Offset, "Load ptr to string")
+						// emit("mov", "rax", BpRel(lv.Offset()), "Load ptr to string")
+						EmitFreeString("Free old string when assigning new")
+					}
 				}
 			}
-		}
+		}*/
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
@@ -506,15 +510,12 @@ func ParseAssign(s *State, id string) error {
 			if lvalues[i].Value.HasValue() {
 				return fmt.Errorf("%s is a constant and can not be assigned to", op.Name())
 			}
-			oldHasValue := lvalues[i].Value.HasValue()
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
-			if oldHasValue && !value.HasValue() {
-				lvalues[i].Value.IsConst = false
-			}
+			lvalues[i].Value.IsConst = false
 			lvalues[i].Value.IsTempObj = value.IsTempObj
 		}
 		code.OutputArgCode()
