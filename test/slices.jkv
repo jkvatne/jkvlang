@@ -1,0 +1,9 @@
+
+
+
+func main() {
+    u = "abc"
+    u[1]=120 // 'x'
+    assert(u=="axc")
+    print("u=%s", u)
+}

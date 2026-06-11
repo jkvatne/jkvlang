@@ -56,7 +56,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					EmitStoreErr(int(value.IntValue))
 				} else {
 					if lvalue.Offset == 0 {
-						return fmt.Errorf("Test")
+						return fmt.Errorf("GenerateAssignment with offset=0")
 					}
 					err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
@@ -257,18 +257,23 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			}
 		} else if s.found(TOK_LBRACK) {
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
-			var index *ValueDef
-			index, err = ParseIndex(s, id)
+			index, err := ParseIndex(s, id)
 			if !s.found(TOK_RBRACK) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
-			elementSize := index.Typ.Element.Size()
 			// Load variable address into SI
 			emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
-			fmt.Printf("%d\n", elementSize)
+			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
+				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
+			}
 			// Multiply by element size
 			if err != nil {
 				return nil, err
+			}
+			if lvalue.Typ.Pt == code.TYP_STRING {
+				lvalue = &VarDef{Typ: &U8Type, Value: ValueDef{Typ: lvalue.Typ, IsIndirect: true}}
+			} else {
+				return nil, fmt.Errorf("Not implementet yet")
 			}
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
