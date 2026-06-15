@@ -117,7 +117,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	return nil
 }
 
-func ParseStruct(s *State, id string) (*TypeDef, error) {
+func ParseStructType(s *State, id string) (*TypeDef, error) {
 	if !s.found(TOK_LBRACE) {
 		return nil, fmt.Errorf("expected {, found " + s.tokenString)
 	}
@@ -214,55 +214,42 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 	return parList, nil
 }
 
-// ParseStructField will evaluate the address
-// Called just after dot. Token should be a field name
-func ParseStructField(s *State, v *VarDef) (*VarDef, error) {
-	vt := v.Typ
-	v = &VarDef{Typ: vt, Value: v.Value}
+// ParseLvalue will scan up to next comma. The lvalue can consist of either a
+// simple variable, a struct variable followed by a dot and field, or an indexed variable
+// followed by a bracket expression. We can have a row of indexes/fields
+func ParseLvalue(s *State, id string) (*VarDef, error) {
+	lvalue := VarDefs[id]
+	var ok bool
+	// Loop over field access or indexed access.
 	for {
-		fieldName := s.tokenString
-		s.next()
-		ofs, ok := vt.Offsets[fieldName]
-		vt = vt.Fields[fieldName]
-		v.Typ = vt
-		if !ok {
-			return nil, fmt.Errorf("expected field name of the struct %s but but got %s", v.Name, s.tokenString)
-		}
-		EmitAddToRsi(ofs)
-		if s.token != TOK_DOT && s.token != TOK_LBRACK {
-			break
-		}
-		// EmitStoreIndirect(vt)  ????
-		return nil, fmt.Errorf("internal error in ParseStructField")
-	}
-	// Now rax is the address of the value
-	return v, nil
-}
-
-// ParseLvalueList parses a list of lvalues to the left of = , += etc.
-// The first identifier is given in parameter id.
-func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
-	for {
-		lvalue := VarDefs[id]
-		if s.found(TOK_DOT) {
-			if s.token == TOK_ID {
-				EmitLoadEa(lvalue.Offset)
-				lvalue, err = ParseStructField(s, lvalue)
-				if err != nil {
-					return nil, err
-				}
-				lvalue.Value.IsIndirect = true
-			} else {
-				return nil, fmt.Errorf("expected field name of the struct %s (after dot) but but got %s", id, s.tokenString)
+		if s.found(TOK_DOT) && (lvalue.Typ.Pt == code.TYP_STRUCT || lvalue.Typ.Pt == code.TYP_STRING) && s.token == TOK_ID {
+			// The id was followed by a dot and a field id, indicated field access.
+			fieldName := s.tokenString
+			s.next()
+			v := &VarDef{}
+			v.Typ, ok = lvalue.Typ.Fields[fieldName]
+			v.Value.Typ = v.Typ
+			if !ok {
+				return nil, fmt.Errorf("expected field name of the struct %s but was not found", fieldName)
 			}
+			v.Name = fieldName
+			ofs := lvalue.Typ.Offsets[fieldName]
+			if !lvalue.Value.IsIndirect {
+				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable")
+			}
+			emit("add", "rsi", strconv.Itoa(ofs), "")
+			v.Value.IsIndirect = true
+			lvalue = v
 		} else if s.found(TOK_LBRACK) {
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
-			index, err := ParseIndex(s, id)
+			index, err := ParseIndex(s, lvalue)
 			if !s.found(TOK_RBRACK) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
 			// Load variable address into SI
-			emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
+			if !lvalue.Value.IsIndirect {
+				emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
+			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
 			}
@@ -279,18 +266,34 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
+		} else {
+			break
+		}
+	}
+	return lvalue, nil
+}
+
+// ParseLvalueList parses a list of lvalues to the left of = , += etc.
+// The first identifier is given in parameter id.
+func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
+	// For each lvalue, separated by comma. The identifier is already in the id variable
+	for {
+		lvalue, err2 := ParseLvalue(s, id)
+		if err2 != nil {
+			return nil, err2
 		}
 		lvalues = append(lvalues, lvalue)
-
 		if !s.found(TOK_COMMA) {
 			break
 		}
+		// ALl lvalues must start with an identifier
 		if s.token != TOK_ID {
 			return nil, fmt.Errorf("expected variable name after comma, but but got %s", s.tokenString)
 		}
 		id = s.tokenString
 		nextToken(s)
 	}
+	// Create new vardefs for new local variables with unknown type.
 	for _, v := range lvalues {
 		if v.Typ == nil {
 			VarDefs[v.Name].Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
@@ -573,10 +576,9 @@ func ParsePointer(s *State, id string) (values []*ValueDef, err error) {
 
 // ParseIndex will parse the expression inside [] after a local variable
 // and leave the resulting address in TOS or as a constant in the returned value.
-func ParseIndex(s *State, id string) (value *ValueDef, err error) {
-	v, ok := VarDefs[id]
-	if !ok {
-		return nil, fmt.Errorf("did not find variable \"%s\"", id)
+func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
+	if v == nil {
+		return nil, fmt.Errorf("did not find variable")
 	}
 	if v.Typ.Pt != code.TYP_STRING {
 		return nil, fmt.Errorf("expected string or array, got %s", v.Typ.Pt.Name())
@@ -691,7 +693,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		}
 	} else if s.found(TOK_LBRACK) {
 		// It is an array
-		index, err2 := ParseIndex(s, id)
+		v := VarDefs[id]
+		index, err2 := ParseIndex(s, v)
 		if !s.found(TOK_RBRACK) {
 			return nil, fmt.Errorf("missing right bracket")
 		}

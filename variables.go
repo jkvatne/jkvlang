@@ -121,7 +121,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	var err error
 	id := s.tokenString
 	if s.found(TOK_STRUCT) {
-		return ParseStruct(s, id)
+		return ParseStructType(s, id)
 	}
 	nextToken(s)
 	if id[0] > 'Z' {
