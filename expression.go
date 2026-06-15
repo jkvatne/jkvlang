@@ -237,7 +237,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			if !lvalue.Value.IsIndirect {
 				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable")
 			}
-			emit("add", "rsi", strconv.Itoa(ofs), "")
+			if ofs != 0 {
+				emit("add", "rsi", strconv.Itoa(ofs), "")
+			}
 			v.Value.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
@@ -251,6 +253,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
+				emit("mov", "rsi", "[rsi]", "")
 				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
 			}
 			// Multiply by element size

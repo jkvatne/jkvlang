@@ -7,15 +7,15 @@ type Age = U8
  }
 
 func main() {
-  /*
-    u = "abc"
-    u[1]=120 // 'x'
-    assert(u=="axc")
-    print("u=%s", u)
-*/
+/*
     p = new(Person)
     p.name = "Olsen"
-    p.name[1]=120
+    p.name[3]=120 //'x'
     p.age = 70
     print("%s %d", p.name, p.age)
+    flush()
+*/
+    u = "abc"
+    u[1]=120 // This should fail because u is a string literal (read only).
+
 }
