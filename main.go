@@ -255,6 +255,11 @@ func GoTests() {
 }
 
 func main() {
+	/*s := "'`´\""
+	for i, ch := range s {
+		fmt.Printf("%d: %s  0x%x \n", i, string(ch), int(ch))
+	}*/
+
 	flag.Parse()
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)

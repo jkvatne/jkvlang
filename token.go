@@ -84,6 +84,7 @@ const (
 	TOK_SHL
 	TOK_SHR
 	TOK_AND_NOT
+	TOK_CHAR
 	TOK_SIZE
 )
 
@@ -159,6 +160,7 @@ var TokenNames = [...]string{
 	TOK_SHL:         "SHL",
 	TOK_SHR:         "SHR",
 	TOK_AND_NOT:     "AND_NOT",
+	TOK_CHAR:        "CHAR",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -197,7 +199,7 @@ func isAlfaNum(ch rune) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func nextChar(s *State) {
+func (s *State) nextChar() {
 	if s.AtLineEnd {
 		s.AtLineEnd = false
 		code.LineNum++
@@ -260,8 +262,8 @@ func parseNumber(s *State) {
 	var base = 10
 	if s.ch1 == '0' && (s.ch2 == 'x' || s.ch2 == 'X') {
 		base = 16
-		nextChar(s)
-		nextChar(s)
+		s.nextChar()
+		s.nextChar()
 		hex = true
 	}
 	num := string(s.ch1)
@@ -273,7 +275,7 @@ func parseNumber(s *State) {
 			hasDp = true
 		} else if s.ch2 == 'e' || s.ch2 == 'E' {
 			num = num + string(s.ch2)
-			nextChar(s)
+			s.nextChar()
 			hasExp = true
 			hasExpSgn = s.ch1 == '-' || s.ch2 == '+'
 		} else if ((s.ch2 == '+') || (s.ch2 == '-')) && hasExp && !hasExpSgn {
@@ -282,7 +284,7 @@ func parseNumber(s *State) {
 		} else {
 			break
 		}
-		nextChar(s)
+		s.nextChar()
 	}
 	s.tokenString = num
 	if hasExp || hasDp {
@@ -325,15 +327,6 @@ func (s *State) found(tokens ...Token) bool {
 	return false
 }
 
-func (s *State) foundId() (string, error) {
-	if s.token == TOK_ID {
-		id := s.tokenString
-		nextToken(s)
-		return id, nil
-	}
-	return "", fmt.Errorf("expected ID but found %s", s.tokenString)
-}
-
 func (s *State) next() {
 	nextToken(s)
 }
@@ -344,7 +337,7 @@ func nextToken(s *State) {
 		if eof(s) {
 			return
 		}
-		nextChar(s)
+		s.nextChar()
 		s.tokenString = string(s.ch1)
 		switch {
 		case s.ch1 == '\r':
@@ -362,12 +355,12 @@ func nextToken(s *State) {
 			continue
 		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_NE
 		case s.ch1 == '"':
 			s.tokenString = ""
 			for {
-				nextChar(s)
+				s.nextChar()
 				if s.ch1 == '"' || s.ch1 == 0 {
 					break
 				}
@@ -375,11 +368,11 @@ func nextToken(s *State) {
 			}
 			s.token = TOK_STRING
 		case s.ch1 == '&' && s.ch2 == '&':
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_LOG_AND
 			s.tokenString = "&&"
 		case s.ch1 == '&' && s.ch2 == '^':
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_AND_NOT
 			s.tokenString = "&^"
 		case s.ch1 == '&':
@@ -392,7 +385,7 @@ func nextToken(s *State) {
 			s.token = TOK_RPAR
 			s.tokenString = ")"
 		case s.ch1 == '*' && s.ch2 == '=':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = "*="
 			s.token = TOK_MULT_ASGN
 		case s.ch1 == '*':
@@ -402,11 +395,11 @@ func nextToken(s *State) {
 			s.token = TOK_MOD
 			s.tokenString = "%"
 		case s.ch1 == '+' && s.ch2 == '+':
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_PLUS_PLUS
 			s.tokenString = "++"
 		case s.ch1 == '+' && s.ch2 == '=':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = "+="
 			s.token = TOK_PLUS_ASGN
 		case s.ch1 == '+':
@@ -419,38 +412,45 @@ func nextToken(s *State) {
 		// case s.ch1 == '-' && isNum(s.ch2):
 		//	s.ch1, s.ch2 = parseNumber(s, s.ch1, s.ch2)
 		case s.ch1 == '-' && s.ch2 == '-':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = "--"
 			s.token = TOK_MINUS_MINUS
 		case s.ch1 == '-' && s.ch2 == '=':
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_MINUS_ASGN
 			s.tokenString = "-="
 		case s.ch1 == '-':
 			s.token = TOK_MINUS
+		case s.ch1 == '\'':
+			s.nextChar()
+			s.token = TOK_CHAR
+			s.tokenString = string(s.ch1)
+			s.ConstValue.Bits = uint64(s.ch1)
+			s.ConstValue.Pt = code.TYP_RUNE
+			s.nextChar()
 		case s.ch1 == '.':
 			s.token = TOK_DOT
 		case s.ch1 == '/' && s.ch2 == '/':
 			// Skip comment
 			for s.ch1 != '\n' && !eof(s) {
-				nextChar(s)
+				s.nextChar()
 			}
 			continue
 		case s.ch1 == '/' && s.ch2 == '*':
 			// Skip /* */ comment
 			s.CommentLevel = 1
 			for !eof(s) && s.CommentLevel > 0 {
-				nextChar(s)
+				s.nextChar()
 				if s.ch1 == '/' && s.ch2 == '*' {
 					s.CommentLevel++
 				} else if s.ch1 == '*' && s.ch2 == '/' {
 					s.CommentLevel--
 				}
 			}
-			nextChar(s)
+			s.nextChar()
 			continue
 		case s.ch1 == '/' && s.ch2 == '=':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = "/="
 			s.token = TOK_DIV_ASGN
 		case s.ch1 == '/':
@@ -467,28 +467,28 @@ func nextToken(s *State) {
 			continue
 		case s.ch1 == '<' && s.ch2 == '=':
 			s.tokenString = "<="
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_LE
 		case s.ch1 == '<' && s.ch2 == '<':
 			s.tokenString = "<<"
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_SHL
 		case s.ch1 == '<':
 			s.token = TOK_LT
 			s.tokenString = "<"
 		case s.ch1 == '=' && s.ch2 == '=':
 			s.tokenString = "=="
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_EQ
 		case s.ch1 == '=':
 			s.tokenString = "="
 			s.token = TOK_ASSIGN
 		case s.ch1 == '>' && s.ch2 == '=':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = ">="
 			s.token = TOK_GE
 		case s.ch1 == '>' && s.ch2 == '>':
-			nextChar(s)
+			s.nextChar()
 			s.tokenString = ">>"
 			s.token = TOK_SHR
 		case s.ch1 == '>':
@@ -503,7 +503,7 @@ func nextToken(s *State) {
 		case isAlfa(s.ch1):
 			value := string(s.ch1)
 			for isAlfaNum(s.ch2) || s.ch2 == '_' {
-				nextChar(s)
+				s.nextChar()
 				value += string(s.ch1)
 			}
 			s.tokenString = value
@@ -557,7 +557,7 @@ func nextToken(s *State) {
 		case s.ch1 == '{':
 			s.token = TOK_LBRACE
 		case s.ch1 == '|' && s.ch2 == '|':
-			nextChar(s)
+			s.nextChar()
 			s.token = TOK_LOG_OR
 			s.tokenString = "||"
 		case s.ch1 == '|':

@@ -219,6 +219,9 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 // followed by a bracket expression. We can have a row of indexes/fields
 func ParseLvalue(s *State, id string) (*VarDef, error) {
 	lvalue := VarDefs[id]
+	if lvalue != nil && lvalue.Value.IsConst {
+		return nil, fmt.Errorf("cannot modify constant variable \"%s\"", lvalue.Name)
+	}
 	var ok bool
 	// Loop over field access or indexed access.
 	for {
@@ -522,7 +525,7 @@ func ParseAssign(s *State, id string) error {
 				return err
 			}
 			// Old constant values are no longer constant when assigned to.
-			lvalues[i].Value.IsConst = false
+			lvalues[i].Value.IsConst = value.IsConst
 			lvalues[i].Value.IsTempObj = value.IsTempObj
 		}
 		code.OutputArgCode()
@@ -766,6 +769,12 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		value.Typ = TypeDefs["F64"]
 		value.FloatLitNo = floatLitNo
 		value.IsConst = true
+		nextToken(s)
+	} else if s.token == TOK_CHAR {
+		value = &ValueDef{IsConst: true}
+		value.IntValue = int64(s.ConstValue.Bits)
+		value.UintValue = s.ConstValue.Bits
+		value.Typ = TypeDefs["U8"]
 		nextToken(s)
 	} else if s.token == TOK_STRING {
 		litNo := AddLiteral(s.tokenString)

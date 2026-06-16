@@ -1,0 +1,4 @@
+func main() {
+    u = "abc"
+    u[1]=120 // This should fail because u is a string literal (read only).
+}
