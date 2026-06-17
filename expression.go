@@ -599,65 +599,6 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 	return values[0], nil
 }
 
-func ParseSimpleVar(s *State, id string) (values []*ValueDef, err error) {
-	// It is  a simple variable
-	v, ok := VarDefs[id]
-	if !ok {
-		return nil, fmt.Errorf("did not find variable \"%s\"", id)
-	}
-	if v.Typ == nil {
-		return nil, fmt.Errorf("no type for \"%s\"", id)
-	}
-	if v.Typ.Pt == code.TYP_NONE {
-		return nil, fmt.Errorf("no type for \"%s\"", id)
-	}
-	var value = &ValueDef{Typ: v.Typ}
-	if !v.Value.HasValue() {
-		// This is a local variable, not a known constant
-		if v.Typ == nil {
-			return nil, fmt.Errorf("no type for \"%s\"", id)
-		}
-		if v.Name == "err" {
-			EmitLoadErr()
-		} else if v.Typ.Pt == code.TYP_F64 {
-			// Load value into xmm<sp>
-			EmitLoadFloat(8, v.Offset, "Load float "+v.Name)
-		} else if v.Typ.Pt == code.TYP_F32 {
-			// Load value into xmm<sp>
-			EmitLoadFloat(4, v.Offset, "Load float "+v.Name)
-		} else if v.Typ.Pt == code.TYP_STRUCT {
-			if s.found(TOK_DOT) {
-				if s.token != TOK_ID {
-					return nil, fmt.Errorf("expected field name after dot")
-				}
-				fn := s.tokenString
-				f, isOk := v.Typ.Fields[fn]
-				if !isOk {
-					return nil, fmt.Errorf("field \"%s\" not found", fn)
-				}
-				// A struct field
-				ofs, ok := v.Typ.Offsets[fn]
-				if !ok {
-					return nil, fmt.Errorf("field \"%s\" not found", fn)
-				}
-				EmitLoadField(f.Pt.Size(), v.Offset, ofs)
-				value.Typ = f
-				s.next()
-				return []*ValueDef{value}, nil
-			}
-			// It is a struct name. Return the address in rax
-			emit("mov", "rax", BpRel(v.Offset), "")
-			code.SetAx()
-		} else {
-			EmitLoad(v.Typ.Pt.Size(), v.Offset, "Load variable "+v.Name)
-		}
-		value.LocalVar = v
-	} else {
-		value = &v.Value
-	}
-	return []*ValueDef{value}, nil
-}
-
 // LoadIndexedVar assumes the index value is TOS (or a constant in value.IntValue if value.IsConst
 // It will multiply the index by the size (which can be 1,2,4 or 8) and add it to the address.
 // This function is for local variables only, so the address is given by the offset from the frame pointer (rbp).
@@ -680,48 +621,172 @@ func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, erro
 	}
 }
 
+/*
+	var ofs int
+	v := &VarDef{}
+	v.Typ = localVar.Typ
+	v.Value.Typ = v.Typ
+	for {
+		if s.found(TOK_DOT) {
+			if v.Typ.Pt != code.TYP_STRUCT || s.token != TOK_ID {
+				return nil, fmt.Errorf("expected struct field, got %s", localVar.Typ.Pt.Name())
+			}
+			fieldName := s.tokenString
+			fieldType, isOk := v.Typ.Fields[fieldName]
+			if !isOk {
+				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
+			}
+			// A struct field
+			ofs, ok = v.Typ.Offsets[fieldName]
+			if !ok {
+				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
+			}
+			EmitLoadField(fieldType.Pt.Size(), v.Offset, ofs)
+			s.next()
+		} else if s.found(TOK_LBRACK) {
+			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
+			index, err2 := ParseIndex(s, localVar)
+			if err2 != nil {
+				return nil, err
+			}
+			if !s.found(TOK_RBRACK) {
+				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
+			}
+			// Load variable address into SI
+			if !localVar.Value.IsIndirect {
+				emit("mov", "rsi", BpRel(v.Offset), "EmitLoadEa")
+			}
+			if localVar.Typ.Pt == code.TYP_STRING && index.IsConst {
+				emit("mov", "rsi", "[rsi]", "")
+				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
+			}
+			if localVar.Typ.Pt == code.TYP_STRING {
+				localVar = &VarDef{Typ: &U8Type, Value: ValueDef{Typ: v.Typ, IsIndirect: true}}
+			} else {
+				return nil, fmt.Errorf("Not implementet yet")
+			}
+
+		} else {
+			break
+		}
+		emit("mov", "rax", BpRel(localVar.Offset), "")
+		code.SetAx()
+	}
+*/
+// ParseArrayOrStruct handles a string of array or field references.
+// F.ex. a[14].f.r[i]. It emits code to load the resulting value.
+// Current token is either TOK_DOT or TOK_LBRACK when this function is called
+func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
+	var isIndirect bool
+	vp, ok := VarDefs[id]
+	v := *vp
+	if !ok {
+		return nil, fmt.Errorf("expected local variable, got %s", id)
+	}
+	for {
+		if s.found(TOK_DOT) {
+			// The previous item must have been a struct, and the current id a field name in that struct.
+			if v.Typ.Pt != code.TYP_STRUCT || s.token != TOK_ID {
+				return nil, fmt.Errorf("expected struct field, got %s", v.Typ.Pt.Name())
+			}
+			fieldName := s.tokenString
+			s.next()
+			fieldType := v.Typ.Fields[fieldName]
+			if fieldType == nil {
+				return nil, fmt.Errorf("field '%s' not found in struct '%s'", fieldName, v.Name)
+			}
+			// A struct field
+			fieldOffset, isOk := v.Typ.Offsets[fieldName]
+			if !isOk {
+				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
+			}
+			EmitFlushRax("Before LoadField")
+			if !isIndirect {
+				code.SetAx()
+				emit("mov", "rax", BpRel(v.Offset), "EmitLoadField")
+			}
+			isIndirect = true
+			if fieldOffset != 0 {
+				emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
+			}
+			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value from field")
+			v.Typ = fieldType
+		} else if s.found(TOK_LBRACK) {
+			// It should be an array
+			if v.Typ.Pt != code.TYP_SLICE && v.Typ.Pt != code.TYP_STRING {
+				return nil, fmt.Errorf("expected slice/array, got %s", v.Typ.Pt.Name())
+			}
+			index, err := ParseIndex(s, &v)
+			if err != nil || index == nil {
+				return nil, err
+			}
+			if !s.found(TOK_RBRACK) {
+				return nil, fmt.Errorf("missing right bracket")
+			}
+			// Load variable address into SI
+			if !isIndirect {
+				code.SetAx()
+				emit("mov", "rax", BpRel(v.Offset), "EmitLoadEa")
+			}
+			var size int
+			if v.Typ.Pt == code.TYP_STRING {
+				size = 1
+			} else if v.Typ.Pt == code.TYP_SLICE {
+				size = v.Typ.Element.Size()
+			}
+			emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "")
+			value := &ValueDef{Typ: &U8Type}
+			if size == 1 {
+				emit("movzx", "eax", "byte [rax+8]", "")
+			} else {
+				emit("mov", "rax", DataType(size)+"[rax]", "")
+			}
+			v.Value = *value
+			v.Typ = v.Value.Typ
+		} else {
+			break
+		}
+	}
+	return []*ValueDef{&v.Value}, nil
+}
+
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when an identifier is encountered in an expression
+// We now have s.token == TOK_ID
 func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	err = fmt.Errorf("unrecognized variable or function call")
-	// We now have s.token == TOK_ID
 	id := s.tokenString
-	nextToken(s)
+	s.next()
+	// Handle the special keyword ptr used to convert var into pointer
+	if id == "ptr" {
+		return ParsePointer(s, id)
+	}
 	if s.found(TOK_LPAR) {
-		// t1 is the type we convert to
+		// An ID followed by left parantesis can be a type conversion or a function call
 		typ, ok := TypeDefs[id]
 		if ok {
 			return ParseTypeConversion(s, typ)
-		} else if id == "ptr" {
-			return ParsePointer(s, id)
-		} else {
-			return ParseFuncCall(s, id, true)
 		}
-	} else if s.found(TOK_LBRACK) {
-		// It is an array
-		v := VarDefs[id]
-		index, err2 := ParseIndex(s, v)
-		if !s.found(TOK_RBRACK) {
-			return nil, fmt.Errorf("missing right bracket")
-		}
-		if err2 != nil {
-			return nil, err2
-		}
-		v, ok := VarDefs[id]
+		return ParseFuncCall(s, id, true)
+	} else if s.token == TOK_LBRACK || s.token == TOK_DOT {
+		// It is an array or a struct field. Handle them in a loop in the
+		// ParseArrayOrStruct function
+		return ParseArrayOrStruct(s, id)
+
+	} else {
+		// If none above, it is a simple variable
+		localVar, ok := VarDefs[id]
 		if !ok {
 			return nil, fmt.Errorf("did not find variable \"%s\"", id)
 		}
-		var size int
-		if v.Typ.Pt == code.TYP_STRING {
-			size = 1
-		} else if v.Typ.Pt == code.TYP_SLICE {
-			size = v.Typ.Element.Size()
+		if localVar.Name == "err" {
+			EmitLoadErr()
+		} else if localVar.Typ.Pt.IsFloat() {
+			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, "Load float "+localVar.Name)
+		} else if localVar.Typ.Pt.IsInteger() {
+			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		}
-		fmt.Printf("Variable %s is %s, element size is %d\n", v.Name, v.Typ.Name(), size)
-		value, err := LoadIndexedVar(size, v.Offset, index)
-		return []*ValueDef{value}, err
-	} else {
-		return ParseSimpleVar(s, id)
+		return []*ValueDef{&localVar.Value}, nil
 	}
 }
 
