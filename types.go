@@ -37,6 +37,7 @@ func InitTypes() {
 	for t := code.TYP_NONE; t < code.TYP_COUNT; t++ {
 		TypeDefs[code.PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: code.PrimaryTypeNames[t], Basic: true}
 	}
+	TypeDefs["String"].DataOffset = 8
 }
 
 func (t *TypeDef) Size() int {

@@ -50,7 +50,6 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				}
 			} else if t.IsInteger() {
 				if lvalue.Value.IsIndirect {
-					EmitFlushRax("Before AssignIndirectInt")
 					EmitAssignIndirectInt(value.Typ.Pt.Size(), value.IntValue, "")
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
@@ -700,17 +699,18 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if !isOk {
 				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
 			}
-			EmitFlushRax("Before LoadField")
 			if !isIndirect {
+				EmitFlushRax("Before LoadField")
 				code.SetAx()
-				emit("mov", "rax", BpRel(v.Offset), "EmitLoadField")
+				emit("mov", "rax", BpRel(v.Offset), "Load struct base adr")
 			}
 			isIndirect = true
 			if fieldOffset != 0 {
-				emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
+				emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset")
 			}
-			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value from field")
+			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value in field")
 			v.Typ = fieldType
+			v.Value.Typ = fieldType
 		} else if s.found(TOK_LBRACK) {
 			// It should be an array
 			if v.Typ.Pt != code.TYP_SLICE && v.Typ.Pt != code.TYP_STRING {
@@ -734,7 +734,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				size = v.Typ.Element.Size()
 			}
-			emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "")
+			emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "Index into string")
 			value := &ValueDef{Typ: &U8Type}
 			if size == 1 {
 				emit("movzx", "eax", "byte [rax+8]", "")
