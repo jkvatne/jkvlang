@@ -19,6 +19,7 @@ _print:
     mov [rsp+8], rax
     mov rbx, 16
     call _syscall
+    call _flush
     ret
 
 ; _printf is the local version of printf from msvcrt.dll

@@ -16,11 +16,12 @@ type Name = struct {
 func main() {
     p = new(Person)
     n = new(Name)
-    p.name = n
     n.first = "Jan Kåre"
     n.last = "Vatne"
+    p.name = n  // NB: Destructive read. n can now not be accessed.
     j=3
-    p.name.first[2]='x'  // 0x78
+    n.last[2] = 'x' // Should fail!
+    p.name.last[3]='x'  // 0x78
     print("p.name=%s, %s", p.name.last, p.name.first)
     print("p.name[3]=0x%x", p.name.last[3])
 

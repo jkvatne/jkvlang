@@ -536,6 +536,12 @@ func ParseAssign(s *State, id string) error {
 			lvalues[i].Value.IsConst = value.IsConst
 			lvalues[i].Value.IsTempObj = value.IsTempObj
 		}
+		// Destroy local variables that are pointers (destrucive read).
+		for _, value := range values {
+			if value.LocalVar != nil && value.Typ.Pt == code.TYP_STRUCT {
+				value.LocalVar.Value.LocalVar = nil
+			}
+		}
 		code.OutputArgCode()
 	} else {
 		return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
@@ -546,7 +552,7 @@ func ParseAssign(s *State, id string) error {
 func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) {
 	// This is a type conversion. First parse value to convert
 	if code.AxIsTos() {
-		EmitPushAx("ParseVarOrFunc")
+		EmitPushAx("ParseTypeConversion")
 	}
 	values, err = ParseExpression(s)
 	if err != nil {
@@ -1296,6 +1302,22 @@ func ParseIf(s *State) error {
 	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
 }
 
+func FreeStruct(t *TypeDef) {
+	for i, f := range t.Fields {
+		ofs := t.Offsets[i]
+		if f.Pt == code.TYP_STRUCT {
+			EmitPushAx("")
+			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
+			FreeStruct(f)
+			EmitPopAx("")
+		}
+	}
+	emit("mov", "rcx", strconv.Itoa(t.StructSize), "")
+	// _free_struct assumes pointer in rax and size in rcx
+	emit("call", "_free_struct", "", "")
+	code.SetUndef()
+}
+
 func ParseFuncDef(s *State) error {
 	s.BlockLevel++
 	startLevel := s.BlockLevel
@@ -1367,7 +1389,7 @@ func ParseFuncDef(s *State) error {
 		if v.Typ == nil {
 			return fmt.Errorf("variable %s must have a type", v.Name)
 		}
-		if (v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT) && v.Value.IsTempObj {
+		if v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT {
 			mustFree = true
 		}
 	}
@@ -1377,12 +1399,13 @@ func ParseFuncDef(s *State) error {
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			code.SetSp()
-			if v.Typ.Pt == code.TYP_STRING && v.Value.IsTempObj {
+			if v.Typ.Pt == code.TYP_STRING {
 				EmitLoad(8, v.Offset, "Free local variable string "+v.Name)
 				EmitFreeString("")
-			} else if v.Typ.Pt == code.TYP_STRUCT && v.Value.IsTempObj {
+			} else if v.Typ.Pt == code.TYP_STRUCT && v.Value.LocalVar != nil {
+				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
-				EmitFreeStruct(v.Typ.Size(), "")
+				FreeStruct(v.Typ)
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")
