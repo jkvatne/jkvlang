@@ -36,8 +36,7 @@ func ParseReturn(s *State) error {
 					} else {
 						panic("Not implemented")
 					}
-				} else if v.LocalVar != nil {
-					v.LocalVar.Value.IsTempObj = false
+
 				}
 				// Save returned value into reserved slot before BP.
 				EmitStoreBpOfs(len(f.parameters)+2+i, "Save returned value nr "+strconv.Itoa(i+1))

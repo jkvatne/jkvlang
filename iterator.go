@@ -48,15 +48,15 @@ func ParseFail(s *State) error {
 		s.next()
 		v := VarDefs[id]
 		if v != nil && v.Typ.Pt.IsInteger() {
-			EmitStoreErr(int(v.Value.IntValue))
-			EmitJump(s.returnLbl, "Failed with const var="+strconv.Itoa(int(v.Value.IntValue)))
+			EmitStoreErr(1) // TODO
+			EmitJump(s.returnLbl, "Failed with const var="+strconv.Itoa(1))
 		}
 	} else if s.token == TOK_INT {
 		c := VarDefs[s.tokenString]
 		if !c.Typ.Pt.IsInteger() {
 			return fmt.Errorf("expected integer parameter for 'fail'")
 		}
-		EmitStoreErr(int(c.Value.IntValue))
+		// EmitStoreErr(int(c.Value.IntValue))
 		EmitJump(s.returnLbl, "Failed with const")
 	}
 	if !s.found(TOK_RPAR) {
@@ -129,7 +129,7 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("range must have a next function")
 		}
 		lvalues[0].Typ = f.returnTypes[0]
-		VarDefs[lvalues[0].Name].Value.Typ = f.returnTypes[0]
+		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
 		// Insert call next() before for block
 		EmitLabel(startLabel, "Start of loop")
 		EmitCall("next", 1, false)
