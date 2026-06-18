@@ -100,13 +100,19 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		// Free old value if it exists
-		if !wasNew {
-			EmitFreeIfExists(lvalue.Offset, lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
+		if lvalue.Offset != 0 {
+			EmitAssertTosInRax("Pop TOS into rax before assignment")
+			// Free old value if it exists
+			if !wasNew {
+				EmitFreeIfExists(lvalue.Offset, lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
+			}
+			EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
+			code.SetUndef()
+		} else {
+			EmitComment("Indirect assignment")
+			EmitAssertTosInRax("Pop TOS into rax before assignment")
+			emit("mov", "[rsi]", "rax", "")
 		}
-		EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
-		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		code.SetUndef()
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
@@ -225,6 +231,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	// Loop over field access or indexed access.
 	for {
 		if s.found(TOK_DOT) && (lvalue.Typ.Pt == code.TYP_STRUCT || lvalue.Typ.Pt == code.TYP_STRING) && s.token == TOK_ID {
+			if lvalue.Value.IsIndirect {
+				emit("mov", "rsi", "[rsi]", "Load indirect value")
+			}
 			// The id was followed by a dot and a field id, indicated field access.
 			fieldName := s.tokenString
 			s.next()
@@ -240,7 +249,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable")
 			}
 			if ofs != 0 {
-				emit("add", "rsi", strconv.Itoa(ofs), "")
+				emit("add", "rsi", strconv.Itoa(ofs), "Add field offset for field '"+fieldName+"'")
 			}
 			v.Value.IsIndirect = true
 			lvalue = v
@@ -255,8 +264,8 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "rsi", "[rsi]", "")
-				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
+				emit("mov", "rsi", "[rsi]", "Load string pointer")
+				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
 			}
 			// Multiply by element size
 			if err != nil {
@@ -365,7 +374,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					// If it was a local variable or a constant, we should not free it.
 					// (The constant case has already been handled)
 					// But if it was a function result, it can be a pointer to a literal.
-					if value.LocalVar == nil {
+					if value.LocalVar == nil && value.IsTempObj {
 						v := "   mov rax, rsp  ;  printf() cleanup arg " + strconv.Itoa(parNo) + "\n"
 						v += "   add rax, rbx\n"
 						v += "   sub rax, " + strconv.Itoa(parNo*8-8) + "\n"
@@ -785,6 +794,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, "Load float "+localVar.Name)
 		} else if localVar.Typ.Pt.IsInteger() {
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
+		} else {
+			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load struct/string variable "+localVar.Name)
 		}
 		return []*ValueDef{&localVar.Value}, nil
 	}
@@ -907,7 +918,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")
 		}
-		value.IsTempObj = true
+		// value.IsTempObj = true
 
 	} else if s.token == TOK_MINUS {
 		s.next()

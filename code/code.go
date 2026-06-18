@@ -114,7 +114,7 @@ func StackState() string {
 	} else if state == sp {
 		return "sp"
 	} else {
-		return "??"
+		return "--"
 	}
 }
 

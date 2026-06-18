@@ -1,19 +1,28 @@
 
 type Age = U8
 
+type Name = struct {
+    id I64
+    first String
+    last String
+}
+
  type Person = struct {
-   // dummy I64
-   name String
-   age Age
+    id I64
+    name Name
+    age Age
  }
 
 func main() {
     p = new(Person)
-    p.name = "ABCDEFGHIJKLMNOPQRST"
+    n = new(Name)
+    p.name = n
+    n.first = "Jan Kåre"
+    n.last = "Vatne"
     j=3
-    p.name[3]='x'  // 0x78
-    print("p.name=%s", p.name)
-    print("p.name[3]=0x%x", p.name[3])
+    p.name.first[2]='x'  // 0x78
+    print("p.name=%s, %s", p.name.last, p.name.first)
+    print("p.name[3]=0x%x", p.name.last[3])
 
 /*
     p.age = 70

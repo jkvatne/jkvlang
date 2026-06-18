@@ -348,7 +348,7 @@ func DataType(size int) string {
 }
 
 func MovOpcode(size int) string {
-	if size == 8 {
+	if size >= 8 {
 		return "mov"
 	}
 	if size == 1 {
@@ -883,11 +883,11 @@ func EmitNegate() {
 func EmitFreeIfExists(offset int, size int, txt string) {
 	emit("mov", "r12", "rax", "")
 	emit("mov", "rax", BpRel(offset), txt)
-	// emit("or", "rax", "rax", "")
-	// lbl := code.NewLabel()
-	// emit("jz", ".L"+strconv.Itoa(lbl), "", "")
+	emit("or", "rax", "rax", "Is pointer nil?")
+	lbl := code.NewLabel()
+	emit("jz", ".L"+strconv.Itoa(lbl), "", "")
 	emit("mov", "rcx", strconv.Itoa(size), "")
 	emit("call", "_free_struct", "", "")
-	// EmitLabel(lbl, "")
+	EmitLabel(lbl, "")
 	emit("mov", "rax", "r12", "")
 }
