@@ -232,7 +232,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	for {
 		if s.found(TOK_DOT) && (lvalue.Typ.Pt == code.TYP_STRUCT || lvalue.Typ.Pt == code.TYP_STRING) && s.token == TOK_ID {
 			if lvalue.IsIndirect {
-				emit("mov", "rsi", "[rsi]", "Load indirect value")
+				emit("mov", "rsi", "[rsi]", "Load indirect value '"+lvalue.Name+"'")
 			}
 			// The id was followed by a dot and a field id, indicated field access.
 			fieldName := s.tokenString
@@ -245,7 +245,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.Name = fieldName
 			ofs := lvalue.Typ.Offsets[fieldName]
 			if !lvalue.IsIndirect {
-				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable")
+				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable "+lvalue.Name)
 			}
 			if ofs != 0 {
 				emit("add", "rsi", strconv.Itoa(ofs), "Add field offset for field '"+fieldName+"'")
@@ -265,6 +265,10 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				emit("mov", "rsi", "[rsi]", "Load string pointer")
 				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
+			} else if lvalue.Typ.Pt == code.TYP_STRING {
+				emit("mov", "rsi", "[rsi]", "Load string pointer")
+				emit("add", "rsi", "8", "Skip len/cap")
+				emit("add", "rsi", "rax", "Index into string")
 			}
 			// Multiply by element size
 			if err != nil {
