@@ -192,7 +192,8 @@ func ConsArgCode(count int, reverse bool) {
 	txt := ""
 	startArgNo := len(ArgCode) - count
 	if startArgNo < 0 {
-		panic("ArgCode error")
+		// panic("ArgCode error")
+		startArgNo = 0
 	}
 	if reverse {
 		for i := len(ArgCode) - 1; i >= startArgNo; i-- {

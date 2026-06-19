@@ -253,6 +253,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
+			code.NewArgCode()
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
 			index, err := ParseIndex(s, lvalue)
 			if !s.found(TOK_RBRACK) {
@@ -279,6 +280,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			} else {
 				return nil, fmt.Errorf("Not implementet yet")
 			}
+			// code.ConsArgCode(2, false)
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
@@ -537,6 +539,7 @@ func ParseAssign(s *State, id string) error {
 		// for _, value := range values {
 		// value.Destroyed = true
 		// }
+		code.ConsArgCode(len(code.ArgCode), false)
 		code.OutputArgCode()
 	} else {
 		return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
@@ -725,6 +728,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if v.Typ.Pt != code.TYP_SLICE && v.Typ.Pt != code.TYP_STRING {
 				return nil, fmt.Errorf("expected slice/array, got %s", v.Typ.Pt.Name())
 			}
+			code.NewArgCode()
 			index, err := ParseIndex(s, &v)
 			if err != nil || index == nil {
 				return nil, err
@@ -749,6 +753,8 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			} else {
 				emit("mov", "rax", DataType(size)+"[rax]", "")
 			}
+			code.ConsArgCode(3, false)
+			code.NewArgCode()
 		} else {
 			break
 		}

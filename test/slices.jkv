@@ -33,7 +33,8 @@ func main() {
     print("p.name=%s, %s", p.name.last, p.name.first)
     print("p.name[3]=0x%x", p.name.last[3])
 
-    p.name.last[j]='x'  // 0x78
+    p.name.last[j+1]='x'  // 0x78
+    assert(p.name.last=="Vatnx")
     print("p.name=%s, %s", p.name.last, p.name.first)
 
 }
