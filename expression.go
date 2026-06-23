@@ -253,7 +253,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
-			code.NewArgCode()
+			// code.NewArgCode()
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
 			index, err := ParseIndex(s, lvalue)
 			if !s.found(TOK_RBRACK) {
@@ -269,7 +269,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
 				emit("mov", "rsi", "[rsi]", "Load string pointer")
 				emit("add", "rsi", "8", "Skip len/cap")
-				emit("add", "rsi", "rax", "Index into string")
+				emit("add", "rsi", "rax", "Index into lvalue string")
 			}
 			// Multiply by element size
 			if err != nil {
@@ -335,6 +335,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		if parNo > 1 {
 			code.NewArgCode()
 		}
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list")
 		values, err1 := ParseExpression(s)
 		if err1 != nil {
 			return nil, err1
@@ -633,58 +634,6 @@ func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, erro
 	}
 }
 
-/*
-	var ofs int
-	v := &VarDef{}
-	v.Typ = localVar.Typ
-	v.Value.Typ = v.Typ
-	for {
-		if s.found(TOK_DOT) {
-			if v.Typ.Pt != code.TYP_STRUCT || s.token != TOK_ID {
-				return nil, fmt.Errorf("expected struct field, got %s", localVar.Typ.Pt.Name())
-			}
-			fieldName := s.tokenString
-			fieldType, isOk := v.Typ.Fields[fieldName]
-			if !isOk {
-				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
-			}
-			// A struct field
-			ofs, ok = v.Typ.Offsets[fieldName]
-			if !ok {
-				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
-			}
-			EmitLoadField(fieldType.Pt.Size(), v.Offset, ofs)
-			s.next()
-		} else if s.found(TOK_LBRACK) {
-			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
-			index, err2 := ParseIndex(s, localVar)
-			if err2 != nil {
-				return nil, err
-			}
-			if !s.found(TOK_RBRACK) {
-				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
-			}
-			// Load variable address into SI
-			if !localVar.Value.IsIndirect {
-				emit("mov", "rsi", BpRel(v.Offset), "EmitLoadEa")
-			}
-			if localVar.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "rsi", "[rsi]", "")
-				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "")
-			}
-			if localVar.Typ.Pt == code.TYP_STRING {
-				localVar = &VarDef{Typ: &U8Type, Value: ValueDef{Typ: v.Typ, IsIndirect: true}}
-			} else {
-				return nil, fmt.Errorf("Not implementet yet")
-			}
-
-		} else {
-			break
-		}
-		emit("mov", "rax", BpRel(localVar.Offset), "")
-		code.SetAx()
-	}
-*/
 // ParseArrayOrStruct handles a string of array or field references.
 // F.ex. a[14].f.r[i]. It emits code to load the resulting value.
 // Current token is either TOK_DOT or TOK_LBRACK when this function is called
@@ -728,7 +677,6 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if v.Typ.Pt != code.TYP_SLICE && v.Typ.Pt != code.TYP_STRING {
 				return nil, fmt.Errorf("expected slice/array, got %s", v.Typ.Pt.Name())
 			}
-			code.NewArgCode()
 			index, err := ParseIndex(s, &v)
 			if err != nil || index == nil {
 				return nil, err
@@ -747,14 +695,20 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				size = v.Typ.Element.Size()
 			}
-			emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "Index into string")
+			if index.IsConst {
+				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "ParseArrayOrStruct Index into string")
+			} else {
+				emit("pop", "rbx", "", Sp(-1))
+				emit("add", "rax", "rbx", "")
+				code.SetAx()
+			}
 			if size == 1 {
+				v.Typ = &U8Type
 				emit("movzx", "eax", "byte [rax+8]", "")
 			} else {
+				// TODO : v.Typ = index type
 				emit("mov", "rax", DataType(size)+"[rax]", "")
 			}
-			code.ConsArgCode(3, false)
-			code.NewArgCode()
 		} else {
 			break
 		}

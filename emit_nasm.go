@@ -136,6 +136,7 @@ func EmitPushTos(argNo int, funcName string) {
 }
 
 func EmitCall(id string, nPar int, builtin bool) {
+	EmitComment("Call function")
 	if builtin {
 		id = "_" + id
 	}
@@ -389,9 +390,9 @@ func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
 
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
-	EmitFlushRax("EmitLoad push TOS")
+	EmitFlushRax("EmitLoad: push TOS")
 	code.SetAx()
-	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
+	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), "EmitLoad: "+comment)
 }
 
 // EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
@@ -458,7 +459,7 @@ func EmitPushConst(value int64, comment string) {
 
 func EmitFlushRax(comment string) {
 	if code.AxIsTos() {
-		emit("push", "rax", "", "Flush ax: "+comment+Sp(1))
+		emit("push", "rax", "", comment+Sp(1))
 		code.SetUndef()
 	}
 }

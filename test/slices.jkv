@@ -14,11 +14,8 @@ type Name = struct {
  }
 
 func main() {
-    j=4
-    print("j=%d", j)
-    j=j-1
-    print("j=%d", j)
-
+    j=2
+    j=j+1
     p = new(Person)
     p.age = 70
     print("age=%d", p.age)
@@ -30,11 +27,15 @@ func main() {
     p.name = n  // NB: Destructive read. n can now not be accessed.
     //n.last[2] = 'x' // Will fail because of destructive read
 
-    print("p.name=%s, %s", p.name.last, p.name.first)
-    print("p.name[3]=0x%x", p.name.last[3])
+    print("p.name.last=%s, p.name.first=%s", p.name.last, p.name.first)
+    print("j=%d, p.name.last[j]=0x%x", j, p.name.last[j])
+    print("p.name.last[3]=0x%x", p.name.last[3])
+    assert(p.name.last[j]=='x')
 
-    p.name.last[j+1]='x'  // 0x78
-    assert(p.name.last=="Vatnx")
-    print("p.name=%s, %s", p.name.last, p.name.first)
+    k=-1
+    print("j+k=%d", j+k)
+    p.name.last[j+k]='x'  // 0x78
+    assert(p.name.last=="Vaxne")
+    print("p.name.last=%s", p.name.last)
 
 }
