@@ -112,20 +112,95 @@ func DeleteBlockVars(s *State) {
 	}
 }
 
+func ParseStructType(s *State) (*TypeDef, error) {
+	if !s.found(TOK_LBRACE) {
+		return nil, fmt.Errorf("expected {, found " + s.tokenString)
+	}
+	t := &TypeDef{Pt: code.TYP_STRUCT}
+	t.Fields = make(map[string]*TypeDef)
+	t.Offsets = make(map[string]int)
+	count := 0
+	for {
+		fieldName := s.tokenString
+		_, ok := t.Fields[fieldName]
+		if ok {
+			return nil, fmt.Errorf("field \"%s\" already defined", fieldName)
+		}
+		s.next()
+		fieldTypeName := s.tokenString
+		ft, ok := TypeDefs[fieldTypeName]
+		if !ok {
+			return nil, fmt.Errorf("unknown type \"%s\"", fieldTypeName)
+		}
+		count++
+		t.Fields[fieldName] = ft
+		// fmt.Printf("name %s, type %s\n", fieldName, fieldTypeName)
+		s.next()
+		if s.token == TOK_RBRACE {
+			break
+		}
+	}
+	ofs := 0
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 8 {
+			t.Offsets[fn] = ofs
+			ofs += 8
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 4 {
+			t.Offsets[fn] = ofs
+			ofs += 4
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 2 {
+			t.Offsets[fn] = ofs
+			ofs += 2
+		}
+	}
+	for fn, f := range t.Fields {
+		if f.Pt.Size() == 1 {
+			t.Offsets[fn] = ofs
+			ofs += 1
+		}
+	}
+	t.StructSize = (ofs + 7) & 0xFFFFFFF8
+	s.next()
+	return t, nil
+}
+
+func ParseSlice(s *State) (*TypeDef, error) {
+	if !s.found(TOK_RBRACK) {
+		return nil, fmt.Errorf("Fixed size arrays not implemented yet")
+	}
+	t := &TypeDef{Pt: code.TYP_SLICE}
+	var ok bool
+	t.Element, ok = TypeDefs[s.tokenString]
+	if !ok {
+		return nil, fmt.Errorf("unknown type \"%s\"", s.tokenString)
+	}
+	s.next()
+	return t, nil
+}
+
 // ParseType expects that the current token is an id for a new or existing type
 func ParseType(s *State) (*TypeDef, error) {
 	var err error
-	id := s.tokenString
 	if s.found(TOK_STRUCT) {
-		return ParseStructType(s, id)
+		return ParseStructType(s)
 	}
+	if s.found(TOK_LBRACK) {
+		return ParseSlice(s)
+	}
+	id := s.tokenString
 	nextToken(s)
 	if id[0] > 'Z' {
 		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}
 	typ, ok := TypeDefs[id]
 	if !ok {
-		return nil, fmt.Errorf("unknown type: %s", id)
+		return nil, fmt.Errorf("unknown type: %s", s.tokenString)
 	}
 	return typ, err
 }

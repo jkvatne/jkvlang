@@ -794,15 +794,6 @@ func EmitPopBx(comment string) {
 	emit("pop", "rbx", "", comment+Sp(-1))
 }
 
-// EmitNewStruct will create a new struct object on the heap
-// The pointer will be in the TOS (i.e. rax)
-func EmitNewStruct(t *TypeDef) {
-	EmitFlushRax("Before NewStruct")
-	code.SetAx()
-	emit("mov", "rax", strconv.Itoa(t.Size()), "")
-	emit("call", "_alloc", "", "Allocate new struct")
-}
-
 func EmitAddToRsi(ofs int) {
 	emit("add", "rsi", strconv.Itoa(ofs), "")
 }
@@ -832,7 +823,7 @@ func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
 	emit("mov", DataType(size)+"[rsi]", "str"+strconv.Itoa(litNo), "11 "+comment)
 }
 
-func EmitAssignIndirectInt(size int, value int64, comment string) {
+func EmitAssignIndirectConstInt(size int, unsigned bool, value int64, comment string) {
 	emit("mov", DataType(size)+"[rsi]", strconv.Itoa(int(value)), comment)
 }
 
@@ -856,6 +847,32 @@ func EmitNewString() {
 	emit("mov", "[rsi]", "r12", "Store capacity")
 	code.SetAx()
 	emit("mov", "rax", "rsi", "Restore rax pointing to string")
+}
+
+// EmitNewStruct will create a new struct object on the heap
+// The pointer will be in the TOS (i.e. rax)
+func EmitNewStruct(t *TypeDef) {
+	EmitFlushRax("Before NewStruct")
+	code.SetAx()
+	emit("mov", "rax", strconv.Itoa(t.Size()), "")
+	emit("call", "_alloc", "", "Allocate new struct")
+}
+
+func EmitNewSlice(t *TypeDef) {
+	EmitAssertTosInRax("Before NewSlice")
+	emit("mov", "r12", "rax", "new string capacity")
+	emit("call", "_alloc", "", "Allocate new slice")
+	emit("mov", "r13", "rax", "Save rax")
+	emit("mov", "rdi", "rax", "Then clear the new slice")
+	emit("xor", "rax", "rax", "")
+	emit("mov", "rcx", "r12", "")
+	emit("cld", "", "", "")
+	emit("rep", "stosb", "", "")
+	emit("shl", "r12", "32", "")
+	emit("mov", "[r13]", "r12", "Store capacity")
+	code.SetAx()
+	emit("mov", "rax", "r13", "Restore rax pointing to slice")
+
 }
 
 func EmitNot() {

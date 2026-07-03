@@ -50,7 +50,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				}
 			} else if t.IsInteger() {
 				if lvalue.IsIndirect {
-					EmitAssignIndirectInt(value.Typ.Pt.Size(), value.IntValue, "")
+					EmitAssignIndirectConstInt(lvalue.Typ.Pt.Size(), false, value.IntValue, "Assign to field")
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
 				} else {
@@ -99,6 +99,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		code.SetUndef()
+	} else if value.Typ.Pt == code.TYP_SLICE {
+		EmitComment("Indirect assignment")
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		emit("mov", "[rsi]", "rax", "Assign slice to "+lvalue.Name)
+		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		if lvalue.Offset != 0 {
 			EmitAssertTosInRax("Pop TOS into rax before assignment")
@@ -120,65 +125,6 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
 	return nil
-}
-
-func ParseStructType(s *State, id string) (*TypeDef, error) {
-	if !s.found(TOK_LBRACE) {
-		return nil, fmt.Errorf("expected {, found " + s.tokenString)
-	}
-	t := &TypeDef{TypeName: id, Pt: code.TYP_STRUCT}
-	t.Fields = make(map[string]*TypeDef)
-	t.Offsets = make(map[string]int)
-	count := 0
-	for {
-		fieldName := s.tokenString
-		_, ok := t.Fields[fieldName]
-		if ok {
-			return nil, fmt.Errorf("field \"%s\" already defined", fieldName)
-		}
-		s.next()
-		fieldTypeName := s.tokenString
-		ft, ok := TypeDefs[fieldTypeName]
-		if !ok {
-			return nil, fmt.Errorf("unknown type \"%s\"", fieldTypeName)
-		}
-		count++
-		t.Fields[fieldName] = ft
-		// fmt.Printf("name %s, type %s\n", fieldName, fieldTypeName)
-		s.next()
-		if s.token == TOK_RBRACE {
-			break
-		}
-	}
-	ofs := 0
-	for fn, f := range t.Fields {
-		if f.Pt.Size() == 8 {
-			t.Offsets[fn] = ofs
-			ofs += 8
-		}
-	}
-	for fn, f := range t.Fields {
-		if f.Pt.Size() == 4 {
-			t.Offsets[fn] = ofs
-			ofs += 4
-		}
-	}
-	for fn, f := range t.Fields {
-		if f.Pt.Size() == 2 {
-			t.Offsets[fn] = ofs
-			ofs += 2
-		}
-	}
-	for fn, f := range t.Fields {
-		if f.Pt.Size() == 1 {
-			t.Offsets[fn] = ofs
-			ofs += 1
-		}
-	}
-	t.StructSize = (ofs + 7) & 0xFFFFFFF8
-	s.next()
-	AddType(id, t)
-	return t, nil
 }
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments
@@ -253,9 +199,11 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
-			// code.NewArgCode()
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
 			index, err := ParseIndex(s, lvalue)
+			if err != nil {
+				return nil, err
+			}
 			if !s.found(TOK_RBRACK) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
@@ -270,6 +218,15 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rsi", "[rsi]", "Load string pointer")
 				emit("add", "rsi", "8", "Skip len/cap")
 				emit("add", "rsi", "rax", "Index into lvalue string")
+			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
+				emit("mov", "rsi", "[rsi]", "Load slice pointer")
+				ofs := 8 + int(index.IntValue)*lvalue.Typ.Element.Size()
+				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
+			} else if lvalue.Typ.Pt == code.TYP_SLICE {
+				emit("mov", "rsi", "[rsi]", "Load slice pointer")
+				emit("add", "rsi", "8", "Skip len/cap")
+				emit("shl", "rax", ShiftFromSize(lvalue.Typ.Element.Size()), "")
+				emit("add", "rsi", "rax", "Index into lvalue string")
 			}
 			// Multiply by element size
 			if err != nil {
@@ -277,10 +234,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING {
 				lvalue = &VarDef{Typ: &U8Type, IsIndirect: true}
-			} else {
-				return nil, fmt.Errorf("Not implementet yet")
+			} else if lvalue.Typ.Pt == code.TYP_SLICE {
+				lvalue = &VarDef{Typ: lvalue.Typ.Element, IsIndirect: true}
 			}
-			// code.ConsArgCode(2, false)
 		} else if lvalue == nil {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
@@ -290,6 +246,20 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 		}
 	}
 	return lvalue, nil
+}
+
+func ShiftFromSize(size int) string {
+	if size == 1 {
+		return "0"
+	} else if size == 2 {
+		return "1"
+	} else if size == 4 {
+		return "2"
+	} else if size == 8 {
+		return "3"
+	} else {
+		panic("Size of element must be 1,2,4 or 8 bytes")
+	}
 }
 
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
@@ -599,7 +569,7 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 	if v == nil {
 		return nil, fmt.Errorf("did not find variable")
 	}
-	if v.Typ.Pt != code.TYP_STRING {
+	if v.Typ.Pt != code.TYP_STRING && v.Typ.Pt != code.TYP_SLICE {
 		return nil, fmt.Errorf("expected string or array, got %s", v.Typ.Pt.Name())
 	}
 	values, err := ParseExpression(s)
@@ -705,9 +675,13 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if size == 1 {
 				v.Typ = &U8Type
 				emit("movzx", "eax", "byte [rax+8]", "")
-			} else {
-				// TODO : v.Typ = index type
-				emit("mov", "rax", DataType(size)+"[rax]", "")
+			} else if size == 2 {
+				v.Typ = v.Typ.Element
+				if size == 2 {
+					emit("mov", "ax", DataType(size)+"[rax]", "")
+				} else {
+					panic("TODO")
+				}
 			}
 		} else {
 			break
@@ -872,13 +846,42 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 				EmitPushConst(v[0].IntValue, "")
 			}
 			EmitNewString()
+		} else if t.Pt == code.TYP_SLICE {
+			if !s.found(TOK_COMMA) {
+				return nil, fmt.Errorf("new slice must have a given capacity")
+			}
+			v, err1 := ParseExpression(s)
+			if err1 != nil {
+				return nil, err
+			}
+			if v[0].IsConst {
+				EmitPushConst(v[0].IntValue, "")
+			}
+			// Scale by slice element size
+			switch t.Element.Size() {
+			case 0:
+				return nil, fmt.Errorf("new slice can not have zero capacity")
+			case 2:
+				emit("shl", "rax", "1", "")
+			case 4:
+				emit("shl", "rax", "2", "")
+			case 8:
+				emit("shl", "rax", "3", "")
+			case 16:
+				emit("shl", "rax", "4", "")
+			case 32:
+				emit("shl", "rax", "5", "")
+			default:
+				emit("imul", "rax", "rax, "+strconv.Itoa(t.Element.Size()), "")
+			}
+			emit("add", "rax", "8", "Add len/cap to slice size")
+			EmitNewSlice(t)
 		} else {
 			EmitNewStruct(t)
 		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")
 		}
-		// value.IsTempObj = true
 
 	} else if s.token == TOK_MINUS {
 		s.next()

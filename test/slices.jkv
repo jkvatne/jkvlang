@@ -1,4 +1,5 @@
 
+
 type Age = U8
 
 type Name = struct {
@@ -7,17 +8,26 @@ type Name = struct {
     last String
 }
 
+type Points = []I16
+
  type Person = struct {
     id String
     name Name
     age Age
+    points Points
  }
 
 func main() {
+    p = new(Person)
+    p.points = new(Points, 32)
+    j=2
+    p.points[1]=1
+    print("p.points[1]=%d", p.points[1])
+
+    /*
+    p.age = 70
     j=2
     j=j+1
-    p = new(Person)
-    p.age = 70
     print("age=%d", p.age)
 
     n = new(Name)
@@ -37,5 +47,5 @@ func main() {
     p.name.last[j+k]='x'  // 0x78
     assert(p.name.last=="Vaxne")
     print("p.name.last=%s", p.name.last)
-
+*/
 }
