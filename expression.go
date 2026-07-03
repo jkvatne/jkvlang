@@ -666,7 +666,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				size = v.Typ.Element.Size()
 			}
 			if index.IsConst {
-				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "ParseArrayOrStruct Index into string")
+				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size+8), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice, skipping cap/len")
 			} else {
 				emit("pop", "rbx", "", Sp(-1))
 				emit("add", "rax", "rbx", "")
@@ -677,8 +677,10 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				emit("movzx", "eax", "byte [rax+8]", "")
 			} else if size == 2 {
 				v.Typ = v.Typ.Element
-				if size == 2 {
-					emit("mov", "ax", DataType(size)+"[rax]", "")
+				if size == 2 || size == 4 {
+					emit("movzx", "rax", DataType(size)+"[rax]", "")
+				} else if size == 8 {
+					emit("mov", "rax", "[rax]", "")
 				} else {
 					panic("TODO")
 				}
