@@ -858,9 +858,11 @@ func EmitNewStruct(t *TypeDef) {
 	emit("call", "_alloc", "", "Allocate new struct")
 }
 
-func EmitNewSlice(t *TypeDef) {
+func EmitNewSlice(t *TypeDef, elementSize int) {
 	EmitAssertTosInRax("Before NewSlice")
-	emit("mov", "r12", "rax", "new string capacity")
+	emit("mov", "r12", "rax", "new slice capacity (in elements)")
+	emit("imul", "rax", strconv.Itoa(elementSize), "")
+	emit("add", "rax", "8", "Add space for len/cap")
 	emit("call", "_alloc", "", "Allocate new slice")
 	emit("mov", "r13", "rax", "Save rax")
 	emit("mov", "rdi", "rax", "Then clear the new slice")

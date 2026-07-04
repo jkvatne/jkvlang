@@ -859,25 +859,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			if v[0].IsConst {
 				EmitPushConst(v[0].IntValue, "")
 			}
-			// Scale by slice element size
-			switch t.Element.Size() {
-			case 0:
-				return nil, fmt.Errorf("new slice can not have zero capacity")
-			case 2:
-				emit("shl", "rax", "1", "")
-			case 4:
-				emit("shl", "rax", "2", "")
-			case 8:
-				emit("shl", "rax", "3", "")
-			case 16:
-				emit("shl", "rax", "4", "")
-			case 32:
-				emit("shl", "rax", "5", "")
-			default:
-				emit("imul", "rax", "rax, "+strconv.Itoa(t.Element.Size()), "")
-			}
-			emit("add", "rax", "8", "Add len/cap to slice size")
-			EmitNewSlice(t)
+			EmitNewSlice(t, t.Element.Size())
 		} else {
 			EmitNewStruct(t)
 		}
@@ -1261,13 +1243,28 @@ func ParseIf(s *State) error {
 	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
 }
 
+func FreeSlice(t *TypeDef) {
+	emit("mov", "rcx", strconv.Itoa(t.Element.Size()), "Load element size")
+	// _free_slice assumes pointer in rax and element size in rcx
+	emit("call", "_free_slice", "", "")
+	code.SetUndef()
+}
+
 func FreeStruct(t *TypeDef) {
 	for i, f := range t.Fields {
 		ofs := t.Offsets[i]
 		if f.Pt == code.TYP_STRUCT {
 			EmitPushAx("")
 			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
+			lbl := code.NewLabel()
+			EmitJumpFalse(lbl, "")
 			FreeStruct(f)
+			EmitLabel(lbl, "")
+			EmitPopAx("")
+		} else if f.Pt == code.TYP_SLICE {
+			EmitPushAx("")
+			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free slice field "+f.Name())
+			FreeSlice(f)
 			EmitPopAx("")
 		}
 	}
@@ -1368,6 +1365,10 @@ func ParseFuncDef(s *State) error {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
 				FreeStruct(v.Typ)
+			} else if v.Typ.Pt == code.TYP_SLICE && !v.Destroyed {
+				// Load local var pointer into rax
+				EmitLoad(8, v.Offset, "Free local slice "+v.Name)
+				FreeSlice(v.Typ)
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")

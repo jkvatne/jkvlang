@@ -56,6 +56,36 @@ _free_struct:
     leave
     ret
 
+; _free_slice will free memory used by the slice
+; rax is pointer to the slice on the heap (points to len/cap)
+; rcx is element size in bytes
+global _free_slice
+_free_slice:
+    push rbp
+    mov rbp, rsp
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 40                      ; Reserve shadow space
+    mov rdi, rax                     ; Save objecgt pointer in rdi
+
+    mov rax, [rdi]                   ; Load len/cap
+    shr rax, 32                      ; Extract cap
+    imul rax, rcx                    ; Multiply capacity by elementsize
+    add rax, 8                       ; Add space for len/cap
+    mov rcx, rax
+    sub [allocation_count], rcx,     ; Decrement allocated count
+
+    call GetProcessHeap
+    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
+    mov r8, rdi                      ; Argument 3, move memory pointer into r8
+    call HeapFree                    ; Do the actual freeing of the memory
+    or rax, rax                      ; Check that Free returned 1
+    jnz .L2
+    mov r15, 103
+.L2:
+    leave
+    ret
+
 ; _free_str will free the string pointed to by rax, assuming it is a string with len/cap.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
 ; No return value.
