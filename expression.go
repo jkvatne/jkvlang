@@ -221,6 +221,12 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
 				emit("mov", "rsi", "[rsi]", "Load slice pointer")
 				ofs := 8 + int(index.IntValue)*lvalue.Typ.Element.Size()
+				emit("mov", "eax", "dword [rsi]", "Load len/cap")
+				emit("cmp", "eax", strconv.Itoa(int(index.IntValue)), "Check for index out of bounds")
+				lbl := code.NewLabel()
+				emit("jg", ".L"+strconv.Itoa(lbl), "", "Jump if ok")
+				emit("jmp", "0", "", "Panic")
+				EmitLabel(lbl, "")
 				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
 				emit("mov", "rsi", "[rsi]", "Load slice pointer")
@@ -859,7 +865,19 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			if v[0].IsConst {
 				EmitPushConst(v[0].IntValue, "")
 			}
-			EmitNewSlice(t, t.Element.Size())
+			hasLen := false
+			if s.found(TOK_COMMA) {
+				// Has length also
+				v2, err2 := ParseExpression(s)
+				if err2 != nil {
+					return nil, err
+				}
+				if v2[0].IsConst {
+					EmitPushConst(v2[0].IntValue, "")
+				}
+				hasLen = true
+			}
+			EmitNewSlice(t, t.Element.Size(), hasLen)
 		} else {
 			EmitNewStruct(t)
 		}
