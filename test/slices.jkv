@@ -20,32 +20,27 @@ type Points = []I16
 func main() {
     p = new(Person)
     p.points = new(Points, 32)
-    j=2
     p.points[1]=1
     print("p.points[1]=%d", p.points[1])
-
-    /*
     p.age = 70
-    j=2
-    j=j+1
     print("age=%d", p.age)
 
+    j=3
     n = new(Name)
     n.first = "Jan Kåre"
     n.last = "Vatne"
-
     p.name = n  // NB: Destructive read. n can now not be accessed.
     //n.last[2] = 'x' // Will fail because of destructive read
 
     print("p.name.last=%s, p.name.first=%s", p.name.last, p.name.first)
-    print("j=%d, p.name.last[j]=0x%x", j, p.name.last[j])
-    print("p.name.last[3]=0x%x", p.name.last[3])
-    assert(p.name.last[j]=='x')
 
+    print("j=%d, p.name.last[j]=0x%x", j, p.name.last[j])
+    assert(p.name.last[j]=='n')
+    print("p.name.last[3]=0x%x", p.name.last[3])
+    assert(p.name.last[3]=='n')
     k=-1
     print("j+k=%d", j+k)
     p.name.last[j+k]='x'  // 0x78
     assert(p.name.last=="Vaxne")
     print("p.name.last=%s", p.name.last)
-*/
 }

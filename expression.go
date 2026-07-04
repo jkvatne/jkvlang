@@ -666,7 +666,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				size = v.Typ.Element.Size()
 			}
 			if index.IsConst {
-				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size+8), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice, skipping cap/len")
+				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice")
 			} else {
 				emit("pop", "rbx", "", Sp(-1))
 				emit("add", "rax", "rbx", "")
@@ -1256,6 +1256,7 @@ func FreeStruct(t *TypeDef) {
 		if f.Pt == code.TYP_STRUCT {
 			EmitPushAx("")
 			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
+			code.SetAx()
 			lbl := code.NewLabel()
 			EmitJumpFalse(lbl, "")
 			FreeStruct(f)
@@ -1264,7 +1265,11 @@ func FreeStruct(t *TypeDef) {
 		} else if f.Pt == code.TYP_SLICE {
 			EmitPushAx("")
 			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free slice field "+f.Name())
+			code.SetAx()
+			lbl := code.NewLabel()
+			EmitJumpFalse(lbl, "")
 			FreeSlice(f)
+			EmitLabel(lbl, "")
 			EmitPopAx("")
 		}
 	}
