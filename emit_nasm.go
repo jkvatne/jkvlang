@@ -114,8 +114,12 @@ func EmitLabel(label int, comment string) {
 	code.Write(spaces[0:max(0, CommentIndent-n)] + "; " + comment + "\n")
 }
 
+func Label(n int) string {
+	return ".L" + strconv.Itoa(n)
+}
+
 func EmitJump(n int, comment string) {
-	emit("jmp", ".L"+strconv.Itoa(n), "", comment)
+	emit("jmp", Label(n), "", comment)
 }
 
 func Sp(delta int) string {
@@ -413,7 +417,7 @@ func EmitJumpFalse(n int, comment string) {
 		panic("TOS not in AX")
 	}
 	emit("or", "al", "al", comment)
-	emit("jz", ".L"+strconv.Itoa(n), "", "")
+	emit("jz", Label(n), "", "")
 	// Implicit pop of TOS
 	code.SetUndef()
 }
@@ -425,7 +429,7 @@ func EmitJumpTrue(n int, comment string) {
 		panic("TOS not in AX")
 	}
 	emit("or", "al", "al", comment)
-	emit("jnz", ".L"+strconv.Itoa(n), "", "")
+	emit("jnz", Label(n), "", "")
 	// Implicit pop of TOS
 	code.SetUndef()
 }
@@ -747,10 +751,10 @@ func EmitEpilogue(name string) {
 		oklbl := code.NewLabel()
 		errlbl := code.NewLabel()
 		emit("or", "r15", "r15", "")
-		emit("jnz", ".L"+strconv.Itoa(errlbl), "", "Jump if zero flag is set")
+		emit("jnz", Label(errlbl), "", "Jump if zero flag is set")
 		emit("mov", "rax", "[allocation_count]", "")
 		emit("or", "rax", "rax", "")
-		emit("jz", ".L"+strconv.Itoa(oklbl), "", "Jump if zero flag is set")
+		emit("jz", Label(oklbl), "", "Jump if zero flag is set")
 		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
 		EmitComment("main() returning. Printing allocation count end err.")
 		emit("push", "r15", "", ""+Sp(1))
@@ -891,7 +895,7 @@ func EmitNot() {
 
 func EmitJumpOnError(label int) {
 	emit("or", "r15", "r15", "Check err")
-	emit("jz", ".L"+strconv.Itoa(label), "", "")
+	emit("jz", Label(label), "", "")
 }
 
 func EmitClearBreakErr() {
@@ -912,7 +916,7 @@ func EmitFreeIfExists(offset int, size int, txt string) {
 	emit("mov", "rax", BpRel(offset), txt)
 	emit("or", "rax", "rax", "Is pointer nil?")
 	lbl := code.NewLabel()
-	emit("jz", ".L"+strconv.Itoa(lbl), "", "")
+	emit("jz", Label(lbl), "", "")
 	emit("mov", "rcx", strconv.Itoa(size), "")
 	emit("call", "_free_struct", "", "")
 	EmitLabel(lbl, "")

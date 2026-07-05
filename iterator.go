@@ -138,7 +138,7 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)
 		}
 		emit("or", "r15", "r15", "")
-		emit("jnz", ".L"+strconv.Itoa(endLabel), "", "")
+		emit("jnz", Label(endLabel), "", "")
 		err = ParseBlock(s, false)
 		if err != nil {
 			return err

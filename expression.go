@@ -224,8 +224,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "eax", "dword [rsi]", "Load len/cap")
 				emit("cmp", "eax", strconv.Itoa(int(index.IntValue)), "Check for index out of bounds")
 				lbl := code.NewLabel()
-				emit("jg", ".L"+strconv.Itoa(lbl), "", "Jump if ok")
-				emit("jmp", "0", "", "Panic")
+				emit("jg", Label(lbl), "", "Jump if ok")
+				emit("mov", "r15", "96", "Error code")
+				emit("jmp", Label(s.returnLbl), "", "return with error")
 				EmitLabel(lbl, "")
 				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
@@ -1400,7 +1401,6 @@ func ParseFuncDef(s *State) error {
 	DeleteBlockVars(s)
 	EmitEpilogue(f.name)
 	if code.LocalSp != 0 {
-		// return fmt.Errorf("Stack error")
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
 		return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)

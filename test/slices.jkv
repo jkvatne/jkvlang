@@ -19,7 +19,7 @@ type Points = []I16
 
 func main() {
     p = new(Person)
-    p.points = new(Points, 32, 10)
+    p.points = new(Points, 32)
     p.points[2]=1
     print("p.points[1]=%d", p.points[1])
     p.age = 70
