@@ -14,6 +14,7 @@ func PushLabel(start, end int) {
 	StartLabelStack = append(StartLabelStack, start)
 	EndLabelStack = append(EndLabelStack, end)
 }
+
 func PopLabels() {
 	StartLabelStack = StartLabelStack[:len(StartLabelStack)-1]
 	EndLabelStack = EndLabelStack[:len(EndLabelStack)-1]

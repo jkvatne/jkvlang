@@ -807,13 +807,13 @@ func EmitLoadIndirect() {
 }
 func EmitStoreIndirect(op string, size int) {
 	if size == 8 {
-		emit(op, "[rsi]", "rax", "")
+		emit(op, "[rsi]", "rax", "EmitStoreIndirect")
 	} else if size == 4 {
-		emit(op, "dword [rsi]", "eax", "")
+		emit(op, "dword [rsi]", "eax", "EmitStoreIndirect")
 	} else if size == 2 {
-		emit(op, "word [rsi]", "ax", "")
+		emit(op, "word [rsi]", "ax", "EmitStoreIndirect")
 	} else if size == 1 {
-		emit(op, "byte [rsi]", "al", "")
+		emit(op, "byte [rsi]", "al", "EmitStoreIndirect")
 	} else {
 		panic("Internal error - store indirect with wrong size")
 	}
@@ -824,11 +824,11 @@ func EmitLoadEa(localOfs int) {
 }
 
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
-	emit("mov", DataType(size)+"[rsi]", "str"+strconv.Itoa(litNo), "11 "+comment)
+	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "11 "+comment)
 }
 
 func EmitAssignIndirectConstInt(size int, unsigned bool, value int64, comment string) {
-	emit("mov", DataType(size)+"[rsi]", strconv.Itoa(int(value)), comment)
+	emit("mov", DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
 }
 
 func EmitGetAddrOfLocal(ofs int) {
@@ -921,4 +921,14 @@ func EmitFreeIfExists(offset int, size int, txt string) {
 	emit("call", "_free_struct", "", "")
 	EmitLabel(lbl, "")
 	emit("mov", "rax", "r12", "")
+}
+
+// EmitAppend expects NOS=pointer to slice, TOS=value to append
+// size is the element size in bytes
+func EmitAppend(size int) {
+	EmitAssertTosInRax("")
+	emit("mov", "rdi", "[rsp]", "")
+	emit("mov", DataType(size)+"[rdi]", AxName(size), "")
+	// TOS is no longer in rax
+	code.SetUndef()
 }

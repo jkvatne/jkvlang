@@ -100,9 +100,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_SLICE {
-		EmitComment("Indirect assignment")
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		emit("mov", "[rsi]", "rax", "Assign slice to "+lvalue.Name)
+		emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
+		emit("mov", "[rbx]", "rax", "Assign slice to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		if lvalue.Offset != 0 {
@@ -114,9 +114,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
 			code.SetUndef()
 		} else {
-			EmitComment("Indirect assignment")
-			EmitAssertTosInRax("Pop TOS into rax before assignment")
-			emit("mov", "[rsi]", "rax", "")
+			EmitAssertTosInRax("Pop TOS into rax before indirect assignment")
+			emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
+			emit("mov", "[rbx]", "rax", "Assign slice to "+lvalue.Name)
 		}
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		code.SetUndef()
@@ -176,9 +176,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	var ok bool
 	// Loop over field access or indexed access.
 	for {
-		if s.found(TOK_DOT) && (lvalue.Typ.Pt == code.TYP_STRUCT || lvalue.Typ.Pt == code.TYP_STRING) && s.token == TOK_ID {
+		if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
 			if lvalue.IsIndirect {
-				emit("mov", "rsi", "[rsi]", "Load indirect value '"+lvalue.Name+"'")
+				emit("mov", "rax", "[rax]", "Load indirect value '"+lvalue.Name+"'")
 			}
 			// The id was followed by a dot and a field id, indicated field access.
 			fieldName := s.tokenString
@@ -191,11 +191,12 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.Name = fieldName
 			ofs := lvalue.Typ.Offsets[fieldName]
 			if !lvalue.IsIndirect {
-				emit("mov", "rsi", BpRel(lvalue.Offset), "Load local variable "+lvalue.Name)
+				emit("mov", "rax", BpRel(lvalue.Offset), "Load local variable "+lvalue.Name)
 			}
 			if ofs != 0 {
-				emit("add", "rsi", strconv.Itoa(ofs), "Add field offset for field '"+fieldName+"'")
+				emit("add", "rax", strconv.Itoa(ofs), "Add field offset for field '"+fieldName+"'")
 			}
+			code.SetAx()
 			v.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
@@ -209,17 +210,18 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 			// Load variable address into SI
 			if !lvalue.IsIndirect {
-				emit("mov", "rsi", BpRel(lvalue.Offset), "EmitLoadEa")
+				emit("mov", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "rsi", "[rsi]", "Load string pointer")
-				emit("add", "rsi", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
+				emit("mov", "rax", "[rax]", "Load string pointer")
+				emit("add", "rax", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
-				emit("mov", "rsi", "[rsi]", "Load string pointer")
-				emit("add", "rsi", "8", "Skip len/cap")
-				emit("add", "rsi", "rax", "Index into lvalue string")
+				emit("mov", "rax", "[rax]", "Load string pointer")
+				emit("add", "rax", "8", "Skip len/cap")
+				emit("pop", "rbx", "", Sp(-1))
+				emit("add", "rax", "rbx", "Index into lvalue string")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
-				emit("mov", "rsi", "[rsi]", "Load slice pointer")
+				emit("mov", "rsi", "[rax]", "Load slice pointer for const")
 				ofs := 8 + int(index.IntValue)*lvalue.Typ.Element.Size()
 				emit("mov", "eax", "dword [rsi]", "Load len/cap")
 				emit("cmp", "eax", strconv.Itoa(int(index.IntValue)), "Check for index out of bounds")
@@ -229,11 +231,13 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("jmp", Label(s.returnLbl), "", "return with error")
 				EmitLabel(lbl, "")
 				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
+				emit("mov", "rax", "rsi", "")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
-				emit("mov", "rsi", "[rsi]", "Load slice pointer")
-				emit("add", "rsi", "8", "Skip len/cap")
-				emit("shl", "rax", ShiftFromSize(lvalue.Typ.Element.Size()), "")
-				emit("add", "rsi", "rax", "Index into lvalue string")
+				emit("mov", "rax", "[rax]", "Load slice pointer")
+				emit("add", "rax", "8", "Skip len/cap")
+				emit("pop", "rbx", "", "Get index"+Sp(-1))
+				emit("shl", "rbx", ShiftFromSize(lvalue.Typ.Element.Size()), "")
+				emit("add", "rax", "rbx", "Index into lvalue string")
 			}
 			// Multiply by element size
 			if err != nil {
@@ -673,9 +677,11 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				size = v.Typ.Element.Size()
 			}
 			if index.IsConst {
-				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice")
+				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size+8), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice")
 			} else {
 				emit("pop", "rbx", "", Sp(-1))
+				emit("imul", "rax", strconv.Itoa(size), "")
+				emit("add", "rax", "8", "")
 				emit("add", "rax", "rbx", "")
 				code.SetAx()
 			}
@@ -1550,5 +1556,57 @@ func ParseVar(s *State, isGlobal bool) error {
 		// v.Value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
 		nextToken(s)
 	}
+	return nil
+}
+
+func ParseAppend(s *State) error {
+	if !s.found(TOK_LPAR) {
+		return fmt.Errorf("expected left parenthesis")
+	}
+	id := s.tokenString
+	s.next()
+	v, err := ParseLvalue(s, id)
+	if err != nil {
+		return err
+	}
+	if v.Typ.Pt != code.TYP_SLICE {
+		return fmt.Errorf("first argument to append must be a slice")
+	}
+	if !v.IsIndirect {
+		return fmt.Errorf("expected indirect value")
+	}
+	if !s.found(TOK_COMMA) {
+		return fmt.Errorf("expected comma, got %s", s.tokenString)
+	}
+	// rsi is now a pointer to the slice.
+	emit("mov", "rsi", "[rsi]", "Load slice pointer")
+	emit("mov", "eax", "[rsi]", "Get length")
+	emit("add", "rsi", "rax", "")
+	emit("add", "rsi", "8", "")
+	emit("push", "rsi", "", Sp(0))
+	n := 0
+	for {
+		value, err := ParseExpression(s)
+		if err != nil {
+			return err
+		}
+		if value[0].IsConst {
+			EmitPushConst(value[0].IntValue, "")
+		}
+		n++
+		EmitAppend(v.Typ.Element.Size())
+		if s.token == TOK_RPAR {
+			s.next()
+			break
+		}
+		if !s.found(TOK_COMMA) {
+			return fmt.Errorf("expected comma or right parantesis, got %s", s.tokenString)
+		}
+	}
+	// Add n to length
+	emit("pop", "rdi", "", "")
+	emit("mov", "rax", "[rdi]", "Get length")
+	emit("add", "rax", strconv.Itoa(n), "")
+	emit("mov", "[rdi]", "rax", "")
 	return nil
 }

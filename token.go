@@ -85,6 +85,7 @@ const (
 	TOK_SHR
 	TOK_AND_NOT
 	TOK_CHAR
+	TOK_APPEND
 	TOK_SIZE
 )
 
@@ -161,6 +162,7 @@ var TokenNames = [...]string{
 	TOK_SHR:         "SHR",
 	TOK_AND_NOT:     "AND_NOT",
 	TOK_CHAR:        "CHAR",
+	TOK_APPEND:      "APPEND",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -547,6 +549,8 @@ func nextToken(s *State) {
 				s.token = TOK_BREAK
 			case "fail":
 				s.token = TOK_FAIL
+			case "append":
+				s.token = TOK_APPEND
 			}
 		case s.ch1 == '[':
 			s.token = TOK_LBRACK

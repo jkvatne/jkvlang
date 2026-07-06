@@ -19,13 +19,20 @@ type Points = []I16
 
 func main() {
     p = new(Person)
-    p.points = new(Points, 32)
+    p.points = new(Points, 32, 3)
     p.points[2]=1
-    print("p.points[1]=%d", p.points[1])
+    print("p.points[2]=%d", p.points[2])
+    j=2
+    print("p.points[j]=%d", p.points[j])
+
+    /*
+    // print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
+    // append(p.points, 3, 4, 5)
+    print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
+    p.points[2]=1
     p.age = 70
     print("age=%d", p.age)
 
-    j=3
     n = new(Name)
     n.first = "Jan Kåre"
     n.last = "Vatne"
@@ -43,4 +50,5 @@ func main() {
     p.name.last[j+k]='x'  // 0x78
     assert(p.name.last=="Vaxne")
     print("p.name.last=%s", p.name.last)
+    */
 }
