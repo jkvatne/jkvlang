@@ -20,15 +20,17 @@ type Points = []I16
 func main() {
     p = new(Person)
     p.points = new(Points, 32, 3)
-    p.points[2]=1
+    p.points[1]=1
+    p.points[2]=2
     print("p.points[2]=%d", p.points[2])
     j=2
+    n=4
+    m=5
     print("p.points[j]=%d", p.points[j])
-
-    /*
-    // print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
-    // append(p.points, 3, 4, 5)
     print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
+    append(p.points, 3, n, m)
+    print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
+    /*
     p.points[2]=1
     p.age = 70
     print("age=%d", p.age)

@@ -233,7 +233,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
 				emit("mov", "rax", "rsi", "")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
-				emit("mov", "rax", "[rax]", "Load slice pointer")
+				emit("mov", "rax", "[rax]", "Load slice pointer 1")
 				emit("add", "rax", "8", "Skip len/cap")
 				emit("pop", "rbx", "", "Get index"+Sp(-1))
 				emit("shl", "rbx", ShiftFromSize(lvalue.Typ.Element.Size()), "")
@@ -1578,23 +1578,32 @@ func ParseAppend(s *State) error {
 	if !s.found(TOK_COMMA) {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)
 	}
-	// rsi is now a pointer to the slice.
-	emit("mov", "rsi", "[rsi]", "Load slice pointer")
+	length := v.Typ.Element.Size()
+	// rax is now a pointer to the slice.
+	emit("mov", "rsi", "[rax]", "Load slice pointer for append")
 	emit("mov", "eax", "[rsi]", "Get length")
+	emit("imul", "rax", strconv.Itoa(length), "")
 	emit("add", "rsi", "rax", "")
-	emit("add", "rsi", "8", "")
-	emit("push", "rsi", "", Sp(0))
+	emit("add", "rsi", "8", "Add slice offset")
+	emit("push", "rsi", "", Sp(1))
+	code.SetUndef()
 	n := 0
 	for {
+		n++
 		value, err := ParseExpression(s)
 		if err != nil {
 			return err
 		}
 		if value[0].IsConst {
 			EmitPushConst(value[0].IntValue, "")
+		} else {
+			EmitAssertTosInRax("")
 		}
-		n++
-		EmitAppend(v.Typ.Element.Size())
+		emit("pop", "rdi", "", Sp(-1))
+		emit("mov", DataType(length)+"[rdi]", AxName(length), "")
+		emit("add", "rdi", strconv.Itoa(length), "")
+		emit("push", "rdi", "", Sp(1))
+		code.SetUndef()
 		if s.token == TOK_RPAR {
 			s.next()
 			break
@@ -1604,7 +1613,7 @@ func ParseAppend(s *State) error {
 		}
 	}
 	// Add n to length
-	emit("pop", "rdi", "", "")
+	emit("pop", "rdi", "", Sp(-1))
 	emit("mov", "rax", "[rdi]", "Get length")
 	emit("add", "rax", strconv.Itoa(n), "")
 	emit("mov", "[rdi]", "rax", "")
