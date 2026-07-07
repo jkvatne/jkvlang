@@ -18,39 +18,46 @@ type Points = []I16
  }
 
 func main() {
+    n = new(Name)
+    n.first = "Jan Kåre"
+    n.last = "Vatne"
+    assert(n.last=="Vatne", "Failed 1")
+    assert(n.first=="Jan Kåre", "Failed 2")
+    assert(n.last[2]=='t', "Failed 3")
+/*
     p = new(Person)
     p.points = new(Points, 32, 3)
     p.points[1]=1
     p.points[2]=2
     print("p.points[2]=%d", p.points[2])
+    assert(p.points[0]==0, "4")
+    assert(p.points[1]==1, "5")
+    assert(p.points[2]==2, "6")
+
     j=2
-    n=4
+    k=4
     m=5
     print("p.points[j]=%d", p.points[j])
     print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
-    append(p.points, 3, n, m)
+    append(p.points, 3, k, m)
     print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
-    /*
-    p.points[2]=1
+
     p.age = 70
     print("age=%d", p.age)
 
-    n = new(Name)
-    n.first = "Jan Kåre"
-    n.last = "Vatne"
     p.name = n  // NB: Destructive read. n can now not be accessed.
+    print("p.name.last=%s, p.name.first=%s", p.name.last, p.name.first)
     //n.last[2] = 'x' // Will fail because of destructive read
 
-    print("p.name.last=%s, p.name.first=%s", p.name.last, p.name.first)
-
     print("j=%d, p.name.last[j]=0x%x", j, p.name.last[j])
-    assert(p.name.last[j]=='n')
+    assert(p.name.last[j]=='n', "Failed 7")
     print("p.name.last[3]=0x%x", p.name.last[3])
-    assert(p.name.last[3]=='n')
+    assert(p.name.last[3]=='n', "Failed 8")
+
     k=-1
     print("j+k=%d", j+k)
     p.name.last[j+k]='x'  // 0x78
-    assert(p.name.last=="Vaxne")
+    assert(p.name.last=="Vaxne", "Failed 9")
     print("p.name.last=%s", p.name.last)
-    */
+*/
 }

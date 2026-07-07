@@ -40,7 +40,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		if CanAssignConst(t, value) {
 			if t == code.TYP_STRING {
 				if lvalue.IsIndirect {
-					EmitFlushRax("Before AssignIndirectStrLit")
+					// EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
 					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
@@ -687,7 +687,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			}
 			if size == 1 {
 				v.Typ = &U8Type
-				emit("movzx", "eax", "byte [rax+8]", "")
+				emit("movzx", "rax", "byte [rax]", "Get char from string")
 			} else if size == 2 {
 				v.Typ = v.Typ.Element
 				if size == 2 || size == 4 {
