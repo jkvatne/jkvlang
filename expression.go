@@ -213,13 +213,13 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "rax", "[rax]", "Load string pointer")
+				emit("mov", "rax", "[rax]", "Load string pointer const")
 				emit("add", "rax", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
-				emit("mov", "rax", "[rax]", "Load string pointer")
-				emit("add", "rax", "8", "Skip len/cap")
 				emit("pop", "rbx", "", Sp(-1))
-				emit("add", "rax", "rbx", "Index into lvalue string")
+				emit("mov", "rbx", "[rbx]", "Load string pointer not const")
+				emit("add", "rax", "rbx", "Index into lvalue string not const")
+				emit("add", "rax", "8", "Skip len/cap of string not const")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
 				emit("mov", "rsi", "[rax]", "Load slice pointer for const")
 				ofs := 8 + int(index.IntValue)*lvalue.Typ.Element.Size()
@@ -234,10 +234,10 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("mov", "rax", "rsi", "")
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
 				emit("mov", "rax", "[rax]", "Load slice pointer 1")
-				emit("add", "rax", "8", "Skip len/cap")
+				emit("add", "rax", "8", "Skip len/cap in slice")
 				emit("pop", "rbx", "", "Get index"+Sp(-1))
 				emit("shl", "rbx", ShiftFromSize(lvalue.Typ.Element.Size()), "")
-				emit("add", "rax", "rbx", "Index into lvalue string")
+				emit("add", "rax", "rbx", "Index into lvalue slice not const")
 			}
 			// Multiply by element size
 			if err != nil {
@@ -330,7 +330,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
 				EmitPushTos(parNo, f.name)
 				if f.name == "printf" || f.name == "print" {
-					EmitSkipLenCap()
+					emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(value.IntValue, "")
@@ -357,7 +357,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			if f.name == "printf" || f.name == "print" {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == code.TYP_STRING {
-					EmitSkipLenCap()
+					emit("add", "dword [rsp]", "8", "Skip len/cap of print var arg string")
 					// If it was a local variable or a constant, we should not free it.
 					// (The constant case has already been handled)
 					// But if it was a function result, it can be a pointer to a literal.
@@ -649,9 +649,9 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			}
 			isIndirect = true
 			if fieldOffset != 0 {
-				emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset")
+				emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset for '"+fieldName+"'")
 			}
-			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value in field")
+			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value in field '"+fieldName+"'")
 			v.Typ = fieldType
 		} else if s.found(TOK_LBRACK) {
 			// It should be an array

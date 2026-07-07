@@ -18,46 +18,54 @@ type Points = []I16
  }
 
 func main() {
+    // 1. Test assign strings to struct and verify char from string
     n = new(Name)
     n.first = "Jan Kåre"
     n.last = "Vatne"
     assert(n.last=="Vatne", "Failed 1")
     assert(n.first=="Jan Kåre", "Failed 2")
     assert(n.last[2]=='t', "Failed 3")
-/*
+
+    // 2. Test new slice and assign/read from slice
     p = new(Person)
     p.points = new(Points, 32, 3)
     p.points[1]=1
     p.points[2]=2
-    print("p.points[2]=%d", p.points[2])
-    assert(p.points[0]==0, "4")
-    assert(p.points[1]==1, "5")
-    assert(p.points[2]==2, "6")
+    assert(p.points[0]==0, "Failed 4")
+    assert(p.points[1]==1, "Failed 5")
+    assert(p.points[2]==2, "Failed 6")
 
+    // 3. Append to slice
     j=2
     k=4
     m=5
-    print("p.points[j]=%d", p.points[j])
-    print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
     append(p.points, 3, k, m)
-    print("p.points = %d, %d, %d, %d, %d, %d", p.points[0], p.points[1], p.points[2], p.points[3], p.points[4], p.points[5])
+    assert(p.points[2]==2, "Failed 7")
+    assert(p.points[3]==3, "Failed 8")
+    assert(p.points[4]==4, "Failed 9")
+    assert(p.points[5]==5, "Failed 10")
 
+    // 4. Assing to struct variable
     p.age = 70
-    print("age=%d", p.age)
+    assert(p.age==70, "Failed 11")
 
+    // 5. Test struct with struct field
     p.name = n  // NB: Destructive read. n can now not be accessed.
-    print("p.name.last=%s, p.name.first=%s", p.name.last, p.name.first)
+
     //n.last[2] = 'x' // Will fail because of destructive read
+    assert(p.name.first=="Jan Kåre", "Failed 12")
+    assert(p.name.last=="Vatne", "Failed 13")
 
-    print("j=%d, p.name.last[j]=0x%x", j, p.name.last[j])
-    assert(p.name.last[j]=='n', "Failed 7")
-    print("p.name.last[3]=0x%x", p.name.last[3])
-    assert(p.name.last[3]=='n', "Failed 8")
+    // 6. Test indexing struct string char with const and var
+    assert(p.name.last[j]=='t', "Failed 14")
+    assert(p.name.last[3]=='n', "Failed 15")
 
+    // 7. Test assign to char in struct string
     k=-1
-    print("j+k=%d", j+k)
-    p.name.last[j+k]='x'  // 0x78
-    assert(p.name.last=="Vaxne", "Failed 9")
-    print("p.name.last=%s", p.name.last)
-*/
+    j=3
+    // This will not fail. p.name.last is a string literal (constant - not mutable).
+    // It should panic or give compiler warning, but currently it does not.
+    p.name.last[j+k]='x'
+    assert(p.name.last=="Vaxne", "Failed 16")
+
 }

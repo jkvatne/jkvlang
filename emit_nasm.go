@@ -447,10 +447,6 @@ func EmitPushStringLit(lit int, comment string) {
 	emit("mov", "rax", "str"+strconv.Itoa(lit), comment)
 }
 
-func EmitSkipLenCap() {
-	emit("add", "dword [rsp]", "8", "Skip len/cap")
-}
-
 func EmitPushConst(value int64, comment string) {
 	EmitFlushRax("Before PushConst")
 	code.SetAx()
@@ -516,7 +512,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	emit("rep", "movsb", "", "")
 	// Copy string 2
 	emit("mov", "rsi", "r13", "Copy string 2")
-	emit("add", "rsi", "8", "Skip len/cap")
+	emit("add", "rsi", "8", "Skip len/ca string 2")
 	emit("mov", "rcx", "r12", "")
 	emit("rep", "movsb", "", "")
 	if free1 {
