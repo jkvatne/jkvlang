@@ -443,7 +443,11 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	code.NewArgCode()
 	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
 
-	code.ConsArgCode(len(values)+1, true)
+	if len(values) == 0 {
+		code.ConsArgCode(2, true)
+	} else {
+		code.ConsArgCode(len(values)+1, true)
+	}
 
 	// Do actual call
 	// ----------------------------------

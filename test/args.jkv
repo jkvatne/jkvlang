@@ -1,4 +1,4 @@
-/*
+
 func gg(a Bool, c I32) I32 {
     if a ? c+=2 : c+=1
     return c
@@ -8,7 +8,6 @@ func test_g()  {
     r = gg(true, 30)
     assert(r==32, "Failed 6")
 }
-*/
 
 func mpy(x I32, y I32) I32 {
    return x*y
@@ -27,15 +26,14 @@ func f3() I32 {
 }
 
 func main() {
-    // Test nested integer functions")
+
+    // Test nested integer functions
     w = sum(3, mpy(4,5))   // = 23
     assert(w==23, "Failed 1")
 
-/*
-
-    // 4. Test failing assert with function call inside assert and with integer arg")
+    // Test functions without parameters
     assert(f3()==25)
-    assert(f2()==20)
+    assert(f2()==25)
     assert(f2()==21,"Intentionaly failed 4 : f2()==21, got %d", f2())
     invert_err()
 
@@ -44,19 +42,18 @@ func main() {
     assert(13/y==4, "Failed  13/y")
 
 
-    // 2. Test simple integer function call")
+    // Test simple integer function call
     x = sum(1,2)
-    assert(x==3, "Failed 2")
+    assert(x==3, "Failed sum(1,2)")
 
-    // 3. Test function call inside assert and with integer arg to assert")
+
+    // Test function call inside assert and with integer arg to assert
     assert(f2()==25,"Failed 3 : f2()==25, got %d", f2())
 
+    // Test nested functions
+    assert(gg(true, f2())==27, "Failed nested functions")
 
-
-    // 4. Test nested functions")
-    assert(gg(true, f2())==27, "Failed 5")
-
-    // 4. Test div and mod")
+    // Test div and mod
     x = 13
     y = 3
     assert(x%3==1, "Failed x%%3")
@@ -65,8 +62,6 @@ func main() {
     assert(x/3==4, "Failed x/3")
     assert(13/3==4, "Failed 13/3")
     assert(x%y==1, "Failed x%%y")
-
     assert(13/y==4, "Failed  13/y")
-    //assert(13%y==1, "Failed 13%%y")
-    */
+    assert(13%y==1, "Failed 13%%y")
 }
