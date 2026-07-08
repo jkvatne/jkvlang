@@ -316,7 +316,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		if parNo > 1 {
 			code.NewArgCode()
 		}
-		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list")
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + f.name + "'")
 		values, err1 := ParseExpression(s)
 		if err1 != nil {
 			return nil, err1
