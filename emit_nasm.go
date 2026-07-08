@@ -928,3 +928,8 @@ func EmitAppend(size int) {
 	// TOS is no longer in rax
 	code.SetUndef()
 }
+
+func EmitLoadGlobalConst(name string) {
+	emit("mov", "rax", name, "")
+	code.SetAx()
+}

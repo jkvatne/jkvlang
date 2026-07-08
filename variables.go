@@ -15,6 +15,7 @@ type VarDef struct {
 	Offset      int
 	IsIndirect  bool
 	Destroyed   bool
+	constValue  string
 }
 
 var VarDefs map[string]*VarDef

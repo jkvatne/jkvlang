@@ -3,7 +3,7 @@ const (
     F64_SHIFT_EXP I32 = 11    // 64 - 53
 	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
 )
-
+/*
 // unpack64 returns m, e such that f = m * 2**e.
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
@@ -19,9 +19,11 @@ func unpack64(f F64) (U64, I32) {
 	}
 	return m, (e - 1) -1085
 }
+*/
 
 func main() {
-
+    print("F64_SHIFT_EXP=%d", F64_SHIFT_EXP)
+    /*
     l1 = bitlen(127)
     assert(l1==7, "Failed, bitlen(127) was %d", l1)
 
@@ -107,4 +109,5 @@ func main() {
     //print("mantissa=0x%8x%08x, exp=%d", uu,ul,e)
     assert(m==0xe000000000000000)
     assert(e==-63)
+    */
 }

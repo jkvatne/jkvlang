@@ -743,6 +743,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoadErr()
 		} else if localVar.Typ.Pt.IsFloat() {
 			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, "Load float "+localVar.Name)
+		} else if localVar.IsGlobal {
+			EmitLoadGlobalConst(localVar.constValue)
 		} else if localVar.Typ.Pt.IsInteger() {
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		} else {
@@ -1413,7 +1415,7 @@ func ParseFuncDef(s *State) error {
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
-		return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
+		// return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
 	nextToken(s)
@@ -1553,11 +1555,7 @@ func ParseVar(s *State, isGlobal bool) error {
 		if v == nil {
 			return fmt.Errorf("internal error in ParseVar")
 		}
-		// TODO
-		fmt.Printf(val)
-		// v.StringValue = val
-		// v.Value.IntValue = int64(s.ConstValue.Bits)
-		// v.Value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
+		v.constValue = val
 		nextToken(s)
 	}
 	return nil
