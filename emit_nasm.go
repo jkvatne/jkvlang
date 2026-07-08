@@ -568,6 +568,10 @@ func Inverse(op Token) Token {
 		return TOK_INV_DIV
 	case TOK_MOD:
 		return TOK_INV_MOD
+	case TOK_SHL:
+		return TOK_INV_SHL
+	case TOK_SHR:
+		return TOK_INV_SHR
 	default:
 		return op
 	}
@@ -930,6 +934,7 @@ func EmitAppend(size int) {
 }
 
 func EmitLoadGlobalConst(name string) {
+	EmitFlushRax("Before EmitLoadGlobalConst")
 	emit("mov", "rax", name, "")
 	code.SetAx()
 }

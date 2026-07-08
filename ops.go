@@ -261,20 +261,23 @@ func emitIntegerOp(op Token) {
 	if !code.AxIsTos() {
 		panic("emitIntegerOp assumes RaxIsTOS=true")
 	}
-	emit("pop", "rcx", "", Sp(-1))
 	if op == TOK_DIV {
+		emit("pop", "rcx", "", Sp(-1))
 		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
+		emit("pop", "rcx", "", Sp(-1))
 		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_MINUS {
+		emit("pop", "rcx", "", Sp(-1))
 		emit("xchg", "rax", "rcx", "")
-		emit("sub", "rax", "rcx", "Integer op")
+		emit("sub", "rax", "rcx", "Integer op minus")
 	} else if op == TOK_AND_NOT {
+		emit("pop", "rcx", "", Sp(-1))
 		emit("not", "rax", "", "")
 		emit("and", "rax", "rcx", "AndNot")
 	} else {
@@ -283,11 +286,15 @@ func emitIntegerOp(op Token) {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
 		if op == TOK_MULT {
+			emit("pop", "rcx", "", Sp(-1))
 			emit("mul", "rcx", "", "Integer op mul")
 		} else if op == TOK_SHL || op == TOK_SHR {
-			emit(instruction, "rax", "cl", "Integer op")
+			emit("mov", "rcx", "rax", "Integer op shift")
+			emit("pop", "rax", "", Sp(-1))
+			emit(instruction, "rax", "cl", "Integer op shift")
 		} else {
-			emit(instruction, "rax", "rcx", "Integer op")
+			emit("pop", "rcx", "", Sp(-1))
+			emit(instruction, "rax", "rcx", "Integer op other")
 		}
 	}
 }
@@ -331,12 +338,20 @@ func emitOpIntConst(op Token, value int64, comment string) error {
 		emit("neg", "rax", "", "")
 	} else if op == TOK_MINUS {
 		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
+	} else if op == TOK_INV_SHL {
+		emit("mov", "rcx", "rax", "TOK_INV_SHL")
+		emit("mov", "rax", strconv.FormatInt(value, 10), comment)
+		emit("shl", "rax", "cl", "")
+	} else if op == TOK_INV_SHR {
+		emit("mov", "rcx", "rax", "TOK_INV_SHR")
+		emit("mov", "rax", strconv.FormatInt(value, 10), comment)
+		emit("shr", "rax", "cl", "")
 	} else {
 		instr := TokenOp[op]
 		if instr == "" {
 			return fmt.Errorf("invalid operation %s", op.Name())
 		}
-		emit(instr, "rax", strconv.FormatInt(value, 10), comment)
+		emit(instr, "rax", strconv.FormatInt(value, 10), instr+" "+comment)
 	}
 	return nil
 }

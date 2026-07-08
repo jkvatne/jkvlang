@@ -1415,7 +1415,7 @@ func ParseFuncDef(s *State) error {
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
-		// return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
+		return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
 	nextToken(s)

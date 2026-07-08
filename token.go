@@ -86,6 +86,8 @@ const (
 	TOK_AND_NOT
 	TOK_CHAR
 	TOK_APPEND
+	TOK_INV_SHL
+	TOK_INV_SHR
 	TOK_SIZE
 )
 
@@ -163,6 +165,8 @@ var TokenNames = [...]string{
 	TOK_AND_NOT:     "AND_NOT",
 	TOK_CHAR:        "CHAR",
 	TOK_APPEND:      "APPEND",
+	TOK_INV_SHL:     "INV_SHL",
+	TOK_INV_SHR:     "INV_SHR",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -189,8 +193,8 @@ func (t Token) IsCompare() bool {
 func (t Token) IsAritmetic() bool {
 	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
 		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD ||
-		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR || t == TOK_AND_NOT
-
+		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR || t == TOK_AND_NOT ||
+		t == TOK_INV_SHL || t == TOK_INV_SHR
 }
 
 func (t Token) IsLogic() bool {
