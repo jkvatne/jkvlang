@@ -16,6 +16,7 @@ type VarDef struct {
 	IsIndirect  bool
 	Destroyed   bool
 	constValue  string
+	IsReturned  bool
 }
 
 var VarDefs map[string]*VarDef

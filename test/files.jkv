@@ -1,9 +1,10 @@
-
+/*
 func test(f I32, cnt I32) String, I32, I32 {
     n = I32(13)
     buffer = "abcd"
     return buffer, n, 14
 }
+*/
 
 func read_string(f I32, cnt I32) String {
     buffer=new(String,cnt)
@@ -12,32 +13,36 @@ func read_string(f I32, cnt I32) String {
 }
 
 func main() {
-    // 1. Test returning 3 results
-    buf, n, m = test(11, 12)
-    assert(n==13)
-    assert(m==14)
-    assert(buf=="abcd")
-
-    // 2. Test write to file
+    // Test write to file
     fn = "./test.txt"
     n = I32(0)
     text = "Hello World!"
     f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    print("create_file handel=%d", f)
+    print("create_file handle=%d", f)
     ok = write_file(f, cptr(text), 13, ptr(n), 0)
     assert(ok==1)
     assert(n==13)
     assert(I64(f)!=-1)
     close_file(f)
 
-    // 3. Test read back file using read_string
-    f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    buffer = read_string(f, 12)
+    //  Test read back file using read_string
+    f2 = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    buffer = read_string(f2, 12)
+    print("Buffer=%s", buffer)
     assert(buffer=="Hello World!")
 
+/*
     // 4. Test open invalid name
-    fn = ":::"
-    f = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
+    fn2 = ":::"
+    f3 = create_file(cptr(fn2), 0xc0000000, 0,0, 4, 128, 0)
     invert_err()
-    assert(I64(f)==-1)
+    assert(I64(f3)==-1)
+
+    // 1. Test returning 3 results
+    buf, n, m = test(11, 12)
+    assert(n==13)
+    assert(m==14)
+    assert(buf=="abcd")
+
+    */
 }

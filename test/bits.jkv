@@ -99,5 +99,4 @@ func main() {
     ul = ui & 0xFFFFFFFF
     assert(uu==0xabcdefab, "Failed, uu=0x%x", uu)
     assert(ul==0x12345678, "Failed, ul=0x%x", ul)
-
 }

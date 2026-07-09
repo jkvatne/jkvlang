@@ -39,6 +39,12 @@ _create_file:
     mov [rsp+8*8], rax
     ret
 
+;  BOOL ReadFile(
+;  [in]                HANDLE       hFile,
+;  [out]               LPVOID       lpBuffer,
+;  [in]                DWORD        nNumberOfBytesToRead,
+;  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+;  [in, out, optional] LPOVERLAPPED lpOverlapped
 _read_file:
     mov rdi, ReadFile
     mov bx, 8*5

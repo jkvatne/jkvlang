@@ -390,8 +390,9 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				// and it is the result of a function call, then we have to free it after the call.
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
-					if !value.IsTempObj {
-						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d\n", parNo*8-8, parNo)
+					// TODO: A better way than checking for names
+					if !value.IsTempObj && f.name != "cptr" && f.name != "lptr" {
+						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d of %s\n", parNo*8-8, parNo, f.name)
 						code.SetCleanupCode(str)
 					}
 				}
@@ -560,6 +561,9 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 
 // ParsePointer handles conversion of variable to a pointer to that variable
 func ParsePointer(s *State, id string) (values []*ValueDef, err error) {
+	if !s.found(TOK_LPAR) {
+		return nil, fmt.Errorf("expected left parentheses")
+	}
 	if s.token != TOK_ID {
 		return nil, fmt.Errorf("expected id after (")
 	}
@@ -1394,8 +1398,8 @@ func ParseFuncDef(s *State) error {
 		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
 		for _, v := range VarDefs {
 			code.SetSp()
-			if v.Typ.Pt == code.TYP_STRING {
-				EmitLoad(8, v.Offset, "Free local variable string "+v.Name)
+			if v.Typ.Pt == code.TYP_STRING && !v.Destroyed {
+				EmitLoad(8, v.Offset, "Free local variable string '"+v.Name+"'")
 				EmitFreeString("")
 			} else if v.Typ.Pt == code.TYP_STRUCT && !v.Destroyed {
 				// Load local var pointer into rax
