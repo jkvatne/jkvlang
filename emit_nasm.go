@@ -811,15 +811,18 @@ func EmitAddToRsi(ofs int) {
 func EmitLoadIndirect() {
 	emit("mov", "rax", "[rsi]", "")
 }
+
+// EmitStoreIndirect has Pointer on stack, value in rax
 func EmitStoreIndirect(op string, size int) {
+	emit("pop", "rsi", "", Sp(-1))
 	if size == 8 {
-		emit(op, "[rsi]", "rax", "EmitStoreIndirect")
+		emit(op, "[rsi]", "rax", "EmitStoreIndirect quad")
 	} else if size == 4 {
-		emit(op, "dword [rsi]", "eax", "EmitStoreIndirect")
+		emit(op, "dword [rsi]", "eax", "EmitStoreIndirect dword")
 	} else if size == 2 {
-		emit(op, "word [rsi]", "ax", "EmitStoreIndirect")
+		emit(op, "word [rsi]", "ax", "EmitStoreIndirect word")
 	} else if size == 1 {
-		emit(op, "byte [rsi]", "al", "EmitStoreIndirect")
+		emit(op, "byte [rsi]", "al", "EmitStoreIndirect byte")
 	} else {
 		panic("Internal error - store indirect with wrong size")
 	}

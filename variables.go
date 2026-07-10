@@ -17,6 +17,7 @@ type VarDef struct {
 	Destroyed   bool
 	constValue  string
 	IsReturned  bool
+	IsArg       bool
 }
 
 var VarDefs map[string]*VarDef
@@ -58,7 +59,7 @@ func (v *VarDef) Size() int {
 // AddLocalPar is called from ParseFormalArgList
 // The name "par" should be used only for formal parameters
 func AddLocalPar(s *State, name string, typ *TypeDef) *VarDef {
-	v := &VarDef{Name: name, Typ: typ}
+	v := &VarDef{Name: name, Typ: typ, IsArg: true}
 	s.ParCount++
 	v.Offset = 8 + s.ParCount*8
 	VarDefs[name] = v

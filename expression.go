@@ -386,14 +386,14 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 					return nil, fmt.Errorf("printf arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
 			} else if value.Typ.Pt.IsObject() {
-				// We have a heap object pointer on top of the stack. If the formal parameter is not "in",
+				// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
 				// and it is the result of a function call, then we have to free it after the call.
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
-					// If it was a local variable or a constant, we should not free it. (The constant case has already been handled)
-					// TODO: A better way than checking for names
+					// If it was a local variable or a constant, we should not free it.
+					// TODO: FInd a better way than checking for names
 					if !value.IsTempObj && f.name != "cptr" && f.name != "lptr" {
-						str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d of %s\n", parNo*8-8, parNo, f.name)
-						code.SetCleanupCode(str)
+						// str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d of %s\n", parNo*8-8, parNo, f.name)
+						// code.SetCleanupCode(str)
 					}
 				}
 
@@ -1398,15 +1398,18 @@ func ParseFuncDef(s *State) error {
 		// Save ax because it might contain the returned value of the current function definition
 		EmitPushAx("Save rax before freeing local variables from " + fun)
 		for _, v := range VarDefs {
+			if v.Destroyed || v.IsArg {
+				continue
+			}
 			code.SetSp()
-			if v.Typ.Pt == code.TYP_STRING && !v.Destroyed {
+			if v.Typ.Pt == code.TYP_STRING {
 				EmitLoad(8, v.Offset, "Free local variable string '"+v.Name+"'")
 				EmitFreeString("")
-			} else if v.Typ.Pt == code.TYP_STRUCT && !v.Destroyed {
+			} else if v.Typ.Pt == code.TYP_STRUCT {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
 				FreeStruct(v.Typ)
-			} else if v.Typ.Pt == code.TYP_SLICE && !v.Destroyed {
+			} else if v.Typ.Pt == code.TYP_SLICE {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local slice "+v.Name)
 				FreeSlice(v.Typ)
