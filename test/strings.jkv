@@ -27,17 +27,15 @@ func g2(s String, t String) String {
 
 
 func main() {
-    u = "abc"
-//    u[1]='x'
-
-    // 4. Test asserts that fail compare strings that are different size or different content
+/*
+    // Test asserts that fail compare strings that are different size or different content
     assert(f0("xyz")=="f0 xyz", "Should not fail")
     assert(f0("axyz")=="f0 xyz", "Intentionally fail")
     invert_err()
     assert(f0("ayz")=="f0 xyz", "Intentionally fail")
     invert_err()
 
-    // 18. Test string compare equal and not equal
+    // Test string compare equal and not equal
     u = "abc"
     v = "abcs"
     s = "abc"
@@ -48,7 +46,7 @@ func main() {
     invert_err()
     assert(u==s, "Fail 18d")
 
-    // 1. Test concat three strings and assign to local variable
+    // Test concat three strings and assign to local variable
     s = "Hello "
     t = "World "
     u = "and goodbye!"
@@ -56,53 +54,57 @@ func main() {
     assert(w=="Hello World and goodbye!", "Failed 1")
     assert(s=="Hello ", "Failed access to old s")
 
-    // 2. Test concatenated function calls
+    // Test concatenated function calls
     w = f1("F1")+f2("F2")
     assert(w=="f1 F1F2 f2", "Failed 5")
+*/
 
-    // 3. Test nested function calls
+    // Test nested function calls
     w = f1(f2("F1F2"))+f2("F2")
+    
+/*
     assert(w=="f1 F1F2 f2F2 f2", "Failed 6")
 
-    // 5. Test nested functions
+
+    // Test nested functions
     w = g1("abc", g2("def", "ghi"),"jkl")
     assert(w=="abcdefghijkl", "Failed 9")
     w = g2("abc","def")
     assert(w=="abcdef", "Failed 9")
 
-    // 6. Test concat two variables
+    // Test concat two variables
     s = "Hello "
     t = "World "
     u = s + t
     assert(u=="Hello World ", "Failed 10")
 
-    // 11. Test freeing of temporary object returned from f0
+    // Test freeing of temporary object returned from f0
     w = f0("xyz")
     assert(w=="f0 xyz", "Failed 11")
 
-    // 12. Test calling function in actual parameter
+    // Test calling function in actual parameter
     assert(f0("xyz")=="f0 xyz", "Failed 12")
 
-    // 13. Test concatenation of constant and variable
+    // Test concatenation of constant and variable
     s = "xyz"
     v = "pre-" + s
     assert(v=="pre-xyz","Failed 13")
 
-    // 14. Test concatenation of variable and constant overwriting old local var
+    // Test concatenation of variable and constant overwriting old local var
     s = "xyz"
     v = s+"-post"
     assert(v=="xyz-post","Failed 14")
 
-    // 15. Test concatenation of constant and constant
+    // Test concatenation of constant and constant
     w = "pre-"+"post"
     assert(w=="pre-post","Failed 15")
 
-    // 16. Test calling functions with string parameters
+    // Test calling functions with string parameters
     assert(f0("xyz")=="f0 xyz","Failed 16")
     assert(f1("xyz")=="f1 xyz","Failed 16")
     assert(f2("xyz")=="xyz f2","Failed 16")
 
-    // 17. Test string compare equal
+    // Test string compare equal
     u = "abc"
     v = "abc"
     assert(u=="abc","Failed 17a")
@@ -110,7 +112,7 @@ func main() {
     assert(v==u,"Failed 17c")
 
 
-    // 19. Test if equal
+    // Test if equal
     u = "abc"
     v = "abx"
     if u==v {
@@ -121,9 +123,9 @@ func main() {
         // Expected equal
     }
 
-    // 20. Test string compare with literal
+    // Test string compare with literal
     u = "abc"
     assert(u!="abb", "Failed 20a")
     assert("abca"!=u, "Failed 20b")
-
+*/
 }

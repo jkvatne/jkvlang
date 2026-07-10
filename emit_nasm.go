@@ -476,7 +476,6 @@ func EmitAssertTosInRax(comment string) {
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
 // Calls _alloc to allocate a new string with size for both the input strings + 32 bytes extra.
 func EmitConcat(free1 bool, free2 bool) {
-	EmitComment("")
 	EmitComment("Start of EmitConcat")
 	EmitAssertTosInRax("Get TOS before concat string")
 	// Get string 1 sizes/ptr into r14, rbx from [rsp]
