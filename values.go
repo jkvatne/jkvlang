@@ -27,6 +27,7 @@ type ValueDef struct {
 	IsConst     bool
 	IsIndirect  bool
 	Offset      int
+	localVar    *VarDef
 }
 
 var (

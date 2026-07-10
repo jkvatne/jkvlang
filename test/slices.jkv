@@ -67,5 +67,4 @@ func main() {
     // It should panic or give compiler warning, but currently it does not.
     p.name.last[j+k]='x'
     assert(p.name.last=="Vaxne", "Failed 16")
-
 }

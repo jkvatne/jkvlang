@@ -523,9 +523,11 @@ func ParseAssign(s *State, id string) error {
 			}
 		}
 		// Destroy local variables that are pointers (destrucive read).
-		// for _, value := range values {
-		// value.Destroyed = true
-		// }
+		for _, value := range values {
+			if value.localVar != nil {
+				value.localVar.Destroyed = true
+			}
+		}
 		code.ConsArgCode(len(code.ArgCode), false)
 		code.OutputArgCode()
 	} else {
@@ -740,6 +742,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	} else {
 		// If none above, it is a simple variable
 		localVar, ok := VarDefs[id]
+		value := &ValueDef{Typ: localVar.Typ}
 		if !ok {
 			return nil, fmt.Errorf("did not find variable \"%s\"", id)
 		}
@@ -753,9 +756,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		} else {
 			localVar.Destroyed = s.ParsingReturnValue
+			value.localVar = localVar
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load struct/string variable "+localVar.Name)
 		}
-		value := &ValueDef{Typ: localVar.Typ}
 		s.ParsingReturnValue = false
 		return []*ValueDef{value}, nil
 	}
