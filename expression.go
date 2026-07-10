@@ -391,9 +391,12 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// If it was a local variable or a constant, we should not free it.
 					// TODO: FInd a better way than checking for names
-					if !value.IsTempObj && f.name != "cptr" && f.name != "lptr" {
-						// str := fmt.Sprintf("   mov rax, rsp   ; Cleanup\n   add rax,%d\n   mov rax, [rax]\n   call _free_str   ; Call free arg %d of %s\n", parNo*8-8, parNo, f.name)
-						// code.SetCleanupCode(str)
+					if value.IsTempObj && f.name != "cptr" && f.name != "lptr" {
+						str := "   mov rax, rsp   ; Cleanup\n"
+						str += fmt.Sprintf("   add rax,%d\n", parNo*8-8)
+						str += "   mov rax, [rax]\n"
+						str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, f.name)
+						code.SetCleanupCode(str)
 					}
 				}
 
