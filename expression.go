@@ -752,10 +752,11 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		} else if localVar.Typ.Pt.IsInteger() {
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		} else {
-			localVar.Destroyed = true
+			localVar.Destroyed = s.ParsingReturnValue
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load struct/string variable "+localVar.Name)
 		}
 		value := &ValueDef{Typ: localVar.Typ}
+		s.ParsingReturnValue = false
 		return []*ValueDef{value}, nil
 	}
 }
@@ -1388,14 +1389,14 @@ func ParseFuncDef(s *State) error {
 		if v.Typ == nil {
 			return fmt.Errorf("variable %s must have a type", v.Name)
 		}
-		if v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT {
+		if !v.Destroyed && (v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT || v.Typ.Pt == code.TYP_SLICE) {
 			mustFree = true
 		}
 	}
 
 	if mustFree {
 		// Save ax because it might contain the returned value of the current function definition
-		EmitPushAx("Save rax before freeing " + strconv.Itoa(len(VarDefs)) + " variables from " + fun)
+		EmitPushAx("Save rax before freeing local variables from " + fun)
 		for _, v := range VarDefs {
 			code.SetSp()
 			if v.Typ.Pt == code.TYP_STRING && !v.Destroyed {

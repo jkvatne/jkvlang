@@ -840,11 +840,13 @@ func EmitNewString() {
 	// Allocate string
 	EmitAssertTosInRax("Before NewString")
 	emit("mov", "r12", "rax", "new string capacity")
+	emit("add", "rax", "8", "Add space for cap/len")
 	emit("call", "_alloc", "", "Allocate new string")
 	emit("mov", "rsi", "rax", "Save rax")
 	emit("mov", "rdi", "rax", "Then clear the new string")
 	emit("xor", "rax", "rax", "")
 	emit("mov", "rcx", "r12", "")
+	emit("add", "rcx", "8", "Add space for cap/len befor clearing")
 	emit("cld", "", "", "")
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")

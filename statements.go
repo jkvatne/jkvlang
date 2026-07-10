@@ -18,6 +18,7 @@ func ParseReturn(s *State) error {
 	} else {
 		for {
 			code.NewArgCode()
+			s.ParsingReturnValue = true
 			values, err := ParseExpression(s)
 			if err != nil {
 				return err

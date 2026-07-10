@@ -95,10 +95,11 @@ _free_str:
     mov rbp, rsp
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 40                      ; Reserve shadow space
-    mov r12,  rax                        ; Save object pointer
+    mov r12,  rax                    ; Save object pointer
 
     mov rcx, [rax]                   ; Load len/cap qword
     shr rcx, 32                      ; Extract capacity in the high 32bits
+    add rcx, 8
     jz .L1                           ; Do not free if cap is zero
     sub [allocation_count], rcx      ; Decrement allocated count
 

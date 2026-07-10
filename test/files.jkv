@@ -7,9 +7,9 @@ func test(f I32, cnt I32) String, I32, I32 {
 */
 
 func read_string(f I32, cnt I32) String {
-    buffer=new(String,cnt)
-    ok = read_file(f, cptr(buffer), cnt, lptr(buffer), 0)
-    return buffer
+    buf=new(String,cnt)
+    ok = read_file(f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
 }
 
 func main() {
