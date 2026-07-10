@@ -1,3 +1,4 @@
+
 func f0(s String) String {
     return "f0 "+s
 }
@@ -12,24 +13,21 @@ func f2() String {
 }
 
 func main() {
-    // 1. Test call returning a string literal
+    // Test call returning a string literal
     assert(f2()=="f2", "Failed f2=='f2'")
 
-    // 2. Test free printed variable
-    fflush()
+    // Test free printed variable
     s = "Hello "
     t = "World "
     w = s + t
     assert(w=="Hello World ", "Failed v=='Hello World '")
 
-    // 3. Test free result from f1
-    fflush()
+    // Test free result from f1
     t = f1("xyz")
     assert(t=="f1 xyz", "Failed xyz==")
 
-    fflush()
+    // Test calling f1 from assert
     assert(f1("xyz")=="f1 xyz", "Failed f1()")
     assert(f0("xyz")=="f0 xyz", "Failed f0()")
-    fflush()
 
 }

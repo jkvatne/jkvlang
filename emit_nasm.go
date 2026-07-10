@@ -499,7 +499,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	emit("mov", "rsi", "r12", "First string length")
 	emit("add", "rsi", "r14", "Add second length")
 	emit("mov", "rax", "rsi", "New length")
-	emit("add", "rsi", "40", "Add 32 for extra bytes and 8 for len/cap")
+	emit("add", "rsi", "32", "Add 32 for extra bytes")
 	emit("shl", "rsi", "32", "Move to cap (msw)")
 	emit("or", "rax", "rsi", "")
 	emit("mov", "[rdi]", "rax", "Save len/cap")
@@ -596,13 +596,19 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 		emit("cld", "", "", "")
 		emit("repe", "cmpsb", "", "")
 		emit("jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit("mov", "rbx", "1", "Strings was equal, set rax=true")
+		emit("mov", "r13", "1", "Strings was equal, set r13=true")
 		EmitLabel(lbl, "")
 		if isTemp {
-			emit("mov", "rax", "r14", "isTemp")
+			emit("mov", "rbx", "[r14]", "isTem=true, check if it is a const string with cap=0")
+			emit("shr", "rbx", "32", "")
+			emit("or", "rbx", "rbx", "")
+			lb := code.NewLabel()
+			emit("jz", EmitNumericLabel(lb), "", "")
+			emit("mov", "rax", "r14", "")
 			emit("call", "_free_str", "", "EmitCompareStrToLit")
+			EmitLabel(lb, "")
 		}
-		emit("mov", "rax", "rbx", "Result to TOS (rax)")
+		emit("mov", "rax", "r14", "Result to TOS (rax)")
 		return nil
 	} else if op == TOK_NE {
 		lbl := code.NewLabel()
