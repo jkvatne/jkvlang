@@ -1,0 +1,17 @@
+func mpy(x F32, y F32) F32 {
+   return y
+}
+
+func sum(x F32, y F32) F32 {
+   return x+y
+}
+
+func main() {
+    a = F32(2.2)
+    // The number 3.3 should be F32(3.3).
+    c = mpy(F32(3.3), a)
+    print("mpy(a,b)=%f", c)
+    // Should fail when F64 parameter is used
+    c = mpy(3.3, a)
+    print("mpy(a,b)=%f", c)
+}

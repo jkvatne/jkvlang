@@ -28,6 +28,7 @@ var PtrType = TypeDef{Pt: code.TYP_PTR, TypeName: "Ptr", Basic: true}
 var I32Type = TypeDef{Pt: code.TYP_I32, TypeName: "I32", Basic: true}
 var U8Type = TypeDef{Pt: code.TYP_U8, TypeName: "U8", Basic: true}
 var I64Type = TypeDef{Pt: code.TYP_I64, TypeName: "I64", Basic: true}
+var AnyType = TypeDef{Pt: code.TYP_NONE, TypeName: "Any", Basic: true}
 var U64Type = TypeDef{Pt: code.TYP_U64, TypeName: "U64", Basic: true}
 var F64Type = TypeDef{Pt: code.TYP_F64, TypeName: "F64", Basic: true}
 var StringType = TypeDef{Pt: code.TYP_STRING, TypeName: "String", Basic: true, DataOffset: 8, Element: &U8Type}
@@ -133,7 +134,7 @@ func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
 		dst == code.TYP_I64 && (src == code.TYP_I32 || src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_I16 || src == code.TYP_U8) ||
 		dst == code.TYP_U16 && (src == code.TYP_U16 || src == code.TYP_U8) ||
 		dst == code.TYP_U32 && (src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_U8) ||
-		dst == code.TYP_F64 || dst == code.TYP_F32 ||
+		// dst == code.TYP_F64 || dst == code.TYP_F32 ||
 		src == code.TYP_I64 || dst == code.TYP_U64 ||
 		src == code.TYP_U64 || dst == code.TYP_I64
 }

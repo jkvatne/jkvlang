@@ -17,14 +17,16 @@ var FuncDefs map[string]*FuncDef
 func FuncInit() {
 	FuncDefs = make(map[string]*FuncDef)
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
+	boolPar := VarDef{Typ: &BoolType, Name: "boolarg"}
 	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
+	anyPar := VarDef{Typ: &AnyType, Name: "anyarg"}
 	// uintPar := VarDef{Typ: &U64Type, Name: "uintarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("print", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("fflush", []*VarDef{}, nil, true, false)
 	_, _ = AddFunc("flush", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("assert", []*VarDef{&strPar}, nil, true, true)
+	_, _ = AddFunc("assert", []*VarDef{&boolPar, &anyPar}, nil, true, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
 	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
 	_, _ = AddFunc("create_file", []*VarDef{&strPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)

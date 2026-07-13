@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -465,6 +466,15 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	if !f.VarArg && len(values) != len(f.parameters) {
 		return nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
 	}
+
+	// Check for correct argument types
+	for i, v := range values {
+		par := f.parameters[min(i, len(f.parameters)-1)]
+		if !CanAssign(par.Typ.Pt, v.Typ.Pt) && !strings.HasPrefix(id, "print") && par.Typ.Pt != code.TYP_NONE {
+			return nil, fmt.Errorf("wrong type for parameter %d in %s", i+1, id)
+		}
+	}
+
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
 	if len(values) == 0 && nac >= 1 && code.ArgCode[nac-1] == "" {
@@ -583,6 +593,8 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 	if CanAssign(t1.Pt, t2.Pt) {
 		value.Typ = t1
 	} else if t1.Pt == code.TYP_I64 && t2.Pt == code.TYP_F64 {
+		value.Typ = t1
+	} else if (t1.Pt == code.TYP_F64 || t1.Pt == code.TYP_F32) && (t2.Pt == code.TYP_F64 || t2.Pt == code.TYP_F32) {
 		value.Typ = t1
 	} else {
 		err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
