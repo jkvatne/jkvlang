@@ -61,7 +61,7 @@ func LinkRun(workDir string, outputName string) (err error) {
 }
 
 func Build(workDir string, fileName string) (err error) {
-	fmt.Printf("Compiling '%s'\n", fileName)
+	fmt.Printf("Build '%s'\n", fileName)
 	outputName := strings.TrimSuffix(filepath.Base(fileName), ".jkv") + ".exe"
 	// Make sure output directory is empty
 	CreateBuildDir(workDir)
@@ -218,9 +218,9 @@ func Link(workDir string, outputName string) error {
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
 	cwd, _ := os.Getwd()
-	fmt.Printf("Running \"%s\" in \"%s\"\n", outputName, cwd)
+	// fmt.Printf("Running \"%s\" in \"%s\"\n", outputName, cwd)
 	out, err := exec.Command(path.Join(cwd, outputName), "").CombinedOutput()
-	fmt.Println(string(out))
+	fmt.Printf("%s", string(out))
 	if err != nil {
 		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())
 	}

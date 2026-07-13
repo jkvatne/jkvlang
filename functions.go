@@ -21,7 +21,6 @@ func FuncInit() {
 	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
 	ptrPar := VarDef{Typ: &PtrType, Name: "ptrarg"}
 	anyPar := VarDef{Typ: &AnyType, Name: "anyarg"}
-	// uintPar := VarDef{Typ: &U64Type, Name: "uintarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
 	_, _ = AddFunc("print", []*VarDef{&strPar}, nil, true, true)
