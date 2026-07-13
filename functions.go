@@ -19,6 +19,7 @@ func FuncInit() {
 	strPar := VarDef{Typ: &StringType, Name: "strarg"}
 	boolPar := VarDef{Typ: &BoolType, Name: "boolarg"}
 	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
+	ptrPar := VarDef{Typ: &PtrType, Name: "ptrarg"}
 	anyPar := VarDef{Typ: &AnyType, Name: "anyarg"}
 	// uintPar := VarDef{Typ: &U64Type, Name: "uintarg"}
 	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
@@ -29,7 +30,7 @@ func FuncInit() {
 	_, _ = AddFunc("assert", []*VarDef{&boolPar, &anyPar}, nil, true, true)
 	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
 	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("create_file", []*VarDef{&strPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("create_file", []*VarDef{&ptrPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("cptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("lptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("write_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)

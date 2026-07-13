@@ -66,15 +66,11 @@ func sum(x I32, y I32) I32 {
 }
 
 func bar() {
-    a = 1.234   // Comment a
-    b = 2.345   // Comment b
-    c = sum(a,b)
-    print("Hello World %s!")
-    y = 2
-    z=3
+    print("Hello World!")
 }
 
 func main() {
+    bar()
     a=1
     b=2
     c=3

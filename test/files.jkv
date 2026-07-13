@@ -6,7 +6,7 @@ func test(f I32, cnt I32) String, I32, I32 {
 }
 */
 
-func read_string(f I32, cnt I32) String {
+func read_string(f Ptr, cnt I32) String {
     buf=new(String,cnt)
     ok = read_file(f, cptr(buf), cnt, lptr(buf), 0)
     return buf
