@@ -79,7 +79,7 @@ func EmitLitteral(litName string, litValue string) {
 	code.Write("     db `" + litValue + "`, 00h\n")
 }
 
-func EmitFloatLitteral(litName string, litValue float64) {
+func EmitF64Litteral(litName string, litValue float64) {
 	value := strconv.FormatFloat(litValue, 'g', 11, 64)
 	if !strings.Contains(value, ".") {
 		if strings.Contains(value, "e") || strings.Contains(value, "E") {
@@ -89,6 +89,18 @@ func EmitFloatLitteral(litName string, litValue float64) {
 		}
 	}
 	code.Write(litName + " dq " + value + "\n")
+}
+
+func EmitF32Litteral(litName string, litValue float32) {
+	value := strconv.FormatFloat(float64(litValue), 'g', 11, 32)
+	if !strings.Contains(value, ".") {
+		if strings.Contains(value, "e") || strings.Contains(value, "E") {
+			value = strings.Replace(value, "e", ".0e", 1)
+		} else {
+			value = value + ".0"
+		}
+	}
+	code.Write(litName + " dd " + value + "\n")
 }
 
 func EmitSection(section string) {
@@ -198,8 +210,14 @@ func xmm(sp int) string {
 	return "xmm" + strconv.Itoa(sp)
 }
 
-func EmitPushFloatLit(litNo int) {
-	emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", "EmitPushFloatLit()")
+func EmitPushF64Lit(litNo int) {
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "EmitPushF64Lit()")
+	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
+	code.SetSp()
+}
+
+func EmitPushF32Lit(litNo int) {
+	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "EmitPushF32Lit()")
 	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
 	code.SetSp()
 }
@@ -258,15 +276,28 @@ func AxName(size int) string {
 	panic("AxName with invalid size")
 }
 
-// EmitOpAssignFloat constant float value to variable
-func EmitOpAssignFloat(op Token, adr int, litNo int, comment string) error {
+// EmitOpAssignF64 constant float value to variable
+func EmitOpAssignF64(op Token, adr int, litNo int, comment string) error {
 	if op == TOK_ASSIGN {
 		code.SetAx()
-		emit("mov", "rax", "[flt"+strconv.Itoa(litNo)+"]", comment)
+		emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", comment)
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 	} else {
-		panic("Float assign operation not implemented")
+		return fmt.Errorf("F64 assign operation %s not implemented", op.Name())
+	}
+	return nil
+}
+
+// EmitOpAssignF32 constant float value to variable
+func EmitOpAssignF32(op Token, adr int, litNo int, comment string) error {
+	if op == TOK_ASSIGN {
+		code.SetAx()
+		emit("mov", "rax", "[f32_"+strconv.Itoa(litNo)+"]", comment)
+		code.SetUndef()
+		emit("mov", BpRel(adr), "rax", "")
+	} else {
+		return fmt.Errorf("F32 assign operation %s not implemented", op.Name())
 	}
 	return nil
 }
@@ -374,13 +405,18 @@ func EmitStoreConst(size int, value int64, offset int, comment string) {
 	emit("mov", DataType(size)+BpRel(offset), num, comment)
 }
 
-func EmitLoadFloat(size int, adr int, comment string) {
+func EmitLoadFloat(size int, adr int, comment string, fun string) {
 	EmitFlushRax("Before LoadFloat")
 	code.SetAx()
 	if size == 8 {
 		emit("mov", "rax", BpRel(adr), comment)
 	} else if size == 4 {
-		emit("mov", "rax", "dword "+BpRel(adr), comment)
+		// if fun == "print" || fun == "printf" {
+		//	emit("cvtss2sd", "xmm0", "dword "+BpRel(adr), "Load F32 and convert to F64")
+		//	emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
+		// } else {
+		emit("mov", "eax", "dword "+BpRel(adr), comment)
+		// }
 	}
 }
 
@@ -408,6 +444,10 @@ func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
 
 func EmitStoreF64(adr int, comment string) {
 	emit("mov", BpRel(adr), "rax", comment)
+}
+
+func EmitStoreF32(adr int, comment string) {
+	emit("mov", BpRel(adr), "eax", "Store F32")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.

@@ -54,8 +54,11 @@ func CompileFile(name string, workdir string) error {
 		// ALl strings must be aligned to qword
 		EmitLitteral("str"+strconv.Itoa(i), l)
 	}
-	for i, l := range FloatLiteralDefs {
-		EmitFloatLitteral("flt"+strconv.Itoa(i+1), l)
+	for i, l := range F64LiteralDefs {
+		EmitF64Litteral("f64_"+strconv.Itoa(i+1), l)
+	}
+	for i, l := range F32LiteralDefs {
+		EmitF32Litteral("f32_"+strconv.Itoa(i+1), l)
 	}
 	if err != nil {
 		return fmt.Errorf("%s:%d %v", name, code.LineNum, err)

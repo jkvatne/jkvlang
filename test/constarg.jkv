@@ -1,0 +1,45 @@
+
+func mpy(x F32, y F32) F32 {
+   return x*y
+}
+
+func sum(x F32, y F32) F32 {
+   return x+y
+}
+
+func main() {
+  // Test printing a F32 variable
+  a = F32(2.2)
+  b = F32(3.3)
+  print("a=%f", a)
+
+  // Test call with constant parameters
+  c = a * F32(3.3)
+  print("a*3.3=%f", c)
+
+  // Test call with constant parameters
+  c = F32(3.3) * a
+  print("a*3.3=%f", c)
+
+  // Test addition of F32
+  c = a+b
+  print("a+b=%f", c)
+
+  // Test multiplication of F32
+  c = a*b
+  print("a*b=%f", c)
+  // Test call with F32 parameters
+  c = mpy(a,b)
+  print("mpy(a,b)=%f", c)
+
+  // Test call with F32 parameters
+  c = mpy(a,F32(3.3))
+  print("mpy(a,b)=%f", c)
+
+  // Test F32 function result in print with constants
+  print("mpy(a,3.3)=%f", mpy(a,F32(3.3)))
+  print("mpy(2.2,3.3)=%f", mpy(F32(2.2),F32(3.3)))
+  print("mpy(a,F32(3.3))=%f", mpy(a,F32(3.3)))
+  print("mpy(F32(2.2), b)=%f", mpy(F32(2.2),b))
+
+}

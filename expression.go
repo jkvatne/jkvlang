@@ -60,11 +60,18 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if t == code.TYP_F64 {
-				if value.FloatLitNo == 0 {
-					value.FloatLitNo = AddFloatLiteral(value.FloatValue)
-					err = EmitOpAssignFloat(op, lvalue.Offset, value.FloatLitNo, "")
+				if value.F64LitNo == 0 {
+					value.F64LitNo = AddF64Lit(value.FloatValue)
+					err = EmitOpAssignF64(op, lvalue.Offset, value.F64LitNo, "")
 				} else {
-					err = EmitOpAssignFloat(op, lvalue.Offset, value.FloatLitNo, "")
+					err = EmitOpAssignF64(op, lvalue.Offset, value.F64LitNo, "")
+				}
+			} else if t == code.TYP_F32 {
+				if value.F32LitNo == 0 {
+					value.F32LitNo = AddF32Lit(float32(value.FloatValue))
+					err = EmitOpAssignF32(op, lvalue.Offset, value.F32LitNo, "")
+				} else {
+					err = EmitOpAssignF32(op, lvalue.Offset, value.F64LitNo, "")
 				}
 			} else if t == code.TYP_BOOL {
 				EmitStoreConst(1, value.IntValue, lvalue.Offset, "Assign bool")
@@ -94,6 +101,10 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	} else if value.Typ.Pt == code.TYP_F64 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
 		EmitStoreF64(lvalue.Offset, "Assign F64 to "+lvalue.Name)
+		code.SetUndef()
+	} else if value.Typ.Pt == code.TYP_F32 {
+		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
+		EmitStoreF32(lvalue.Offset, "Assign F32 to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
@@ -343,9 +354,19 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				}
 				EmitPushTos(parNo, f.name)
 			} else if value.Typ.Pt == code.TYP_F64 {
-				EmitPushFloatLit(value.FloatLitNo)
+				EmitPushF64Lit(value.F64LitNo)
+			} else if value.Typ.Pt == code.TYP_F32 {
+				if value.F32LitNo == 0 {
+					value.F32LitNo = AddF32Lit(float32(value.FloatValue))
+				}
+				if f.name == "printf" || f.name == "print" {
+					// Must convert to F64 for print/fprint
+					EmitPushF64Lit(value.F64LitNo)
+				} else {
+					EmitPushF32Lit(value.F32LitNo)
+				}
 			} else {
-				// TODO: Handle F32 etc.
+				// TODO: Handle other types
 				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
@@ -372,8 +393,14 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 						v += "   call _free_str\n\n"
 						code.SetCleanupCode(v)
 					}
-				} else if value.Typ.Pt == code.TYP_F64 || value.Typ.Pt == code.TYP_F32 {
+				} else if value.Typ.Pt == code.TYP_F64 {
 					EmitFlushRax("Float arg to printf")
+				} else if value.Typ.Pt == code.TYP_F32 {
+					EmitFlushRax("Float arg to printf")
+					// Special case: Convert F32 to F64 for printf
+					emit("cvtss2sd", "xmm0", "dword [rsp]", "convert F32 to F64")
+					emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
+					emit("mov", "[rsp]", "rax", "")
 				} else if value.Typ.Pt.IsInteger() {
 					EmitFlushRax("Integer arg to printf")
 				} else if value.Typ.Pt == code.TYP_STRUCT {
@@ -471,6 +498,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	// Function results are on stack and not in RAX.
 	code.SetSp()
+
 	s.currentFuncCall = ""
 	return results, nil
 }
@@ -543,6 +571,7 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 	// This is a type conversion. First parse value to convert
 	if code.AxIsTos() {
 		EmitPushAx("ParseTypeConversion")
+		code.SetSp()
 	}
 	values, err = ParseExpression(s)
 	if err != nil {
@@ -752,7 +781,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		if localVar.Name == "err" {
 			EmitLoadErr()
 		} else if localVar.Typ.Pt.IsFloat() {
-			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, "Load float "+localVar.Name)
+			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name, s.currentFuncCall)
 		} else if localVar.IsGlobal {
 			EmitLoadGlobalConst(localVar.constValue)
 		} else if localVar.Typ.Pt.IsInteger() {
@@ -807,9 +836,9 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			s.ConstValue.Bits = math.Float64bits(v)
 		}
 		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
-		floatLitNo := AddFloatLiteral(value.FloatValue)
+		floatLitNo := AddF64Lit(value.FloatValue)
 		value.Typ = TypeDefs["F64"]
-		value.FloatLitNo = floatLitNo
+		value.F64LitNo = floatLitNo
 		value.IsConst = true
 		nextToken(s)
 	} else if s.token == TOK_CHAR {

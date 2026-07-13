@@ -21,7 +21,8 @@ type ValueDef struct {
 	BoolValue   bool
 	StringValue string
 	StringLitNo int
-	FloatLitNo  int
+	F64LitNo    int
+	F32LitNo    int
 	IsReturned  bool
 	IsTempObj   bool
 	IsConst     bool
@@ -31,12 +32,13 @@ type ValueDef struct {
 }
 
 var (
-	False            = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
-	True             = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
-	NoValue          = ValueDef{Typ: &NoneType, IsConst: false, BoolValue: false}
-	PtrValue         = ValueDef{Typ: &PtrType}
-	LiteralDefs      []string
-	FloatLiteralDefs []float64
+	False          = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
+	True           = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
+	NoValue        = ValueDef{Typ: &NoneType, IsConst: false, BoolValue: false}
+	PtrValue       = ValueDef{Typ: &PtrType}
+	LiteralDefs    []string
+	F64LiteralDefs []float64
+	F32LiteralDefs []float32
 )
 
 func (v *ValueDef) HasValue() bool {
@@ -53,17 +55,27 @@ func (v *ValueDef) IsFalse() bool {
 
 func LiteralInit() {
 	LiteralDefs = make([]string, 0, 20)
-	FloatLiteralDefs = make([]float64, 0, 20)
+	F64LiteralDefs = make([]float64, 0, 20)
 }
 
-func AddFloatLiteral(value float64) int {
-	for i, s := range FloatLiteralDefs {
+func AddF64Lit(value float64) int {
+	for i, s := range F64LiteralDefs {
 		if s == value {
 			return i + 1
 		}
 	}
-	FloatLiteralDefs = append(FloatLiteralDefs, value)
-	return len(FloatLiteralDefs)
+	F64LiteralDefs = append(F64LiteralDefs, value)
+	return len(F64LiteralDefs)
+}
+
+func AddF32Lit(value float32) int {
+	for i, s := range F32LiteralDefs {
+		if s == value {
+			return i + 1
+		}
+	}
+	F32LiteralDefs = append(F32LiteralDefs, value)
+	return len(F32LiteralDefs)
 }
 
 func AddLiteral(value string) int {
