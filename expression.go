@@ -233,9 +233,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("jnz", Label(lbl), "", "")
 				// Copy read-only string into new memory
 				emit("mov", "rax", "[rsi]", "Fetch len")
-				emit("add", "rax", "32", "Add space for cap with 8 byte spare")
-				emit("and", "rax", "-8", "Allign to 8-byte multiplum")
+				emit("add", "rax", "32", "Add space for cap and spare bytes")
 				emit("mov", "r12", "rax", "cap to r12")
+				emit("sub", "r12", "8", "not include cap/len word")
 				emit("shl", "r12", "32", "")
 				emit("call", "_alloc", "", "Allocate new string")
 				emit("mov", "[r13]", "rax", "Store new address into local variable")
