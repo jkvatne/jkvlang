@@ -222,10 +222,35 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 			// Load variable address into SI
 			if !lvalue.IsIndirect {
-				emit("mov", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
+				emit("lea", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "rax", "[rax]", "Load string pointer const")
+				emit("mov", "r13", "rax", "Load local variable's address")
+				emit("mov", "rsi", "[r13]", "Load string pointer const")
+				emit("mov", "rcx", "[rsi]", "Fetch len/cap")
+				emit("shr", "rcx", "32", "Get cap and check for zero")
+				lbl := code.NewLabel()
+				emit("jnz", Label(lbl), "", "")
+				// Copy read-only string into new memory
+				emit("mov", "rax", "[rsi]", "Fetch len")
+				emit("add", "rax", "32", "Add space for cap with 8 byte spare")
+				emit("and", "rax", "-8", "Allign to 8-byte multiplum")
+				emit("mov", "r12", "rax", "cap to r12")
+				emit("shl", "r12", "32", "")
+				emit("call", "_alloc", "", "Allocate new string")
+				emit("mov", "[r13]", "rax", "Store new address into local variable")
+				emit("mov", "rdi", "rax", "")
+				emit("mov", "r14", "rax", "")
+				emit("add", "r12", "[rsi]", "Add len to len/cap in r12")
+				emit("mov", "rcx", "[rsi]", "")
+				emit("add", "rdi", "8", "Skip len/cap when moving string")
+				emit("add", "rsi", "8", "Skip len/cap when moving string")
+				emit("cld", "", "", "")
+				emit("rep", "movsb", "", "copy old string")
+				// r12 is cap
+				emit("mov", "[r14]", "r12", "Mov len/cap into string")
+				// Now index character
+				EmitLabel(lbl, "")
 				emit("add", "rax", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
 				emit("pop", "rbx", "", Sp(-1))

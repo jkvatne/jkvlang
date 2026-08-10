@@ -1,6 +1,7 @@
 
 func main () {
     s = "Hello "
+  /*
     t = "World"
 
     // Index
@@ -16,8 +17,9 @@ func main () {
     ll = len(w)
     assert(ll==11)
     assert(len(w)==11)
-
+*/
     // Update indexed character. Not allowed since s is a constant string.
-    //s[2] = 0x64
+    s[2] = 'x'
     print("%s", s)
+    assert(s=="Hexlo", "Faield Hexlo")
 }
