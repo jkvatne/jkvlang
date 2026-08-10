@@ -1,7 +1,6 @@
 
 func main () {
     s = "Hello "
-  /*
     t = "World"
 
     // Index
@@ -17,9 +16,8 @@ func main () {
     ll = len(w)
     assert(ll==11)
     assert(len(w)==11)
-*/
-    // Update indexed character. Not allowed since s is a constant string.
+
+    // Update indexed character. Will move s to writeable memory
     s[2] = 'x'
-    print("%s", s)
     assert(s=="Hexlo", "Failed Hexlo")
 }
