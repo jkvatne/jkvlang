@@ -2,28 +2,22 @@
 func main () {
     s = "Hello "
     t = "World"
-    // 3. Index
+
+    // Index
     k = s[1]
-    print("k=0x%02x", k)
     assert(k==0x65)
 
-/*
-
-    // 4. Update indexed character
-    s[2] = 0x64
-    print("%s", s)
-
-
-    // 1. Test concat three strings and assign to local variable
+    // Test concat three strings and assign to local variable
     w = s+t
     assert(w=="Hello World", "Failed concat")
     assert(s=="Hello ", "Failed access to old s")
-    print("%s", w)
 
-    // 2. Calling len
-    print("len(w)=%d", len(w))
+    // Calling len
     ll = len(w)
     assert(ll==11)
+    assert(len(w)==11)
 
-*/
+    // Update indexed character. Not allowed since s is a constant string.
+    //s[2] = 0x64
+    print("%s", s)
 }

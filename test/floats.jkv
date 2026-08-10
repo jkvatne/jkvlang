@@ -25,7 +25,7 @@ func main() {
     // 5. Test print with float args
     i = 3
     r = x+y
-    print("r=%f (should be 3.000000", r)
+    print("r=%f (should be 3.200000", r)
     print("x=%f r=%f (should be 1.00000 and 7.0000)", x,r)
     print("%d %d %d %d (should be 1 2 3 4)", 1,2, i, 4)
     print("%s, %f, %d, %s, %f (should be 1, 1.0, 3, 4, 2.2)", "1", x, i, "4", y)

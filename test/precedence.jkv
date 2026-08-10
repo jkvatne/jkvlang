@@ -28,4 +28,14 @@ func main() {
   w8=false
   assert(!w8)
 
+  w9 = true
+  assert(!w8&&w9)
+  assert(w9||w8)
+
+  w10 = true
+  assert(w9&&w10||w8)
+
+  assert(w2==7 && w3==6)
+  assert((w2==7)&&(w3==16||w6==12))
+
 }
