@@ -11,7 +11,7 @@ func main() {
     c=3.3
     x=1
     y=x+c
-    assert(y==4.3)
+    assert(y==4.3, "Failed y==4.3, got %f", y)
 
     a=1.1
     b=2.2
@@ -19,12 +19,12 @@ func main() {
     if a>1.0 {
         if c<10.0 {
             d=bar(a,b)
-            assert(d>-2.631 && d<-2.629, "d=%f", d)
+            assert(d>-2.631 && d<-2.629, "Failed with d=%f", d)
         }
     } else {
         d=foo(b,c)
     }
-    assert(d>-2.631 && d<-2.629)
+    assert(d>-2.631 && d<-2.629, "Failed checking d")
     z = d+2.63
     assert(z>-1e-15 && z<1e-15, "Failed z=%g", z)
 }

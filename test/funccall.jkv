@@ -1,9 +1,21 @@
 
+
+func foo3(a F64, b F64) F64 {
+    return a+b
+}
+
+func foo4(a F64, b F64) F64 {
+    return a-b
+}
+
 func foo(a F64, b F64) F64 {
     return (a+b)*(a-b)
 }
 
 func main () {
+  print("foo3=%f", foo3(1.23, 3.45))
+  print("foo4=%f", foo4(1.23, 3.45))
+
   x = foo(1.23, 3.45)
   assert(x==-10.3896, "Failed 1")
   assert(x>=-10.3897, "Failed >=")

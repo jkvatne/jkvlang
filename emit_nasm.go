@@ -1134,26 +1134,6 @@ func EmitSkipLenCapForPrint() {
 	emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
 }
 
-// EmitCompareFloatConst compares float in rax with float constant
-func EmitCompareFloatConst(op Token, litNo int) (err error) {
-	emit("movq", xmm(1), "rax", "")
-	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
-	emit("movq", xmm(2), "rax", "")
-	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(op, true)
-	return err
-}
-
-// EmitCompareFloats compares two floats.
-func EmitCompareFloats(op Token) (err error) {
-	emit("movq", xmm(2), "rax", "")
-	EmitPopAx("")
-	emit("movq", xmm(1), "rax", "")
-	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
-	err = EmitJumpCond(op, true)
-	return err
-}
-
 // EmitCompareIntegers will compare the top two stack entries
 func EmitCompareIntegers(op Token, unsigned bool) (err error) {
 	EmitPopBx("Pop next on stack into RBX")
@@ -1282,15 +1262,7 @@ func EmitOpF64Const(op Token, litNo int) {
 	emit("movq", xmm(1), "rax", "emitOpF64Const move tos in rax to xmm1")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
 	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
-	DoF64Op(op)
-}
-
-func EmitOpF32Const(op Token, litNo int) {
-	EmitAssertTosInRax("Get TOS before float op const")
-	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
-	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
-	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
-	DoF32Op(op)
+	doF64Op(op)
 }
 
 // EmitF64Op will generate a stack operation on the top two stack entries
@@ -1307,27 +1279,10 @@ func EmitF64Op(op Token, op1float bool, op2float bool) {
 	} else {
 		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
 	}
-	DoF64Op(op)
+	doF64Op(op)
 }
 
-// EmitF32Op will generate a stack operation on the top two stack entries
-func EmitF32Op(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS before FloatOp")
-	if op2float {
-		emit("movd", xmm(2), "eax", "EmitFloatOp move tos in rax to xmm2")
-	} else {
-		emit("cvtsi2sd", xmm(2), "eax", "convert integer into xmm2")
-	}
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	if op1float {
-		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
-	} else {
-		emit("cvtsi2sd", xmm(1), "eax", "convert integer into xmm1")
-	}
-	DoF32Op(op)
-}
-
-func DoF64Op(op Token) {
+func doF64Op(op Token) {
 	if op == TOK_PLUS {
 		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
@@ -1346,7 +1301,32 @@ func DoF64Op(op Token) {
 	emit("movq", "rax", xmm(1), "Move float result into rax")
 }
 
-func DoF32Op(op Token) {
+func EmitOpF32Const(op Token, litNo int) {
+	EmitAssertTosInRax("Get TOS before float op const")
+	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
+	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
+	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
+	doF32Op(op)
+}
+
+// EmitF32Op will generate a stack operation on the top two stack entries
+func EmitF32Op(op Token, op1float bool, op2float bool) {
+	EmitAssertTosInRax("Get TOS before FloatOp")
+	if op2float {
+		emit("movd", xmm(2), "eax", "EmitFloatOp move tos in rax to xmm2")
+	} else {
+		emit("cvtsi2sd", xmm(2), "eax", "convert integer into xmm2")
+	}
+	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+	if op1float {
+		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
+	} else {
+		emit("cvtsi2sd", xmm(1), "eax", "convert integer into xmm1")
+	}
+	doF32Op(op)
+}
+
+func doF32Op(op Token) {
 	if op == TOK_PLUS {
 		emit("addss", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
@@ -1367,4 +1347,104 @@ func DoF32Op(op Token) {
 
 func EmitClearErr() {
 	emit("mov", "r15", "0", "")
+}
+
+// EmitFloatOp will generate a stack operation on the top two stack entries
+func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
+	// F64 operations
+	if typ1 == code.TYP_F64 || typ2 == code.TYP_F64 {
+		// load TOS into xmm1 and convert to F64 if necessary
+		if typ2.IsInteger() {
+			emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
+		} else if typ2 == code.TYP_F32 {
+			emit("cvtss2sd", xmm(2), "rax", "convert F32  into xmm2")
+		} else if typ2 == code.TYP_F64 {
+			emit("movq", xmm(2), "rax", "EmitFloatOp mov nos to xmm2")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		// Load NOS into xmm2 and convert to F64 if necessary
+		emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+		if typ1.IsInteger() {
+			emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
+		} else if typ1 == code.TYP_F32 {
+			emit("cvtss2sd", xmm(1), "rax", "convert F32  into xmm1")
+		} else if typ1 == code.TYP_F64 {
+			emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		// Do F64 opertion
+		if op == TOK_PLUS {
+			emit("addsd", xmm(1), xmm(2), "Add tos to nos")
+		} else if op == TOK_MINUS {
+			emit("subsd", xmm(1), xmm(2), "Subtract nos from tos")
+		} else if op == TOK_MULT {
+			emit("mulsd", xmm(1), xmm(2), "Multiply nos by tos")
+		} else if op == TOK_DIV {
+			emit("divsd", xmm(1), xmm(2), "Divide tos by nos")
+		} else if op == TOK_INV_DIV {
+			emit("divsd", xmm(2), xmm(1), "Divide nos by tos")
+			emit("movq", xmm(1), xmm(2), "")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		emit("movq", "rax", xmm(1), "Move float result into rax")
+	} else {
+		// F32 operations
+		// load TOS into xmm1 and convert to F64 if necessary
+		if typ1.IsInteger() {
+			emit("cvtsi2ss", xmm(2), "rax", "convert integer into xmm2")
+		} else if typ1 == code.TYP_F32 {
+			emit("movd", xmm(2), "eax", "EmitFloatOp mov nos to xmm2")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		// Load NOS into xmm2 and convert to F64 if necessary
+		emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+		if typ2.IsInteger() {
+			emit("cvtsi2ss", xmm(1), "rax", "convert integer into xmm1")
+		} else if typ2 == code.TYP_F32 {
+			emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		if op == TOK_PLUS {
+			emit("addss", xmm(1), xmm(2), "Add tos to nos")
+		} else if op == TOK_MINUS {
+			emit("subss", xmm(1), xmm(2), "Subtract nos from tos")
+		} else if op == TOK_MULT {
+			emit("mulss", xmm(1), xmm(2), "Multiply nos by tos")
+		} else if op == TOK_DIV {
+			emit("divss", xmm(1), xmm(2), "Divide tos by nos")
+		} else if op == TOK_INV_DIV {
+			emit("divss", xmm(2), xmm(1), "Divide nos by tos")
+			emit("movq", xmm(1), xmm(2), "")
+		} else {
+			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		}
+		emit("movq", "rax", xmm(1), "Move float result into rax")
+	}
+	code.SetAx()
+	return nil
+}
+
+// EmitCompareFloatConst compares float in rax with float constant
+func EmitCompareFloatConst(op Token, litNo int) (err error) {
+	emit("movq", xmm(1), "rax", "")
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
+	emit("movq", xmm(2), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
+}
+
+// EmitCompareFloats compares two floats.
+func EmitCompareFloats(op Token) (err error) {
+	emit("movq", xmm(2), "rax", "")
+	EmitPopAx("")
+	emit("movq", xmm(1), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
 }
