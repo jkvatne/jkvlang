@@ -34,7 +34,7 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 		return generateTosOpConst(Inverse(op), val2, val1)
 	} else {
 		EmitAssertTosInRax("Get TOS before TosOpNos")
-		return emitTosOpNos(op, val1, val2)
+		return tosOpNos(op, val1, val2)
 	}
 }
 
@@ -122,8 +122,8 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 	return result, nil
 }
 
-// emitTosOpNos will generate code for the operation op on the two top entries on the stack.
-func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
+// tosOpNos will generate code for the operation op on the two top entries on the stack.
+func tosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS befor TosOpNos")
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
@@ -194,7 +194,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			if x > 0x7FFFFFFF || x < -0x7FFFFFFF {
 				// err = fmt.Errorf("invalid integer combination for arithmetic")
 				EmitPushConst(x, "")
-				_, err2 := emitTosOpNos(op, val2, val2)
+				_, err2 := tosOpNos(op, val2, val2)
 				return &ValueDef{Typ: val2.Typ}, err2
 			} else {
 				err = EmitOpIntConst(op, x, "TosOpConst")
