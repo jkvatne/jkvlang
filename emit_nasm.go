@@ -1097,3 +1097,7 @@ func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
 	}
 	code.SetAx()
 }
+
+func EmitLoadTosIndirect(size int, fieldName string) {
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
+}

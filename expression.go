@@ -663,7 +663,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			}
 			EmitLoadField(v.Offset, isIndirect, fieldOffset, id, fieldName)
 			isIndirect = true
-			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value in field '"+fieldName+"'")
+			EmitLoadTosIndirect(fieldType.Size(), fieldName)
 			v.Typ = fieldType
 		} else if s.found(TOK_LBRACK) {
 			// It should be an array
