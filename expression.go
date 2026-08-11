@@ -1328,6 +1328,16 @@ func FreeStruct(t *TypeDef) {
 			FreeSlice(f)
 			EmitLabel(lbl, "")
 			EmitPopAx("")
+		} else if f.Pt == code.TYP_STRING {
+			EmitComment("Free string field " + f.Name() + " here")
+			EmitPushAx("")
+			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
+			code.SetAx()
+			lbl := code.NewLabel()
+			EmitJumpFalse(lbl, "")
+			EmitFreeString("")
+			EmitLabel(lbl, "")
+			EmitPopAx("")
 		}
 	}
 	emit("mov", "rcx", strconv.Itoa(t.StructSize), "")
