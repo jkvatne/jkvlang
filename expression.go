@@ -677,39 +677,19 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if !s.found(TOK_RBRACK) {
 				return nil, fmt.Errorf("missing right bracket")
 			}
-			// Load variable address into SI
-			if !isIndirect {
-				code.SetAx()
-				emit("mov", "rax", BpRel(v.Offset), "EmitLoadEa")
-			}
 			var size int
 			if v.Typ.Pt == code.TYP_STRING {
 				size = 1
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				size = v.Typ.Element.Size()
 			}
-			if index.IsConst {
-				emit("add", "rax", strconv.Itoa(int(index.IntValue)*size+8), "Index element "+strconv.Itoa(int(index.IntValue))+" of string/slice")
-			} else {
-				emit("pop", "rbx", "", Sp(-1))
-				emit("imul", "rax", strconv.Itoa(size), "")
-				emit("add", "rax", "8", "")
-				emit("add", "rax", "rbx", "")
-				code.SetAx()
-			}
+			EmitLoadAdrToSi(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
 			if size == 1 {
 				v.Typ = &U8Type
-				emit("movzx", "rax", "byte [rax]", "Get char from string")
 			} else if size == 2 {
 				v.Typ = v.Typ.Element
-				if size == 2 || size == 4 {
-					emit("movzx", "rax", DataType(size)+"[rax]", "")
-				} else if size == 8 {
-					emit("mov", "rax", "[rax]", "")
-				} else {
-					panic("TODO")
-				}
 			}
+
 		} else {
 			break
 		}

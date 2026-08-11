@@ -1101,3 +1101,29 @@ func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
 func EmitLoadTosIndirect(size int, fieldName string) {
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
 }
+
+func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, size int) {
+	// Load variable address into SI
+	if !isIndirect {
+		code.SetAx()
+		emit("mov", "rax", BpRel(offset), "EmitLoadEa")
+	}
+	if isConst {
+		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
+	} else {
+		emit("pop", "rbx", "", Sp(-1))
+		emit("imul", "rax", strconv.Itoa(size), "")
+		emit("add", "rax", "8", "")
+		emit("add", "rax", "rbx", "")
+		code.SetAx()
+	}
+	if size == 1 {
+		emit("movzx", "rax", "byte [rax]", "Get char from string")
+	} else if size == 2 || size == 4 {
+		emit("movzx", "rax", DataType(size)+"[rax]", "")
+	} else if size == 8 {
+		emit("mov", "rax", "[rax]", "")
+	} else {
+		panic("TODO")
+	}
+}
