@@ -80,6 +80,9 @@ func ParseStatement(s *State) (err error) {
 			code.OutputArgCode()
 		} else {
 			err = ParseAssign(s, id)
+			if err != nil {
+				return err
+			}
 		}
 		if s.token == TOK_ELSE {
 			s.next()
