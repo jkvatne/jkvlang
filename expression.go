@@ -373,9 +373,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				} else if value.Typ.Pt == code.TYP_F32 {
 					EmitFlushRax("Float arg to printf")
 					// Special case: Convert F32 to F64 for printf
-					emit("cvtss2sd", "xmm0", "dword [rsp]", "convert F32 to F64")
-					emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
-					emit("mov", "[rsp]", "rax", "")
+					EmitConvertF32toF64()
 				} else if value.Typ.Pt.IsInteger() {
 					EmitFlushRax("Integer arg to printf")
 				} else if value.Typ.Pt == code.TYP_STRUCT {
@@ -629,15 +627,8 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, error) {
 	if index.HasValue() {
 		// Index is a constant. Load ea and add size*index
-		ofs := int(index.IntValue) * size
-		emit("mov", "rax", BpRel(frameOffset), "")
-		emit("add", "rax", strconv.Itoa(ofs), "")
-		value := &ValueDef{Typ: &U8Type}
-		if size == 1 {
-			emit("movzx", "eax", "byte [rax+8]", "")
-		}
-		code.SetAx()
-		return value, nil
+		EmitLoadIndexedVar(frameOffset, index.IntValue, size)
+		return &ValueDef{Typ: &U8Type}, nil
 	} else {
 		return nil, fmt.Errorf("Not implemented")
 	}
@@ -670,15 +661,8 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if !isOk {
 				return nil, fmt.Errorf("field \"%s\" not found", fieldName)
 			}
-			if !isIndirect {
-				EmitFlushRax("Before LoadField")
-				code.SetAx()
-				emit("mov", "rax", BpRel(v.Offset), "Load struct base adr")
-			}
+			EmitLoadField(v.Offset, isIndirect, fieldOffset, id, fieldName)
 			isIndirect = true
-			if fieldOffset != 0 {
-				emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset for '"+fieldName+"'")
-			}
 			emit(MovOpcode(fieldType.Size()), "rax", DataType(fieldType.Size())+" [rax]", "Load value in field '"+fieldName+"'")
 			v.Typ = fieldType
 		} else if s.found(TOK_LBRACK) {
@@ -1311,28 +1295,21 @@ func FreeStruct(t *TypeDef) {
 	for i, f := range t.Fields {
 		ofs := t.Offsets[i]
 		if f.Pt == code.TYP_STRUCT {
-			EmitPushAx("")
-			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
-			code.SetAx()
+			EmitLoadWithOffset(ofs, "Free struct field "+f.Name())
 			lbl := code.NewLabel()
 			EmitJumpFalse(lbl, "")
 			FreeStruct(f)
 			EmitLabel(lbl, "")
 			EmitPopAx("")
 		} else if f.Pt == code.TYP_SLICE {
-			EmitPushAx("")
-			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free slice field "+f.Name())
-			code.SetAx()
+			EmitLoadWithOffset(ofs, "Free slice field "+f.Name())
 			lbl := code.NewLabel()
 			EmitJumpFalse(lbl, "")
-			FreeSlice(f)
+			EmitFreeSlice(f)
 			EmitLabel(lbl, "")
 			EmitPopAx("")
 		} else if f.Pt == code.TYP_STRING {
-			EmitComment("Free string field " + f.Name() + " here")
-			EmitPushAx("")
-			emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", "Free struct field "+f.Name())
-			code.SetAx()
+			EmitLoadWithOffset(ofs, "Free string field "+f.Name())
 			lbl := code.NewLabel()
 			EmitJumpFalse(lbl, "")
 			EmitFreeString("")
@@ -1340,10 +1317,7 @@ func FreeStruct(t *TypeDef) {
 			EmitPopAx("")
 		}
 	}
-	emit("mov", "rcx", strconv.Itoa(t.StructSize), "")
-	// _free_struct assumes pointer in rax and size in rcx
-	emit("call", "_free_struct", "", "")
-	code.SetUndef()
+	EmitFreeStruct(t.StructSize, "")
 }
 
 func ParseFuncDef(s *State) error {
@@ -1443,7 +1417,7 @@ func ParseFuncDef(s *State) error {
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local slice "+v.Name)
-				FreeSlice(v.Typ)
+				EmitFreeSlice(v.Typ)
 			}
 		}
 		EmitPopAx("Restore rax after freeing local variables")
@@ -1621,13 +1595,7 @@ func ParseAppend(s *State) error {
 	}
 	length := v.Typ.Element.Size()
 	// rax is now a pointer to the slice.
-	emit("mov", "rsi", "[rax]", "Load slice pointer for append")
-	emit("mov", "eax", "[rsi]", "Get length")
-	emit("imul", "rax", strconv.Itoa(length), "")
-	emit("add", "rsi", "rax", "")
-	emit("add", "rsi", "8", "Add slice offset")
-	emit("push", "rsi", "", Sp(1))
-	code.SetUndef()
+	EmitStartAppend(length)
 	n := 0
 	for {
 		n++
@@ -1640,11 +1608,7 @@ func ParseAppend(s *State) error {
 		} else {
 			EmitAssertTosInRax("")
 		}
-		emit("pop", "rdi", "", Sp(-1))
-		emit("mov", DataType(length)+"[rdi]", AxName(length), "")
-		emit("add", "rdi", strconv.Itoa(length), "")
-		emit("push", "rdi", "", Sp(1))
-		code.SetUndef()
+		EmitDoAppend(length)
 		if s.token == TOK_RPAR {
 			s.next()
 			break
@@ -1654,9 +1618,6 @@ func ParseAppend(s *State) error {
 		}
 	}
 	// Add n to length
-	emit("pop", "rdi", "", Sp(-1))
-	emit("mov", "rax", "[rdi]", "Get length")
-	emit("add", "rax", strconv.Itoa(n), "")
-	emit("mov", "[rdi]", "rax", "")
+	EmitUpdateAppendLength(n)
 	return nil
 }

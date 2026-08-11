@@ -1033,22 +1033,67 @@ func EmitModifyIndexedChar() {
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
 
-/*
-func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
-	EmitFlushRax("Before LoadField")
-	code.SetAx()
-	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
-	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value from field")
-}
-*/
-
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
+		EmitFlushRax("Before LoadField")
 		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
 	}
 	if fieldOffset != 0 {
 		emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset for field '"+fieldName+"'")
 	}
+	code.SetAx()
+}
 
+func EmitLoadWithOffset(ofs int, comment string) {
+	EmitPushAx("")
+	emit("mov", "rax", "[rax+"+strconv.Itoa(ofs)+"]", comment)
+	code.SetAx()
+}
+
+func EmitFreeSlice(t *TypeDef) {
+	emit("mov", "rcx", strconv.Itoa(t.Element.Size()), "Load element size")
+	// _free_slice assumes pointer in rax and element size in rcx
+	emit("call", "_free_slice", "", "")
+	code.SetUndef()
+}
+
+func EmitStartAppend(length int) {
+	emit("mov", "rsi", "[rax]", "Load slice pointer for append")
+	emit("mov", "eax", "[rsi]", "Get length")
+	emit("imul", "rax", strconv.Itoa(length), "")
+	emit("add", "rsi", "rax", "")
+	emit("add", "rsi", "8", "Add slice offset")
+	emit("push", "rsi", "", Sp(1))
+	code.SetUndef()
+}
+
+func EmitDoAppend(length int) {
+	emit("pop", "rdi", "", Sp(-1))
+	emit("mov", DataType(length)+"[rdi]", AxName(length), "")
+	emit("add", "rdi", strconv.Itoa(length), "")
+	emit("push", "rdi", "", Sp(1))
+	code.SetUndef()
+}
+
+func EmitUpdateAppendLength(n int) {
+	emit("pop", "rdi", "", Sp(-1))
+	emit("mov", "rax", "[rdi]", "Get length")
+	emit("add", "rax", strconv.Itoa(n), "")
+	emit("mov", "[rdi]", "rax", "")
+}
+
+func EmitConvertF32toF64() {
+	emit("cvtss2sd", "xmm0", "dword [rsp]", "convert F32 to F64")
+	emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
+	emit("mov", "[rsp]", "rax", "")
+}
+
+func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
+	ofs := int(index) * size
+	emit("mov", "rax", BpRel(frameOfs), "")
+	emit("add", "rax", strconv.Itoa(ofs), "")
+	if size == 1 {
+		emit("movzx", "eax", "byte [rax+8]", "")
+	}
+	code.SetAx()
 }
