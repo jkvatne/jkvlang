@@ -26,12 +26,19 @@ func main () {
     // Update indexed character. Will move s to writeable memory
     s[2] = 'x'
     assert(s=="Hello ", "Intentionally failed Hello test")
+    invert_err()
     assert(s=="Hexlo ", "Failed Hexlo test")
 
     p = new(Person)
     p.name="Jan Kåre Vatne"
     assert(p.name=="Jan Kåre Vatne", "Name failed")
+    assert(p.name!="Jan Kåre Vatne", "Intentionaly ne test failed")
+    invert_err()
     assert(p.name=="Jxn Kåre Vatne", "Intentionaly name failed")
+    invert_err()
     assert(p.name=="Jan Kåre Vatne..", "Intentionaly name failed on length")
+    invert_err()
+    assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
+    assert(p.name!="", "Name test failed on length")
 
 }

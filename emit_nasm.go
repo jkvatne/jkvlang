@@ -611,11 +611,11 @@ func Inverse(op Token) Token {
 // EmitCompareStrToLit : The pointer to the first string (val1) is found in TOS. Compare it to the known constant in val2
 func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
 	EmitAssertTosInRax("Get TOS before compare string")
-	if op == TOK_EQ {
-		emit("mov", "r14", "rax", "CompareStrings, save rax to r14")
-		emit("mov", "rdi", "rax", "Save rax to rdi")
-		emit("mov", "r13", "0", "Initialize result to false")
+	if op == TOK_EQ || op == TOK_NE {
 		lbl := code.NewLabel()
+		emit("mov", "r13", "0", "Initialize result to false")
+		emit("mov", "rdi", "rax", "Save rax to rdi")
+		emit("mov", "r14", "rax", "CompareStrings, save rax to r14")
 		// Make sure string is not nil
 		emit("or", "rax", "rax", "Check for nil")
 		emit("jz", EmitNumericLabel(lbl), "", "")
@@ -643,25 +643,9 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 			EmitLabel(lb, "")
 		}
 		emit("mov", "rax", "r13", "Result to TOS (rax)")
-		return nil
-	} else if op == TOK_NE {
-		lbl := code.NewLabel()
-		emit("mov", "rbx", "1", "Initialize result to true")
-		emit("mov", "rdi", "rax", "Save tos")
-		emit("mov", "r14", "rax", "Save tos")
-		emit("mov", "rsi", "str"+strconv.Itoa(stringLitNo), "Pointer to literal string")
-		// First check lengths
-		emit("cmp", "word [rax]", strconv.Itoa(len(stringValue)), "Compare string lengths")
-		emit("jne", EmitNumericLabel(lbl), "", "If lengths not equal, jump to unequal end")
-		emit("mov", "ecx", "[rax]", "Get nos length")
-		emit("add", "rsi", "8", "Start of string 1")
-		emit("add", "rdi", "8", "Start of string 2")
-		emit("cld", "", "", "")
-		emit("repe", "cmpsb", "", "")
-		emit("jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
-		emit("mov", "rbx", "0", "Strings was equal, set rax=false")
-		EmitLabel(lbl, "unequal")
-		emit("mov", "rax", "rbx", "Result to TOS (rax)")
+		if op == TOK_NE {
+			emit("xor", "rax", "1", "Invert result for TOK_NE")
+		}
 		return nil
 	}
 	return fmt.Errorf("EmitCompareStrings not implemented for " + op.Name())
