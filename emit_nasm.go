@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"strconv"
@@ -1126,4 +1127,171 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 	} else {
 		panic("TODO")
 	}
+}
+
+func EmitLea(ofs int) {
+	emit("lea", "rax", BpRel(ofs), "EmitLoadEa")
+}
+
+func EmitSkipLenCapForPrint() {
+	emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
+}
+
+// EmitCompareFloatConst compares float in rax with float constant
+func EmitCompareFloatConst(op Token, litNo int) (err error) {
+	emit("movq", xmm(1), "rax", "")
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
+	emit("movq", xmm(2), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
+}
+
+// EmitCompareFloats compares two floats.
+func EmitCompareFloats(op Token) (err error) {
+	emit("movq", xmm(2), "rax", "")
+	EmitPopAx("")
+	emit("movq", xmm(1), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
+}
+
+// EmitCompareIntegers will compare the top two stack entries
+func EmitCompareIntegers(op Token, unsigned bool) (err error) {
+	EmitPopBx("Pop next on stack into RBX")
+	emit("cmp", "rbx", "rax", "Compare two ints")
+	return EmitJumpCond(op, unsigned)
+}
+
+// EmitCompareIntConst will compare top of stack with a constant
+func EmitCompareIntConst(op Token, value int64, unsigned bool) error {
+	sval := strconv.FormatInt(value, 10)
+	if value > 0x7fffffff || value < -0x7fffffff {
+		// value = -0xffffffff + value
+		emit("mov", "rbx", sval, "")
+		emit("cmp", "rax", "rbx", "Compare int with 64bit const")
+	} else {
+		emit("cmp", "rax", sval, "Compare int with const")
+	}
+	return EmitJumpCond(op, unsigned)
+}
+
+// EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
+// The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
+// We assume TOS is in rax. Then NOS will be popped to rbx.
+// For subtraction we should calculate NOS-TOS or rbx-rax
+func EmitIntegerOp(op Token) {
+	if !code.AxIsTos() {
+		panic("emitIntegerOp assumes RaxIsTOS=true")
+	}
+	if op == TOK_DIV {
+		emit("pop", "rcx", "", Sp(-1))
+		emit("xchg", "rax", "rcx", "")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+	} else if op == TOK_MOD {
+		emit("pop", "rcx", "", Sp(-1))
+		emit("xchg", "rax", "rcx", "")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+	} else if op == TOK_MINUS {
+		emit("pop", "rcx", "", Sp(-1))
+		emit("xchg", "rax", "rcx", "")
+		emit("sub", "rax", "rcx", "Integer op minus")
+	} else if op == TOK_AND_NOT {
+		emit("pop", "rcx", "", Sp(-1))
+		emit("not", "rax", "", "")
+		emit("and", "rax", "rcx", "AndNot")
+	} else {
+		instruction := TokenOp[op]
+		if instruction == "" {
+			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
+		}
+		if op == TOK_MULT {
+			emit("pop", "rcx", "", Sp(-1))
+			emit("mul", "rcx", "", "Integer op mul")
+		} else if op == TOK_SHL || op == TOK_SHR {
+			emit("mov", "rcx", "rax", "Integer op shift")
+			emit("pop", "rax", "", Sp(-1))
+			emit(instruction, "rax", "cl", "Integer op shift")
+		} else {
+			emit("pop", "rcx", "", Sp(-1))
+			emit(instruction, "rax", "rcx", "Integer op other")
+		}
+	}
+}
+
+// EmitOpIntConst will evaluate tos=tos op <constant>
+// It uses 64bit integer values on the 64 bit rax register
+func EmitOpIntConst(op Token, value int64, comment string) error {
+	if !code.AxIsTos() {
+		panic("emitOpIntConst assumes RaxIsTOS=true")
+	}
+	if value < -0x7FFFFFFF || value > 0x7FFFFFFFF {
+		return fmt.Errorf("value out of range: %d", value)
+	}
+	sval := strconv.FormatInt(value, 10)
+	if op == TOK_DIV {
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("mov", "rbx", sval, "Get constant divisor into RBX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+	} else if op == TOK_INV_DIV {
+		emit("mov", "rbx", sval, "Get constant divisor into RBX")
+		emit("xchg", "rax", "rbx", "")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+	} else if op == TOK_MOD {
+		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+	} else if op == TOK_INV_MOD {
+		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("xchg", "rax", "rbx", "")
+		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
+		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
+		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
+	} else if op == TOK_ASSIGN {
+		emit("mov", "rax", sval, "Assign OpIntConst")
+	} else if op == TOK_MULT {
+		emit("imul", "rax", "rax, "+sval, "")
+	} else if op == TOK_INV_MINUS {
+		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
+		emit("neg", "rax", "", "")
+	} else if op == TOK_MINUS {
+		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
+	} else if op == TOK_INV_SHL {
+		emit("mov", "rcx", "rax", "TOK_INV_SHL")
+		emit("mov", "rax", strconv.FormatInt(value, 10), comment)
+		emit("shl", "rax", "cl", "")
+	} else if op == TOK_INV_SHR {
+		emit("mov", "rcx", "rax", "TOK_INV_SHR")
+		emit("mov", "rax", strconv.FormatInt(value, 10), comment)
+		emit("shr", "rax", "cl", "")
+	} else {
+		instr := TokenOp[op]
+		if instr == "" {
+			return fmt.Errorf("invalid operation %s", op.Name())
+		}
+		emit(instr, "rax", strconv.FormatInt(value, 10), instr+" "+comment)
+	}
+	return nil
+}
+
+func EmitOpF64Const(op Token, litNo int) {
+	EmitAssertTosInRax("Get TOS before float op const")
+	emit("movq", xmm(1), "rax", "emitOpF64Const move tos in rax to xmm1")
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
+	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
+	doF64Op(op)
+}
+
+func EmitOpF32Const(op Token, litNo int) {
+	EmitAssertTosInRax("Get TOS before float op const")
+	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
+	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
+	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
+	doF32Op(op)
 }

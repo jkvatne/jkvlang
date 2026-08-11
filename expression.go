@@ -187,7 +187,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	for {
 		if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
 			if lvalue.IsIndirect {
-				emit("mov", "rax", "[rax]", "Load indirect value '"+lvalue.Name+"'")
+				EmitLoadTosIndirect(8, lvalue.Name)
 			}
 			// The id was followed by a dot and a field id, indicated field access.
 			fieldName := s.tokenString
@@ -214,7 +214,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 			// Load variable address into SI
 			if !lvalue.IsIndirect {
-				emit("lea", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
+				EmitLea(lvalue.Offset)
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				EmitModifyConstIndexedChar(int(index.IntValue))
@@ -316,7 +316,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
 				EmitPushTos(parNo, f.name)
 				if f.name == "printf" || f.name == "print" {
-					emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
+					EmitSkipLenCapForPrint()
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(value.IntValue, "")
@@ -353,7 +353,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			if f.name == "printf" || f.name == "print" {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == code.TYP_STRING {
-					emit("add", "dword [rsp]", "8", "Skip len/cap of print var arg string")
+					EmitSkipLenCapForPrint()
 					// If it was a local variable or a constant, we should not free it.
 					// (The constant case has already been handled)
 					// But if it was a function result, it can be a pointer to a literal.
@@ -1262,13 +1262,6 @@ func ParseIf(s *State) error {
 		return ParseIfElse(s, values[0])
 	}
 	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
-}
-
-func FreeSlice(t *TypeDef) {
-	emit("mov", "rcx", strconv.Itoa(t.Element.Size()), "Load element size")
-	// _free_slice assumes pointer in rax and element size in rcx
-	emit("call", "_free_slice", "", "")
-	code.SetUndef()
 }
 
 func FreeStruct(t *TypeDef) {
