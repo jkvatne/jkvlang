@@ -1047,7 +1047,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		nextToken(s)
 
 		if op == TOK_LOG_OR {
-			EmitJumpTrue(endLabel, "")
+			EmitJumpTrue("al", endLabel, "")
 		} else if op == TOK_LOG_AND {
 			EmitJumpFalse(endLabel, "")
 		}

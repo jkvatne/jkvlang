@@ -148,25 +148,25 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			EmitIntegerOp(op)
 			return val1, nil
 		} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt == code.TYP_F64 {
-			emitF64Op(op, true, true)
+			EmitF64Op(op, true, true)
 			return val1, nil
 		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F32 {
-			emitF32Op(op, true, true)
+			EmitF32Op(op, true, true)
 			return val1, nil
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING && op == TOK_PLUS {
 			EmitConcat(val1.IsTempObj, val2.IsTempObj)
 			return val1, nil
 		} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt == code.TYP_F64 {
-			emitF64Op(op, false, true)
+			EmitF64Op(op, false, true)
 			return val2, nil
 		} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt == code.TYP_F32 {
-			emitF32Op(op, false, true)
+			EmitF32Op(op, false, true)
 			return val2, nil
 		} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt.IsInteger() {
-			emitF64Op(op, false, true)
+			EmitF64Op(op, false, true)
 			return val1, nil
 		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt.IsInteger() {
-			emitF32Op(op, false, true)
+			EmitF32Op(op, false, true)
 			return val1, nil
 		} else {
 			return nil, fmt.Errorf("invalid combination of operands to '%s'", TokenNames[op])
@@ -222,76 +222,4 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		return &ValueDef{Typ: val1.Typ}, err
 	}
 	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
-}
-
-// emitF64Op will generate a stack operation on the top two stack entries
-func emitF64Op(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS before FloatOp")
-	if op2float {
-		emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
-	} else {
-		emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
-	}
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	if op1float {
-		emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
-	} else {
-		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
-	}
-	doF64Op(op)
-}
-
-// emitF32Op will generate a stack operation on the top two stack entries
-func emitF32Op(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS before FloatOp")
-	if op2float {
-		emit("movd", xmm(2), "eax", "EmitFloatOp move tos in rax to xmm2")
-	} else {
-		emit("cvtsi2sd", xmm(2), "eax", "convert integer into xmm2")
-	}
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	if op1float {
-		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
-	} else {
-		emit("cvtsi2sd", xmm(1), "eax", "convert integer into xmm1")
-	}
-	doF32Op(op)
-}
-
-func doF64Op(op Token) {
-	if op == TOK_PLUS {
-		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
-		emit("subsd", xmm(1), xmm(2), "Subtract nos from tos")
-	} else if op == TOK_MULT {
-		emit("mulsd", xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
-		emit("divsd", xmm(1), xmm(2), "Divide tos by nos")
-	} else if op == TOK_INV_DIV {
-		emit("divsd", xmm(2), xmm(1), "Divide nos by tos")
-		emit("movq", xmm(1), xmm(2), "")
-	} else {
-		panic("EmitFloatOp not implemented for " + op.Name())
-	}
-	code.SetAx()
-	emit("movq", "rax", xmm(1), "Move float result into rax")
-}
-
-func doF32Op(op Token) {
-	if op == TOK_PLUS {
-		emit("addss", xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
-		emit("subss", xmm(1), xmm(2), "Subtract nos from tos")
-	} else if op == TOK_MULT {
-		emit("mulss", xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
-		emit("divss", xmm(1), xmm(2), "Divide tos by nos")
-	} else if op == TOK_INV_DIV {
-		emit("divss", xmm(2), xmm(1), "Divide nos by tos")
-		emit("movq", xmm(1), xmm(2), "")
-	} else {
-		panic("EmitFloatOp not implemented for " + op.Name())
-	}
-	code.SetAx()
-	emit("movd", "eax", xmm(1), "Move float result into rax")
 }

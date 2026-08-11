@@ -138,8 +138,9 @@ func ParseFor(s *State) error {
 		if !s.found(TOK_LBRACE) {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)
 		}
-		emit("or", "r15", "r15", "")
-		emit("jnz", Label(endLabel), "", "")
+		EmitJumpTrue("r15", endLabel, "")
+		// emit("or", "r15", "r15", "")
+		// emit("jnz", Label(endLabel), "", "")
 		err = ParseBlock(s, false)
 		if err != nil {
 			return err
