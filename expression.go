@@ -113,9 +113,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_SLICE {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
-		emit("mov", "[rbx]", "rax", "Assign slice to "+lvalue.Name)
-		code.SetUndef()
+		EmitIndirectAssignment(lvalue.Name)
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		if lvalue.Offset != 0 {
 			EmitAssertTosInRax("Pop TOS into rax before assignment")
@@ -127,8 +125,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			code.SetUndef()
 		} else {
 			EmitAssertTosInRax("Pop TOS into rax before indirect assignment")
-			emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
-			emit("mov", "[rbx]", "rax", "Assign slice to "+lvalue.Name)
+			EmitIndirectAssignment(lvalue.Name)
 		}
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		code.SetUndef()
@@ -201,13 +198,8 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				return nil, fmt.Errorf("expected field name of the struct %s but was not found", fieldName)
 			}
 			v.Name = fieldName
-			ofs := lvalue.Typ.Offsets[fieldName]
-			if !lvalue.IsIndirect {
-				emit("mov", "rax", BpRel(lvalue.Offset), "Load local variable "+lvalue.Name)
-			}
-			if ofs != 0 {
-				emit("add", "rax", strconv.Itoa(ofs), "Add field offset for field '"+fieldName+"'")
-			}
+			fieldOfs := lvalue.Typ.Offsets[fieldName]
+			EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
 			code.SetAx()
 			v.IsIndirect = true
 			lvalue = v
@@ -225,56 +217,13 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				emit("lea", "rax", BpRel(lvalue.Offset), "EmitLoadEa")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				emit("mov", "r13", "rax", "Load local variable's address")
-				emit("mov", "rsi", "[r13]", "Load string pointer const")
-				emit("mov", "rcx", "[rsi]", "Fetch len/cap")
-				emit("shr", "rcx", "32", "Get cap and check for zero")
-				lbl := code.NewLabel()
-				emit("jnz", Label(lbl), "", "")
-				// Copy read-only string into new memory
-				emit("mov", "rax", "[rsi]", "Fetch len")
-				emit("add", "rax", "32", "Add space for cap and spare bytes")
-				emit("mov", "r12", "rax", "cap to r12")
-				emit("sub", "r12", "8", "not include cap/len word")
-				emit("shl", "r12", "32", "")
-				emit("call", "_alloc", "", "Allocate new string")
-				emit("mov", "[r13]", "rax", "Store new address into local variable")
-				emit("mov", "rdi", "rax", "")
-				emit("mov", "r14", "rax", "")
-				emit("add", "r12", "[rsi]", "Add len to len/cap in r12")
-				emit("mov", "rcx", "[rsi]", "")
-				emit("add", "rdi", "8", "Skip len/cap when moving string")
-				emit("add", "rsi", "8", "Skip len/cap when moving string")
-				emit("cld", "", "", "")
-				emit("rep", "movsb", "", "copy old string")
-				// r12 is cap
-				emit("mov", "[r14]", "r12", "Mov len/cap into string")
-				// Now index character
-				EmitLabel(lbl, "")
-				emit("add", "rax", strconv.Itoa(8+int(index.IntValue)), "Index into string, skipping len/cap")
+				EmitModifyConstIndexedChar(int(index.IntValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
-				emit("pop", "rbx", "", Sp(-1))
-				emit("mov", "rbx", "[rbx]", "Load string pointer not const")
-				emit("add", "rax", "rbx", "Index into lvalue string not const")
-				emit("add", "rax", "8", "Skip len/cap of string not const")
+				EmitModifyIndexedChar()
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
-				emit("mov", "rsi", "[rax]", "Load slice pointer for const")
-				ofs := 8 + int(index.IntValue)*lvalue.Typ.Element.Size()
-				emit("mov", "eax", "dword [rsi]", "Load len/cap")
-				emit("cmp", "eax", strconv.Itoa(int(index.IntValue)), "Check for index out of bounds")
-				lbl := code.NewLabel()
-				emit("jg", Label(lbl), "", "Jump if ok")
-				emit("mov", "r15", "96", "Error code")
-				emit("jmp", Label(s.returnLbl), "", "return with error")
-				EmitLabel(lbl, "")
-				emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
-				emit("mov", "rax", "rsi", "")
+				EmitModifyConstIndexedSlice(int(index.IntValue), lvalue.Typ.Element.Size(), s.returnLbl)
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
-				emit("mov", "rax", "[rax]", "Load slice pointer 1")
-				emit("add", "rax", "8", "Skip len/cap in slice")
-				emit("pop", "rbx", "", "Get index"+Sp(-1))
-				emit("shl", "rbx", ShiftFromSize(lvalue.Typ.Element.Size()), "")
-				emit("add", "rax", "rbx", "Index into lvalue slice not const")
+				EmitModifyIndexedSlice(lvalue.Typ.Element.Size(), s.returnLbl)
 			}
 			// Multiply by element size
 			if err != nil {

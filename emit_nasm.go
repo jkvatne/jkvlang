@@ -420,14 +420,6 @@ func EmitLoadFloat(size int, adr int, comment string, fun string) {
 	}
 }
 
-func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
-	EmitFlushRax("Before LoadField")
-	code.SetAx()
-	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
-	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value from field")
-}
-
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
 	EmitFlushRax("EmitLoad: push TOS")
@@ -616,17 +608,20 @@ func Inverse(op Token) Token {
 	}
 }
 
-// EmitCompareStrToLit : The pointer to the first string (val1) is found in AX. Compare it to the known constant in val2
+// EmitCompareStrToLit : The pointer to the first string (val1) is found in TOS. Compare it to the known constant in val2
 func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp bool) (err error) {
 	EmitAssertTosInRax("Get TOS before compare string")
 	if op == TOK_EQ {
 		emit("mov", "r14", "rax", "CompareStrings, save rax to r14")
 		emit("mov", "rdi", "rax", "Save rax to rdi")
+		emit("mov", "r13", "0", "Initialize result to false")
+		lbl := code.NewLabel()
+		// Make sure string is not nil
+		emit("or", "rax", "rax", "Check for nil")
+		emit("jz", EmitNumericLabel(lbl), "", "")
 		// First check lengths
 		emit("mov", "eax", "[rax]", "")
 		emit("cmp", "eax", strconv.Itoa(len(stringValue)), "Compare string lengths")
-		lbl := code.NewLabel()
-		emit("mov", "rbx", "0", "Initialize result to false")
 		emit("jne", EmitNumericLabel(lbl), "", "If not equal, jump to unequal end")
 		emit("mov", "ecx", "eax", "")
 		emit("mov", "rsi", "str"+strconv.Itoa(stringLitNo), "Pointer to literal string")
@@ -647,7 +642,7 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 			emit("call", "_free_str", "", "EmitCompareStrToLit")
 			EmitLabel(lb, "")
 		}
-		emit("mov", "rax", "r14", "Result to TOS (rax)")
+		emit("mov", "rax", "r13", "Result to TOS (rax)")
 		return nil
 	} else if op == TOK_NE {
 		lbl := code.NewLabel()
@@ -987,4 +982,89 @@ func EmitLoadGlobalConst(name string) {
 	EmitFlushRax("Before EmitLoadGlobalConst")
 	emit("mov", "rax", name, "")
 	code.SetAx()
+}
+
+func EmitModifyConstIndexedChar(offset int) {
+	emit("mov", "r13", "rax", "Load local variable's address")
+	emit("mov", "rsi", "[r13]", "Load string pointer const")
+	emit("mov", "rcx", "[rsi]", "Fetch len/cap")
+	emit("shr", "rcx", "32", "Get cap and check for zero")
+	lbl := code.NewLabel()
+	emit("jnz", Label(lbl), "", "")
+	// Copy read-only string into new memory
+	emit("mov", "rax", "[rsi]", "Fetch len")
+	emit("add", "rax", "32", "Add space for cap and spare bytes")
+	emit("mov", "r12", "rax", "cap to r12")
+	emit("sub", "r12", "8", "not include cap/len word")
+	emit("shl", "r12", "32", "")
+	emit("call", "_alloc", "", "Allocate new string")
+	emit("mov", "[r13]", "rax", "Store new address into local variable")
+	emit("mov", "rdi", "rax", "")
+	emit("mov", "r14", "rax", "")
+	emit("add", "r12", "[rsi]", "Add len to len/cap in r12")
+	emit("mov", "rcx", "[rsi]", "")
+	emit("add", "rdi", "8", "Skip len/cap when moving string")
+	emit("add", "rsi", "8", "Skip len/cap when moving string")
+	emit("cld", "", "", "")
+	emit("rep", "movsb", "", "copy old string")
+	// r12 is cap
+	emit("mov", "[r14]", "r12", "Mov len/cap into string")
+	// Now index character
+	EmitLabel(lbl, "")
+	emit("add", "rax", strconv.Itoa(8+offset), "Index into string, skipping len/cap")
+}
+
+func EmitModifyConstIndexedSlice(offset int, size int, returnLbl int) {
+	emit("mov", "rsi", "[rax]", "Load slice pointer for const")
+	ofs := 8 + offset*size
+	emit("mov", "eax", "dword [rsi]", "Load len/cap")
+	emit("cmp", "eax", strconv.Itoa(offset), "Check for index out of bounds")
+	lbl := code.NewLabel()
+	emit("jg", Label(lbl), "", "Jump if ok")
+	emit("mov", "r15", "96", "Error code")
+	emit("jmp", Label(returnLbl), "", "return with error")
+	EmitLabel(lbl, "")
+	emit("add", "rsi", strconv.Itoa(ofs), "Index into slice, skipping len/cap")
+	emit("mov", "rax", "rsi", "")
+}
+
+func EmitModifyIndexedSlice(size int, returnLbl int) {
+	emit("mov", "rax", "[rax]", "Load slice pointer 1")
+	emit("add", "rax", "8", "Skip len/cap in slice")
+	emit("pop", "rbx", "", "Get index"+Sp(-1))
+	emit("shl", "rbx", ShiftFromSize(size), "")
+	emit("add", "rax", "rbx", "Index into lvalue slice not const")
+}
+
+func EmitIndirectAssignment(name string) {
+	emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
+	emit("mov", "[rbx]", "rax", "Assign slice to "+name)
+	code.SetUndef()
+}
+
+func EmitModifyIndexedChar() {
+	emit("pop", "rbx", "", Sp(-1))
+	emit("mov", "rbx", "[rbx]", "Load string pointer not const")
+	emit("add", "rax", "rbx", "Index into lvalue string not const")
+	emit("add", "rax", "8", "Skip len/cap of string not const")
+}
+
+/*
+func EmitLoadField(size int, localVarOfs int, fieldOffset int) {
+	EmitFlushRax("Before LoadField")
+	code.SetAx()
+	emit("mov", "rax", BpRel(localVarOfs), "EmitLoadField")
+	emit("add", "rax", strconv.Itoa(fieldOffset), "Struct field offset")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value from field")
+}
+*/
+
+func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
+	if !indirect {
+		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
+	}
+	if fieldOffset != 0 {
+		emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset for field '"+fieldName+"'")
+	}
+
 }

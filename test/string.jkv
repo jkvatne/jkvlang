@@ -1,4 +1,10 @@
 
+type Person = struct{
+    id I64
+    name String
+    Age U8
+}
+
 func main () {
     s = "Hello "
     t = "World"
@@ -14,10 +20,18 @@ func main () {
 
     // Calling len
     ll = len(w)
-    assert(ll==11)
-    assert(len(w)==11)
+    assert(ll==11, "Failed len test 1")
+    assert(len(w)==11, "Failed len test 2")
 
     // Update indexed character. Will move s to writeable memory
     s[2] = 'x'
-    assert(s=="Hexlo", "Failed Hexlo")
+    assert(s=="Hello ", "Intentionally failed Hello test")
+    assert(s=="Hexlo ", "Failed Hexlo test")
+
+    p = new(Person)
+    p.name="Jan Kåre Vatne"
+    assert(p.name=="Jan Kåre Vatne", "Name failed")
+    assert(p.name=="Jxn Kåre Vatne", "Intentionaly name failed")
+    assert(p.name=="Jan Kåre Vatne..", "Intentionaly name failed on length")
+
 }
