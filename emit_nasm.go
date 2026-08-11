@@ -1262,27 +1262,6 @@ func EmitOpF64Const(op Token, litNo int) {
 	emit("movq", xmm(1), "rax", "emitOpF64Const move tos in rax to xmm1")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
 	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
-	doF64Op(op)
-}
-
-// EmitF64Op will generate a stack operation on the top two stack entries
-func EmitF64Op(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS before FloatOp")
-	if op2float {
-		emit("movq", xmm(2), "rax", "EmitFloatOp move tos in rax to xmm2")
-	} else {
-		emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
-	}
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	if op1float {
-		emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
-	} else {
-		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
-	}
-	doF64Op(op)
-}
-
-func doF64Op(op Token) {
 	if op == TOK_PLUS {
 		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {
@@ -1306,27 +1285,6 @@ func EmitOpF32Const(op Token, litNo int) {
 	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
 	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
 	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
-	doF32Op(op)
-}
-
-// EmitF32Op will generate a stack operation on the top two stack entries
-func EmitF32Op(op Token, op1float bool, op2float bool) {
-	EmitAssertTosInRax("Get TOS before FloatOp")
-	if op2float {
-		emit("movd", xmm(2), "eax", "EmitFloatOp move tos in rax to xmm2")
-	} else {
-		emit("cvtsi2sd", xmm(2), "eax", "convert integer into xmm2")
-	}
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-	if op1float {
-		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
-	} else {
-		emit("cvtsi2sd", xmm(1), "eax", "convert integer into xmm1")
-	}
-	doF32Op(op)
-}
-
-func doF32Op(op Token) {
 	if op == TOK_PLUS {
 		emit("addss", xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS {

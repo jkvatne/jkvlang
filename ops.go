@@ -163,29 +163,6 @@ func emitTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			}
 			return val1, err
 		}
-		/*
-			} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt == code.TYP_F64 {
-				EmitF64Op(op, true, true)
-				return val1, nil
-			} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F32 {
-				EmitF32Op(op, true, true)
-				return val1, nil
-			} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt == code.TYP_F64 {
-				EmitF64Op(op, false, true)
-				return val2, nil
-			} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt == code.TYP_F32 {
-				EmitF32Op(op, false, true)
-				return val2, nil
-			} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt.IsInteger() {
-				EmitF64Op(op, false, true)
-				return val1, nil
-			} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt.IsInteger() {
-				EmitF32Op(op, false, true)
-				return val1, nil
-			} else {
-				return nil, fmt.Errorf("invalid combination of operands to '%s'", TokenNames[op])
-			}
-		*/
 	}
 	return nil, fmt.Errorf("tosnos operation %s not implemented", TokenNames[op])
 
