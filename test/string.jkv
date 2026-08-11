@@ -29,6 +29,7 @@ func main () {
     invert_err()
     assert(s=="Hexlo ", "Failed Hexlo test")
 
+    // Test compare strings to litteral
     p = new(Person)
     p.name="Jan Kåre Vatne"
     assert(p.name=="Jan Kåre Vatne", "Name failed")
@@ -41,4 +42,8 @@ func main () {
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
 
+    // Test modify char in struct
+    p.name[2]='x'
+    print("p.name=%s", p.name)
+    assert(p.name=="Jax Kåre Vatne", "Failed check of modified name")
 }
