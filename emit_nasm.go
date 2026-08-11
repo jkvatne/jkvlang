@@ -1364,3 +1364,7 @@ func DoF32Op(op Token) {
 	code.SetAx()
 	emit("movd", "eax", xmm(1), "Move float result into rax")
 }
+
+func EmitClearErr() {
+	emit("mov", "r15", "0", "")
+}
