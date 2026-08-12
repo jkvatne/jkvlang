@@ -329,6 +329,9 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				}
 				EmitPushTos(parNo, f.name)
 			} else if value.Typ.Pt == code.TYP_F64 {
+				if value.F64LitNo == 0 {
+					value.F64LitNo = AddF64Lit(value.FloatValue)
+				}
 				EmitPushF64Lit(value.F64LitNo)
 			} else if value.Typ.Pt == code.TYP_F32 {
 				if value.F32LitNo == 0 {
@@ -336,6 +339,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				}
 				if f.name == "printf" || f.name == "print" {
 					// Must convert to F64 for print/fprint
+					value.F64LitNo = AddF64Lit(value.FloatValue)
 					EmitPushF64Lit(value.F64LitNo)
 				} else {
 					EmitPushF32Lit(value.F32LitNo)
@@ -724,6 +728,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	} else {
 		// If none above, it is a simple variable
 		localVar, ok := VarDefs[id]
+		if localVar == nil {
+			return nil, fmt.Errorf("expected local variable, got %s", id)
+		}
 		value := &ValueDef{Typ: localVar.Typ}
 		if !ok {
 			return nil, fmt.Errorf("did not find variable \"%s\"", id)
@@ -786,9 +793,8 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			s.ConstValue.Bits = math.Float64bits(v)
 		}
 		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
-		floatLitNo := AddF64Lit(value.FloatValue)
 		value.Typ = TypeDefs["F64"]
-		value.F64LitNo = floatLitNo
+		value.F64LitNo = AddF64Lit(value.FloatValue)
 		value.IsConst = true
 		nextToken(s)
 	} else if s.token == TOK_CHAR {
@@ -900,6 +906,8 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if v[0].HasValue() {
 			v[0].IntValue = -v[0].IntValue
 			v[0].FloatValue = -v[0].FloatValue
+		} else if v[0].Typ.Pt == code.TYP_F64 {
+			EmitNegateF64()
 		} else {
 			EmitNegate()
 		}
@@ -1035,6 +1043,9 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
 		if len(results) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
+		}
+		if results[0].IsConst {
+			EmitLoadBool(results[0].BoolValue)
 		}
 		results[0].IsReturned = false
 		if endLabel == 0 {

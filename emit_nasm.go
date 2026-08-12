@@ -458,6 +458,9 @@ func EmitJumpFalse(n int, comment string) {
 // EmitJumpTrue will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
 func EmitJumpTrue(reg string, lbl int, comment string) {
+	if !code.AxIsTos() {
+		panic("TOS not in AX")
+	}
 	emit("or", reg, reg, comment)
 	emit("jnz", Label(lbl), "", "")
 	// Implicit pop of TOS
@@ -932,6 +935,12 @@ func EmitClearBreakErr() {
 	emit("cmovz", "r15", "rax", "")
 }
 
+// EmitNegateF64 will negate the 64bit float value in rax
+func EmitNegateF64() {
+	emit("mov", "rcx", "[f64sign_mask]", "")
+	emit("xor", "rax", "rcx", "")
+}
+
 func EmitNegate() {
 	EmitAssertTosInRax("Value to 'Negate'")
 	emit("neg", "rax", "", "")
@@ -1130,6 +1139,10 @@ func EmitLea(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "EmitLoadEa")
 }
 
+func EmitClearErr() {
+	emit("xor", "r15", "r15", "Clear error")
+}
+
 func EmitSkipLenCapForPrint() {
 	emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
 }
@@ -1257,26 +1270,47 @@ func EmitOpIntConst(op Token, value int64, comment string) error {
 	return nil
 }
 
+// Float operations
+
+func emitFloatOp(op Token, size int) {
+	sufix := "d"
+	if size == 32 {
+		sufix = "s"
+	}
+	if op == TOK_PLUS {
+		emit("adds"+sufix, xmm(1), xmm(2), "Add tos to nos")
+	} else if op == TOK_MINUS {
+		emit("subs"+sufix, xmm(1), xmm(2), "Subtract nos from tos")
+	} else if op == TOK_INV_MINUS {
+		emit("subs"+sufix, xmm(2), xmm(1), "Subtract nos from tos")
+		if size == 64 {
+			emit("movq", xmm(1), xmm(2), "")
+		} else {
+			emit("movd", xmm(1), xmm(2), "")
+		}
+	} else if op == TOK_MULT {
+		emit("muls"+sufix, xmm(1), xmm(2), "Multiply nos by tos")
+	} else if op == TOK_DIV {
+		emit("divs"+sufix, xmm(1), xmm(2), "Divide tos by nos")
+	} else if op == TOK_INV_DIV {
+		emit("divs"+sufix, xmm(2), xmm(1), "Divide nos by tos")
+		if size == 64 {
+			emit("movq", xmm(1), xmm(2), "")
+		} else {
+			emit("movd", xmm(1), xmm(2), "")
+		}
+	} else {
+		panic("operation not implemented for " + op.Name())
+	}
+	code.SetAx()
+}
+
 func EmitOpF64Const(op Token, litNo int) {
 	EmitAssertTosInRax("Get TOS before float op const")
 	emit("movq", xmm(1), "rax", "emitOpF64Const move tos in rax to xmm1")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
 	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
-	if op == TOK_PLUS {
-		emit("addsd", xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
-		emit("subsd", xmm(1), xmm(2), "Subtract nos from tos")
-	} else if op == TOK_MULT {
-		emit("mulsd", xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
-		emit("divsd", xmm(1), xmm(2), "Divide tos by nos")
-	} else if op == TOK_INV_DIV {
-		emit("divsd", xmm(2), xmm(1), "Divide nos by tos")
-		emit("movq", xmm(1), xmm(2), "")
-	} else {
-		panic("EmitFloatOp not implemented for " + op.Name())
-	}
-	code.SetAx()
+	emitFloatOp(op, 64)
 	emit("movq", "rax", xmm(1), "Move float result into rax")
 }
 
@@ -1285,29 +1319,12 @@ func EmitOpF32Const(op Token, litNo int) {
 	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
 	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
 	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
-	if op == TOK_PLUS {
-		emit("addss", xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
-		emit("subss", xmm(1), xmm(2), "Subtract nos from tos")
-	} else if op == TOK_MULT {
-		emit("mulss", xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
-		emit("divss", xmm(1), xmm(2), "Divide tos by nos")
-	} else if op == TOK_INV_DIV {
-		emit("divss", xmm(2), xmm(1), "Divide nos by tos")
-		emit("movq", xmm(1), xmm(2), "")
-	} else {
-		panic("EmitFloatOp not implemented for " + op.Name())
-	}
+	emitFloatOp(op, 32)
 	code.SetAx()
 	emit("movd", "eax", xmm(1), "Move float result into rax")
 }
 
-func EmitClearErr() {
-	emit("mov", "r15", "0", "")
-}
-
-// EmitFloatOp will generate a stack operation on the top two stack entries
+// EmitFloatOp will generate a stack operation on TOS and NOS
 func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	// F64 operations
 	if typ1 == code.TYP_F64 || typ2 == code.TYP_F64 {
@@ -1333,20 +1350,7 @@ func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 		}
 		// Do F64 opertion
-		if op == TOK_PLUS {
-			emit("addsd", xmm(1), xmm(2), "Add tos to nos")
-		} else if op == TOK_MINUS {
-			emit("subsd", xmm(1), xmm(2), "Subtract nos from tos")
-		} else if op == TOK_MULT {
-			emit("mulsd", xmm(1), xmm(2), "Multiply nos by tos")
-		} else if op == TOK_DIV {
-			emit("divsd", xmm(1), xmm(2), "Divide tos by nos")
-		} else if op == TOK_INV_DIV {
-			emit("divsd", xmm(2), xmm(1), "Divide nos by tos")
-			emit("movq", xmm(1), xmm(2), "")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
+		emitFloatOp(op, 64)
 		emit("movq", "rax", xmm(1), "Move float result into rax")
 	} else {
 		// F32 operations
@@ -1367,27 +1371,14 @@ func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 		} else {
 			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 		}
-		if op == TOK_PLUS {
-			emit("addss", xmm(1), xmm(2), "Add tos to nos")
-		} else if op == TOK_MINUS {
-			emit("subss", xmm(1), xmm(2), "Subtract nos from tos")
-		} else if op == TOK_MULT {
-			emit("mulss", xmm(1), xmm(2), "Multiply nos by tos")
-		} else if op == TOK_DIV {
-			emit("divss", xmm(1), xmm(2), "Divide tos by nos")
-		} else if op == TOK_INV_DIV {
-			emit("divss", xmm(2), xmm(1), "Divide nos by tos")
-			emit("movq", xmm(1), xmm(2), "")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
+		emitFloatOp(op, 32)
 		emit("movq", "rax", xmm(1), "Move float result into rax")
 	}
 	code.SetAx()
 	return nil
 }
 
-// EmitCompareFloatConst compares float in rax with float constant
+// EmitCompareFloatConst compares float in TOS with float constant
 func EmitCompareFloatConst(op Token, litNo int) (err error) {
 	emit("movq", xmm(1), "rax", "")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
@@ -1397,7 +1388,7 @@ func EmitCompareFloatConst(op Token, litNo int) (err error) {
 	return err
 }
 
-// EmitCompareFloats compares two floats.
+// EmitCompareFloats compares two floats in TOS and NOS.
 func EmitCompareFloats(op Token) (err error) {
 	emit("movq", xmm(2), "rax", "")
 	EmitPopAx("")
@@ -1405,4 +1396,13 @@ func EmitCompareFloats(op Token) (err error) {
 	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(op, true)
 	return err
+}
+
+func EmitLoadBool(value bool) {
+	if value {
+		emit("mov", "rax", "1", "")
+	} else {
+		emit("xor", "rax", "rax", "")
+	}
+	code.SetAx()
 }

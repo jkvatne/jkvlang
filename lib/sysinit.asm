@@ -17,6 +17,7 @@ ProcessHeap     resq 1
 section .data
 ;-------------
     locale_str  db ".utf8", 0   ; "UTF" locale, or use "" for system default
+    f64sign_mask: dq 0x8000000000000000
 
 ;-------------
 section .text
