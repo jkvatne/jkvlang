@@ -565,6 +565,7 @@ func EmitConcat(free1 bool, free2 bool) {
 }
 
 func EmitPrologue(libPath string) {
+
 	/*
 		EmitComment("File \"" + code.UnitName + ".asm\"\n")
 		includeFile("sysinit.asm", libPath)
