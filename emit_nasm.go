@@ -449,12 +449,9 @@ func EmitStoreF32(adr int, comment string) {
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
-func EmitJumpFalse(n int, comment string) {
-	if !code.AxIsTos() {
-		panic("TOS not in AX")
-	}
-	emit("or", "al", "al", comment)
-	emit("jz", Label(n), "", "")
+func EmitJumpFalse(reg string, lbl int, comment string) {
+	emit("or", reg, reg, comment)
+	emit("jz", Label(lbl), "", "")
 	// Implicit pop of TOS
 	code.SetUndef()
 }
@@ -462,9 +459,6 @@ func EmitJumpFalse(n int, comment string) {
 // EmitJumpTrue will emit an instruction to jump if top of stack is false.
 // Top of stack is typically already in AX
 func EmitJumpTrue(reg string, lbl int, comment string) {
-	if !code.AxIsTos() {
-		panic("TOS not in AX")
-	}
 	emit("or", reg, reg, comment)
 	emit("jnz", Label(lbl), "", "")
 	// Implicit pop of TOS

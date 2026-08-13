@@ -6,8 +6,10 @@ func main() {
     z = F32(-13.0)
 
     // Division (Three different combinations of const and var)
+    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
+    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
+    assert(13.0/y>4.333 && 13.0/y<4.334, "Failed  13.0/y, got %f", 13.0/y)
     assert(x/3.0>4.333 && x/3<4.334, "Failed x/3.0, got %f", x/3.0)
-    assert(13.0/y>4.333 && 13.0/y<4.334, "Failed 13.0/y, got %f", 13.0/y)
     assert(x/y>4.333 && x/y<4.334, "Failed x/y, got %f", x/y)
 
     // Unary minus

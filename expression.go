@@ -886,12 +886,14 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("unary minus on invalid value")
 		}
 		if v[0].IsConst {
-			// v[0].IntValue = -v[0].IntValue
+			v[0].IntValue = -v[0].IntValue
 			// v[0].FloatValue = -v[0].FloatValue
 		} else if v[0].Typ.Pt == code.TYP_F64 {
 			EmitNegateF64()
-		} else {
+		} else if v[0].Typ.Pt == code.TYP_F32 {
 			EmitNegateF32()
+		} else {
+			EmitNegate()
 		}
 		value = v[0]
 	} else {
@@ -1042,7 +1044,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		if op == TOK_LOG_OR {
 			EmitJumpTrue("al", endLabel, "")
 		} else if op == TOK_LOG_AND {
-			EmitJumpFalse(endLabel, "")
+			EmitJumpFalse("al", endLabel, "")
 		}
 
 		values2, err2 := ParseCompareTerm(s)
@@ -1114,7 +1116,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
 	if !value.HasValue() {
 		L1 = code.NewLabel()
-		EmitJumpFalse(L1, "Skip block 1 if false")
+		EmitJumpFalse("al", L1, "Skip block 1 if false")
 	}
 
 	// Parse stm1 in if cond ? stm1 : stm2
@@ -1149,7 +1151,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 	nextToken(s)
 	if !value.HasValue() {
 		L1 = code.NewLabel()
-		EmitJumpFalse(L1, "Skip block 1 if false")
+		EmitJumpFalse("al", L1, "Skip block 1 if false")
 	}
 
 	// Parse stm1 in "if cond { stm1 } ..."
@@ -1190,7 +1192,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				return fmt.Errorf("expected boolean but got %s", code.PrimaryTypeNames[value.Typ.Pt])
 			}
 			L1 = code.NewLabel()
-			EmitJumpFalse(L1, "jump if condition was false")
+			EmitJumpFalse("al", L1, "jump if condition was false")
 			if !s.found(TOK_LBRACE) {
 				return fmt.Errorf("expected { after if but got %s", s.tokenString)
 			}
@@ -1263,21 +1265,21 @@ func FreeStruct(t *TypeDef) {
 		if f.Pt == code.TYP_STRUCT {
 			EmitLoadWithOffset(ofs, "Free struct field "+f.Name())
 			lbl := code.NewLabel()
-			EmitJumpFalse(lbl, "")
+			EmitJumpFalse("al", lbl, "")
 			FreeStruct(f)
 			EmitLabel(lbl, "")
 			EmitPopAx("")
 		} else if f.Pt == code.TYP_SLICE {
 			EmitLoadWithOffset(ofs, "Free slice field "+f.Name())
 			lbl := code.NewLabel()
-			EmitJumpFalse(lbl, "")
+			EmitJumpFalse("al", lbl, "")
 			EmitFreeSlice(f)
 			EmitLabel(lbl, "")
 			EmitPopAx("")
 		} else if f.Pt == code.TYP_STRING {
 			EmitLoadWithOffset(ofs, "Free string field "+f.Name())
 			lbl := code.NewLabel()
-			EmitJumpFalse(lbl, "")
+			EmitJumpFalse("al", lbl, "")
 			EmitFreeString("")
 			EmitLabel(lbl, "")
 			EmitPopAx("")
