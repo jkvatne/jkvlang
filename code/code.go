@@ -14,7 +14,7 @@ const (
 	undef stackState = iota
 	sp
 	ax
-	cc
+	xmm1
 )
 
 type PrimaryType int
@@ -118,6 +118,9 @@ func StackState() string {
 	}
 }
 
+func SetXmm1() {
+	state = xmm1
+}
 func SetAx() {
 	state = ax
 }

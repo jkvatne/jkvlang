@@ -1195,8 +1195,8 @@ func EmitIntegerOp(op Token) {
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_MINUS {
 		emit("pop", "rcx", "", Sp(-1))
-		emit("xchg", "rax", "rcx", "")
 		emit("sub", "rax", "rcx", "Integer op minus")
+		emit("neg", "rax", "", "")
 	} else if op == TOK_AND_NOT {
 		emit("pop", "rcx", "", Sp(-1))
 		emit("not", "rax", "", "")
