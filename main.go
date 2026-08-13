@@ -146,7 +146,7 @@ func CompileTests(inputPath string, workDir string, libPath string) (int, error)
 func Assemble(workDir string) error {
 	entries, err := os.ReadDir(workDir)
 	if err != nil {
-		return fmt.Errorf("collecting asm files error %s", err.Error())
+		return fmt.Errorf("collecting asm files error,  %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".asm") {
@@ -289,14 +289,22 @@ func main() {
 		*sourceDir = wd
 	}
 
+	exePath, err := os.Executable()
+	exePath = filepath.ToSlash(exePath)
+	if err != nil {
+		fmt.Printf("Error getting executable path: %s\n", err.Error())
+	}
+
+	fmt.Printf("Executable path : %s\n", exePath)
+
 	// Expand temporary build directory path
 	//	*buildDir, err = filepath.Abs(*buildDir)
 	if err != nil {
 		fmt.Printf("could expand working directory " + err.Error())
 		os.Exit(1)
 	}
-
-	libPath, err := filepath.Abs("../lib/")
+	libPath := path.Dir(exePath)
+	libPath = path.Join(libPath, "lib")
 
 	// Now compile the source files into asm files
 	if *oneFile != "" {
