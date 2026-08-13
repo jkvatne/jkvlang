@@ -104,6 +104,10 @@ func EmitF32Litteral(litName string, litValue float32) {
 	code.Write(litName + " dd " + value + "\n")
 }
 
+func EmitExtern(name string) {
+	code.Write("extern " + name + "\n")
+}
+
 func EmitSection(section string) {
 	section = strings.Trim(section, ".\n ")
 	code.Write("\nsection ." + section + "\n\n")
@@ -561,15 +565,44 @@ func EmitConcat(free1 bool, free2 bool) {
 }
 
 func EmitPrologue(libPath string) {
-	EmitComment("File \"" + code.UnitName + ".asm\"\n")
-	includeFile("sysinit.asm", libPath)
-	includeFile("syscall.asm", libPath)
-	includeFile("assert.asm", libPath)
-	includeFile("printf.asm", libPath)
-	includeFile("alloc.asm", libPath)
-	includeFile("exit.asm", libPath)
-	includeFile("sys.asm", libPath)
+	/*
+		EmitComment("File \"" + code.UnitName + ".asm\"\n")
+		includeFile("sysinit.asm", libPath)
+		includeFile("syscall.asm", libPath)
+		includeFile("assert.asm", libPath)
+		includeFile("printf.asm", libPath)
+		includeFile("alloc.asm", libPath)
+		includeFile("exit.asm", libPath)
+		includeFile("sys.asm", libPath)
+	*/
+
+	EmitExtern("_sysinit")
+	EmitExtern("_assert")
+	EmitExtern("allocation_count")
+	EmitExtern("_printf")
+	EmitExtern("_print")
+	EmitExtern("_printsp")
+	EmitExtern("_fflush")
+	EmitExtern("_exit")
+	EmitExtern("_invert_err")
+	EmitExtern("_alloc")
+	EmitExtern("_free_struct")
+	EmitExtern("_free_str")
+	EmitExtern("_free_slice")
+	EmitExtern("_create_file")
+	EmitExtern("_read_file")
+	EmitExtern("_close_file")
+	EmitExtern("_write_file")
+	EmitExtern("_len")
+	EmitExtern("_lptr")
+	EmitExtern("_cptr")
+	EmitExtern("_bitlen")
+	EmitExtern("alloc_size_str")
+	EmitExtern("ExitProcess")
+	EmitExtern("f32sign_mask")
+	EmitExtern("f64sign_mask")
 	EmitSection("text")
+
 	emit("global", "main", "", "")
 	code.EmitBlankLine()
 	code.EmitBlankLine()
@@ -796,7 +829,13 @@ func EmitEpilogue(name string) {
 		emit("mov", "r15", "97", "If not zero, exit code=97")
 		EmitLabel(9999, "")
 		emit("mov", "rax", "r15", "Get error code")
-		emit("call", "_exit", "", "")
+		// emit("call", "_exit", "", "")
+		emit("push", "rbp", "", "")
+		emit("mov", "rbp", "rsp", "")
+		emit("and", "rsp", "-16", "")
+		emit("sub", "rsp", "32", "")
+		emit("mov", "rcx", "rax", "")
+		emit("call", "ExitProcess", "", "")
 	} else {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)

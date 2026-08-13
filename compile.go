@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 
 	"github.com/jkvatne/jkv/code"
 )
 
-func CompileFile(name string, workdir string) error {
+func CompileFile(name string, workdir string, libPath string) error {
 	err := code.New(name, workdir)
 	if err != nil {
 		return err
@@ -24,7 +23,6 @@ func CompileFile(name string, workdir string) error {
 	}(s)
 
 	LiteralInit()
-	libPath, err := filepath.Abs("../lib/")
 	EmitPrologue(libPath)
 
 	InitTypes()

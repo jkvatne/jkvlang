@@ -21,6 +21,7 @@ var (
 	run       = flag.Bool("run", true, "Set true to run after compile")
 	test      = flag.Bool("test", false, "Set true to run after compile")
 	link      = flag.Bool("link", true, "Set true to just do linking")
+	linklib   = flag.Bool("linklib", true, "Set true to just do linking")
 	sourceDir = flag.String("src", "", "Source directory where code is found. Defaults to current directory.")
 	oneFile   = flag.String("file", "", "Compile a single file")
 	debug     = flag.Bool("debug", false, "Enable debug mode")
@@ -44,13 +45,24 @@ func CreateBuildDir(buildDir string) {
 	}
 }
 
-func LinkRun(workDir string, outputName string) (err error) {
+func LinkRun(workDir string, libPath string, outputName string) error {
+	var err error
 	// Assemble/link the files
 	outputPath := path.Join(workDir, outputName)
 	if *link {
+		// Assemble library
+		if *linklib {
+			err = Assemble(libPath)
+			if err != nil {
+				return err
+			}
+		}
 		err = Assemble(workDir)
 		if err == nil {
-			err = Link(workDir, outputName)
+			if err != nil {
+				return err
+			}
+			err = Link(workDir, libPath, outputName)
 		}
 	}
 	if err == nil && *run {
@@ -60,21 +72,21 @@ func LinkRun(workDir string, outputName string) (err error) {
 	return err
 }
 
-func Build(workDir string, fileName string) (err error) {
+func Build(workDir string, libPath string, fileName string) (err error) {
 	fmt.Printf("Build '%s'\n", fileName)
 	outputName := strings.TrimSuffix(filepath.Base(fileName), ".jkv") + ".exe"
 	// Make sure output directory is empty
 	CreateBuildDir(workDir)
-	err = CompileFile(fileName, workDir)
+	err = CompileFile(fileName, workDir, libPath)
 	if err == nil {
-		err = LinkRun(workDir, outputName)
+		err = LinkRun(workDir, libPath, outputName)
 	}
 	return err
 }
 
 // CompileDir will compile all source files in the given directory
 // and put the object files in the outputPath
-func CompileDir(inputPath string, workDir string) error {
+func CompileDir(inputPath string, workDir string, libPath string) error {
 	outputName := path.Base(inputPath)
 	// Make sure output directory is empty
 	_ = os.RemoveAll(workDir)
@@ -86,20 +98,20 @@ func CompileDir(inputPath string, workDir string) error {
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := filepath.Join(inputPath, entry.Name())
-			err = CompileFile(name, workDir)
+			err = CompileFile(name, libPath, workDir)
 			if err != nil {
 				return err
 			}
 			fmt.Printf("File %s compiled ok\n", name)
 		}
 	}
-	return LinkRun(workDir, outputName)
+	return LinkRun(workDir, libPath, outputName)
 }
 
 // CompileTests will compile all files in the test directory
 // Files starting with err_ should intentionally fail
 // Uses the build directory for outputs
-func CompileTests(inputPath string, workDir string) (int, error) {
+func CompileTests(inputPath string, workDir string, libPath string) (int, error) {
 	n := 0
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
@@ -112,13 +124,13 @@ func CompileTests(inputPath string, workDir string) (int, error) {
 			name := filepath.Join(inputPath, entry.Name())
 			if strings.HasSuffix(name, ".jkv") {
 				if strings.Contains(name, "err_") {
-					err = Build(workDir, name)
+					err = Build(workDir, libPath, name)
 					if err == nil {
 						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
 					}
 					fmt.Printf("File %s failed with error %v\n", name, err)
 				} else {
-					err = Build(workDir, name)
+					err = Build(workDir, libPath, name)
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
@@ -154,7 +166,7 @@ func Assemble(workDir string) error {
 }
 
 // Link will link all obj files and generate an exe file
-func Link(workDir string, outputName string) error {
+func Link(workDir string, libPath string, outputName string) error {
 	// Make sure the output name includes .exe
 	if !strings.HasSuffix(outputName, ".exe") {
 		outputName += ".exe"
@@ -176,7 +188,17 @@ func Link(workDir string, outputName string) error {
 	LinkerName := "../tools/"
 	if *UseGcc {
 		LinkerName += "MinGW64/bin/gcc.exe"
-		args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+		if *linklib {
+			entries, err = os.ReadDir(libPath)
+			for _, entry := range entries {
+				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
+					args = append(args, path.Join(libPath, entry.Name()))
+				}
+			}
+			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+		} else {
+			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+		}
 	} else if *UseUcrt {
 		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
@@ -194,16 +216,17 @@ func Link(workDir string, outputName string) error {
 	}
 
 	// Print link command line to console
-	/*
-		fmt.Printf(LinkerName + " ")
-		for _, s := range args {
-			fmt.Printf(" %s", s)
-		}
-		fmt.Printf("\n")
-	*/
+
+	fmt.Printf(LinkerName + " ")
+	for _, s := range args {
+		fmt.Printf(" %s", s)
+	}
+	fmt.Printf("\n")
+
 	// Now start the linker
 	output, err := exec.Command(LinkerName, args...).CombinedOutput()
 	if err != nil {
+		println("\n" + string(output))
 		return fmt.Errorf("linking %s error: %s", outputName, err.Error())
 	}
 
@@ -255,11 +278,6 @@ func GoTests() {
 }
 
 func main() {
-	/*s := "'`´\""
-	for i, ch := range s {
-		fmt.Printf("%d: %s  0x%x \n", i, string(ch), int(ch))
-	}*/
-
 	flag.Parse()
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)
@@ -277,21 +295,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	libPath, err := filepath.Abs("../lib/")
+
 	// Now compile the source files into asm files
 	if *oneFile != "" {
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		err = Build(*buildDir, *oneFile)
+		err = Build(*buildDir, libPath, *oneFile)
 	} else if *test {
 		n := 0
-		n, err = CompileTests(*sourceDir, *buildDir)
+		n, err = CompileTests(*sourceDir, *buildDir, libPath)
 		if err == nil {
 			fmt.Printf("------------------------------------------\n")
 			fmt.Printf("Run %d files. All tests passed\n", n)
 		}
 	} else {
-		err = CompileDir(*sourceDir, *buildDir)
+		err = CompileDir(*sourceDir, libPath, *buildDir)
 	}
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())

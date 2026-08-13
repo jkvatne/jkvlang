@@ -10,6 +10,7 @@ section .text
 
 extern printf
 extern fflush
+extern _syscall
 
 global _print
 _print:

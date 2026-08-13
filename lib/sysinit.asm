@@ -4,6 +4,8 @@
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
 
+global ProcessHeap
+
 ;-------------
 section .bss
 ;-------------
@@ -19,6 +21,8 @@ section .data
     locale_str  db ".utf8", 0   ; "UTF" locale, or use "" for system default
     f64sign_mask: dq 0x8000000000000000
     f32sign_mask: dq 0x80000000
+    global f32sign_mask
+    global f64sign_mask
 
 ;-------------
 section .text

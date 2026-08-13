@@ -5,6 +5,7 @@
 ; Symbols from kernel32
 extern GetLastError
 extern FormatMessageA
+extern _syscall
 
 ;-------------
 section .bss

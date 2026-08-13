@@ -3,9 +3,11 @@
 extern GetProcessHeap
 extern HeapAlloc
 extern HeapFree
-global ProcessHeap
+extern ProcessHeap
 
 section .data
+
+global allocation_count
 allocation_count   dq 0
 
 section .rodata

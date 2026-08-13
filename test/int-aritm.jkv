@@ -1,6 +1,6 @@
 
 func main() {
-
+    print("int-aritm.jkv")
     x = 13
     y = 3
     z = -13
