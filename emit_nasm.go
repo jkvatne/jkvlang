@@ -1333,57 +1333,55 @@ func EmitOpF32Const(op Token, x float32) {
 	emit("movd", "eax", xmm(1), "Move float result into rax")
 }
 
-// EmitFloatOp will generate a stack operation on TOS and NOS
-func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
-	// F64 operations
-	if typ1 == code.TYP_F64 || typ2 == code.TYP_F64 {
-		// load TOS into xmm1 and convert to F64 if necessary
-		if typ2.IsInteger() {
-			emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
-		} else if typ2 == code.TYP_F32 {
-			emit("cvtss2sd", xmm(2), "rax", "convert F32  into xmm2")
-		} else if typ2 == code.TYP_F64 {
-			emit("movq", xmm(2), "rax", "EmitFloatOp mov nos to xmm2")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
-		// Load NOS into xmm2 and convert to F64 if necessary
-		emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-		if typ1.IsInteger() {
-			emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
-		} else if typ1 == code.TYP_F32 {
-			emit("cvtss2sd", xmm(1), "rax", "convert F32  into xmm1")
-		} else if typ1 == code.TYP_F64 {
-			emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
-		// Do F64 opertion
-		emitFloatOp(op, 64)
-		emit("movq", "rax", xmm(1), "Move float result into rax")
+func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
+	// load TOS into xmm1 and convert to F64 if necessary
+	if typ2.IsInteger() {
+		emit("cvtsi2sd", xmm(2), "rax", "convert integer into xmm2")
+	} else if typ2 == code.TYP_F32 {
+		emit("cvtss2sd", xmm(2), "rax", "convert F32  into xmm2")
+	} else if typ2 == code.TYP_F64 {
+		emit("movq", xmm(2), "rax", "EmitFloatOp mov nos to xmm2")
 	} else {
-		// F32 operations
-		// load TOS into xmm1 and convert to F64 if necessary
-		if typ1.IsInteger() {
-			emit("cvtsi2ss", xmm(2), "rax", "convert integer into xmm2")
-		} else if typ1 == code.TYP_F32 {
-			emit("movd", xmm(2), "eax", "EmitFloatOp mov nos to xmm2")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
-		// Load NOS into xmm2 and convert to F64 if necessary
-		emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
-		if typ2.IsInteger() {
-			emit("cvtsi2ss", xmm(1), "rax", "convert integer into xmm1")
-		} else if typ2 == code.TYP_F32 {
-			emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
-		} else {
-			return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
-		}
-		emitFloatOp(op, 32)
-		emit("movq", "rax", xmm(1), "Move float result into rax")
+		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 	}
-	code.SetAx()
+	// Load NOS into xmm2 and convert to F64 if necessary
+	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+	if typ1.IsInteger() {
+		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
+	} else if typ1 == code.TYP_F32 {
+		emit("cvtss2sd", xmm(1), "rax", "convert F32  into xmm1")
+	} else if typ1 == code.TYP_F64 {
+		emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
+	} else {
+		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+	}
+	// Do F64 opertion
+	emitFloatOp(op, 64)
+	emit("movq", "rax", xmm(1), "Move float result into rax")
+	return nil
+}
+
+func EmitF32Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
+	// F32 operations
+	// load TOS into xmm1 and convert to F32 if necessary
+	if typ1.IsInteger() {
+		emit("cvtsi2ss", xmm(2), "rax", "convert integer into xmm2")
+	} else if typ1 == code.TYP_F32 {
+		emit("movd", xmm(2), "eax", "EmitFloatOp mov nos to xmm2")
+	} else {
+		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+	}
+	// Load NOS into xmm2 and convert to F32 if necessary
+	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+	if typ2.IsInteger() {
+		emit("cvtsi2ss", xmm(1), "rax", "convert integer into xmm1")
+	} else if typ2 == code.TYP_F32 {
+		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
+	} else {
+		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+	}
+	emitFloatOp(op, 32)
+	emit("movq", "rax", xmm(1), "Move float result into rax")
 	return nil
 }
 

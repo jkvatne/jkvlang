@@ -154,7 +154,12 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			EmitConcat(val1.IsTempObj, val2.IsTempObj)
 			return val1, nil
 		} else {
-			err := EmitFloatOp(op, val1.Typ.Pt, val2.Typ.Pt)
+			var err error
+			if val1.Typ.Pt == code.TYP_F64 || val2.Typ.Pt == code.TYP_F64 {
+				err = EmitF64Op(op, val1.Typ.Pt, val2.Typ.Pt)
+			} else {
+				err = EmitF32Op(op, val1.Typ.Pt, val2.Typ.Pt)
+			}
 			if val1.Typ.Pt == code.TYP_F64 {
 				return val1, nil
 			} else if val2.Typ.Pt == code.TYP_F64 {
