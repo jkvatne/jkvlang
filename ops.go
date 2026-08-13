@@ -129,8 +129,11 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err := EmitCompareIntegers(op, false)
 			return &ValueDef{Typ: &BoolType}, err
-		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
-			err := EmitCompareFloats(op)
+		} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt == code.TYP_F64 {
+			err := EmitCompareF64(op)
+			return &ValueDef{Typ: &BoolType}, err
+		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F32 {
+			err := EmitCompareF32(op)
 			return &ValueDef{Typ: &BoolType}, err
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING {
 			if op == TOK_EQ {
@@ -177,15 +180,21 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitCompareIntConst(op, val2.IntValue, false)
-		} else if val1.Typ.Pt.IsFloat() && val2.Typ.Pt.IsFloat() {
+		} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt == code.TYP_F64 {
 			EmitAssertTosInRax("Get TOS before compare float const")
-			err = EmitCompareFloatConst(op, val2.F64LitNo)
+			err = EmitCompareF64Const(op, val2.FloatValue)
+		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F32 {
+			EmitAssertTosInRax("Get TOS before compare float const")
+			err = EmitCompareF32Const(op, float32(val2.FloatValue))
+		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F64 {
+			EmitAssertTosInRax("Get TOS before compare float const")
+			err = EmitCompareF32Const(op, float32(val2.FloatValue))
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else if val1.Typ.Pt == code.TYP_BOOL && val2.Typ.Pt == code.TYP_BOOL {
 			err = EmitCompareIntConst(op, val2.IntValue, false)
 		} else {
-			err = fmt.Errorf("unknown type combination for compare")
+			err = fmt.Errorf("unknown type combination for compare %s with %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 		}
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
@@ -202,11 +211,9 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			if val1.Typ.Pt == code.TYP_F64 {
-				floatLitNo := AddF64Lit(val1.FloatValue + val2.FloatValue)
-				EmitOpF64Const(op, floatLitNo)
+				EmitOpF64Const(op, val1.FloatValue+val2.FloatValue)
 			} else if val1.Typ.Pt == code.TYP_F32 {
-				floatLitNo := AddF32Lit(float32(val1.FloatValue + val2.FloatValue))
-				EmitOpF32Const(op, floatLitNo)
+				EmitOpF32Const(op, float32(val1.FloatValue+val2.FloatValue))
 			}
 			return &ValueDef{Typ: val1.Typ}, nil
 		} else {

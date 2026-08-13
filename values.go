@@ -21,8 +21,6 @@ type ValueDef struct {
 	BoolValue   bool
 	StringValue string
 	StringLitNo int
-	F64LitNo    int
-	F32LitNo    int
 	IsReturned  bool
 	IsTempObj   bool
 	IsConst     bool

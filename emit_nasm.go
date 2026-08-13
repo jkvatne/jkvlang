@@ -211,13 +211,15 @@ func xmm(sp int) string {
 	return "xmm" + strconv.Itoa(sp)
 }
 
-func EmitPushF64Lit(litNo int) {
+func EmitPushF64Lit(x float64) {
+	litNo := AddF64Lit(x)
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "EmitPushF64Lit()")
 	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
 	code.SetSp()
 }
 
-func EmitPushF32Lit(litNo int) {
+func EmitPushF32Lit(x float32) {
+	litNo := AddF32Lit(x)
 	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "EmitPushF32Lit()")
 	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
 	code.SetSp()
@@ -278,8 +280,9 @@ func AxName(size int) string {
 }
 
 // EmitOpAssignF64 constant float value to variable
-func EmitOpAssignF64(op Token, adr int, litNo int, comment string) error {
+func EmitOpAssignF64(op Token, adr int, x float64, comment string) error {
 	if op == TOK_ASSIGN {
+		litNo := AddF64Lit(x)
 		code.SetAx()
 		emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", comment)
 		code.SetUndef()
@@ -291,8 +294,9 @@ func EmitOpAssignF64(op Token, adr int, litNo int, comment string) error {
 }
 
 // EmitOpAssignF32 constant float value to variable
-func EmitOpAssignF32(op Token, adr int, litNo int, comment string) error {
+func EmitOpAssignF32(op Token, adr int, x float32, comment string) error {
 	if op == TOK_ASSIGN {
+		litNo := AddF32Lit(x)
 		code.SetAx()
 		emit("mov", "rax", "[f32_"+strconv.Itoa(litNo)+"]", comment)
 		code.SetUndef()
@@ -941,6 +945,11 @@ func EmitNegateF64() {
 	emit("xor", "rax", "rcx", "")
 }
 
+func EmitNegateF32() {
+	emit("mov", "rcx", "[f32sign_mask]", "")
+	emit("xor", "rax", "rcx", "")
+}
+
 func EmitNegate() {
 	EmitAssertTosInRax("Value to 'Negate'")
 	emit("neg", "rax", "", "")
@@ -1090,7 +1099,11 @@ func EmitUpdateAppendLength(n int) {
 }
 
 func EmitConvertF32toF64() {
-	emit("cvtss2sd", "xmm0", "dword [rsp]", "convert F32 to F64")
+	if code.AxIsTos() {
+		emit("cvtss2sd", "xmm0", "eax", "convert rax F32 to F64")
+	} else {
+		emit("cvtss2sd", "xmm0", "dword [rsp]", "convert F32 to F64")
+	}
 	emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
 	emit("mov", "[rsp]", "rax", "")
 }
@@ -1286,7 +1299,7 @@ func emitFloatOp(op Token, size int) {
 		if size == 64 {
 			emit("movq", xmm(1), xmm(2), "")
 		} else {
-			emit("movd", xmm(1), xmm(2), "")
+			emit("movq", xmm(1), xmm(2), "")
 		}
 	} else if op == TOK_MULT {
 		emit("muls"+sufix, xmm(1), xmm(2), "Multiply nos by tos")
@@ -1297,7 +1310,7 @@ func emitFloatOp(op Token, size int) {
 		if size == 64 {
 			emit("movq", xmm(1), xmm(2), "")
 		} else {
-			emit("movd", xmm(1), xmm(2), "")
+			emit("movq", xmm(1), xmm(2), "")
 		}
 	} else {
 		panic("operation not implemented for " + op.Name())
@@ -1305,8 +1318,9 @@ func emitFloatOp(op Token, size int) {
 	code.SetAx()
 }
 
-func EmitOpF64Const(op Token, litNo int) {
+func EmitOpF64Const(op Token, x float64) {
 	EmitAssertTosInRax("Get TOS before float op const")
+	litNo := AddF64Lit(x)
 	emit("movq", xmm(1), "rax", "emitOpF64Const move tos in rax to xmm1")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
 	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
@@ -1314,7 +1328,8 @@ func EmitOpF64Const(op Token, litNo int) {
 	emit("movq", "rax", xmm(1), "Move float result into rax")
 }
 
-func EmitOpF32Const(op Token, litNo int) {
+func EmitOpF32Const(op Token, x float32) {
+	litNo := AddF32Lit(x)
 	EmitAssertTosInRax("Get TOS before float op const")
 	emit("movd", xmm(1), "eax", "emitOpF32Const move tos in rax to xmm1")
 	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "emitOpF32Const")
@@ -1378,22 +1393,44 @@ func EmitFloatOp(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	return nil
 }
 
-// EmitCompareFloatConst compares float in TOS with float constant
-func EmitCompareFloatConst(op Token, litNo int) (err error) {
+// EmitCompareF64Const compares float in TOS with float constant
+func EmitCompareF64Const(op Token, x float64) (err error) {
+	litNo := AddF64Lit(x)
 	emit("movq", xmm(1), "rax", "")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
 	emit("movq", xmm(2), "rax", "")
+	emit("ucomisd", xmm(1), xmm(2), "Compare two F64 "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
+}
+
+// EmitCompareF64Const compares float in TOS with float constant
+func EmitCompareF32Const(op Token, x float32) (err error) {
+	litNo := AddF32Lit(x)
+	emit("movd", xmm(1), "eax", "")
+	emit("mov", "eax", "[f32_"+strconv.Itoa(litNo)+"]", "Load float value from literal")
+	emit("movd", xmm(2), "eax", "")
+	emit("ucomiss", xmm(1), xmm(2), "Compare two F32 "+op.Name())
+	err = EmitJumpCond(op, true)
+	return err
+}
+
+// EmitCompareF64 compares two floats in TOS and NOS.
+func EmitCompareF64(op Token) (err error) {
+	emit("movq", xmm(2), "rax", "")
+	EmitPopAx("")
+	emit("movq", xmm(1), "rax", "")
 	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(op, true)
 	return err
 }
 
-// EmitCompareFloats compares two floats in TOS and NOS.
-func EmitCompareFloats(op Token) (err error) {
-	emit("movq", xmm(2), "rax", "")
+// EmitCompareF64 compares two floats in TOS and NOS.
+func EmitCompareF32(op Token) (err error) {
+	emit("movd", xmm(2), "eax", "")
 	EmitPopAx("")
-	emit("movq", xmm(1), "rax", "")
-	emit("ucomisd", xmm(1), xmm(2), "Compare two floats "+op.Name())
+	emit("movd", xmm(1), "eax", "")
+	emit("ucomiss", xmm(1), xmm(2), "Compare two floats "+op.Name())
 	err = EmitJumpCond(op, true)
 	return err
 }

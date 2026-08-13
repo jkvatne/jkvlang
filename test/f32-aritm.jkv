@@ -1,0 +1,45 @@
+
+func main() {
+
+    x = F32(13.0)
+    y = F32(3.0)
+    z = F32(-13.0)
+
+    // Division (Three different combinations of const and var)
+    assert(x/3.0>4.333 && x/3<4.334, "Failed x/3.0, got %f", x/3.0)
+    assert(13.0/y>4.333 && 13.0/y<4.334, "Failed 13.0/y, got %f", 13.0/y)
+    assert(x/y>4.333 && x/y<4.334, "Failed x/y, got %f", x/y)
+
+    // Unary minus
+    w = 10.0-(-z)
+    assert(w==-3.0, "Failed w==-3.0, got %f", w)
+    assert(-z==13.0, "Failed -z==13.0")
+    assert(z==-13.0, "Failed z==-13.0")
+    assert(z-3==-16.0, "Failed z-3==-16.0")
+    w=-z
+    assert(-z==w)
+    assert(w==-z)
+    assert(w==13.0, "Failed w==13.0")
+    assert(-z==13.0, "Failed z==13.0")
+    assert(z-3==-16.0, "Failed z-3==-16.0")
+    assert(-z==13.0, "Failed -z==13.0")
+
+    // Difference
+    assert(13.0-y==10.0, "Failed 13-y")
+    assert(x-3.0==10.0, "Failed x-3")
+    assert(13.0-3==10.0, "Failed 13-3")
+    assert(x-y==10.0, "Failed x-y")
+
+    // Sum
+    assert(13.0+y==16.0, "Failed 13+y, got %f", 13.0+y)
+    assert(x+3.0==16.0, "Failed x+3, got %f", x+3.0)
+    assert(13.0+3.0==16.0, "Failed 13.0+3.0, got %f", 13.0+3.0)
+    assert(x+y==16.0, "Failed x+y, got %f", x+y)
+
+    // Multiply
+    assert(13.0*y==39.0, "Failed 13.0*y, got %f", 13.0*y)
+    assert(x*3.0==39.0, "Failed x*3, got %f", x*3.0)
+    assert(13.0*3.0==39.0, "Failed 13.0*3.0, got %f", 13.0*3.0)
+    assert(x*y==39.0, "Failed x*y, got %f", x*y)
+
+}

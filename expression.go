@@ -61,19 +61,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 					err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 				}
 			} else if t == code.TYP_F64 {
-				if value.F64LitNo == 0 {
-					value.F64LitNo = AddF64Lit(value.FloatValue)
-					err = EmitOpAssignF64(op, lvalue.Offset, value.F64LitNo, "")
-				} else {
-					err = EmitOpAssignF64(op, lvalue.Offset, value.F64LitNo, "")
-				}
+				err = EmitOpAssignF64(op, lvalue.Offset, value.FloatValue, "")
 			} else if t == code.TYP_F32 {
-				if value.F32LitNo == 0 {
-					value.F32LitNo = AddF32Lit(float32(value.FloatValue))
-					err = EmitOpAssignF32(op, lvalue.Offset, value.F32LitNo, "")
-				} else {
-					err = EmitOpAssignF32(op, lvalue.Offset, value.F64LitNo, "")
-				}
+				err = EmitOpAssignF32(op, lvalue.Offset, float32(value.FloatValue), "")
 			} else if t == code.TYP_BOOL {
 				EmitStoreConst(1, value.IntValue, lvalue.Offset, "Assign bool")
 			} else {
@@ -329,20 +319,13 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				}
 				EmitPushTos(parNo, f.name)
 			} else if value.Typ.Pt == code.TYP_F64 {
-				if value.F64LitNo == 0 {
-					value.F64LitNo = AddF64Lit(value.FloatValue)
-				}
-				EmitPushF64Lit(value.F64LitNo)
+				EmitPushF64Lit(value.FloatValue)
 			} else if value.Typ.Pt == code.TYP_F32 {
-				if value.F32LitNo == 0 {
-					value.F32LitNo = AddF32Lit(float32(value.FloatValue))
-				}
 				if f.name == "printf" || f.name == "print" {
 					// Must convert to F64 for print/fprint
-					value.F64LitNo = AddF64Lit(value.FloatValue)
-					EmitPushF64Lit(value.F64LitNo)
+					EmitPushF64Lit(value.FloatValue)
 				} else {
-					EmitPushF32Lit(value.F32LitNo)
+					EmitPushF32Lit(float32(value.FloatValue))
 				}
 			} else {
 				// TODO: Handle other types
@@ -354,7 +337,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				return nil, fmt.Errorf("print's first parameter must be a constant string")
 			}
 			EmitPushTos(parNo, f.name)
-			if f.name == "printf" || f.name == "print" {
+			if f.name == "printf" || f.name == "print" || f.name == "assert" && parNo > 1 {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == code.TYP_STRING {
 					EmitSkipLenCapForPrint()
@@ -794,7 +777,6 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		}
 		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
 		value.Typ = TypeDefs["F64"]
-		value.F64LitNo = AddF64Lit(value.FloatValue)
 		value.IsConst = true
 		nextToken(s)
 	} else if s.token == TOK_CHAR {
@@ -903,13 +885,13 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if len(v) != 1 {
 			return nil, fmt.Errorf("unary minus on invalid value")
 		}
-		if v[0].HasValue() {
-			v[0].IntValue = -v[0].IntValue
-			v[0].FloatValue = -v[0].FloatValue
+		if v[0].IsConst {
+			// v[0].IntValue = -v[0].IntValue
+			// v[0].FloatValue = -v[0].FloatValue
 		} else if v[0].Typ.Pt == code.TYP_F64 {
 			EmitNegateF64()
 		} else {
-			EmitNegate()
+			EmitNegateF32()
 		}
 		value = v[0]
 	} else {
