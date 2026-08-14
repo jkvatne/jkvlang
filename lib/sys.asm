@@ -21,7 +21,7 @@ global _cptr
 global _len
 global _bitlen
 
-extern _syscall
+; extern _syscall
 
 ;-------------
 section .text

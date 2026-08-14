@@ -23,7 +23,7 @@ func CompileFile(name string, workdir string, libPath string) error {
 	}(s)
 
 	LiteralInit()
-	EmitPrologue(libPath)
+	EmitPrologue(libPath, true)
 
 	InitTypes()
 	FuncInit()
