@@ -188,6 +188,17 @@ func EmitFunction(id string) {
 	code.LocalSp = 0
 	if id == "main" {
 		EmitPrintSp()
+		emit("mov", "[argc]", "rcx", "Save arg count")
+		emit("mov", "[argv]", "rdx", "Save arg pointers")
+		emit("mov", "rsi", "rdx", "")
+		emit("mov", "rax", "[rsi]", "")
+		emit("mov", "[arg0]", "rax", "")
+		emit("add", "rsi", "8", "")
+		emit("mov", "rax", "[rsi]", "")
+		emit("mov", "[arg1]", "rax", "")
+		emit("add", "rsi", "8", "")
+		emit("mov", "rax", "[rsi]", "")
+		emit("mov", "[arg2]", "rax", "")
 		emit("call", "_sysinit", "", "")
 	}
 	code.SetUndef()
@@ -602,6 +613,12 @@ func EmitPrologue(libPath string) {
 	EmitExtern("ExitProcess")
 	EmitExtern("f32sign_mask")
 	EmitExtern("f64sign_mask")
+	EmitExtern("argv")
+	EmitExtern("argc")
+	EmitExtern("arg0")
+	EmitExtern("arg1")
+	EmitExtern("arg2")
+	EmitExtern("_cstrlen")
 	EmitSection("text")
 
 	emit("global", "main", "", "")
@@ -1473,5 +1490,10 @@ func EmitLoadBool(value bool) {
 	} else {
 		emit("xor", "rax", "rax", "")
 	}
+	code.SetAx()
+}
+
+func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
+	emit("mov", "rax", "["+name+"]", "Load variable "+name)
 	code.SetAx()
 }

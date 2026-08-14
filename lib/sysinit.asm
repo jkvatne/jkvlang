@@ -23,6 +23,11 @@ section .data
     f32sign_mask: dq 0x80000000
     global f32sign_mask
     global f64sign_mask
+    argc: dq 0
+    argv: dq 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    arg0: dq 0
+    arg1: dq 0
+    arg2: dq 0
 
 ;-------------
 section .text
@@ -32,7 +37,26 @@ extern GetStdHandle
 extern ExitProcess
 extern GetProcessHeap
 
+global argc, argv, arg0, arg1, arg2
 global _sysinit
+global _cstrlen
+
+; strlen will calculate the length of a 0-terminated C-string at [rax]
+_cstrlen:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    mov rax, [rbp+16]
+    mov rdi, [rax]
+    xor   rax,rax      ; compare to zero
+    mov   rcx,-1       ;limit scan length
+    cld
+    repne scasb
+    not rcx
+    dec   rcx          ;minus one for rep going too far by one
+    mov [rbp+24], rcx
+    leave
+    ret
+
 _sysinit:
     ; sysinit will initialize the console handles
     push rbp                         ; Prologue: Save frame pointer

@@ -50,7 +50,7 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 	// Assemble/link the files
 	outputPath := path.Join(workDir, outputName)
 	if *link {
-		// Assemble library
+		// Assemble library if the linklib argument is given
 		if *linklib {
 			err = Assemble(libPath)
 			if err != nil {
@@ -89,8 +89,10 @@ func Build(workDir string, libPath string, fileName string) (err error) {
 func CompileDir(inputPath string, workDir string, libPath string) error {
 	outputName := path.Base(inputPath)
 	// Make sure output directory is empty
-	_ = os.RemoveAll(workDir)
 	err := os.Mkdir(workDir, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("could make work dir, %s", err)
+	}
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("fatal error %s", err.Error())
@@ -242,8 +244,7 @@ func Link(workDir string, libPath string, outputName string) error {
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
 	cwd, _ := os.Getwd()
-	// fmt.Printf("Running \"%s\" in \"%s\"\n", outputName, cwd)
-	out, err := exec.Command(path.Join(cwd, outputName), "").CombinedOutput()
+	out, err := exec.Command(path.Join(cwd, outputName), "arg1", "arg2", "arg3").CombinedOutput()
 	fmt.Printf("%s", string(out))
 	if err != nil {
 		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())

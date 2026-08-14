@@ -722,8 +722,10 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 			EmitLoadErr()
 		} else if localVar.Typ.Pt.IsFloat() {
 			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name, s.currentFuncCall)
-		} else if localVar.IsGlobal {
+		} else if localVar.IsGlobal && localVar.constValue != "" {
 			EmitLoadGlobalConst(localVar.constValue)
+		} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
+			EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
 		} else if localVar.Typ.Pt.IsInteger() {
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		} else {

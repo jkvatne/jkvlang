@@ -37,6 +37,7 @@ func FuncInit() {
 	_, _ = AddFunc("close_file", []*VarDef{&intPar}, nil, true, false)
 	_, _ = AddFunc("bitlen", []*VarDef{&intPar}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("len", []*VarDef{&strPar}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("cstrlen", []*VarDef{&strPar}, []*TypeDef{&I32Type}, true, false)
 }
 
 func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
