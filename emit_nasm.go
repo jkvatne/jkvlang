@@ -567,12 +567,6 @@ func EmitConcat(free1 bool, free2 bool) {
 func EmitPrologue(libPath string, inc bool) {
 	if inc {
 		EmitComment("File \"" + code.UnitName + ".asm\"\n")
-		includeFile("sysinit.asm", libPath)
-		includeFile("syscall.asm", libPath)
-		includeFile("assert.asm", libPath)
-		includeFile("printf.asm", libPath)
-		includeFile("alloc.asm", libPath)
-		includeFile("exit.asm", libPath)
 		includeFile("sys.asm", libPath)
 	}
 
@@ -600,6 +594,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_bitlen")
 		EmitExtern("alloc_size_str")
 		EmitExtern("ExitProcess")
+		EmitExtern("ProcessHeap")
 		EmitExtern("f32sign_mask")
 		EmitExtern("f64sign_mask")
 		EmitExtern("argv")
@@ -607,6 +602,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("arg0")
 		EmitExtern("arg1")
 		EmitExtern("arg2")
+		EmitExtern("args")
 		EmitExtern("_cstrlen")
 		EmitSection("text")
 	}

@@ -32,6 +32,7 @@ var AnyType = TypeDef{Pt: code.TYP_NONE, TypeName: "Any", Basic: true}
 var U64Type = TypeDef{Pt: code.TYP_U64, TypeName: "U64", Basic: true}
 var F64Type = TypeDef{Pt: code.TYP_F64, TypeName: "F64", Basic: true}
 var StringType = TypeDef{Pt: code.TYP_STRING, TypeName: "String", Basic: true, DataOffset: 8, Element: &U8Type}
+var SliceType = TypeDef{Pt: code.TYP_SLICE, TypeName: "Slice", Basic: true, DataOffset: 8, Element: &StringType}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)

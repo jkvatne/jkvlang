@@ -30,6 +30,7 @@ func InitVardefs() {
 	VarDefs["arg0"] = &VarDef{Name: "arg0", Typ: &I64Type, IsGlobal: true}
 	VarDefs["arg1"] = &VarDef{Name: "arg1", Typ: &I64Type, IsGlobal: true}
 	VarDefs["arg2"] = &VarDef{Name: "arg2", Typ: &I64Type, IsGlobal: true}
+	VarDefs["args"] = &VarDef{Name: "args", Typ: &SliceType, IsGlobal: true}
 }
 
 func init() {

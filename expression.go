@@ -1384,7 +1384,7 @@ func ParseFuncDef(s *State) error {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
 				FreeStruct(v.Typ)
-			} else if v.Typ.Pt == code.TYP_SLICE {
+			} else if v.Typ.Pt == code.TYP_SLICE && !v.IsGlobal {
 				// Load local var pointer into rax
 				EmitLoad(8, v.Offset, "Free local slice "+v.Name)
 				EmitFreeSlice(v.Typ)
