@@ -1158,18 +1158,18 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
 }
 
+// EmitLoadGlobal. TOS is index. Pointer is in global variable <id>
 func EmitLoadGlobal(id string, size int, index int, isConst bool) {
-	code.SetAx()
-	emit("mov", "rax", "["+id+"]", "EmitLoadGlobal")
 	if isConst {
+		emit("mov", "rax", "["+id+"]", "EmitLoadGlobal")
 		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
 	} else {
-		EmitAssertTosInRax("")
+		EmitAssertTosInRax("Assure tos (index) is in rax")
 		if size > 1 {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "")
-		code.SetAx()
+		emit("add", "rax", "["+id+"]", "EmitLoadGlobal")
 	}
 	if size == 1 {
 		emit("movzx", "rax", "byte [rax]", "Get char from string in EmitLoadGlobal")
@@ -1180,6 +1180,7 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 	} else {
 		panic("TODO")
 	}
+	code.SetAx()
 }
 
 func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, size int) {

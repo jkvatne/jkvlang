@@ -21,14 +21,12 @@ func next(r RangeIterator) I32 {
 
 func main() {
     j = 0
-/*
-    print("Arg%d=%s", j, args[j])
-    print("Argc=%d", argc)
-    print("Arg%d=%s", 0, args[0])
-    print("Arg%d=%s", 1, args[1])
+    print("argc=%d", argc)
+    print("Arg[j]=%s", args[j])
+    print("Arg[0]=%s", args[0])
+    print("")
     for i=range(0, argc-1) {
-        //print("Arg%d=%s", i, args[i])
+        print("Arg%d=%s", i, args[i])
     }
     print("Done")
-    */
 }
