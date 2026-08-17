@@ -670,10 +670,14 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				size = v.Typ.Element.Size()
 			}
-			EmitLoadAdrToSi(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
+			if vp.IsGlobal {
+				EmitLoadGlobal(id, size, int(index.IntValue), index.IsConst)
+			} else {
+				EmitLoadAdrToSi(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
+			}
 			if size == 1 {
 				v.Typ = &U8Type
-			} else if size == 2 {
+			} else if size >= 2 {
 				v.Typ = v.Typ.Element
 			}
 

@@ -21,13 +21,15 @@ extern GetLastError
 extern FormatMessageA
 extern ExitProcess
 
-global argc, argv, arg0, arg1, arg2, args
+; Global variables
+global argc, argv, args
 global allocation_count
 global f32sign_mask
 global f64sign_mask
 global processHeap
 global alloc_size_str
 
+; Global functions
 global _exit
 global _sysinit
 global _cstrlen
@@ -321,74 +323,6 @@ _bitlen:
     mov [rsp+16], rax
     ret
 
-_getargs:
-    mov [argc],rcx
-    mov [argv],rdx
-    mov rsi,rdx
-    mov rax,[rsi]
-    mov [arg0],rax
-    add rsi,8
-    mov rax,[rsi]
-    mov [arg1],rax
-    add rsi,8
-    mov rax,[rsi]
-    mov [arg2],rax
-    ret
-
-_createslice:
-    mov r14, [argc]  ; Len
-    mov rax, r14
-    imul rax, 8
-    mov r12, rax      ; Cap
-    add rax, 8
-    call _alloc
-    mov r13, rax     ; Slice location
-    mov rdi, rax
-    shl r12, 32
-    add r12, r14
-    mov [rdi], r12   ; Set len/cap in new slice
-    ; Now we can add the strings
-    mov rsi, argv
-    mov rdi, rsi
-    xor rax, rax
-    mov rcx, -1
-    cld
-    repne scasb
-    not rcx
-    dec rcx
-    mov rax, rcx
-    mov r12, rcx
-    shl r12, 32
-    add r12, rcx      ; r12 is now len/cap both with string size
-    add rax, 8
-    call _alloc       ; Allocate new string
-    mov r13, rax      ; r13 is ptr to string
-    mov [rax], r12    ; Store len/cap
-    mov rdi, r13
-    add rdi, 8
-    mov rsi, [argv]
-    mov rcx, r12
-    and rcx, 0x7FFFFFFF
-    cld
-    rep movsb
-    ret
-
-; strlen will calculate the length of a 0-terminated C-string at [rax]
-_cstrlen:
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    mov rax, [rbp+16]
-    mov rdi, [rax]
-    xor   rax,rax      ; compare to zero
-    mov   rcx,-1       ;limit scan length
-    cld
-    repne scasb
-    not rcx
-    dec   rcx          ;minus one for rep going too far by one
-    mov [rbp+24], rcx
-    leave
-    ret
-
 _sysinit:
     ; sysinit will initialize the console handles
     push rbp                         ; Prologue: Save frame pointer
@@ -396,13 +330,16 @@ _sysinit:
     and rsp, -16                     ; Prologue: Align stack by clearing the 4 lsb
     sub rsp, 48                      ; Prologue: Reserve shadow space
 
+    ; Copy argc/argv pointers to global variables
+    mov [argc],rcx
+    mov [argv],rdx
+
     ; Get this threads local allocation heap
     call GetProcessHeap
     mov [processHeap], rax
 
     ; Get command line arguments
-    call _getargs
-    call _createslice
+    call _create_args
 
     ; Load the handle for standard output
     mov   ecx, STD_OUTPUT_HANDLE
@@ -582,5 +519,85 @@ _exit:
     mov rcx, rax
     call ExitProcess
     leave
+    ret
+
+; Calculate length of C-string pointed to by rax and return length in rax
+; Will destroy rcx an rdi
+_cstrlen:
+    mov rdi, rax
+    xor rax, rax
+    mov rcx, -1
+    cld
+    repne scasb
+    not rcx
+    dec rcx
+    mov rax, rcx
+    ret
+
+; strlen will calculate the length of a 0-terminated C-string at [rax]
+; This function uses jkv calling conventions with parameters on the stack
+cstrlen:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    mov rax, [rbp+16]
+    mov rdi, [rax]
+    xor   rax,rax      ; compare to zero
+    mov   rcx,-1       ;limit scan length
+    cld
+    repne scasb
+    not rcx
+    dec   rcx          ;minus one for rep going too far by one
+    mov [rbp+24], rcx
+    leave
+    ret
+
+; Convert a C-string pointed to by rax into a standard const string with cap=0
+; Return pointer to new string in rax. Uses r13, r14, rsi, rdi, rcx
+_cstr_to_string:
+    mov r13, rax
+    call _cstrlen    ; Will destroy rcx an rdi
+    mov r14, rax     ; Save length in r14
+    add rax, 8
+    call _alloc      ; Returns pointer in rax
+    push rax
+    mov rdi, rax
+    mov [rdi], r14   ; Copy length into first 8 bytes of new string
+    add rdi, 8
+    mov rcx, r14          ; Initialzie rcx with string count
+    mov rsi, r13
+    cld
+    rep movsb             ; Copy bytes into new string in rdi
+    pop rax
+    ret
+
+; Create a slice of strings with command line arguments.
+; r12 counts arguments to be copied
+; r11 points to output slice elements
+; r10 points to input c-string array in argv[]
+_create_args:
+    ; Read in command line arguments to argc and argv variables.
+    mov r12, [argc]  ; Number of arguments will be length of slize
+    mov rax, r12     ; Len into rax
+    imul rax, 8      ; Calculate slize size
+    add rax, 8       ; Calculate slize size
+    call _alloc      ; Allocate slize
+    mov [args], rax  ; Save slice in global variable args
+    mov r11, rax     ; r11 points to the new slice's content.
+    mov [r11], r12   ; Set slice length
+    add r11, 8       ; Point to first string in slice
+    mov r10, [argv]  ; r10 points to the first argv string pointer
+    ; Now we can add the strings in a loop over the argv list
+.loop:
+    mov rax, [r10]         ; Point to the argv string itself
+    push r10
+    push r11
+    call _cstr_to_string   ; Convert to string. New string in rax. Uses  r13, r14, rsi, rdi. Rax will point to new string
+    pop r11
+    pop r10
+    mov [r11], rax         ; Save new string in slice
+    add r10, 8             ; Next string pointer in slice
+    add r11, 8             ; next argv
+    dec r12                ; Count args
+    jnz .loop
     ret
 

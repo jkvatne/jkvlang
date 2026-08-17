@@ -57,3 +57,6 @@ was C:/Program Files (x86)/SASM/MinGW64/bin/gcc.exe
 program.o
 
 This fails with -lucrt
+
+Parameters fro building with linked library
+$PROGRAM.OBJ$ $MACRO.OBJ$ C:\Doc\compiler\lib/alloc.obj C:\Doc\compiler\lib/assert.obj C:\Doc\compiler\lib/exit.obj C:\Doc\compiler\lib/printf.obj C:\Doc\compiler\lib/sys.obj C:\Doc\compiler\lib/syscall.obj C:\Doc\compiler\lib/sysinit.obj C:\Doc\compiler\lib/winerror.obj -g -o $PROGRAM$ -m64 -lkernel32

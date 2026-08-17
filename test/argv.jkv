@@ -2,8 +2,6 @@
 
 func main() {
     print("Argc=%d", argc)
-    // print("Argv[0]=%s", arg0)
-    // print("Argv[1]=%s", arg1)
-    // print("Argv[2]=%s", arg2)
-    print("Arg0 len=%d", cstrlen(argv))
+    print("Arg0=%s", args[0])
+    print("Arg1=%s", args[1])
 }
