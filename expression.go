@@ -627,6 +627,9 @@ func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, erro
 func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 	var isIndirect bool
 	vp, ok := VarDefs[id]
+	if vp == nil {
+		return nil, fmt.Errorf("variable %s does not exist", id)
+	}
 	v := *vp
 	if !ok {
 		return nil, fmt.Errorf("expected local variable, got %s", id)

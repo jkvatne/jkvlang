@@ -20,6 +20,16 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
+
+    sum = 0
+    for i = range(2,5) {
+        printf("%d+", i)
+        sum+=i
+    }
+    print("=%d", sum)
+    assert(sum==14)
+
+/*
     r = range(10, 15)
     sum = 0
     loop {
@@ -84,4 +94,5 @@ func main() {
     }
     print("=%d", sum)
     assert(sum==75)
+    */
 }

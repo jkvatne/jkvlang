@@ -1,7 +1,34 @@
+const DONE I32 = 1
 
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(DONE)
+    x = r.start
+    r.start = x+1
+    return x
+}
 
 func main() {
+    j = 0
+/*
+    print("Arg%d=%s", j, args[j])
     print("Argc=%d", argc)
-    print("Arg0=%s", args[0])
-    print("Arg1=%s", args[1])
+    print("Arg%d=%s", 0, args[0])
+    print("Arg%d=%s", 1, args[1])
+    for i=range(0, argc-1) {
+        //print("Arg%d=%s", i, args[i])
+    }
+    print("Done")
+    */
 }

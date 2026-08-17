@@ -432,8 +432,8 @@ func EmitLoadFloat(size int, adr int, comment string, fun string) {
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
 	EmitFlushRax("EmitLoad: push TOS")
-	code.SetAx()
 	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), "EmitLoad: "+comment)
+	code.SetAx()
 }
 
 // EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
@@ -1160,18 +1160,19 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 
 func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 	code.SetAx()
-	emit("mov", "rax", "["+id+"]", "")
+	emit("mov", "rax", "["+id+"]", "EmitLoadGlobal")
 	if isConst {
 		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
 	} else {
-		emit("pop", "rax", "", Sp(-1))
-		emit("imul", "rax", strconv.Itoa(size), "")
+		EmitAssertTosInRax("")
+		if size > 1 {
+			emit("imul", "rax", strconv.Itoa(size), "")
+		}
 		emit("add", "rax", "8", "")
-		emit("add", "rax", "rbx", "")
 		code.SetAx()
 	}
 	if size == 1 {
-		emit("movzx", "rax", "byte [rax]", "Get char from string")
+		emit("movzx", "rax", "byte [rax]", "Get char from string in EmitLoadGlobal")
 	} else if size == 2 || size == 4 {
 		emit("movzx", "rax", DataType(size)+"[rax]", "")
 	} else if size == 8 {
@@ -1185,19 +1186,23 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 	// Load variable address into rax
 	if !isIndirect {
 		code.SetAx()
-		emit("mov", "rax", BpRel(offset), "EmitLoadEa")
+		emit("mov", "rax", BpRel(offset), "EmitLoadAdrToSi")
 	}
 	if isConst {
 		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
 	} else {
-		emit("pop", "rax", "", Sp(-1))
-		emit("imul", "rax", strconv.Itoa(size), "")
+		// TOS is index, NOS is pointer
+		EmitAssertTosInRax("")
+		emit("pop", "rbx", "", "NOS into rbx"+Sp(-1))
+		if size > 1 {
+			emit("imul", "rax", strconv.Itoa(size), "")
+		}
 		emit("add", "rax", "8", "")
 		emit("add", "rax", "rbx", "")
 		code.SetAx()
 	}
 	if size == 1 {
-		emit("movzx", "rax", "byte [rax]", "Get char from string")
+		emit("movzx", "rax", "byte [rax]", "Get char from string in EmitLoadAdrToSi")
 	} else if size == 2 || size == 4 {
 		emit("movzx", "rax", DataType(size)+"[rax]", "")
 	} else if size == 8 {

@@ -36,7 +36,6 @@ func main() {
     assert(p.points[2]==2, "Failed 6")
 
     // 3. Append to slice
-    j=2
     k=4
     m=5
     append(p.points, 3, k, m)
@@ -57,8 +56,10 @@ func main() {
     assert(p.name.last=="Vatne", "Failed 13")
 
     // 6. Test indexing struct string char with const and var
+    j=2
     assert(p.name.last[j]=='t', "Failed 14")
-    assert(p.name.last[3]=='n', "Failed 15")
+    assert(p.name.last[2]=='t', "Failed 15")
+    assert(p.name.last[3]=='n', "Failed 16")
 
     // 7. Test assign to char in struct string
     k=-1
@@ -66,5 +67,5 @@ func main() {
     // This will not fail. p.name.last is a string literal (constant - not mutable).
     // It should panic or give compiler warning, but currently it does not.
     p.name.last[j+k]='x'
-    assert(p.name.last=="Vaxne", "Failed 16")
+    assert(p.name.last=="Vaxne", "Failed 17")
 }
