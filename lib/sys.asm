@@ -22,7 +22,7 @@ extern FormatMessageA
 extern ExitProcess
 
 ; Global variables
-global argc, argv, args
+global argc, argv, args, env, envs, envc
 global allocation_count
 global f32sign_mask
 global f64sign_mask
@@ -81,10 +81,10 @@ f64sign_mask: dq 0x8000000000000000
 f32sign_mask: dq 0x80000000
 argc: dq 0
 argv: dq 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-arg0: dq 0
-arg1: dq 0
-arg2: dq 0
 args: dq 0   ; Slice for arguments
+envs: dq 0   ; Slice for environment
+env: dq 0
+envc: dq 0
 allocation_count   dq 0
 
 ;-------------
@@ -333,13 +333,14 @@ _sysinit:
     ; Copy argc/argv pointers to global variables
     mov [argc],rcx
     mov [argv],rdx
-
+    mov [env], r8
     ; Get this threads local allocation heap
     call GetProcessHeap
     mov [processHeap], rax
 
     ; Get command line arguments
     call _create_args
+    call _create_envs
 
     ; Load the handle for standard output
     mov   ecx, STD_OUTPUT_HANDLE
@@ -586,6 +587,49 @@ _create_args:
     mov [r11], r12   ; Set slice length
     add r11, 8       ; Point to first string in slice
     mov r10, [argv]  ; r10 points to the first argv string pointer
+    ; Now we can add the strings in a loop over the argv list
+.loop:
+    mov rax, [r10]         ; Point to the argv string itself
+    push r10
+    push r11
+    call _cstr_to_string   ; Convert to string. New string in rax. Uses  r13, r14, rsi, rdi. Rax will point to new string
+    pop r11
+    pop r10
+    mov [r11], rax         ; Save new string in slice
+    add r10, 8             ; Next string pointer in slice
+    add r11, 8             ; next argv
+    dec r12                ; Count args
+    jnz .loop
+    ret
+
+; Create a slice of strings with environment string
+; r12 counts arguments to be copied
+; r11 points to output slice elements
+; r10 points to input c-string array in argv[]
+_create_envs:
+    mov r10, [env]   ; r10 points to the first env string pointer
+    xor r12, r12
+.countenv:
+    mov rax, [r10]
+    or rax, rax
+    jz .endenvcount
+    inc r12
+    add r10, 8
+    jmp .countenv
+.endenvcount:
+    mov [envc], r12
+
+    mov r10, [env]   ; r10 points to the first env string pointer
+    ; mov r12, 5       ; Number of arguments will be length of slize
+    mov rax, r12     ; Len into rax
+    imul rax, 8      ; Calculate slize size
+    add rax, 8       ; Calculate slize size
+    call _alloc      ; Allocate slize
+    mov [envs], rax  ; Save slice in global variable args
+    mov r11, rax     ; r11 points to the new slice's content.
+    mov [r11], r12   ; Set slice length
+    add r11, 8       ; Point to first string in slice
+    mov r10, [env]   ; r10 points to the first argv string pointer
     ; Now we can add the strings in a loop over the argv list
 .loop:
     mov rax, [r10]         ; Point to the argv string itself

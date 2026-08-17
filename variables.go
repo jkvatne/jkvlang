@@ -27,10 +27,10 @@ func InitVardefs() {
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, IsGlobal: true}
 	VarDefs["argc"] = &VarDef{Name: "argc", Typ: &I64Type, IsGlobal: true}
 	VarDefs["argv"] = &VarDef{Name: "argv", Typ: &I64Type, IsGlobal: true}
-	VarDefs["arg0"] = &VarDef{Name: "arg0", Typ: &I64Type, IsGlobal: true}
-	VarDefs["arg1"] = &VarDef{Name: "arg1", Typ: &I64Type, IsGlobal: true}
-	VarDefs["arg2"] = &VarDef{Name: "arg2", Typ: &I64Type, IsGlobal: true}
+	VarDefs["env"] = &VarDef{Name: "env", Typ: &I64Type, IsGlobal: true}
 	VarDefs["args"] = &VarDef{Name: "args", Typ: &SliceType, IsGlobal: true}
+	VarDefs["envs"] = &VarDef{Name: "envs", Typ: &SliceType, IsGlobal: true}
+	VarDefs["envc"] = &VarDef{Name: "envc", Typ: &I64Type, IsGlobal: true}
 }
 
 func init() {
