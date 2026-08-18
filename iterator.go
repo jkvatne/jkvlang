@@ -125,7 +125,7 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected a single state in for-loop")
 		}
 		code.OutputArgCode()
-		f := FuncDefs["next"]
+		f := FindFuncDef("next", []*TypeDef{&StructType})
 		if f == nil {
 			return fmt.Errorf("range must have a next function")
 		}
@@ -133,7 +133,7 @@ func ParseFor(s *State) error {
 		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
 		// Insert call next() before for block
 		EmitLabel(startLabel, "Start of loop")
-		EmitCall("next", 1, false)
+		EmitCall("next1", 1, false)
 		// Assign result to loop variable
 		if !s.found(TOK_LBRACE) {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)

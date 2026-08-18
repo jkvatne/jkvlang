@@ -12,6 +12,13 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
 func next(r RangeIterator) I32 {
     if r.start>r.end ? fail(DONE)
     x = r.start
@@ -20,12 +27,13 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    j = 0
+    /*j = 0
     print("argc=%d", argc)
     print("Arg[j]=%s", args[j])
     print("Arg[0]=%s", args[0])
     print("")
-    for i=range(0, argc-1) {
+    */
+    for i=range(argc) {
         print("Arg%d=%s", i, args[i])
     }
     print("\nEnvironment variables, count=%d", envc)

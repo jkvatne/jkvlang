@@ -1,54 +1,85 @@
 package main
 
-import "fmt"
+import "strconv"
 
 type FuncDef struct {
 	name          string
+	label         string
 	returnTypes   []*TypeDef
-	parameters    []*VarDef
+	parameters    []*TypeDef
 	floatParCount int
 	stackSize     int
 	builtin       bool
 	VarArg        bool
 }
 
-var FuncDefs map[string]*FuncDef
+var funcDefList []*FuncDef
 
 func FuncInit() {
-	FuncDefs = make(map[string]*FuncDef)
-	strPar := VarDef{Typ: &StringType, Name: "strarg"}
-	boolPar := VarDef{Typ: &BoolType, Name: "boolarg"}
-	intPar := VarDef{Typ: &I64Type, Name: "intarg"}
-	ptrPar := VarDef{Typ: &PtrType, Name: "ptrarg"}
-	anyPar := VarDef{Typ: &AnyType, Name: "anyarg"}
-	_, _ = AddFunc("println", []*VarDef{&strPar}, nil, true, true)
-	_, _ = AddFunc("printf", []*VarDef{&strPar}, nil, true, true)
-	_, _ = AddFunc("print", []*VarDef{&strPar}, nil, true, true)
-	_, _ = AddFunc("fflush", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("flush", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("assert", []*VarDef{&boolPar, &anyPar}, nil, true, true)
-	_, _ = AddFunc("exit", []*VarDef{&strPar}, nil, true, false)
-	_, _ = AddFunc("invert_err", []*VarDef{}, nil, true, false)
-	_, _ = AddFunc("create_file", []*VarDef{&ptrPar, &intPar, &intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("cptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("lptr", []*VarDef{&strPar}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("write_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
-	_, _ = AddFunc("read_file", []*VarDef{&intPar, &intPar, &intPar, &intPar, &intPar}, []*TypeDef{&I64Type}, true, false)
-	_, _ = AddFunc("close_file", []*VarDef{&intPar}, nil, true, false)
-	_, _ = AddFunc("bitlen", []*VarDef{&intPar}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("len", []*VarDef{&strPar}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("cstrlen", []*VarDef{&strPar}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("println", []*TypeDef{&StringType}, nil, true, true)
+	_, _ = AddFunc("printf", []*TypeDef{&StringType}, nil, true, true)
+	_, _ = AddFunc("print", []*TypeDef{&StringType}, nil, true, true)
+	_, _ = AddFunc("fflush", []*TypeDef{}, nil, true, false)
+	_, _ = AddFunc("flush", []*TypeDef{}, nil, true, false)
+	_, _ = AddFunc("assert", []*TypeDef{&BoolType, &AnyType}, nil, true, true)
+	_, _ = AddFunc("exit", []*TypeDef{&StringType}, nil, true, false)
+	_, _ = AddFunc("invert_err", []*TypeDef{}, nil, true, false)
+	_, _ = AddFunc("create_file", []*TypeDef{&PtrType, &I32Type, &I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("cptr", []*TypeDef{&StringType}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("lptr", []*TypeDef{&StringType}, []*TypeDef{&PtrType}, true, false)
+	_, _ = AddFunc("write_file", []*TypeDef{&I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&I64Type}, true, false)
+	_, _ = AddFunc("read_file", []*TypeDef{&I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&I64Type}, true, false)
+	_, _ = AddFunc("close_file", []*TypeDef{&I32Type}, nil, true, false)
+	_, _ = AddFunc("bitlen", []*TypeDef{&I32Type}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("len", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("cstrlen", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
 }
 
-func AddFunc(id string, parList []*VarDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
-	f := FuncDefs[id]
-	if f != nil {
-		return nil, fmt.Errorf("function %s already defined", id)
+func FuncCount(name string) int {
+	cnt := 0
+	for _, f := range funcDefList {
+		if f.name == name {
+			cnt++
+		}
 	}
-	// New function
-	f = &FuncDef{name: id, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
-	FuncDefs[id] = f
-	// Calculate size
+	return cnt
+}
+
+func FindFuncDef(id string, parameters []*TypeDef) *FuncDef {
+	for _, f := range funcDefList {
+		if f.name == id {
+			if f.VarArg && len(f.parameters) <= len(parameters) || len(f.parameters) == len(parameters) {
+				return f
+			}
+		}
+	}
+	return nil
+}
+
+func AddFunc(id string, parList []*TypeDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
+	n := FuncCount(id)
+	name := id
+	if !builtin {
+		name = id + strconv.Itoa(n+1)
+	}
+	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)
+	funcDefList = append(funcDefList, f)
 	return f, nil
+}
+
+func TypeListVal(valuelist []*ValueDef) []*TypeDef {
+	l := make([]*TypeDef, 0, 8)
+	for _, v := range valuelist {
+		l = append(l, v.Typ)
+	}
+	return l
+}
+
+func TypeListVar(valuelist []*VarDef) []*TypeDef {
+	l := make([]*TypeDef, 0, 8)
+	for _, v := range valuelist {
+		l = append(l, v.Typ)
+	}
+	return l
 }

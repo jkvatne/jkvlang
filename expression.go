@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -281,7 +280,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 // Assumes the ( is consumed already
-func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error) {
+func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err error) {
 	parNo := 0
 	for { // each argument in the actual argument list
 		parNo++
@@ -292,7 +291,7 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 		if parNo > 1 {
 			code.NewArgCode()
 		}
-		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + f.name + "'")
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcname + "'")
 		values, err1 := ParseExpression(s)
 		if err1 != nil {
 			return nil, err1
@@ -304,24 +303,24 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == code.TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
-				EmitPushTos(parNo, f.name)
-				if f.name == "printf" || f.name == "print" {
+				EmitPushTos(parNo, funcname)
+				if funcname == "printf" || funcname == "print" {
 					EmitSkipLenCapForPrint()
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(value.IntValue, "")
-				EmitPushTos(parNo, f.name)
+				EmitPushTos(parNo, funcname)
 			} else if value.Typ.Pt == code.TYP_BOOL {
 				if value.BoolValue {
 					EmitPushConst(1, "")
 				} else {
 					EmitPushConst(0, "")
 				}
-				EmitPushTos(parNo, f.name)
+				EmitPushTos(parNo, funcname)
 			} else if value.Typ.Pt == code.TYP_F64 {
 				EmitPushF64Lit(value.FloatValue)
 			} else if value.Typ.Pt == code.TYP_F32 {
-				if f.name == "printf" || f.name == "print" {
+				if funcname == "printf" || funcname == "print" {
 					// Must convert to F64 for print/fprint
 					EmitPushF64Lit(value.FloatValue)
 				} else {
@@ -332,12 +331,12 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
-			if parNo == 1 && f.name == "print" {
+			if parNo == 1 && funcname == "print" {
 				// Check that the first parameter is a constant string literal
 				return nil, fmt.Errorf("print's first parameter must be a constant string")
 			}
-			EmitPushTos(parNo, f.name)
-			if f.name == "printf" || f.name == "print" || f.name == "assert" && parNo > 1 {
+			EmitPushTos(parNo, funcname)
+			if funcname == "printf" || funcname == "print" || funcname == "assert" && parNo > 1 {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == code.TYP_STRING {
 					EmitSkipLenCapForPrint()
@@ -375,17 +374,18 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 			} else if value.Typ.Pt.IsObject() {
 				// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
 				// and it is the result of a function call, then we have to free it after the call.
+				/* TODO
 				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
 					// If it was a local variable or a constant, we should not free it.
 					// TODO: FInd a better way than checking for names
-					if value.IsTempObj && f.name != "cptr" && f.name != "lptr" {
+					if value.IsTempObj && funcname != "cptr" && funcname != "lptr" {
 						str := "   mov rax, rsp   ; Cleanup\n"
 						str += fmt.Sprintf("   add rax,%d\n", parNo*8-8)
 						str += "   mov rax, [rax]\n"
-						str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, f.name)
+						str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, funcname)
 						code.SetCleanupCode(str)
 					}
-				}
+				}*/
 
 			} else {
 				// We have a simple value on the stack. Just continue.
@@ -409,30 +409,31 @@ func ParseActualArgList(s *State, f *FuncDef) (valueList []*ValueDef, err error)
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	s.currentFuncCall = id
-	f := FuncDefs[id]
-	if f == nil {
+	if FuncCount(id) == 0 {
 		s.currentFuncCall = ""
 		return nil, fmt.Errorf("expected a function name, got: %s", id)
 	}
 
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
-	values, err := ParseActualArgList(s, f)
+	values, err := ParseActualArgList(s, id)
 	if err != nil {
 		s.currentFuncCall = ""
 		return nil, err
 	}
-	if !f.VarArg && len(values) != len(f.parameters) {
-		return nil, fmt.Errorf("expected %d arguments, got %d", len(f.parameters), len(values))
+	f := FindFuncDef(id, TypeListVal(values))
+	if f == nil {
+		return nil, fmt.Errorf("Function %s with wrong parameters", id)
 	}
 
 	// Check for correct argument types
+	/* TODO
 	for i, v := range values {
 		par := f.parameters[min(i, len(f.parameters)-1)]
 		if !CanAssign(par.Typ.Pt, v.Typ.Pt) && !strings.HasPrefix(id, "print") && par.Typ.Pt != code.TYP_NONE {
 			return nil, fmt.Errorf("wrong type for parameter %d in %s", i+1, id)
 		}
-	}
+	}*/
 
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
@@ -451,7 +452,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 
 	// Do actual call
 	// ----------------------------------
-	EmitCall(id, len(values), f.builtin)
+	EmitCall(f.label, len(values), f.builtin)
 
 	code.OutputCleanupCode(len(values))
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
@@ -1307,7 +1308,12 @@ func ParseFuncDef(s *State) error {
 	}
 	VarReset(s)
 	fun := s.tokenString
-	EmitFunction(fun)
+	if fun[0] != '-' && fun != "main" {
+		n := FuncCount(fun)
+		EmitFunction(fun + strconv.Itoa(n+1))
+	} else {
+		EmitFunction(fun)
+	}
 	nextToken(s)
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
@@ -1341,7 +1347,7 @@ func ParseFuncDef(s *State) error {
 		}
 	}
 	var f *FuncDef
-	f, err = AddFunc(fun, parList, returnList, false, false)
+	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false)
 	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
 	if err != nil {
