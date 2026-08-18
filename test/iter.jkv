@@ -12,6 +12,13 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
 func next(r RangeIterator) I32 {
     if r.start>r.end ? fail(DONE)
     x = r.start
@@ -29,7 +36,6 @@ func main() {
     print("=%d", sum)
     assert(sum==14)
 
-/*
     r = range(10, 15)
     sum = 0
     loop {
@@ -94,5 +100,13 @@ func main() {
     }
     print("=%d", sum)
     assert(sum==75)
-    */
+
+    sum=0
+    for i=range(5) {
+        sum+=i
+        printf("%d+", i)
+    }
+    print("=%d", sum)
+    assert(sum==10)
+
 }

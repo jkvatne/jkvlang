@@ -133,7 +133,7 @@ func ParseFor(s *State) error {
 		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
 		// Insert call next() before for block
 		EmitLabel(startLabel, "Start of loop")
-		EmitCall("next1", 1, false)
+		EmitCall("next_1", 1, false)
 		// Assign result to loop variable
 		if !s.found(TOK_LBRACE) {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)

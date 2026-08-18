@@ -64,7 +64,7 @@ func AddFunc(id string, parList []*TypeDef, returnList []*TypeDef, builtin bool,
 	n := FuncCount(id)
 	name := id
 	if !builtin {
-		name = id + strconv.Itoa(n+1)
+		name = id + "_" + strconv.Itoa(n+1)
 	}
 	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)

@@ -1312,7 +1312,7 @@ func ParseFuncDef(s *State) error {
 	fun := s.tokenString
 	if fun[0] != '-' && fun != "main" {
 		n := FuncCount(fun)
-		EmitFunction(fun + strconv.Itoa(n+1))
+		EmitFunction(fun + "_" + strconv.Itoa(n+1))
 	} else {
 		EmitFunction(fun)
 	}
