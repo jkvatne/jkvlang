@@ -371,22 +371,6 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 				} else {
 					return nil, fmt.Errorf("printf arguments of type %s is not yet handled", value.Typ.Pt.Name())
 				}
-			} else if value.Typ.Pt.IsObject() {
-				// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
-				// and it is the result of a function call, then we have to free it after the call.
-				/* TODO
-				if !f.parameters[min(parNo, len(f.parameters))-1].IsInputType {
-					// If it was a local variable or a constant, we should not free it.
-					// TODO: FInd a better way than checking for names
-					if value.IsTempObj && funcname != "cptr" && funcname != "lptr" {
-						str := "   mov rax, rsp   ; Cleanup\n"
-						str += fmt.Sprintf("   add rax,%d\n", parNo*8-8)
-						str += "   mov rax, [rax]\n"
-						str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, funcname)
-						code.SetCleanupCode(str)
-					}
-				}*/
-
 			} else {
 				// We have a simple value on the stack. Just continue.
 			}
@@ -424,6 +408,24 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	f := FindFuncDef(id, TypeListVal(values))
 	if f == nil {
 		return nil, fmt.Errorf("Function %s with wrong parameters", id)
+	}
+
+	for parNo, value := range values {
+		if value.Typ.Pt.IsObject() {
+			// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
+			// and it is the result of a function call, then we have to free it after the call.
+			// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
+			// If it was a local variable or a constant, we should not free it.
+			// TODO: FInd a better way than checking for names
+			if value.IsTempObj && id != "cptr" && id != "lptr" {
+				str := "   mov rax, rsp   ; Cleanup\n"
+				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
+				str += "   mov rax, [rax]\n"
+				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, id)
+				code.SetCleanupCode(str)
+			}
+			// }
+		}
 	}
 
 	// Check for correct argument types

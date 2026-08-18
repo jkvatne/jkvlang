@@ -157,7 +157,7 @@ func EmitPushTos(argNo int, funcName string) {
 }
 
 func EmitCall(id string, nPar int, builtin bool) {
-	EmitComment("Call function")
+	EmitComment("Call function " + id)
 	if builtin {
 		id = "_" + id
 	}

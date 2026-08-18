@@ -1,8 +1,4 @@
 
-func f0(s String) String {
-    return "f0 "+s
-}
-
 func f1(s String) String {
     t = "f1 "
     return t+s
@@ -11,6 +7,10 @@ func f1(s String) String {
 func f2(s String) String {
     t = " f2"
     return s+t
+}
+
+func f0(s String) String {
+    return "f0 "+s
 }
 
 func f3(s String, t String) String {
@@ -26,6 +26,8 @@ func g2(s String, t String) String {
 }
 
 func main() {
+    w = f1(f2("F1F2"))
+
     // Test asserts that fail compare strings that are different size or different content
     assert(f0("xyz")=="f0 xyz", "Should not fail")
     assert(f0("axyz")=="f0 xyz", "Intentionally fail")

@@ -16,12 +16,13 @@ type FuncDef struct {
 var funcDefList []*FuncDef
 
 func FuncInit() {
+	funcDefList = make([]*FuncDef, 0, 16)
 	_, _ = AddFunc("println", []*TypeDef{&StringType}, nil, true, true)
 	_, _ = AddFunc("printf", []*TypeDef{&StringType}, nil, true, true)
 	_, _ = AddFunc("print", []*TypeDef{&StringType}, nil, true, true)
 	_, _ = AddFunc("fflush", []*TypeDef{}, nil, true, false)
 	_, _ = AddFunc("flush", []*TypeDef{}, nil, true, false)
-	_, _ = AddFunc("assert", []*TypeDef{&BoolType, &AnyType}, nil, true, true)
+	_, _ = AddFunc("assert", []*TypeDef{&BoolType}, nil, true, true)
 	_, _ = AddFunc("exit", []*TypeDef{&StringType}, nil, true, false)
 	_, _ = AddFunc("invert_err", []*TypeDef{}, nil, true, false)
 	_, _ = AddFunc("create_file", []*TypeDef{&PtrType, &I32Type, &I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&PtrType}, true, false)
@@ -37,6 +38,9 @@ func FuncInit() {
 
 func FuncCount(name string) int {
 	cnt := 0
+	if len(funcDefList) == 0 {
+		return 0
+	}
 	for _, f := range funcDefList {
 		if f.name == name {
 			cnt++
