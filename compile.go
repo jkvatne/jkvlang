@@ -51,9 +51,9 @@ func CompileFile(name string, workdir string, libPath string) error {
 		}
 	}
 	EmitSection("rodata")
-	for i, l := range LiteralDefs {
+	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
-		EmitLitteral("str"+strconv.Itoa(i), l)
+		EmitStringLitteral("str"+strconv.Itoa(i), l)
 	}
 	for i, l := range F64LiteralDefs {
 		EmitF64Litteral("f64_"+strconv.Itoa(i+1), l)

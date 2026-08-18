@@ -74,7 +74,7 @@ func emit(op string, dst string, src string, comment string) {
 	code.Write(txt)
 }
 
-func EmitLitteral(litName string, litValue string) {
+func EmitStringLitteral(litName string, litValue string) {
 	code.Write("alignb 8\n")
 	code.Write(litName + " dq " + strconv.Itoa(len(litValue)) + "\n")
 	code.Write("     db `" + litValue + "`, 00h\n")
