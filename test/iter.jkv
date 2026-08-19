@@ -1,5 +1,3 @@
-const DONE I32 = 1
-
 type RangeIterator = struct {
     start I32
     end I32
@@ -20,7 +18,7 @@ func range(count I32) RangeIterator {
 }
 
 func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(DONE)
+    if r.start>r.end ? fail(1)
     x = r.start
     r.start = x+1
     return x

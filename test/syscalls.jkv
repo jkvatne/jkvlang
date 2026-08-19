@@ -1,0 +1,6 @@
+
+func main() {
+    v = GetKeyState(17)  // Ctrl key
+    print("CrtlKey=%d", v)
+
+}

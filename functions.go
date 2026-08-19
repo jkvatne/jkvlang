@@ -34,6 +34,7 @@ func FuncInit() {
 	_, _ = AddFunc("bitlen", []*TypeDef{&I32Type}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("len", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("cstrlen", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("GetKeyState", []*TypeDef{&I32Type}, []*TypeDef{&I32Type}, true, false)
 }
 
 func FuncCount(name string) int {

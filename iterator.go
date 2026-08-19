@@ -53,12 +53,9 @@ func ParseFail(s *State) error {
 			EmitJump(s.returnLbl, "Failed with const var="+strconv.Itoa(1))
 		}
 	} else if s.token == TOK_INT {
-		c := VarDefs[s.tokenString]
-		if !c.Typ.Pt.IsInteger() {
-			return fmt.Errorf("expected integer parameter for 'fail'")
-		}
-		// EmitStoreErr(int(c.Value.IntValue))
+		EmitStoreErr(int(s.ConstValue.Bits))
 		EmitJump(s.returnLbl, "Failed with const")
+		s.next()
 	}
 	if !s.found(TOK_RPAR) {
 		return fmt.Errorf("expected ')' after 'fail'")

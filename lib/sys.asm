@@ -20,6 +20,7 @@ extern fflush
 extern GetLastError
 extern FormatMessageA
 extern ExitProcess
+extern GetKeyState
 
 ; Global variables
 global argc, argv, args, env, envs, envc
@@ -145,6 +146,7 @@ _printsp:
     call _printf                ; system function to call
     add sp, 16
     ret
+
 
 ; alloc returns a pointerto the allocated memory in rax.
 ; One argument is needed, in rax, and that is the requested size in bytes.
@@ -452,6 +454,14 @@ _invert_err:
     mov r15, 0
     ret
 
+_GetKeyState:
+    mov rdi, GetKeyState
+    mov rbx, 8
+    call _syscall
+    mov rdi, rsp
+    add rdi, 16
+    mov [rdi], rax
+    ret
 
 ; syscall will call any dll function that is reachable
 ; The address of the function should be in rdi, arg count *8 in rbx
