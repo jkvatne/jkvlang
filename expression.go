@@ -908,6 +908,10 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			EmitNegate()
 		}
 		value = v[0]
+	} else if s.token == TOK_SYSCALL {
+		s.next()
+		err = ParseSyscall(s)
+		value.Typ = &I32Type
 	} else {
 		return nil, fmt.Errorf("unexpected token %s", s.tokenString)
 	}
@@ -1604,5 +1608,34 @@ func ParseAppend(s *State) error {
 	}
 	// Add n to length
 	EmitUpdateAppendLength(n)
+	return nil
+}
+
+func ParseSyscall(s *State) error {
+	if !s.found(TOK_LPAR) {
+		return fmt.Errorf("expected left parenthesis after 'call'")
+	}
+	id := s.tokenString
+	s.next()
+	if !s.found(TOK_COMMA) {
+		return fmt.Errorf("expected comma, got %s", s.tokenString)
+	}
+	EmitComment("Syscall to " + id)
+	values, err := ParseExpressions(s)
+	if err != nil {
+		return err
+	}
+	if values[0].IsConst {
+		EmitPushConst(values[0].IntValue, "")
+		EmitFlushRax("")
+	}
+	emit("mov", "rdi", id, "")
+	emit("mov", "rbx", "8", "")
+	emit("call", "_syscall", "", "")
+	emit("mov", "rdi", "rsp", "")
+	emit("add", "rsp", "8", "")
+	if !s.found(TOK_RPAR) {
+		return fmt.Errorf("expected right parenthesis after 'call', got %s", s.tokenString)
+	}
 	return nil
 }

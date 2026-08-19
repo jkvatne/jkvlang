@@ -88,6 +88,7 @@ const (
 	TOK_APPEND
 	TOK_INV_SHL
 	TOK_INV_SHR
+	TOK_SYSCALL
 	TOK_SIZE
 )
 
@@ -167,6 +168,7 @@ var TokenNames = [...]string{
 	TOK_APPEND:      "APPEND",
 	TOK_INV_SHL:     "INV_SHL",
 	TOK_INV_SHR:     "INV_SHR",
+	TOK_SYSCALL:     "SYSCALL",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -555,6 +557,8 @@ func nextToken(s *State) {
 				s.token = TOK_FAIL
 			case "append":
 				s.token = TOK_APPEND
+			case "call":
+				s.token = TOK_SYSCALL
 			}
 		case s.ch1 == '[':
 			s.token = TOK_LBRACK
