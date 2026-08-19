@@ -911,6 +911,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 	} else if s.token == TOK_SYSCALL {
 		s.next()
 		err = ParseSyscall(s)
+		// Syscall allways retunes a single value
 		value.Typ = &I32Type
 	} else {
 		return nil, fmt.Errorf("unexpected token %s", s.tokenString)
@@ -1620,20 +1621,34 @@ func ParseSyscall(s *State) error {
 	if !s.found(TOK_COMMA) {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)
 	}
-	EmitComment("Syscall to " + id)
-	values, err := ParseExpressions(s)
-	if err != nil {
-		return err
-	}
-	if values[0].IsConst {
-		EmitPushConst(values[0].IntValue, "")
+	emit("sub", "rsp", "8", Sp(1)+" Reserve space from result from syscall")
+	argNo := 1
+	for {
+		v, err := ParseExpression(s)
+		if err != nil {
+			return err
+		}
+		if v[0].IsConst {
+			if v[0].Typ.Pt.IsInteger() {
+				EmitPushConst(v[0].IntValue, "")
+			} else if v[0].Typ.Pt == code.TYP_STRING {
+				EmitPushStringLit(v[0].StringLitNo, "")
+			} else if v[0].Typ.Pt == code.TYP_BOOL {
+				EmitPushConst(v[0].IntValue, "Bool const")
+			} else {
+				panic("Not implemented")
+			}
+		}
 		EmitFlushRax("")
+		if !s.found(TOK_COMMA) {
+			break
+		}
+		argNo++
 	}
 	emit("mov", "rdi", id, "")
-	emit("mov", "rbx", "8", "")
+	emit("mov", "rbx", strconv.Itoa(argNo*8), "")
 	emit("call", "_syscall", "", "")
-	emit("mov", "rdi", "rsp", "")
-	emit("add", "rsp", "8", "")
+	emit("add", "rsp", strconv.Itoa(argNo*8), Sp(-argNo)+" Drop arguments")
 	if !s.found(TOK_RPAR) {
 		return fmt.Errorf("expected right parenthesis after 'call', got %s", s.tokenString)
 	}
