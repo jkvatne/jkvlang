@@ -117,8 +117,8 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			EmitIndirectAssignment(lvalue.Name)
 		}
 	} else if value.Typ.Pt == code.TYP_BOOL {
-		code.SetUndef()
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign bool to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
@@ -1133,6 +1133,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
 	if !value.HasValue() {
 		L1 = code.NewLabel()
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitJumpFalse("al", L1, "Skip block 1 if false")
 	}
 
@@ -1168,6 +1169,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 	nextToken(s)
 	if !value.HasValue() {
 		L1 = code.NewLabel()
+		EmitAssertTosInRax("Pop TOS into rax before assignment")
 		EmitJumpFalse("al", L1, "Skip block 1 if false")
 	}
 

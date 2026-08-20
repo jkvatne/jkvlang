@@ -14,7 +14,6 @@ func main() {
 }
 */
 
-
 type RangeIterator = struct {
     start I32
     end I32
@@ -35,24 +34,17 @@ func next(r RangeIterator) I32 {
 }
 
 func has_prefix(s String, sub String) Bool {
-    for i=range(0, len(sub)) {
-        if s[i]!=sub[i] ? return false
+    for j=range(0, len(sub)-1) {
+        if s[j]!=sub[j] ? return false
     }
     return true
 }
 
 func main() {
-    sub = "-file="
-    filename = ""
-    ok=true
+    // sub = "-file="
     for i=range(1, argc-1) {
-        s = args[i]
-        ok = true
-        print("%s", s)
-        for j=range(0, len(sub)-1) {
-            if s[j]!=sub[j] ? ok=false
-        }
+        s=args[i]
+        if has_prefix(s,"-file=") ?  print("Ok")
     }
-    print("Ok=%d", ok)
 }
 
