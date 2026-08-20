@@ -1,17 +1,20 @@
 
 func main() {
+/*
     v = GetKeyState(17)  // Ctrl key
     print("CrtlKey=%d", v)
     v = call(GetKeyState, 17)
     print("CrtlKey=%d", v)
+*/
+    fn1 = "./test1.txt"
+    f1 = create_file(cptr(fn1), 0xc0000000, 0,0, 4, 128, 0)
+    print("f1=%d", f1)
+    fn2 = "./test2.txt"
+    f2 = call(CreateFileA, cptr(fn2), 0xc0000000, 0,0, 4, 128, 0)
+    print("f2=%d", f2)
 /*
-    fn = "./test.txt"
     text = "Hello World!"
     n = I32(0)
-    f1 = create_file(cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    f2 = call(CreateFileA, cptr(fn), 0xc0000000, 0,0, 4, 128, 0)
-    print("File=%d", f1)
-    print("File=%d", f2)
     ok = write_file(f1, cptr(text), 13, ptr(n), 0)
     assert(ok==1)
     ok = write_file(f2, cptr(text), 13, ptr(n), 0)

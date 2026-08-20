@@ -1621,36 +1621,49 @@ func ParseSyscall(s *State) error {
 	if !s.found(TOK_COMMA) {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)
 	}
-	emit("sub", "rsp", "8", Sp(1)+" Reserve space from result from syscall")
-	argNo := 1
-	for {
-		v, err := ParseExpression(s)
-		if err != nil {
-			return err
-		}
-		if v[0].IsConst {
-			if v[0].Typ.Pt.IsInteger() {
-				EmitPushConst(v[0].IntValue, "")
-			} else if v[0].Typ.Pt == code.TYP_STRING {
-				EmitPushStringLit(v[0].StringLitNo, "")
-			} else if v[0].Typ.Pt == code.TYP_BOOL {
-				EmitPushConst(v[0].IntValue, "Bool const")
-			} else {
-				panic("Not implemented")
+	/*
+		emit("sub", "rsp", "8", " Reserve space for result from syscall "+Sp(1))
+		argNo := 1
+		for {
+			v, err := ParseExpression(s)
+			if err != nil {
+				return err
 			}
+			if v[0].IsConst {
+				if v[0].Typ.Pt.IsInteger() {
+					EmitPushConst(v[0].IntValue, "")
+				} else if v[0].Typ.Pt == code.TYP_STRING {
+					EmitPushStringLit(v[0].StringLitNo, "")
+				} else if v[0].Typ.Pt == code.TYP_BOOL {
+					EmitPushConst(v[0].IntValue, "Bool const")
+				} else {
+					panic("Not implemented")
+				}
+			}
+			EmitFlushRax("")
+			if !s.found(TOK_COMMA) {
+				break
+			}
+			argNo++
 		}
-		EmitFlushRax("")
-		if !s.found(TOK_COMMA) {
-			break
-		}
-		argNo++
+	*/
+	code.NewArgCode()
+	values, err := ParseActualArgList(s, "syscall")
+	if err != nil {
+		return err
 	}
-	emit("mov", "rdi", id, "")
+	argNo := len(values)
+
+	// Make space for return values. This code is added to the ArgCode stack.
+	code.NewArgCode()
+	EmitAddToSp(1, "Make space for return value from syscall")
+
+	code.ConsArgCode(argNo+1, true)
+	emit("mov", "rdi", id, "Syscall function address")
 	emit("mov", "rbx", strconv.Itoa(argNo*8), "")
+	emit("push", "rax", "", "Dummy for _syscall "+Sp(1))
 	emit("call", "_syscall", "", "")
-	emit("add", "rsp", strconv.Itoa(argNo*8), Sp(-argNo)+" Drop arguments")
-	if !s.found(TOK_RPAR) {
-		return fmt.Errorf("expected right parenthesis after 'call', got %s", s.tokenString)
-	}
+	emit("add", "rsp", strconv.Itoa(argNo*8+16), Sp(-argNo-2)+" Drop arguments")
+	code.SetAx()
 	return nil
 }
