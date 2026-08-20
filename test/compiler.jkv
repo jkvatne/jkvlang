@@ -45,9 +45,13 @@ func main() {
 
 
 func main() {
+    sub = "-file="
+    filename=""
+    ok = true
     for i=range(1,argc-1) {
         print("%s", args[i])
-        for j=range(0,3) {
+        s = args[i]
+        for j=range(0,len(sub)) {
             print("%d %d", i,j)
         }
     }
