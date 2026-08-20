@@ -418,10 +418,15 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 			// If it was a local variable or a constant, we should not free it.
 			// TODO: FInd a better way than checking for names
 			if value.IsTempObj && id != "cptr" && id != "lptr" {
+				lbl := code.NewLabel()
 				str := "   mov rax, rsp   ; Cleanup\n"
 				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
 				str += "   mov rax, [rax]\n"
-				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo, id)
+				str += "   shr rax, 32\n"
+				str += "   or rax, rax\n"
+				str += "   jz .L" + strconv.Itoa(lbl) + "\n"
+				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
+				str += ".L" + strconv.Itoa(lbl) + ":\n"
 				code.SetCleanupCode(str)
 			}
 			// }

@@ -40,11 +40,19 @@ func has_prefix(s String, sub String) Bool {
     return true
 }
 
+func substring(s String, start I32, end I32) String {
+    //t=new(String, end-start+1)
+    //for i=range(start, end-1) {
+        //t[i] = s[i+start]
+    //}
+    return "t"
+}
+
 func main() {
-    // sub = "-file="
+    filename=""
     for i=range(1, argc-1) {
-        s=args[i]
-        if has_prefix(s,"-file=") ?  print("Ok")
+        if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
+    print("Filename=%s", substring(filename, 6, len(filename)-1))
 }
 
