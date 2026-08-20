@@ -1186,6 +1186,7 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, size int) {
 	// Load variable address into rax
 	if !isIndirect {
+		EmitFlushRax("")
 		code.SetAx()
 		emit("mov", "rax", BpRel(offset), "EmitLoadAdrToSi")
 	}
@@ -1198,8 +1199,8 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 		if size > 1 {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
-		emit("add", "rax", "8", "")
-		emit("add", "rax", "rbx", "")
+		emit("add", "rax", "8", "Skip len/cap")
+		emit("add", "rax", "rbx", "Calculate address by adding offset")
 		code.SetAx()
 	}
 	if size == 1 {
