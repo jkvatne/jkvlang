@@ -29,6 +29,7 @@ var (
 	UseUcrt   = flag.Bool("ucrt", false, "Use gcc")
 	UseGoLink = flag.Bool("golink", false, "Use gcc")
 	PrintSp   = flag.Bool("sp", false, "Print program SP")
+	arg       = flag.String("arg", "", "Arguments to the compiled program when it is run")
 )
 
 func CreateBuildDir(buildDir string) {
@@ -244,7 +245,7 @@ func Link(workDir string, libPath string, outputName string) error {
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
 	cwd, _ := os.Getwd()
-	out, err := exec.Command(path.Join(cwd, outputName), "arg1", "arg2", "arg3").CombinedOutput()
+	out, err := exec.Command(path.Join(cwd, outputName), *arg).CombinedOutput()
 	fmt.Printf("%s", string(out))
 	if err != nil {
 		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())

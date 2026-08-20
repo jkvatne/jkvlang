@@ -27,19 +27,19 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    /*j = 0
     print("argc=%d", argc)
-    print("Arg[j]=%s", args[j])
-    print("Arg[0]=%s", args[0])
-    print("")
-    */
     for i=range(argc) {
         print("Arg%d=%s", i, args[i])
     }
+    for i=range(1, argc-1) {
+        print("Arg%d=%s", i, args[i])
+    }
     print("\nEnvironment variables, count=%d", envc)
-
+/*
+    print("\nEnvironment variables, count=%d", envc)
     for i=range(0, envc-1) {
         print("Env%d=%s", i, envs[i])
     }
+*/
     print("Done")
 }

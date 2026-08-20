@@ -51,6 +51,8 @@ func ParseFail(s *State) error {
 		if v != nil && v.Typ.Pt.IsInteger() {
 			EmitStoreErr(1) // TODO
 			EmitJump(s.returnLbl, "Failed with const var="+strconv.Itoa(1))
+		} else {
+			return fmt.Errorf("fail() needs an integer argument")
 		}
 	} else if s.token == TOK_INT {
 		EmitStoreErr(int(s.ConstValue.Bits))
