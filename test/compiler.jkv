@@ -70,7 +70,9 @@ func open_file(name String) Ptr {
 
 func read_file_to_string(name String) String {
     f = create_file(cptr(name), 0xc0000000, 0,0, 4, 128, 0)
+    print("Handle=%d", f)
     n = get_file_size(f, 0)
+    print("size=%d", n)
     buf = new(String, n)
     ok = read_file(f, cptr(buf), n, lptr(buf), 0)
     return buf
@@ -87,11 +89,7 @@ func main() {
     print("Filename=%s", u)
 */
     filename = "./compiler.jkv"
-    f = create_file(cptr(filename), 0xc0000000, 0,0, 4, 128, 0)
-    print("Handle=%d", f)
-    n = get_file_size(f, 0)
-    print("size=%d", n)
-    //text = read_file_to_string(filename)
-    //print("%s", text)
+    text = read_file_to_string(filename)
+    print("%s", text)
 }
 
