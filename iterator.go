@@ -152,6 +152,7 @@ func ParseFor(s *State) error {
 		EmitClearBreakErr()
 		PopLabels()
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
+		// TODO: Do this also for returns from inner loops
 		EmitPopAx("Pop address of loop state")
 		EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
 		// Remove local loop variables

@@ -48,7 +48,36 @@ func substring(s String, start I32, end I32) String {
     return t
 }
 
+func read_string(f Ptr, cnt I32) String {
+    buf=new(String,cnt)
+    ok = read_file(f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
+}
+
+func open_file(name String) Ptr {
+//  CreateFileA function
+//  lpFileName              File name as a C string. must be Ansi
+//  dwDesiredAccess         For normal read/write, use GENERIC_READ|GENERIC_WRITE=0xC0000000
+//  dwShareMode             Should be 0 to open exclusively.
+//  lpSecurityAttributes    Typically null.
+//  dwCreationDisposition   OpenAllways=4. Will create file if it does not exist. Use OPEN_EXISTING=3 if needed.
+//  dwFlagsAndAttributes    Usually FILE_ATTRIBUTE_NORMAL=0x80. Can be Hidden,System..
+//  hTemplateFile           should be 0. Never used
+
+    f = create_file(cptr(name), 0xc0000000, 0,0, 4, 128, 0)
+    return f
+}
+
+func read_file_to_string(name String) String {
+    f = create_file(cptr(name), 0xc0000000, 0,0, 4, 128, 0)
+    n = get_file_size(f, 0)
+    buf = new(String, n)
+    ok = read_file(f, cptr(buf), n, lptr(buf), 0)
+    return buf
+}
+
 func main() {
+/*
     filename=""
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
@@ -56,5 +85,13 @@ func main() {
     print("Argument=%s",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename=%s", u)
+*/
+    filename = "./compiler.jkv"
+    f = create_file(cptr(filename), 0xc0000000, 0,0, 4, 128, 0)
+    print("Handle=%d", f)
+    n = get_file_size(f, 0)
+    print("size=%d", n)
+    //text = read_file_to_string(filename)
+    //print("%s", text)
 }
 

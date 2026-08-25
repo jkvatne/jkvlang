@@ -30,6 +30,7 @@ func FuncInit() {
 	_, _ = AddFunc("lptr", []*TypeDef{&StringType}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("write_file", []*TypeDef{&I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("read_file", []*TypeDef{&I32Type, &I32Type, &I32Type, &I32Type, &I32Type}, []*TypeDef{&I64Type}, true, false)
+	_, _ = AddFunc("get_file_size", []*TypeDef{&I32Type, &I32Type}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("close_file", []*TypeDef{&I32Type}, nil, true, false)
 	_, _ = AddFunc("bitlen", []*TypeDef{&I32Type}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("len", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)

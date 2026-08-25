@@ -12,6 +12,7 @@ extern CreateFileA
 extern CreateFileW
 extern ReadFile
 extern WriteFile
+extern GetFileSize
 extern CloseHandle
 extern HeapAlloc
 extern HeapFree
@@ -38,11 +39,11 @@ global _create_file
 global _write_file
 global _read_file
 global _close_file
+global _get_file_size
 global _lptr
 global _cptr
 global _len
 global _bitlen
-global _create_file
 global _alloc
 global _free_struct
 global _free_slice
@@ -255,6 +256,12 @@ _free_str:
     leave
     ret
 
+_get_file_size:
+    mov rdi, GetFileSize
+    mov bx, 8*2
+    call _syscall
+    mov [rsp+8*3], rax
+    ret
 
 _create_file:
     mov rdi, CreateFileA
