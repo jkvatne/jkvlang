@@ -201,9 +201,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			if !s.found(TOK_RBRACK) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
-			// Load variable address into SI
+			// Load variable address into rax
 			if !lvalue.IsIndirect {
-				EmitLea(lvalue.Offset)
+				EmitLea(lvalue.Offset, "Load indirect var address")
 			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				EmitModifyConstIndexedChar(int(index.IntValue))
@@ -850,44 +850,40 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("should have a predefined type, found %s", id)
 		}
 		value.Typ = t
-		if id == "String" {
-			if !s.found(TOK_COMMA) {
-				return nil, fmt.Errorf("new string must have a given capacity")
-			}
-			v, err1 := ParseExpression(s)
-			if err1 != nil {
-				return nil, err
-			}
-			if v[0].IsConst {
-				EmitPushConst(v[0].IntValue, "")
-			}
-			EmitNewString()
-		} else if t.Pt == code.TYP_SLICE {
-			if !s.found(TOK_COMMA) {
-				return nil, fmt.Errorf("new slice must have a given capacity")
-			}
-			v, err1 := ParseExpression(s)
-			if err1 != nil {
-				return nil, err
-			}
-			if v[0].IsConst {
-				EmitPushConst(v[0].IntValue, "")
-			}
-			hasLen := false
-			if s.found(TOK_COMMA) {
-				// Has length also
-				v2, err2 := ParseExpression(s)
-				if err2 != nil {
-					return nil, err
-				}
-				if v2[0].IsConst {
-					EmitPushConst(v2[0].IntValue, "")
-				}
-				hasLen = true
-			}
-			EmitNewSlice(t, t.Element.Size(), hasLen)
-		} else {
+		if t.Pt == code.TYP_STRUCT {
 			EmitNewStruct(t)
+			if !s.found(TOK_RPAR) {
+				return nil, fmt.Errorf("expected right parenthesis")
+			}
+			return []*ValueDef{value}, err
+		}
+
+		if !s.found(TOK_COMMA) {
+			return nil, fmt.Errorf("new must have a given capacity")
+		}
+		v, err1 := ParseExpression(s)
+		if err1 != nil {
+			return nil, err
+		}
+		if v[0].IsConst {
+			EmitPushConst(v[0].IntValue, "")
+		}
+		hasLen := false
+		if s.found(TOK_COMMA) {
+			// Has length also
+			v2, err2 := ParseExpression(s)
+			if err2 != nil {
+				return nil, err
+			}
+			if v2[0].IsConst {
+				EmitPushConst(v2[0].IntValue, "")
+			}
+			hasLen = true
+		}
+		if t.Pt == code.TYP_STRING {
+			EmitNewString(hasLen)
+		} else if t.Pt == code.TYP_SLICE {
+			EmitNewSlice(t, t.Element.Size(), hasLen)
 		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")

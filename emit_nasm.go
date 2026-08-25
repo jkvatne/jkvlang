@@ -180,7 +180,6 @@ func EmitFunction(id string) {
 		panic("LocalSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
-	EmitComment("Setting localsp=0")
 	if id != "main" {
 		emit("push", "rbp", "", "")
 	}
@@ -431,8 +430,8 @@ func EmitLoadFloat(size int, adr int, comment string, fun string) {
 
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
-	EmitFlushRax("EmitLoad: push TOS")
-	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), "EmitLoad: "+comment)
+	EmitFlushRax("EmitLoad, flush rax onto stack")
+	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 	code.SetAx()
 }
 
@@ -904,13 +903,17 @@ func EmitGetAddrOfLocal(ofs int) {
 	emit("push", "rax", "", "b"+Sp(1))
 }
 
-func EmitNewString() {
+func EmitNewString(hasLen bool) {
 	// Allocate string
 	EmitAssertTosInRax("Before NewString")
-	emit("mov", "r12", "rax", "new string capacity")
+	if hasLen {
+		emit("mov", "r13", "rax", "save new string length")
+		emit("pop", "rax", "", Sp(-1)+"get capacity into rax")
+	}
+	emit("mov", "r12", "rax", "save new string capacity")
 	emit("add", "rax", "8", "Add space for cap/len")
 	emit("call", "_alloc", "", "Allocate new string")
-	emit("mov", "rsi", "rax", "Save rax")
+	emit("mov", "rsi", "rax", "Save pointer to new string")
 	emit("mov", "rdi", "rax", "Then clear the new string")
 	emit("xor", "rax", "rax", "")
 	emit("mov", "rcx", "r12", "")
@@ -918,6 +921,9 @@ func EmitNewString() {
 	emit("cld", "", "", "")
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")
+	if hasLen {
+		emit("add", "r12", "r13", "Insert length")
+	}
 	emit("mov", "[rsi]", "r12", "Store capacity")
 	code.SetAx()
 	emit("mov", "rax", "rsi", "Restore rax pointing to string")
@@ -1214,8 +1220,9 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 	}
 }
 
-func EmitLea(ofs int) {
-	emit("lea", "rax", BpRel(ofs), "EmitLoadEa")
+func EmitLea(ofs int, comment string) {
+	emit("lea", "rsi", BpRel(ofs), comment)
+	emit("push", "rsi", "", Sp(1))
 }
 
 func EmitClearErr() {

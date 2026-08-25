@@ -1,0 +1,66 @@
+
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+func has_prefix(s String, sub String) Bool {
+    if len(sub)>len(s) ? return false
+    ok = true
+    for j=range(0, len(sub)-1) {
+        if s[j]!=sub[j] {
+            // NB: Can not return here. Does not support return from inner loops
+            ok=false
+            break
+        }
+    }
+    return ok
+}
+
+func substring(s String, start I32, end I32) String {
+    t=new(String, end, end-start+1)
+    for i=range(start, end) {
+        t[i-start] = s[i]
+    }
+    return t
+}
+
+func f(n I32) Bool {
+    if n>0 ? return true
+    return false
+}
+
+func main() {
+    // Test returning bool
+    assert(!f(0), "Failed !f(0)")
+    assert(f(111), "Failed f(111)")
+
+    // Test has_prefix
+    s = "-file=test"
+    assert(!has_prefix(s, "-aaaaaaaaaaaaaaaa"), "Failed -aaaaaaaaaaaaaa")
+    assert(has_prefix(s, "-file"), "Failed -file")
+    assert(has_prefix(s, "-f"), "Failed -f")
+    assert(has_prefix(s, "-file"), "Failed not -file=x")
+    assert(!has_prefix(s, "-sile"), "1 Failed -sile")
+    assert(has_prefix(s, "-file"), "2 Failed not -sile")
+
+    // Test substring
+    u=substring(s, 6, len(s)-1)
+    assert(u=="test", "Failed u==test")
+
+}
+

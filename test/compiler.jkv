@@ -41,11 +41,11 @@ func has_prefix(s String, sub String) Bool {
 }
 
 func substring(s String, start I32, end I32) String {
-    //t=new(String, end-start+1)
-    //for i=range(start, end-1) {
-        //t[i] = s[i+start]
-    //}
-    return "t"
+    t=new(String, end, end-start+1)
+    for i=range(start, end) {
+        t[i-start] = s[i]
+    }
+    return t
 }
 
 func main() {
@@ -53,6 +53,8 @@ func main() {
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
-    print("Filename=%s", substring(filename, 6, len(filename)-1))
+    print("Argument=%s",filename)
+    u=substring(filename, 6, len(filename)-1)
+    print("Filename=%s", u)
 }
 

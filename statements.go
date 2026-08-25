@@ -13,9 +13,7 @@ func ParseReturn(s *State) error {
 		panic("ArgCode was not empty")
 	}
 	i := 0
-	if len(f.returnTypes) == 0 {
-		EmitJump(s.returnLbl, "Return")
-	} else {
+	if len(f.returnTypes) > 0 {
 		for {
 			code.NewArgCode()
 			s.ParsingReturnValue = true
@@ -52,6 +50,7 @@ func ParseReturn(s *State) error {
 			return fmt.Errorf("expected %d returns but got %d", len(f.returnTypes), i)
 		}
 	}
+	EmitJump(s.returnLbl, "Return")
 	code.ConsArgCode(i, false)
 	code.OutputArgCode()
 	s.DidReturn = true
