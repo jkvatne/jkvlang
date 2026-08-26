@@ -202,16 +202,19 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
 			// Load variable address into rax
-			if !lvalue.IsIndirect {
-				EmitLea(lvalue.Offset, "Load indirect var address")
-			}
 			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				EmitModifyConstIndexedChar(int(index.IntValue))
+				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
-				EmitModifyIndexedChar()
+				EmitModifyIndexedChar(lvalue.Offset)
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
+				if !lvalue.IsIndirect {
+					EmitLea(lvalue.Offset, "Load indirect var address")
+				}
 				EmitModifyConstIndexedSlice(int(index.IntValue), lvalue.Typ.Element.Size(), s.returnLbl)
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
+				if !lvalue.IsIndirect {
+					EmitLea(lvalue.Offset, "Load indirect var address")
+				}
 				EmitModifyIndexedSlice(lvalue.Typ.Element.Size(), s.returnLbl)
 			}
 			// Multiply by element size

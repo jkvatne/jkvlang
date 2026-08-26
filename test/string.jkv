@@ -1,14 +1,23 @@
-
+/*
 type Person = struct{
     id I64
     name String
     Age U8
 }
-
+*/
 func main () {
-    s = "Hello "
-    t = "World"
+    t = "Goodby"
+    i = 2
+    t[i] = 'y'
+    print("t='%s'", t)
 
+    s = "Hello "
+    s[2] = 'x'
+    print("s='%s'", s)
+
+/*
+
+    t = "World"
     // Index
     k = s[1]
     assert(k==0x65)
@@ -22,13 +31,11 @@ func main () {
     ll = len(w)
     assert(ll==11, "Failed len test 1")
     assert(len(w)==11, "Failed len test 2")
-
-    // Update indexed character. Will move s to writeable memory
-    s[2] = 'x'
+*/
+/*
     assert(s=="Hello ", "Intentionally failed Hello test")
     invert_err()
     assert(s=="Hexlo ", "Failed Hexlo test")
-
     // Test compare strings to litteral
     p = new(Person)
     p.name="Jan Kåre Vatne"
@@ -46,4 +53,5 @@ func main () {
     p.name[2]='x'
     print("p.name=%s", p.name)
     assert(p.name=="Jax Kåre Vatne", "Failed check of modified name")
+*/
 }

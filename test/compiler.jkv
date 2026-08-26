@@ -1,4 +1,63 @@
 
+const (
+    // dwCreationDisposition.
+    CREATE_NEW     I32 = 1    // Fails if file already exists
+    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
+    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
+    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
+
+    FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
+    FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
+    FILE_ATTRIBUTE_READONLY  I32 = 0x0001
+)
+
+//  open_file calls the Windows CreateFileA function
+//  lpFileName              File name as a C string. must be Ansi
+//  dwDesiredAccess         For normal read/write, use GENERIC_READ|GENERIC_WRITE=0xC0000000
+//  dwShareMode             Should be 0 to open exclusively.
+//  lpSecurityAttributes    Typically null.
+//  dwCreationDisposition   OpenAllways=4. Will create file if it does not exist. Use OPEN_EXISTING=3 if needed.
+//  dwFlagsAndAttributes    Usually FILE_ATTRIBUTE_NORMAL=0x80. Can be Hidden,System..
+//  hTemplateFile           should be 0. Never used
+
+func open_file(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func create_file(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, CREATE_ALLWAYS, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func close_file(f I32) {
+    e = call(CloseHandle, f)
+    e = e+1
+    return
+}
+
+func read_string(f I32, cnt I32) String {
+    buf=new(String,cnt)
+    ok = call(ReadFile, f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
+}
+
+func write_file(f I32, txt String) I32 {
+    n = 0
+    ok = call(WriteFile, f, cptr(txt), len(txt), ptr(n), 0)
+    return n
+}
+
+func read_all(name String) String {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    n = call(GetFileSize, f, 0)
+    // if n>=0 ? fail(123)
+    buf = new(String, n)
+    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
+    close_file(f)
+    return buf
+}
+
 
 type RangeIterator = struct {
     start I32
@@ -34,19 +93,6 @@ func substring(s String, start I32, end I32) String {
     return t
 }
 
-func read_string(name String) String {
-    f = create_file(cptr(name), 0xc0000000, 0,0, 4, 128, 0)
-    print("Handle=%d", f)
-    n1 = call(GetFileSize, f)
-    print("n1=%d", n1)
-    n = get_file_size(f, 0)
-    print("size=%d", n)
-    if n>=0 ? fail(123)
-    buf = new(String, n)
-    ok = read_file(f, cptr(buf), n, lptr(buf), 0)
-    return buf
-}
-
 func main() {
 /*
     filename=""
@@ -58,7 +104,7 @@ func main() {
     print("Filename=%s", u)
 */
     filename = "compiler.jkv"
-    text = read_string(filename) # fail(123)
+    text = read_all(filename)
     print("%s", text)
 }
 

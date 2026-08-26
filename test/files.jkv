@@ -58,21 +58,6 @@ func read_all(name String) String {
     return buf
 }
 
-func read_all_ext(name String) String {
-    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0,OPEN_EXISTING, 128, 0)
-    print("read_all handle=%d", f)
-    n1 = call(GetFileSize, f)
-    print("read_all read %d bytes", n1)
-    n = call(GetFileSize, f, 0)
-    print("GetFileSize=%d", n)
-    // if n>=0 ? fail(123)
-    buf = new(String, n)
-    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
-    print("read_all returned %d", ok)
-    close_file(f)
-    return buf
-}
-
 func main() {
     // Test write to file
     fn = "./test.txt"

@@ -1027,6 +1027,7 @@ func EmitLoadGlobalConst(name string) {
 	code.SetAx()
 }
 
+/*
 func EmitModifyConstIndexedChar(offset int) {
 	emit("mov", "r13", "rax", "Load local variable's address")
 	emit("mov", "rsi", "[r13]", "Load string pointer const")
@@ -1056,6 +1057,54 @@ func EmitModifyConstIndexedChar(offset int) {
 	EmitLabel(lbl, "")
 	emit("add", "rax", strconv.Itoa(8+offset), "Index into string, skipping len/cap")
 }
+*/
+
+// EmitCopyStringToRam will copy a read-only string (with cap=0) to RAM
+// Assumes the string pointer is given in rax
+// R13 is pointer to const string
+// R12 is new capacity
+// On return, rax is pointer to new string
+func EmitCopyStringToRam(offset int) {
+	emit("mov", "r13", "rax", "Load pointer to constant string")
+	emit("mov", "rax", "[r13]", "Fetch length of string (cap should be zero)")
+	emit("add", "rax", "32", "Add space for cap and spare bytes")
+	emit("mov", "r12", "rax", "cap to r12")
+	emit("sub", "r12", "8", "not include cap/len word")
+	emit("shl", "r12", "32", "")
+	emit("call", "_alloc", "", "Allocate new string")
+	emit("mov", "rdi", "rax", "")
+	emit("add", "rdi", "8", "Skip len/cap when moving string")
+	emit("mov", "r14", "rax", "")
+	emit("add", "r12", "[r13]", "Add len to len/cap in r12")
+	emit("mov", "rsi", "r13", "")
+	emit("mov", "rcx", "[rsi]", "")
+	emit("add", "rsi", "8", "Skip len/cap when moving string")
+	emit("cld", "", "", "")
+	emit("rep", "movsb", "", "copy old string")
+	emit("mov", "[r14]", "r12", "Mov len/cap into string")
+	emit("mov", "rax", "r14", "")
+}
+
+func EmitLea(ofs int, comment string) {
+	emit("lea", "rsi", BpRel(ofs), comment)
+	emit("push", "rsi", "", Sp(1))
+}
+
+func EmitModifyConstIndexedChar(addr int, offset int) {
+	emit("mov", "rax", BpRel(addr), "")
+	EmitCopyStringToRam(addr)
+	emit("mov", BpRel(addr), "rax", "")
+	emit("add", "rax", strconv.Itoa(offset), "Index into lvalue string not const")
+	emit("add", "rax", "8", "Skip len/cap of string not const")
+}
+
+func EmitModifyIndexedChar(addr int) {
+	emit("mov", "rax", BpRel(addr), "")
+	EmitCopyStringToRam(addr)
+	emit("mov", BpRel(addr), "rax", "")
+	emit("add", "rax", "rbx", "Index into lvalue string not const")
+	emit("add", "rax", "8", "Skip len/cap of string not const")
+}
 
 func EmitModifyConstIndexedSlice(offset int, size int, returnLbl int) {
 	emit("mov", "rsi", "[rax]", "Load slice pointer for const")
@@ -1083,13 +1132,6 @@ func EmitIndirectAssignment(name string) {
 	emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
 	emit("mov", "[rbx]", "rax", "Assign slice to "+name)
 	code.SetUndef()
-}
-
-func EmitModifyIndexedChar() {
-	emit("pop", "rbx", "", Sp(-1))
-	emit("mov", "rbx", "[rbx]", "Load string pointer not const")
-	emit("add", "rax", "rbx", "Index into lvalue string not const")
-	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
 
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
@@ -1219,11 +1261,6 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 	} else {
 		panic("TODO")
 	}
-}
-
-func EmitLea(ofs int, comment string) {
-	emit("lea", "rsi", BpRel(ofs), comment)
-	emit("push", "rsi", "", Sp(1))
 }
 
 func EmitClearErr() {
