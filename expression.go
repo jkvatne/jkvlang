@@ -1305,7 +1305,7 @@ func FreeStruct(t *TypeDef) {
 			EmitLabel(lbl, "")
 			EmitPopAx("")
 		} else if f.Pt == code.TYP_SLICE {
-			EmitLoadWithOffset(ofs, "Free slice field "+f.Name())
+			EmitLoadWithOffset(ofs, "Free slice field of type"+f.Name())
 			lbl := code.NewLabel()
 			EmitJumpFalse("al", lbl, "")
 			EmitFreeSlice(f)
@@ -1314,7 +1314,7 @@ func FreeStruct(t *TypeDef) {
 		} else if f.Pt == code.TYP_STRING {
 			EmitLoadWithOffset(ofs, "Free string field "+f.Name())
 			lbl := code.NewLabel()
-			EmitJumpFalse("al", lbl, "")
+			EmitJumpFalse("rax", lbl, "")
 			EmitFreeString("")
 			EmitLabel(lbl, "")
 			EmitPopAx("")
