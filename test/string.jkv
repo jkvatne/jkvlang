@@ -1,46 +1,38 @@
-/*
+
 type Person = struct{
     id I64
     name String
     Age U8
 }
-*/
+
 func main () {
     t = "Goodby"
     i = 2
     t[i] = 'y'
-    print("t='%s'", t)
+    assert(t=="Goydby")
 
     s = "Hello "
     s[2] = 'x'
-    print("s='%s'", s)
+    assert(s=="Hexlo ")
 
-/*
-
-    t = "World"
     // Index
     k = s[1]
-    assert(k==0x65)
+    assert(k==0x65, "Failed, got %d", k)
 
     // Test concat three strings and assign to local variable
     w = s+t
-    assert(w=="Hello World", "Failed concat")
-    assert(s=="Hello ", "Failed access to old s")
-
+    assert(w=="Hexlo Goydby", "Failed concat, got %s", w)
+    assert(s=="Hexlo ", "Failed access to old s, s=", s)
     // Calling len
     ll = len(w)
-    assert(ll==11, "Failed len test 1")
-    assert(len(w)==11, "Failed len test 2")
-*/
-/*
-    assert(s=="Hello ", "Intentionally failed Hello test")
-    invert_err()
-    assert(s=="Hexlo ", "Failed Hexlo test")
+    assert(ll==12, "Failed len test 1, got %d", ll)
+    assert(len(w)==12, "Failed len test 2, got %d", len(w))
+
     // Test compare strings to litteral
     p = new(Person)
     p.name="Jan Kåre Vatne"
     assert(p.name=="Jan Kåre Vatne", "Name failed")
-    assert(p.name!="Jan Kåre Vatne", "Intentionaly ne test failed")
+    assert(p.name!="Jan Kåre Vatne", "Intentionaly failed != test")
     invert_err()
     assert(p.name=="Jxn Kåre Vatne", "Intentionaly name failed")
     invert_err()
@@ -48,7 +40,7 @@ func main () {
     invert_err()
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
-
+/*
     // Test modify char in struct
     p.name[2]='x'
     print("p.name=%s", p.name)
