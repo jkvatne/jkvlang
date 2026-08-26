@@ -791,6 +791,7 @@ func EmitAddToSp(count int, comment string) {
 	if count > 0 {
 		// Stack grows downward
 		emit("sub", "rsp", strconv.Itoa(count*8), comment+Sp(count))
+		emit("mov", "qword [rsp]", "0", "Clear")
 	} else if count < 0 {
 		emit("add", "rsp", strconv.Itoa(-count*8), comment+Sp(count))
 	}

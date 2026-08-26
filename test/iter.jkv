@@ -28,83 +28,74 @@ func main() {
 
     sum = 0
     for i = range(2,5) {
-        printf("%d+", i)
         sum+=i
     }
-    print("=%d", sum)
     assert(sum==14)
 
     r = range(10, 15)
     sum = 0
     loop {
         i = next(r) else break
-        printf("%d+", i)
         sum+=i
     }
-    print("=%d", sum)
     assert(sum==75)
 
     sum = 0
     for i = range(2,5) {
-        printf("%d+", i)
         sum+=i
     }
-    print("=%d", sum)
     assert(sum==14)
 
     sum=0
     for i = range(2,5) {
-        printf("%d+", i)
         sum+=i
     }
-    print("=%d", sum)
     assert(sum==14)
 
     j=0
     sum=0
     loop {
        j=j+1
-       printf("%d+", j)
        sum+=j
        if j>5 : break
     }
-    print("=%d", sum)
     assert(sum==21)
 
     sum=0
     for i = range(2,5) {
-        printf("%d+", i)
         sum+=i
-        fflush()
     }
-    print("=%d", sum)
     assert(sum==14)
 
     for i = range(12,15) {
-        printf("%d+", i)
-        fflush()
         sum+=i
     }
-    print("==%d", sum)
     assert(sum==68)
 
     r = range(10, 15)
     sum = 0
     loop {
         i = next(r) else break
-        printf("%d+", i)
         sum+=i
         fflush()
     }
-    print("=%d", sum)
     assert(sum==75)
 
     sum=0
     for i=range(5) {
         sum+=i
-        printf("%d+", i)
     }
-    print("=%d", sum)
     assert(sum==10)
 
+    // Testing nested iterations
+    sub = "-file="
+    filename=""
+    ok = true
+    sum=0
+    for i=range(1,3) {
+        for k=range(1,4) {
+            sum=sum+i*k
+        }
+    }
+    assert(sum==60, "Failed sum")
 }

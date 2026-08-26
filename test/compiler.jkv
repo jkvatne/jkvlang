@@ -1,18 +1,4 @@
-/*
-// Testing nested iterations
-func main() {
-    sub = "-file="
-    filename=""
-    ok = true
-    for i=range(1,argc-1) {
-        print("%s", args[i])
-        s = args[i]
-        for j=range(0,len(sub)) {
-            print("%d %d", i,j)
-        }
-    }
-}
-*/
+
 
 type RangeIterator = struct {
     start I32
@@ -71,8 +57,11 @@ func open_file(name String) Ptr {
 func read_file_to_string(name String) String {
     f = create_file(cptr(name), 0xc0000000, 0,0, 4, 128, 0)
     print("Handle=%d", f)
+    n1 = call(GetFileSize, f)
+    print("n1=%d", n1)
     n = get_file_size(f, 0)
     print("size=%d", n)
+    if n>=0 ? fail(123)
     buf = new(String, n)
     ok = read_file(f, cptr(buf), n, lptr(buf), 0)
     return buf
@@ -88,8 +77,8 @@ func main() {
     u=substring(filename, 6, len(filename)-1)
     print("Filename=%s", u)
 */
-    filename = "./compiler.jkv"
-    text = read_file_to_string(filename)
+    filename = "compiler.jkv"
+    text = read_file_to_string(filename) # fail(123)
     print("%s", text)
 }
 

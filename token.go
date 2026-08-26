@@ -89,6 +89,7 @@ const (
 	TOK_INV_SHL
 	TOK_INV_SHR
 	TOK_SYSCALL
+	TOK_HASH
 	TOK_SIZE
 )
 
@@ -169,6 +170,7 @@ var TokenNames = [...]string{
 	TOK_INV_SHL:     "INV_SHL",
 	TOK_INV_SHR:     "INV_SHR",
 	TOK_SYSCALL:     "SYSCALL",
+	TOK_HASH:        "HASH",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -578,6 +580,9 @@ func nextToken(s *State) {
 		case s.ch1 == '^':
 			s.token = TOK_XOR
 			s.tokenString = "^"
+		case s.ch1 == '#':
+			s.token = TOK_HASH
+			s.tokenString = "#"
 		case s.ch1 == '}':
 			s.token = TOK_RBRACE
 			s.tokenString = "}"

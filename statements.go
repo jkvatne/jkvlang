@@ -125,6 +125,10 @@ func ParseStatement(s *State) (err error) {
 	default:
 		err = fmt.Errorf("unknown statement starting with %s", s.tokenString)
 	}
+	if s.token == TOK_HASH {
+		err = ParseHash(s)
+	}
+
 	return err
 }
 

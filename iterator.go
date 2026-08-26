@@ -65,6 +65,13 @@ func ParseFail(s *State) error {
 	return nil
 }
 
+// ParseHash will catch errors
+func ParseHash(s *State) error {
+	s.next()
+	err := ParseStatement(s)
+	return err
+}
+
 func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	for {
 		if s.token != TOK_ID {
