@@ -1,0 +1,41 @@
+
+func fi(a Bool, c I32) I32 {
+    if a {
+        return c
+    } else {
+        return c*2
+    }
+}
+
+func foo(a Bool, c I16) (I32, I32) {
+    if a {
+        return c+1, c+2
+    } else {
+        return c*2, c*3
+    }
+}
+
+func test(f I32, cnt I32) String, I32, I32 {
+    n = I32(13)
+    buffer = "abcd"
+    return buffer, n, 14
+}
+
+func main() {
+
+    x, y = foo(false, 5)
+    assert(x==10)
+    assert(y==15)
+
+    x, y = foo(true, 5)
+    assert(x==6)
+    assert(y==7)
+
+    assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
+
+    // Test returning 3 results
+    buf, n, m = test(11, 12)
+    assert(n==13)
+    assert(m==14)
+    assert(buf=="abcd")
+}

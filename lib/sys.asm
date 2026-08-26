@@ -256,55 +256,6 @@ _free_str:
     leave
     ret
 
-_get_file_size:
-    mov rdi, GetFileSize
-    mov bx, 8*2
-    call _syscall
-    mov [rsp+8*3], rax
-    ret
-
-_create_file:
-    mov rdi, CreateFileA
-    mov bx, 8*7
-    call _syscall
-    add rax, 1
-    jnz .L2
-    mov r15, 107
-.L2:
-    sub rax, 1
-    mov [rsp+8*8], rax
-    ret
-
-;  BOOL ReadFile(
-;  [in]                HANDLE       hFile,
-;  [out]               LPVOID       lpBuffer,
-;  [in]                DWORD        nNumberOfBytesToRead,
-;  [out, optional]     LPDWORD      lpNumberOfBytesRead,
-;  [in, out, optional] LPOVERLAPPED lpOverlapped
-_read_file:
-    mov rdi, ReadFile
-    mov bx, 8*5
-    call _syscall
-    mov [rsp+8*6], rax
-    or rax,rax
-    jnz .L1
-    mov r15,106
-.L1:
-    ret
-
-_write_file:
-    mov rdi, WriteFile
-    mov bx, 8*5
-    call _syscall
-    mov [rsp+8*6], rax
-    ret
-
-_close_file:
-    mov rdi, CloseHandle
-    mov bx, 8
-    call _syscall
-    ret
-
 _cptr:
     mov rax, [rsp+8]
     add rax, 8
