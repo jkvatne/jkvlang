@@ -6,6 +6,7 @@ type Person = struct{
 }
 
 func main () {
+
     t = "Goodby"
     i = 2
     t[i] = 'y'
@@ -31,6 +32,7 @@ func main () {
     // Test compare strings to litteral
     p = new(Person)
     p.name="Jan Kåre Vatne"
+
     assert(p.name=="Jan Kåre Vatne", "Name failed")
     assert(p.name!="Jan Kåre Vatne", "Intentionaly failed != test")
     invert_err()
@@ -40,10 +42,9 @@ func main () {
     invert_err()
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
-/*
+
     // Test modify char in struct
     p.name[2]='x'
+    assert(p.name=="Jax Kåre Vatne", "Failed check of modified name, got %s", p.name)
     print("p.name=%s", p.name)
-    assert(p.name=="Jax Kåre Vatne", "Failed check of modified name")
-*/
 }

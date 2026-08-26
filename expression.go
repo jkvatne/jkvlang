@@ -202,7 +202,13 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				return nil, fmt.Errorf("expected ']' but got %s", s.tokenString)
 			}
 			// Load variable address into rax
-			if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
+			if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
+				EmitAssertTosInRax("")
+				EmitModifyConstIndexedCharIndirect(int(index.IntValue))
+			} else if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
+				if lvalue.Offset == 0 {
+					return nil, fmt.Errorf("Local var address is 0")
+				}
 				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
 				EmitModifyIndexedChar(lvalue.Offset)
