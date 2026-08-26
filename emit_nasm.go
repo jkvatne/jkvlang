@@ -1065,7 +1065,13 @@ func EmitModifyConstIndexedChar(offset int) {
 // R12 is new capacity
 // On return, rax is pointer to new string
 func EmitCopyStringToRam() {
-	EmitComment("Copy constant string to RAM")
+	lbl := code.NewLabel()
+	EmitComment("Copy string to RAM if it is read-only")
+	emit("mov", "rdx", "rax", "Load pointer to constant string")
+	emit("mov", "rdx", "[rdx]", "Load pointer to constant string")
+	emit("shr", "rdx", "32", "")
+	emit("or", "rdx", "rdx", "Test if capacity is zero")
+	emit("jnz", Label(lbl), "", "")
 	emit("mov", "r13", "rax", "Load pointer to constant string")
 	emit("mov", "rax", "[r13]", "Fetch length of string (cap should be zero)")
 	emit("add", "rax", "32", "Add space for cap and spare bytes")
@@ -1084,7 +1090,7 @@ func EmitCopyStringToRam() {
 	emit("rep", "movsb", "", "copy old string")
 	emit("mov", "[r14]", "r12", "Mov len/cap into string")
 	emit("mov", "rax", "r14", "")
-	EmitComment("New writeable string now in rax")
+	EmitLabel(lbl, "Writeable string now in rax")
 }
 
 func EmitLea(ofs int, comment string) {
@@ -1110,6 +1116,20 @@ func EmitModifyConstIndexedChar(addr int, offset int) {
 	emit("mov", BpRel(addr), "rax", "")
 	emit("add", "rax", strconv.Itoa(offset), "Index into lvalue string not const")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
+}
+
+// EmitModifyIndexedCharIndirect
+// TOS is value of index
+// NOS is pointer to string
+func EmitModifyIndexedCharIndirect() {
+	emit("mov", "rax", "[rsp+8]", "")
+	emit("mov", "rax", "[rax]", "")
+	EmitCopyStringToRam()
+	emit("mov", "rbx", "[rsp+8]", "")
+	emit("mov", "[rbx]", "rax", "")
+	emit("add", "rax", "[rsp]", "")
+	emit("add", "rax", "8", "Skip len/cap of string not const")
+	emit("add", "rsp", "16", Sp(-2))
 }
 
 func EmitModifyIndexedChar(addr int) {

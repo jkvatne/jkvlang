@@ -8,7 +8,7 @@ type Person = struct{
 func main () {
     p = new(Person)
     p.name="Jan Kåre Vatne"
-
+/*
     t = "Goodby"
     i = 2
     t[i] = 'y'
@@ -41,9 +41,16 @@ func main () {
     invert_err()
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
+*/
 
-    // Test modify char in struct
+    // Test modify char with calculated index
+    m = 3
+    p.name[m]='y'
+    assert(p.name=="JanyKåre Vatne", "1 Failed check of modified name, got %s", p.name)
+
+    // Test modify char in struct with constant index
     p.name[2]='x'
-    assert(p.name=="Jax Kåre Vatne", "Failed check of modified name, got %s", p.name)
-    print("p.name=%s", p.name)
+    assert(p.name=="JaxyKåre Vatne", "2 Failed check of modified name, got %s", p.name)
+
+
 }

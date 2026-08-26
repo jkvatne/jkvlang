@@ -210,7 +210,13 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 					return nil, fmt.Errorf("Local var address is 0")
 				}
 				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
+			} else if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING {
+				EmitFlushRax("")
+				EmitModifyIndexedCharIndirect()
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
+				if lvalue.Offset == 0 {
+					return nil, fmt.Errorf("Local var address is 0")
+				}
 				EmitModifyIndexedChar(lvalue.Offset)
 			} else if lvalue.Typ.Pt == code.TYP_SLICE && index.IsConst {
 				if !lvalue.IsIndirect {
