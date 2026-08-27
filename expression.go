@@ -436,9 +436,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 				lbl := code.NewLabel()
 				str := "   mov rax, rsp   ; Cleanup\n"
 				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
-				str += "   mov rax, [rax]\n"
-				str += "   shr rax, 32\n"
-				str += "   or rax, rax\n"
+				str += "   mov rax, [rax]  ; Get pointer to content (string cap/len) on stack\n"
+				str += "   mov rbx, [rax]  ; Get len/cap\n"
+				str += "   shr rbx, 32\n"
+				str += "   or rbx, rbx\n"
 				str += "   jz .L" + strconv.Itoa(lbl) + "\n"
 				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
 				str += ".L" + strconv.Itoa(lbl) + ":\n"
@@ -1296,29 +1297,23 @@ func ParseIf(s *State) error {
 
 func FreeStruct(t *TypeDef) {
 	for i, f := range t.Fields {
-		ofs := t.Offsets[i]
-		if f.Pt == code.TYP_STRUCT {
-			EmitLoadWithOffset(ofs, "Free struct field "+f.Name())
-			lbl := code.NewLabel()
-			EmitJumpFalse("al", lbl, "")
-			FreeStruct(f)
-			EmitLabel(lbl, "")
-			EmitPopAx("")
-		} else if f.Pt == code.TYP_SLICE {
-			EmitLoadWithOffset(ofs, "Free slice field of type"+f.Name())
-			lbl := code.NewLabel()
-			EmitJumpFalse("al", lbl, "")
-			EmitFreeSlice(f)
-			EmitLabel(lbl, "")
-			EmitPopAx("")
-		} else if f.Pt == code.TYP_STRING {
-			EmitLoadWithOffset(ofs, "Free string field "+f.Name())
-			lbl := code.NewLabel()
-			EmitJumpFalse("rax", lbl, "")
-			EmitFreeString("")
-			EmitLabel(lbl, "")
-			EmitPopAx("")
+		if f.Pt != code.TYP_STRUCT && f.Pt != code.TYP_SLICE && f.Pt != code.TYP_STRING {
+			continue
 		}
+		ofs := t.Offsets[i]
+		EmitLoadWithOffset(ofs, "Free struct field "+f.Name())
+		lbl := code.NewLabel()
+		// Check that pointer is not null
+		EmitJumpFalse("rax", lbl, "")
+		if f.Pt == code.TYP_STRUCT {
+			FreeStruct(f)
+		} else if f.Pt == code.TYP_SLICE {
+			EmitFreeSlice(f)
+		} else if f.Pt == code.TYP_STRING {
+			EmitFreeString("")
+		}
+		EmitLabel(lbl, "")
+		EmitPopAx("")
 	}
 	EmitFreeStruct(t.StructSize, "")
 }

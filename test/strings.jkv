@@ -63,7 +63,6 @@ func main() {
 
     assert(w=="f1 F1F2 f2F2 f2", "Failed 6")
 
-
     // Test nested functions
     w = g1("abc", g2("def", "ghi"),"jkl")
     assert(w=="abcdefghijkl", "Failed 9")

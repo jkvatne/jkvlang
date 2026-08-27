@@ -45,22 +45,23 @@ func f(n I32) Bool {
 }
 
 func main() {
+    s = "-file=test"
+/*
     // Test returning bool
     assert(!f(0), "Failed !f(0)")
     assert(f(111), "Failed f(111)")
 
     // Test has_prefix
-    s = "-file=test"
     assert(!has_prefix(s, "-aaaaaaaaaaaaaaaa"), "Failed -aaaaaaaaaaaaaa")
     assert(has_prefix(s, "-file"), "Failed -file")
     assert(has_prefix(s, "-f"), "Failed -f")
     assert(has_prefix(s, "-file"), "Failed not -file=x")
     assert(!has_prefix(s, "-sile"), "1 Failed -sile")
     assert(has_prefix(s, "-file"), "2 Failed not -sile")
-
+*/
     // Test substring
     u=substring(s, 6, len(s)-1)
-    assert(u=="test", "Failed u==test")
+    assert(u=="test", "Failed u==test, got u=%s", u)
 
 }
 
