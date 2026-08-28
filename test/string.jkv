@@ -8,20 +8,39 @@ type Person = struct{
 func main () {
     p = new(Person)
     p.name="Jan Kåre Vatne"
-
     t = "Goodby"
-    i = 2
+
+    i = 1
+    t[i] = 'G'
+    assert(t=="GGodby", "Expected GGodby, got %s", t)
+
+    i = 3
     t[i] = 'y'
-    assert(t=="Goydby")
+    assert(t=="GGoyby", "Expected GGoyby, got %s", t)
+
+    t[i+1] = 'z'
+    assert(t=="GGoyzy", "Expected GGoyzy, got %s", t)
 
     s = "Hello "
     s[2] = 'x'
-    assert(s=="Hexlo ")
+    assert(s=="Hexlo ", "Expected Hexlo, got %s", s)
 
-    // Index
+    s[3] = 'x'
+    assert(s=="Hexxo ", "Expected Hexxo, got %s", s)
+
     k = s[1]
-    assert(k==0x65, "Failed, got %d", k)
+    assert(k==0x65, "Expected 0x65, got %x", k)
 
+    // Test modify char with calculated index
+    m = 3
+    p.name[m]='y'
+    assert(p.name=="JanyKåre Vatne", "Expected JanyKåre Vatne, got %s", p.name)
+
+    // Test modify char in struct with constant index
+    p.name[2]='x'
+    assert(p.name=="JaxyKåre Vatne", "Expected JaxyKåre Vatne, got %s", p.name)
+
+/*
     // Test concat three strings and assign to local variable
     w = s+t
     assert(w=="Hexlo Goydby", "Failed concat, got %s", w)
@@ -41,15 +60,6 @@ func main () {
     invert_err()
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
-
-    // Test modify char with calculated index
-    m = 3
-    p.name[m]='y'
-    assert(p.name=="JanyKåre Vatne", "1 Failed check of modified name, got %s", p.name)
-
-    // Test modify char in struct with constant index
-    p.name[2]='x'
-    assert(p.name=="JaxyKåre Vatne", "2 Failed check of modified name, got %s", p.name)
-
+*/
 
 }

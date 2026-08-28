@@ -1105,8 +1105,7 @@ func EmitModifyConstIndexedCharIndirect(offset int) {
 	EmitCopyStringToRam()
 	emit("pop", "rdi", "", Sp(-1))
 	emit("mov", "[rdi]", "rax", "")
-
-	emit("add", "rax", strconv.Itoa(offset), "Index into lvalue string not const")
+	emit("add", "rax", strconv.Itoa(offset), "EmitModifyConstIndexedCharIndirect")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
 
@@ -1114,12 +1113,12 @@ func EmitModifyConstIndexedChar(addr int, offset int) {
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "")
-	emit("add", "rax", strconv.Itoa(offset), "Index into lvalue string not const")
+	emit("add", "rax", strconv.Itoa(offset), "EmitModifyConstIndexedChar")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
 
 // EmitModifyIndexedCharIndirect
-// TOS is value of index
+// TOS is value of index in rax
 // NOS is pointer to string
 func EmitModifyIndexedCharIndirect() {
 	emit("mov", "rax", "[rsp+8]", "")
@@ -1132,11 +1131,16 @@ func EmitModifyIndexedCharIndirect() {
 	emit("add", "rsp", "16", Sp(-2))
 }
 
+// EmitModifyIndexedChar
+// String pointer in variable at <addr>
+// TOS is new value
 func EmitModifyIndexedChar(addr int) {
+	emit("push", "rax", "", "EmitModifyIndexedChar")
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
-	emit("mov", BpRel(addr), "rax", "")
-	emit("add", "rax", "rbx", "Index into lvalue string not const")
+	emit("mov", BpRel(addr), "rax", "Update variable to point at new string in case it has changed")
+	emit("pop", "rbx", "", "")
+	emit("add", "rax", "rbx", "Add index")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
 

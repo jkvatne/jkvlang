@@ -33,9 +33,12 @@ func has_prefix(s String, sub String) Bool {
 
 func substring(s String, start I32, end I32) String {
     t=new(String, end, end-start+1)
+    //print("start=%d, end=%d, s=%s", start, end, s)
     for i=range(start, end) {
+        //print("i=%d  i-start=%d, s[i]=0x%x", i, i-start, s[i])
         t[i-start] = s[i]
     }
+    print("returns t=%s", t)
     return t
 }
 
