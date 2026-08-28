@@ -18,53 +18,29 @@ func next(r RangeIterator) I32 {
     return x
 }
 
-func has_prefix(s String, sub String) Bool {
-    if len(sub)>len(s) ? return false
-    ok = true
-    for j=range(0, len(sub)-1) {
-        if s[j]!=sub[j] {
-            // NB: Can not return here. Does not support return from inner loops
-            ok=false
-            break
-        }
-    }
-    return ok
-}
-
 func substring(s String, start I32, end I32) String {
     t=new(String, end, end-start+1)
-    //print("start=%d, end=%d, s=%s", start, end, s)
+    // print("start=%d, end=%d, s=%s", start, end, s)
     for i=range(start, end) {
-        //print("i=%d  i-start=%d, s[i]=0x%x", i, i-start, s[i])
+        // print("i=%d  i-start=%d, s[i]=0x%x", i, i-start, s[i])
         t[i-start] = s[i]
     }
-    print("returns t=%s", t)
+    // print("returns t=%s", t)
     return t
-}
-
-func f(n I32) Bool {
-    if n>0 ? return true
-    return false
 }
 
 func main() {
     s = "-file=test"
-/*
-    // Test returning bool
-    assert(!f(0), "Failed !f(0)")
-    assert(f(111), "Failed f(111)")
 
-    // Test has_prefix
-    assert(!has_prefix(s, "-aaaaaaaaaaaaaaaa"), "Failed -aaaaaaaaaaaaaa")
-    assert(has_prefix(s, "-file"), "Failed -file")
-    assert(has_prefix(s, "-f"), "Failed -f")
-    assert(has_prefix(s, "-file"), "Failed not -file=x")
-    assert(!has_prefix(s, "-sile"), "1 Failed -sile")
-    assert(has_prefix(s, "-file"), "2 Failed not -sile")
-*/
     // Test substring
     u=substring(s, 6, len(s)-1)
     assert(u=="test", "Failed u==test, got u=%s", u)
 
+    s[5]='-'
+    assert(substring(s, 0, 5)=="-file-", "Failed substring -file-")
+
+    u=substring(s, 0, 5)
+    assert(u=="test", "Intentionaly failed, got %s", u)
+    invert_err()
 }
 
