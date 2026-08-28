@@ -1632,36 +1632,11 @@ func ParseSyscall(s *State) error {
 		return fmt.Errorf("expected left parenthesis after 'call'")
 	}
 	id := s.tokenString
+	AddExternal(id)
 	s.next()
 	if !s.found(TOK_COMMA) {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)
 	}
-	/*
-		emit("sub", "rsp", "8", " Reserve space for result from syscall "+Sp(1))
-		argNo := 1
-		for {
-			v, err := ParseExpression(s)
-			if err != nil {
-				return err
-			}
-			if v[0].IsConst {
-				if v[0].Typ.Pt.IsInteger() {
-					EmitPushConst(v[0].IntValue, "")
-				} else if v[0].Typ.Pt == code.TYP_STRING {
-					EmitPushStringLit(v[0].StringLitNo, "")
-				} else if v[0].Typ.Pt == code.TYP_BOOL {
-					EmitPushConst(v[0].IntValue, "Bool const")
-				} else {
-					panic("Not implemented")
-				}
-			}
-			EmitFlushRax("")
-			if !s.found(TOK_COMMA) {
-				break
-			}
-			argNo++
-		}
-	*/
 	code.NewArgCode()
 	values, err := ParseActualArgList(s, "syscall")
 	if err != nil {

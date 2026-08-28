@@ -6,22 +6,12 @@
 %define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 extern GetStdHandle
-extern ExitProcess
 extern GetProcessHeap
-extern CreateFileA
-extern CreateFileW
-extern ReadFile
-extern WriteFile
-extern GetFileSize
-extern CloseHandle
+extern ExitProcess
 extern HeapAlloc
 extern HeapFree
 extern printf
 extern fflush
-extern GetLastError
-extern FormatMessageA
-extern ExitProcess
-extern GetKeyState
 
 ; Global variables
 global argc, argv, args, env, envs, envc
@@ -56,10 +46,11 @@ global _syscall
 section .rodata
 ;-------------
 alignb 8
-sp_mess            db "...rsp=0x%X", 0Ah, 00h
-crlf               db 0Ch, 0Ah, 00h
+sp_mess                db "...rsp=0x%X", 0Ah, 00h
+crlf                   db 0Ch, 0Ah, 00h
 crlf_str               db 0Ah, 00h
 default_assert_mess    db "Assert failed", 00h
+
 alignb 8
 alloc_size_str  dq 19
                 db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
@@ -179,8 +170,7 @@ _free_struct:
 
     sub [allocation_count], rcx,     ; Decrement allocated count
 
-    call GetProcessHeap
-    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     mov r8, rdi                      ; Argument 3, move memory pointer into r8
     call HeapFree                    ; Do the actual freeing of the memory
@@ -208,8 +198,7 @@ _free_slice:
     mov rcx, rax
     sub [allocation_count], rcx,     ; Decrement allocated count
 
-    call GetProcessHeap
-    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rcx
+    mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     mov r8, rdi                      ; Argument 3, move memory pointer into r8
     call HeapFree                    ; Do the actual freeing of the memory
@@ -243,8 +232,7 @@ _free_str:
     rep stosb                        ; Repeat storing AL into [RDI] (use stosd for dwords)
     mov rax, r12
 
-    call GetProcessHeap
-    mov rcx, rax                     ; Argument 1, Handle from GetProcessHeap moved into rxx
+    mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     mov r8, r12                      ; Argument 3, move memory pointer into r8
     call HeapFree                    ; Do the actual freeing of the memory
@@ -410,15 +398,6 @@ _invert_err:
     ret
 .L1:
     mov r15, 0
-    ret
-
-_GetKeyState:
-    mov rdi, GetKeyState
-    mov rbx, 8
-    call _syscall
-    mov rdi, rsp
-    add rdi, 16
-    mov [rdi], rax
     ret
 
 ; syscall will call any dll function that is reachable

@@ -13,6 +13,8 @@ type FuncDef struct {
 	VarArg        bool
 }
 
+var Externals []string
+
 var funcDefList []*FuncDef
 
 func FuncInit() {
@@ -36,6 +38,10 @@ func FuncInit() {
 	_, _ = AddFunc("len", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("cstrlen", []*TypeDef{&StringType}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("GetKeyState", []*TypeDef{&I32Type}, []*TypeDef{&I32Type}, true, false)
+}
+
+func AddExternal(name string) {
+	Externals = append(Externals, name)
 }
 
 func FuncCount(name string) int {

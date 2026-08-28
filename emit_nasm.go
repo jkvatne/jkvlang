@@ -583,10 +583,6 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_free_struct")
 		EmitExtern("_free_str")
 		EmitExtern("_free_slice")
-		EmitExtern("_create_file")
-		EmitExtern("_read_file")
-		EmitExtern("_close_file")
-		EmitExtern("_write_file")
 		EmitExtern("_len")
 		EmitExtern("_lptr")
 		EmitExtern("_cptr")
@@ -605,6 +601,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_cstrlen")
 		EmitSection("text")
 	}
+
 	emit("global", "main", "", "")
 	code.EmitBlankLine()
 	code.EmitBlankLine()
@@ -842,6 +839,9 @@ func EmitEpilogue(name string) {
 	} else {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)
+	}
+	for _, name = range Externals {
+		EmitExtern(name)
 	}
 }
 
