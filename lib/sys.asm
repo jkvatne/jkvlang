@@ -256,6 +256,7 @@ _lptr:
     ret
 
 _len:
+    mov rax, [rsp+8]
     mov rax, [rax]
     and rax, 0x7FFFFFFF
     mov [rsp+16], rax

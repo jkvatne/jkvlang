@@ -873,7 +873,7 @@ func EmitLoadIndirect() {
 
 // EmitStoreIndirect has Pointer on stack, value in rax
 func EmitStoreIndirect(op string, size int) {
-	emit("pop", "rsi", "", Sp(-1))
+	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
 	if size == 8 {
 		emit(op, "[rsi]", "rax", "EmitStoreIndirect quad")
 	} else if size == 4 {
@@ -892,7 +892,7 @@ func EmitLoadEa(localOfs int) {
 }
 
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
-	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "11 "+comment)
+	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit "+comment)
 }
 
 func EmitAssignIndirectConstInt(size int, unsigned bool, value int64, comment string) {
@@ -1174,13 +1174,12 @@ func EmitIndirectAssignment(name string) {
 
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
-		EmitFlushRax("Before LoadField")
 		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
 	}
-	if fieldOffset != 0 {
-		emit("add", "rax", strconv.Itoa(fieldOffset), "Add field offset for field '"+fieldName+"'")
-	}
 	code.SetAx()
+	if fieldOffset != 0 {
+		emit("add", "rax", strconv.Itoa(fieldOffset), "LoadField: Add field offset for field '"+fieldName+"'")
+	}
 }
 
 func EmitLoadWithOffset(ofs int, comment string) {

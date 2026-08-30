@@ -40,7 +40,6 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		if CanAssignConst(t, value) {
 			if t == code.TYP_STRING {
 				if lvalue.IsIndirect {
-					// EmitFlushRax("Before AssignIndirectStrLit")
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
 					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
@@ -68,7 +67,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			} else {
 				err = fmt.Errorf("unimplemented assignment of %s", t.Name())
 			}
-
+			code.SetUndef()
 			if err != nil {
 				return err
 			}
@@ -77,14 +76,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			return fmt.Errorf("cannot assign const to variable \"%s\"", lvalue.Name)
 		}
 	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == code.TYP_PTR {
-		// The value is on the top of the stack (rax). Save it to the lvalue.
-		if !code.AxIsTos() {
-			EmitPopAx("Assigning TOS to lvalue")
-			code.SetAx()
-		}
+		// The value is in TOS/rax. Save it to the lvalue.
+		EmitAssertTosInRax("Assigning TOS to lvalue, assert righthand the value is in rax")
 		if lvalue.IsIndirect {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
-		} else {
+		} else if value.Offset != 0 {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 		}
 		code.SetUndef()
@@ -189,7 +185,6 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			v.Name = fieldName
 			fieldOfs := lvalue.Typ.Offsets[fieldName]
 			EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
-			code.SetAx()
 			v.IsIndirect = true
 			lvalue = v
 		} else if s.found(TOK_LBRACK) {
@@ -409,6 +404,7 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 // This is the only location where arguments are evaluated
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
+	HadAx := code.AxIsTos()
 	s.currentFuncCall = id
 	if FuncCount(id) == 0 {
 		s.currentFuncCall = ""
@@ -466,8 +462,12 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		code.ArgCode = code.ArgCode[0 : nac-1]
 	}
 	// Make space for return values. This code is added to the ArgCode stack.
+	if HadAx {
+		code.SetAx()
+	}
 	code.NewArgCode()
-	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
+	EmitFlushRax("Flush rax before function call")
+	EmitAddToSp(len(f.returnTypes), "** Make space for return values from "+f.name)
 
 	if len(values) == 0 {
 		code.ConsArgCode(2, true)
@@ -531,6 +531,9 @@ func ParseAssign(s *State, id string) error {
 		}
 		if len(values) != len(lvalues) {
 			return fmt.Errorf("expected %d values but got %d", len(lvalues), len(values))
+		}
+		if !values[0].IsConst {
+			EmitFlushRax("Flush rax to stack before assignment")
 		}
 		if op != TOK_ASSIGN && len(lvalues) > 1 {
 			return fmt.Errorf("can not use %s on more than one target", op.Name())

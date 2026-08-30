@@ -1,4 +1,15 @@
 
+type State = struct {
+    token I32
+    ch1   I32
+    ch2   I32
+    tokenString String
+    text String
+    textSize I32
+    p I32
+}
+
+/*
 const (
     // dwCreationDisposition.
     CREATE_NEW     I32 = 1    // Fails if file already exists
@@ -93,7 +104,44 @@ func substring(s String, start I32, end I32) String {
     return t
 }
 
+const (
+    TOK_EOF I32 = 0
+)
+
+func nextChar(s State) {
+	s.ch1 = s.text[s.p]
+	s.p += 1
+	s.ch2 = s.text[s.p]
+}
+
+func nextToken(s State) I32 {
+    if s.p>=s.textSize {
+        return 0
+    }
+    //nextChar(s)
+    if s.ch1 == 13 {
+        s.tokenString = "<cr>"
+    } else if s.ch1 == 10 {
+        s.tokenString = "<lf>"
+    } else if s.ch1 == 9 {
+        s.tokenString = "<tab>"
+    }
+}
+
+func Parse(s State) {
+    loop{
+        token = nextToken(s)
+        if token == 0 ? break
+    }
+}
+*/
+
 func main() {
+    filename = "compiler.jkv"
+    s = new(State)
+    s.text = "asd fad fad f a dsfad sfasdfadf"
+    s.textSize = len(s.text)
+    print("Text size=%d", s.textSize)
 /*
     filename=""
     for i=range(1, argc-1) {
@@ -102,9 +150,13 @@ func main() {
     print("Argument=%s",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename=%s", u)
-*/
+
     filename = "compiler.jkv"
-    text = read_all(filename)
-    print("%s", text)
+    s = new(State)
+    s.text = read_all(filename)
+    s.textSize = len(s.text)
+    print("File size is %d bytes", s.textSize)
+    Parse(s)
+*/
 }
 
