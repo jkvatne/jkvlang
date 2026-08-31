@@ -13,10 +13,12 @@ type RangeIterator = struct {
 }
 
 func main() {
-    n = 1
-    t = "-file=test"
     s = new(State)
     s.text = "-file=abcdefg"
+    n = s.text[1]
+    assert(n==0x66, "Expected n=0x66, got %d", n)
+
+    t = "-file=test"
 
     // Test len()
     s.size = len(s.text)
@@ -43,5 +45,4 @@ func main() {
     i=6
     t[i]='X'
     assert(t=="-file=Xest", "Expected t=='-file=Xest', got '%s'", t)
-
 }

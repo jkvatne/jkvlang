@@ -1285,7 +1285,7 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "Skip len/cap")
-		emit("add", "rax", "rbx", "Calculate address by adding offset")
+		emit("add", "rax", "rbx", "Calculate address by adding offset 1")
 	} else if !isIndirect {
 		// Local variable with constant index
 		emit("mov", "rax", BpRel(offset), "LoadIndexedValue: Get local var string address into rbx")
@@ -1305,13 +1305,13 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "Skip len/cap")
-		emit("add", "rax", "rbx", "Calculate address by adding offset")
+		emit("add", "rax", "rbx", "Calculate address by adding offset 2")
 	} else {
-		// Tos is index. Pointer in local variable at offset
+		// Tos is index. Pointer in local variable at offset, Const offset into string.
 		EmitAssertTosInRax("LoadIndexedValue: Assure index in rax")
 		emit("mov", "rbx", BpRel(offset), "LoadIndexedValue: Get local var string address into rbx")
-		emit("add", "rax", "8", "Skip len/cap")
-		emit("add", "rax", "rbx", "Calculate address by adding offset")
+		emit("add", "rax", strconv.Itoa(int(index)*size+8), "LoadIndexedValue: Index element "+strconv.Itoa(int(index))+" of string/slice")
+		// emit("add", "rax", "rbx", "Calculate address by adding offset 3")
 	}
 	code.SetAx()
 	if size == 1 {
