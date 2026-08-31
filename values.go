@@ -1,8 +1,6 @@
 package main
 
 import (
-	"strconv"
-
 	"github.com/jkvatne/jkv/code"
 )
 
@@ -91,20 +89,4 @@ func widest(v1 *ValueDef, v2 *ValueDef) *ValueDef {
 		return v1
 	}
 	return v2
-}
-
-func ValueAsString(v ValueDef) string {
-	if v.Typ.Pt == code.TYP_U8 || v.Typ.Pt == code.TYP_U16 || v.Typ.Pt == code.TYP_U32 || v.Typ.Pt == code.TYP_I16 || v.Typ.Pt == code.TYP_I32 || v.Typ.Pt == code.TYP_I64 {
-		return strconv.FormatInt(v.IntValue, 10)
-	} else if v.Typ.Pt == code.TYP_BOOL {
-		if v.BoolValue {
-			return "true"
-		}
-		return "false"
-	} else if v.Typ.Pt == code.TYP_F64 {
-		return strconv.FormatFloat(v.FloatValue, 'g', -1, 64)
-	} else if v.Typ.Pt == code.TYP_F32 {
-		return strconv.FormatFloat(v.FloatValue, 'g', -1, 32)
-	}
-	return v.StringValue
 }

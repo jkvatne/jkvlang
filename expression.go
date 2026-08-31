@@ -33,14 +33,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if value.HasValue() {
 		t := lvalue.Typ.Pt
 		if t == code.TYP_STRUCT {
-			if lvalue != nil {
-				t = lvalue.Typ.Pt
-			}
+			t = lvalue.Typ.Pt
 		}
 		if CanAssignConst(t, value) {
 			if t == code.TYP_STRING {
 				if lvalue.IsIndirect {
-
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
 					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
@@ -50,7 +47,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				}
 			} else if t.IsInteger() {
 				if lvalue.IsIndirect {
-					EmitAssignIndirectConstInt(lvalue.Typ.Pt.Size(), false, value.IntValue, "Assign to field")
+					EmitAssignIndirectConstInt(lvalue.Typ.Pt.Size(), value.IntValue, "Assign to field")
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
 				} else {
@@ -174,7 +171,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	// Loop over field access or indexed access.
 	for {
 		if lvalue == nil && s.found(TOK_DOT) {
-			return nil, fmt.Errorf("New identifier '%s' before dot. Struct must exist.", id)
+			return nil, fmt.Errorf("new identifier '%s' before dot. Struct must exist.", id)
 		} else if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
 			if lvalue.IsIndirect {
 				EmitLoadTosIndirect(8, lvalue.Name)
@@ -203,14 +200,14 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 
 			if !lvalue.IsIndirect && lvalue.Offset == 0 {
-				return nil, fmt.Errorf("Local var address is 0")
+				return nil, fmt.Errorf("local var address is 0")
 			}
 
 			if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				EmitModifyConstIndexedCharIndirect(int(index.IntValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				if lvalue.Offset == 0 {
-					return nil, fmt.Errorf("Local var address is 0")
+					return nil, fmt.Errorf("local var address is 0")
 				}
 				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
 			} else if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING {
@@ -227,12 +224,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				if !lvalue.IsIndirect {
 					EmitLea(lvalue.Offset, "Load indirect var address")
 				}
-				EmitModifyIndexedSlice(lvalue.Typ.Element.Size(), s.returnLbl)
+				EmitModifyIndexedSlice(lvalue.Typ.Element.Size())
 			}
 			// Multiply by element size
-			if err != nil {
-				return nil, err
-			}
 			if lvalue.Typ.Pt == code.TYP_STRING {
 				lvalue = &VarDef{Typ: &U8Type, IsIndirect: true}
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
@@ -259,9 +253,8 @@ func ShiftFromSize(size int) string {
 		return "2"
 	} else if size == 8 {
 		return "3"
-	} else {
-		panic("Size of element must be 1,2,4 or 8 bytes")
 	}
+	panic("Size of element must be 1,2,4 or 8 bytes")
 }
 
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
@@ -429,7 +422,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	f := FindFuncDef(id, TypeListVal(values))
 	if f == nil {
-		return nil, fmt.Errorf("Function %s with wrong parameters", id)
+		return nil, fmt.Errorf("function %s with wrong parameters", id)
 	}
 
 	for parNo, value := range values {
@@ -642,21 +635,6 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 	return values[0], nil
 }
 
-// LoadIndexedVar assumes the index value is TOS (or a constant in value.IntValue if value.IsConst
-// It will multiply the index by the size (which can be 1,2,4 or 8) and add it to the address.
-// This function is for local variables only, so the address is given by the offset from the frame pointer (rbp).
-// We want:  RBX = (RCX * 4) + RAX + 16
-// Assembly: lea rbx, [rax + rcx * 4 + 16]
-func LoadIndexedVar(size int, frameOffset int, index *ValueDef) (*ValueDef, error) {
-	if index.HasValue() {
-		// Index is a constant. Load ea and add size*index
-		EmitLoadIndexedVar(frameOffset, index.IntValue, size)
-		return &ValueDef{Typ: &U8Type}, nil
-	} else {
-		return nil, fmt.Errorf("Not implemented")
-	}
-}
-
 // ParseArrayOrStruct handles a string of array or field references.
 // F.ex. a[14].f.r[i]. It emits code to load the resulting value.
 // Current token is either TOK_DOT or TOK_LBRACK when this function is called
@@ -751,37 +729,36 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		// ParseArrayOrStruct function
 		return ParseArrayOrStruct(s, id)
 
-	} else {
-		// If none above, it is a simple variable
-		localVar, ok := VarDefs[id]
-		if localVar == nil {
-			return nil, fmt.Errorf("expected local variable, got %s", id)
-		}
-		value := &ValueDef{Typ: localVar.Typ}
-		if !ok {
-			return nil, fmt.Errorf("did not find variable \"%s\"", id)
-		}
-		if localVar.Name == "err" {
-			EmitLoadErr()
-		} else if localVar.Typ.Pt.IsFloat() {
-			EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name, s.currentFuncCall)
-		} else if localVar.IsGlobal && localVar.constValue != "" {
-			EmitLoadGlobalConst(localVar.constValue)
-		} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
-			EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
-		} else if localVar.Typ.Pt.IsInteger() {
-			if localVar.Offset == 0 {
-				return nil, fmt.Errorf("variable \"%s\" has zero offset", localVar.Name)
-			}
-			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
-		} else {
-			localVar.Destroyed = s.ParsingReturnValue
-			value.localVar = localVar
-			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load struct/string variable "+localVar.Name)
-		}
-		s.ParsingReturnValue = false
-		return []*ValueDef{value}, nil
 	}
+	// If none above, it is a simple variable
+	localVar, ok := VarDefs[id]
+	if localVar == nil {
+		return nil, fmt.Errorf("expected local variable, got %s", id)
+	}
+	value := &ValueDef{Typ: localVar.Typ}
+	if !ok {
+		return nil, fmt.Errorf("did not find variable \"%s\"", id)
+	}
+	if localVar.Name == "err" {
+		EmitLoadErr()
+	} else if localVar.Typ.Pt.IsFloat() {
+		EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name)
+	} else if localVar.IsGlobal && localVar.constValue != "" {
+		EmitLoadGlobalConst(localVar.constValue)
+	} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
+		EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
+	} else if localVar.Typ.Pt.IsInteger() {
+		if localVar.Offset == 0 {
+			return nil, fmt.Errorf("variable \"%s\" has zero offset", localVar.Name)
+		}
+		EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
+	} else {
+		localVar.Destroyed = s.ParsingReturnValue
+		value.localVar = localVar
+		EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load struct/string variable "+localVar.Name)
+	}
+	s.ParsingReturnValue = false
+	return []*ValueDef{value}, nil
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
@@ -914,7 +891,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if t.Pt == code.TYP_STRING {
 			EmitNewString(hasLen)
 		} else if t.Pt == code.TYP_SLICE {
-			EmitNewSlice(t, t.Element.Size(), hasLen)
+			EmitNewSlice(t.Element.Size(), hasLen)
 		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")

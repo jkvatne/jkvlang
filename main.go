@@ -60,9 +60,6 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 		}
 		err = Assemble(workDir)
 		if err == nil {
-			if err != nil {
-				return err
-			}
 			err = Link(workDir, libPath, outputName)
 		}
 	}
@@ -269,15 +266,6 @@ func unpack64(f float64) (uint64, int) {
 		return m << s, e - s
 	}
 	return m, (e - 1) + minExp
-}
-
-func GoTests() {
-	m := uint64(0x7ff)
-	e := bits.Len64(m)
-	fmt.Printf("%d bits\n", e)
-
-	m, e = unpack64(1.75)
-	fmt.Printf("m=0x%x, e=%d\n", m, e)
 }
 
 func main() {

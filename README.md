@@ -26,7 +26,7 @@ compiling and running all the test examples.
 * Modules/packages
 * Linking precompiled object files
 * Most system calls
-* All of the math libraries.
+* All the math libraries.
 * Maps
 
 # Warning

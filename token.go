@@ -245,8 +245,8 @@ func eof(s *State) bool {
 }
 
 // TypeFromNumber will guess the type based on the value of the number
-// Range for 64 bit signed integer = -9223372036854775808 ... 9223372036854775807
-// Range for 64 bit unsigned integer = 0 ... 18446744073709551615
+// Range for 64-bit signed integer = -9223372036854775808 ... 9223372036854775807
+// Range for 64-bit unsigned integer = 0 ... 18446744073709551615
 func TypeFromNumber(x int64) code.PrimaryType {
 	if x >= 0 && x <= 255 {
 		return code.TYP_U8

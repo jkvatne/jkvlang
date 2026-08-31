@@ -37,15 +37,6 @@ func init() {
 	InitVardefs()
 }
 
-func MustFree() bool {
-	for _, v := range VarDefs {
-		if v.Typ.Pt == code.TYP_STRING || v.Typ.Pt == code.TYP_STRUCT {
-			return true
-		}
-	}
-	return false
-}
-
 func VarReset(s *State) {
 	for _, v := range VarDefs {
 		if v.Typ == nil {
@@ -181,7 +172,7 @@ func ParseStructType(s *State) (*TypeDef, error) {
 
 func ParseSlice(s *State) (*TypeDef, error) {
 	if !s.found(TOK_RBRACK) {
-		return nil, fmt.Errorf("Fixed size arrays not implemented yet")
+		return nil, fmt.Errorf("fixed size arrays not implemented yet")
 	}
 	t := &TypeDef{Pt: code.TYP_SLICE}
 	var ok bool

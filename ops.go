@@ -32,10 +32,9 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 	} else if val1.IsConst {
 		EmitAssertTosInRax("Get TOS before TosOpConst1")
 		return generateTosOpConst(Inverse(op), val2, val1)
-	} else {
-		EmitAssertTosInRax("Get TOS before TosOpNos")
-		return generateTosOpNos(op, val1, val2)
 	}
+	EmitAssertTosInRax("Get TOS before TosOpNos")
+	return generateTosOpNos(op, val1, val2)
 }
 
 // generateConstOpConst will calculate the result of the operation on the two constant values
@@ -153,24 +152,23 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING && op == TOK_PLUS {
 			EmitConcat(val1.IsTempObj, val2.IsTempObj)
 			return val1, nil
-		} else {
-			var err error
-			if val1.Typ.Pt == code.TYP_F64 || val2.Typ.Pt == code.TYP_F64 {
-				err = EmitF64Op(op, val1.Typ.Pt, val2.Typ.Pt)
-			} else {
-				err = EmitF32Op(op, val1.Typ.Pt, val2.Typ.Pt)
-			}
-			if val1.Typ.Pt == code.TYP_F64 {
-				return val1, nil
-			} else if val2.Typ.Pt == code.TYP_F64 {
-				return val2, nil
-			} else if val1.Typ.Pt == code.TYP_F32 {
-				return val1, nil
-			} else if val2.Typ.Pt == code.TYP_F32 {
-				return val2, nil
-			}
-			return val1, err
 		}
+		var err error
+		if val1.Typ.Pt == code.TYP_F64 || val2.Typ.Pt == code.TYP_F64 {
+			err = EmitF64Op(op, val1.Typ.Pt, val2.Typ.Pt)
+		} else {
+			err = EmitF32Op(op, val1.Typ.Pt, val2.Typ.Pt)
+		}
+		if val1.Typ.Pt == code.TYP_F64 {
+			return val1, nil
+		} else if val2.Typ.Pt == code.TYP_F64 {
+			return val2, nil
+		} else if val1.Typ.Pt == code.TYP_F32 {
+			return val1, nil
+		} else if val2.Typ.Pt == code.TYP_F32 {
+			return val2, nil
+		}
+		return val1, err
 	}
 	return nil, fmt.Errorf("tosnos operation %s not implemented", TokenNames[op])
 
@@ -210,9 +208,8 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 				EmitPushConst(x, "")
 				_, err2 := generateTosOpNos(op, val2, val2)
 				return &ValueDef{Typ: val2.Typ}, err2
-			} else {
-				err = EmitOpIntConst(op, x, "TosOpConst")
 			}
+			err = EmitOpIntConst(op, x, "TosOpConst")
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			if val1.Typ.Pt == code.TYP_F64 {

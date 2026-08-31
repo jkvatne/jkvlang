@@ -291,7 +291,7 @@ func EmitOpAssignF64(op Token, adr int, x float64, comment string) error {
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 	} else {
-		return fmt.Errorf("F64 assign operation %s not implemented", op.Name())
+		return fmt.Errorf("type F64 assign operation %s not implemented", op.Name())
 	}
 	return nil
 }
@@ -305,7 +305,7 @@ func EmitOpAssignF32(op Token, adr int, x float32, comment string) error {
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 	} else {
-		return fmt.Errorf("F32 assign operation %s not implemented", op.Name())
+		return fmt.Errorf("type F32 assign operation %s not implemented", op.Name())
 	}
 	return nil
 }
@@ -338,12 +338,6 @@ func EmitOpAssign(op Token, adr int, size int, value int64, comment string) erro
 			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
 		}
 	}
-	return nil
-}
-func EmitOpAssignStringLitToField(offset int, fieldOfs int, litno int) error {
-	emit("mov", "rax", DataType(8)+BpRel(offset), "")
-	emit("add", "rax", strconv.Itoa(fieldOfs), "")
-	emit("mov", "qword [rax]", "str"+strconv.Itoa(litno), "")
 	return nil
 }
 
@@ -413,7 +407,7 @@ func EmitStoreConst(size int, value int64, offset int, comment string) {
 	emit("mov", DataType(size)+BpRel(offset), num, comment)
 }
 
-func EmitLoadFloat(size int, adr int, comment string, fun string) {
+func EmitLoadFloat(size int, adr int, comment string) {
 	EmitFlushRax("Before LoadFloat")
 	code.SetAx()
 	if size == 8 {
@@ -863,14 +857,6 @@ func EmitPopBx(comment string) {
 	emit("pop", "rbx", "", comment+Sp(-1))
 }
 
-func EmitAddToRsi(ofs int) {
-	emit("add", "rsi", strconv.Itoa(ofs), "")
-}
-
-func EmitLoadIndirect() {
-	emit("mov", "rax", "[rsi]", "")
-}
-
 // EmitStoreIndirect has Pointer on stack, value in rax
 func EmitStoreIndirect(op string, size int) {
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
@@ -887,15 +873,11 @@ func EmitStoreIndirect(op string, size int) {
 	}
 }
 
-func EmitLoadEa(localOfs int) {
-	emit("mov", "rsi", BpRel(localOfs), "EmitLoadEa")
-}
-
 func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
 	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit "+comment)
 }
 
-func EmitAssignIndirectConstInt(size int, unsigned bool, value int64, comment string) {
+func EmitAssignIndirectConstInt(size int, value int64, comment string) {
 	emit("mov", DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
 }
 
@@ -939,7 +921,7 @@ func EmitNewStruct(t *TypeDef) {
 	emit("call", "_alloc", "", "Allocate new struct")
 }
 
-func EmitNewSlice(t *TypeDef, elementSize int, hasLen bool) {
+func EmitNewSlice(elementSize int, hasLen bool) {
 	EmitAssertTosInRax("Before NewSlice")
 	if hasLen {
 		emit("mov", "r14", "rax", "new slice length")
@@ -1009,16 +991,6 @@ func EmitFreeIfExists(offset int, size int, txt string) {
 	emit("call", "_free_struct", "", "")
 	EmitLabel(lbl, "")
 	emit("mov", "rax", "r12", "")
-}
-
-// EmitAppend expects NOS=pointer to slice, TOS=value to append
-// size is the element size in bytes
-func EmitAppend(size int) {
-	EmitAssertTosInRax("")
-	emit("mov", "rdi", "[rsp]", "")
-	emit("mov", DataType(size)+"[rdi]", AxName(size), "")
-	// TOS is no longer in rax
-	code.SetUndef()
 }
 
 func EmitLoadGlobalConst(name string) {
@@ -1159,7 +1131,7 @@ func EmitModifyConstIndexedSlice(offset int, size int, returnLbl int) {
 	emit("mov", "rax", "rsi", "")
 }
 
-func EmitModifyIndexedSlice(size int, returnLbl int) {
+func EmitModifyIndexedSlice(size int) {
 	emit("mov", "rax", "[rax]", "Load slice pointer 1")
 	emit("add", "rax", "8", "Skip len/cap in slice")
 	emit("pop", "rbx", "", "Get index"+Sp(-1))
@@ -1247,11 +1219,11 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "EmitLoadTosIndirect Load value in field '"+fieldName+"'")
 }
 
-// EmitLoadGlobal. TOS is index. Pointer is in global variable <id>
+// EmitLoadGlobal TOS is index. Pointer is in global variable <id>
 func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 	if isConst {
 		emit("mov", "rax", "["+id+"]", "EmitLoadGlobal")
-		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
+		emit("add", "rax", strconv.Itoa(index*size+8), "Index element "+strconv.Itoa(index)+" of string/slice")
 	} else {
 		EmitAssertTosInRax("Assure tos (index) is in rax")
 		if size > 1 {
@@ -1575,7 +1547,7 @@ func EmitCompareF64Const(op Token, x float64) (err error) {
 	return err
 }
 
-// EmitCompareF64Const compares float in TOS with float constant
+// EmitCompareF32Const compares float in TOS with float constant
 func EmitCompareF32Const(op Token, x float32) (err error) {
 	litNo := AddF32Lit(x)
 	emit("movd", xmm(1), "eax", "")
@@ -1596,7 +1568,7 @@ func EmitCompareF64(op Token) (err error) {
 	return err
 }
 
-// EmitCompareF64 compares two floats in TOS and NOS.
+// EmitCompareF32 compares two floats in TOS and NOS.
 func EmitCompareF32(op Token) (err error) {
 	emit("movd", xmm(2), "eax", "")
 	EmitPopAx("")
@@ -1616,6 +1588,7 @@ func EmitLoadBool(value bool) {
 }
 
 func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
+	// Todo : Use type to determine size to move
 	emit("mov", "rax", "["+name+"]", "Load variable "+name)
 	code.SetAx()
 }

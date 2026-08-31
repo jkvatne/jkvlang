@@ -31,7 +31,7 @@ func CompileFile(name string, workdir string, libPath string) error {
 
 	// Top level statements can only be func, const or type.
 	// Global variables are not allowed!
-	for s.token != TOK_EOF && err == nil {
+	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			err = ParseFuncDef(s)
 		} else if s.token == TOK_CONST {
@@ -60,9 +60,6 @@ func CompileFile(name string, workdir string, libPath string) error {
 	}
 	for i, l := range F32LiteralDefs {
 		EmitF32Litteral("f32_"+strconv.Itoa(i+1), l)
-	}
-	if err != nil {
-		return fmt.Errorf("%s:%d %v", name, code.LineNum, err)
 	}
 	if s.CommentLevel > 0 {
 		return fmt.Errorf("missing end of comment")

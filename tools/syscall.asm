@@ -327,7 +327,7 @@ qrand32:
     ret
 
     ; --- 64-bit RDRAND implementation ---
-global rand64:
+global rand64
 rand64:
     rdrand rax          ; Try to generate a 64-bit random number into RAX
     jnc rand64          ; The Carry Flag (CF) is 0 if the generator was not ready; retry if so.

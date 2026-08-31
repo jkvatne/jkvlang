@@ -73,7 +73,7 @@ locale_str  db ".utf8", 0   ; "UTF" locale, or use "" for system default
 f64sign_mask: dq 0x8000000000000000
 f32sign_mask: dq 0x80000000
 argc: dq 0
-argv: dq 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+argv: dq 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 args: dq 0   ; Slice for arguments
 envs: dq 0   ; Slice for environment
 env: dq 0

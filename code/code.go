@@ -1,7 +1,6 @@
 package code
 
 import (
-	"go/constant"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -69,7 +68,6 @@ type Value struct {
 }
 
 var (
-	constValue  constant.Value
 	state       stackState
 	LabelNo     int
 	LocalSp     int
@@ -113,14 +111,10 @@ func StackState() string {
 		return "ax"
 	} else if state == sp {
 		return "sp"
-	} else {
-		return "--"
 	}
+	return "--"
 }
 
-func SetXmm1() {
-	state = xmm1
-}
 func SetAx() {
 	state = ax
 }
@@ -135,10 +129,6 @@ func SetUndef() {
 
 func AxIsTos() bool {
 	return state == ax
-}
-
-func SpIsTos() bool {
-	return state == sp
 }
 
 func New(name string, workdir string) (err error) {
