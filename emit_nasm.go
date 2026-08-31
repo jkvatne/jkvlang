@@ -1100,7 +1100,7 @@ func EmitLea(ofs int, comment string) {
 
 // EmitModifyConstIndexedCharIndirect assumes pointer to string in rax
 func EmitModifyConstIndexedCharIndirect(offset int) {
-	emit("push", "rax", "Save rax before copying string", Sp(1))
+	emit("push", "rax", "", "Save rax before copying string"+Sp(1))
 	emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
 	emit("pop", "rdi", "", Sp(-1))

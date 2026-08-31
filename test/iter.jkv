@@ -26,6 +26,12 @@ func next(r RangeIterator) I32 {
 
 func main() {
 
+    r = new(RangeIterator)
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    assert(r.start==1, "Expected r.start=1, got %d", r.start)
+
     sum = 0
     for i = range(2,5) {
         sum+=i

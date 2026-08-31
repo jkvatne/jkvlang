@@ -13,18 +13,35 @@ type RangeIterator = struct {
 }
 
 func main() {
+    n = 1
+    t = "-file=test"
     s = new(State)
-    s.text = "asd fad fad f a dsfad sfasdfadf"
+    s.text = "-file=abcdefg"
+
+    // Test len()
     s.size = len(s.text)
-    // print("s.size=%d", s.size)
-    assert(s.size==31, "Expected s.size==31, got %d", s.size)
+    assert(s.size==13, "Expected s.size==13, got %d", s.size)
+
+    // Test len("")
+    n = len("")
+    assert(n==0, "Expected n==0, got %d", n)
+
+    s.p=6
 	s.ch1 = s.text[s.p]
-	//print("s.ch1=0x%x", s.ch1)
 	assert(s.ch1==0x61, "Expected s.ch1=0x61, got 0x%x", s.ch1)
-    r = new(RangeIterator)
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    //print("r.start=%d", r.start)
-    assert(r.start==1, "Expected r.start=1, got %d", r.start)
+
+    s.text[1]='g'
+    assert(s.text=="-gile=abcdefg", "Expected s.text=='-gile=abcdefg', got %s", s.text)
+
+    s.p=1
+    s.text[s.p] = 'h'
+    assert(s.text=="-hile=abcdefg", "Expected s.text=='-gile=abcdefg', got %s", s.text)
+
+    t[6]='T'
+    assert(t=="-file=Test", "Expected t=='-file=Test', got '%s'", t)
+
+    i=6
+    t[i]='X'
+    assert(t=="-file=Xest", "Expected t=='-file=Xest', got '%s'", t)
+
 }

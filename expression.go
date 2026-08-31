@@ -173,7 +173,9 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	var ok bool
 	// Loop over field access or indexed access.
 	for {
-		if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
+		if lvalue == nil && s.found(TOK_DOT) {
+			return nil, fmt.Errorf("New identifier '%s' before dot. Struct must exist.", id)
+		} else if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
 			if lvalue.IsIndirect {
 				EmitLoadTosIndirect(8, lvalue.Name)
 			}
