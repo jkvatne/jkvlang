@@ -1,0 +1,30 @@
+type State = struct {
+    token I32
+    ch1   U8
+    ch2   U8
+    text String
+    size I32
+    p I32
+}
+
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func main() {
+    s = new(State)
+    s.text = "asd fad fad f a dsfad sfasdfadf"
+    s.size = len(s.text)
+    // print("s.size=%d", s.size)
+    assert(s.size==31, "Expected s.size==31, got %d", s.size)
+	s.ch1 = s.text[s.p]
+	//print("s.ch1=0x%x", s.ch1)
+	assert(s.ch1==0x61, "Expected s.ch1=0x61, got 0x%x", s.ch1)
+    r = new(RangeIterator)
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    //print("r.start=%d", r.start)
+    assert(r.start==1, "Expected r.start=1, got %d", r.start)
+}

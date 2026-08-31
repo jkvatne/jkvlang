@@ -438,8 +438,8 @@ func EmitLoad(size int, adr int, comment string) {
 // EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
 func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
-	emit(opcode, BpRel(adr), AxName(size), comment)
-	code.SetSp()
+	emit(opcode, BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
+	code.SetUndef()
 }
 
 func EmitStoreF64(adr int, comment string) {
@@ -1100,7 +1100,7 @@ func EmitLea(ofs int, comment string) {
 
 // EmitModifyConstIndexedCharIndirect assumes pointer to string in rax
 func EmitModifyConstIndexedCharIndirect(offset int) {
-	emit("push", "rax", "", Sp(1))
+	emit("push", "rax", "Save rax before copying string", Sp(1))
 	emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
 	emit("pop", "rdi", "", Sp(-1))
@@ -1121,6 +1121,7 @@ func EmitModifyConstIndexedChar(addr int, offset int) {
 // TOS is value of index in rax
 // NOS is pointer to string
 func EmitModifyIndexedCharIndirect() {
+	EmitFlushRax("Flush rax before EmitModifyIndexedCharIndirect")
 	emit("mov", "rax", "[rsp+8]", "")
 	emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
@@ -1174,6 +1175,7 @@ func EmitIndirectAssignment(name string) {
 
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
+		EmitFlushRax("Flush rax before EmitLoadField")
 		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
 	}
 	code.SetAx()
@@ -1241,7 +1243,8 @@ func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
 }
 
 func EmitLoadTosIndirect(size int, fieldName string) {
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
+	code.SetAx()
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "EmitLoadTosIndirect Load value in field '"+fieldName+"'")
 }
 
 // EmitLoadGlobal. TOS is index. Pointer is in global variable <id>
@@ -1269,19 +1272,26 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 	code.SetAx()
 }
 
-func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, size int) {
+func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, size int) {
 	// Load variable address into rax
 	if !isIndirect {
-		EmitFlushRax("")
+		EmitFlushRax("LoadIndexedValue")
 		code.SetAx()
-		emit("mov", "rax", BpRel(offset), "EmitLoadAdrToSi")
+		emit("mov", "rax", BpRel(offset), "LoadIndexedValue")
 	}
 	if isConst {
-		emit("add", "rax", strconv.Itoa(int(index)*size+8), "Index element "+strconv.Itoa(int(index))+" of string/slice")
+		emit("add", "rax", strconv.Itoa(int(index)*size+8), "LoadIndexedValue: Index element "+strconv.Itoa(int(index))+" of string/slice")
 	} else {
 		// TOS is index, NOS is pointer
-		EmitAssertTosInRax("")
-		emit("pop", "rbx", "", "NOS into rbx"+Sp(-1))
+		EmitAssertTosInRax("LoadIndexedValue")
+		emit("pop", "rbx", "", "LoadIndexedValue. Pointer in NOS into rbx"+Sp(-1))
+		// Check for nil pointer
+		emit("or", "rbx", "rbx", "Check for nil pøointer")
+		lbl := code.NewLabel()
+		emit("jnz", Label(lbl), "", "")
+		emit("mov", "r15", "105", "")
+		emit("jmp", ".L9999", "", "Panic termination")
+		EmitLabel(lbl, "")
 		if size > 1 {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
@@ -1290,11 +1300,11 @@ func EmitLoadAdrToSi(isIndirect bool, isConst bool, offset int, index int64, siz
 		code.SetAx()
 	}
 	if size == 1 {
-		emit("movzx", "rax", "byte [rax]", "Get char from string in EmitLoadAdrToSi")
+		emit("movzx", "rax", "byte [rax]", "LoadIndexedValue: Get char from string")
 	} else if size == 2 || size == 4 {
-		emit("movzx", "rax", DataType(size)+"[rax]", "")
+		emit("movzx", "rax", DataType(size)+"[rax]", "LoadIndexedValue: Get word/dword")
 	} else if size == 8 {
-		emit("mov", "rax", "[rax]", "")
+		emit("mov", "rax", "[rax]", "LoadIndexedValue: Get qword")
 	} else {
 		panic("TODO")
 	}

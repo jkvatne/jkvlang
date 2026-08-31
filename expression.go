@@ -28,7 +28,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if !CanAssignToVar(lvalue, value.Typ.Pt) {
 		return fmt.Errorf("assignment expected type %s but got %s", lvalue.Typ.Pt.Name(), value.Typ.Name())
 	}
-
+	EmitComment(">>> GenerateAssignment")
 	// If the value is known (a compile time constant)
 	if value.HasValue() {
 		t := lvalue.Typ.Pt
@@ -40,6 +40,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		if CanAssignConst(t, value) {
 			if t == code.TYP_STRING {
 				if lvalue.IsIndirect {
+
 					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
 				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
 					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
@@ -93,11 +94,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitStoreF32(lvalue.Offset, "Assign F32 to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRING {
-		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		EmitAssertTosInRax("Pop TOS into rax before assignment of string")
 		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_SLICE {
-		EmitAssertTosInRax("Pop TOS into rax before assignment")
+		EmitAssertTosInRax("Pop TOS into rax before assignment of slice")
 		EmitIndirectAssignment(lvalue.Name)
 	} else if value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		if lvalue.Offset != 0 {
@@ -202,7 +203,6 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			}
 
 			if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				EmitAssertTosInRax("")
 				EmitModifyConstIndexedCharIndirect(int(index.IntValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				if lvalue.Offset == 0 {
@@ -210,7 +210,6 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				}
 				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
 			} else if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING {
-				EmitFlushRax("")
 				EmitModifyIndexedCharIndirect()
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
 				EmitAssertTosInRax("")
@@ -239,6 +238,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
+			EmitAllocLocalVar("Assign stack space for " + id)
 		} else {
 			break
 		}
@@ -263,6 +263,8 @@ func ShiftFromSize(size int) string {
 // ParseLvalueList parses a list of lvalues to the left of = , += etc.
 // The first identifier is given in parameter id.
 func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
+	EmitComment(">>>>> Start parsing Lvalue List")
+
 	// For each lvalue, separated by comma. The identifier is already in the id variable
 	for {
 		lvalue, err2 := ParseLvalue(s, id)
@@ -283,9 +285,11 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	// Create new vardefs for new local variables with unknown type.
 	for _, v := range lvalues {
 		if v.Typ == nil {
-			VarDefs[v.Name].Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+			// VarDefs[v.Name].Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 		}
 	}
+	txt := fmt.Sprintf(">>>> ParseLvalueList done, len(lvalues)=%d, indirect=%v, offset=%d", len(lvalues), lvalues[0].IsIndirect, lvalues[0].Offset)
+	EmitComment(txt)
 	return lvalues, err
 }
 
@@ -303,6 +307,7 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 		if parNo > 1 {
 			code.NewArgCode()
 		}
+		code.SetUndef()
 		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcname + "'")
 		values, err1 := ParseExpression(s)
 		if err1 != nil {
@@ -524,6 +529,7 @@ func ParseAssign(s *State, id string) error {
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
+
 		// Now parse the expression(s) to find the value(s)
 		values, err := ParseExpressions(s)
 		if err != nil {
@@ -531,9 +537,6 @@ func ParseAssign(s *State, id string) error {
 		}
 		if len(values) != len(lvalues) {
 			return fmt.Errorf("expected %d values but got %d", len(lvalues), len(values))
-		}
-		if !values[0].IsConst {
-			EmitFlushRax("Flush rax to stack before assignment")
 		}
 		if op != TOK_ASSIGN && len(lvalues) > 1 {
 			return fmt.Errorf("can not use %s on more than one target", op.Name())
@@ -705,7 +708,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			if vp.IsGlobal {
 				EmitLoadGlobal(id, size, int(index.IntValue), index.IsConst)
 			} else {
-				EmitLoadAdrToSi(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
+				LoadIndexedValue(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
 			}
 			if size == 1 {
 				v.Typ = &U8Type
@@ -717,7 +720,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			break
 		}
 	}
-	value := &ValueDef{Typ: v.Typ}
+	value := &ValueDef{Typ: v.Typ, IsIndirect: isIndirect}
 	return []*ValueDef{value}, nil
 }
 
@@ -763,6 +766,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
 			EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
 		} else if localVar.Typ.Pt.IsInteger() {
+			if localVar.Offset == 0 {
+				return nil, fmt.Errorf("variable \"%s\" has zero offset", localVar.Name)
+			}
 			EmitLoad(localVar.Typ.Pt.Size(), localVar.Offset, "Load variable "+localVar.Name)
 		} else {
 			localVar.Destroyed = s.ParsingReturnValue

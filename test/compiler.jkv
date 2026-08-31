@@ -9,7 +9,32 @@ type State = struct {
     p I32
 }
 
-/*
+func nextChar(s State) {
+	s.ch1 = s.text[s.p]
+	s.p += 1
+	s.ch2 = s.text[s.p]
+}
+
+
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
 const (
     // dwCreationDisposition.
     CREATE_NEW     I32 = 1    // Fails if file already exists
@@ -70,25 +95,6 @@ func read_all(name String) String {
 }
 
 
-type RangeIterator = struct {
-    start I32
-    end I32
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
-
 func has_prefix(s String, sub String) Bool {
     for j=range(0, len(sub)-1) {
         if s[j]!=sub[j] ? return false
@@ -107,12 +113,6 @@ func substring(s String, start I32, end I32) String {
 const (
     TOK_EOF I32 = 0
 )
-
-func nextChar(s State) {
-	s.ch1 = s.text[s.p]
-	s.p += 1
-	s.ch2 = s.text[s.p]
-}
 
 func nextToken(s State) I32 {
     if s.p>=s.textSize {
@@ -134,7 +134,7 @@ func Parse(s State) {
         if token == 0 ? break
     }
 }
-*/
+
 
 func main() {
     filename = "compiler.jkv"
@@ -142,7 +142,7 @@ func main() {
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
     print("Text size=%d", s.textSize)
-/*
+
     filename=""
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
@@ -157,6 +157,6 @@ func main() {
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     Parse(s)
-*/
+
 }
 
