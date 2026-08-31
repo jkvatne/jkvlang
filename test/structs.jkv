@@ -8,6 +8,7 @@ type Person = struct {
   adr String
   age Age
   inc U8
+  w U16
 }
 
 

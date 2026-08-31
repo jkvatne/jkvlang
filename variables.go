@@ -39,9 +39,6 @@ func init() {
 
 func VarReset(s *State) {
 	for _, v := range VarDefs {
-		if v.Typ == nil {
-			continue // panic("v.Typ is nil")
-		}
 		if v.Typ.Pt != code.TYP_ERROR && !v.IsGlobal {
 			delete(VarDefs, v.Name)
 		}
