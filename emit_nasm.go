@@ -1272,33 +1272,48 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 	code.SetAx()
 }
 
+// LoadIndexedValue assumes TOS is the index (after parsing index)
+// If isIndirect, NOS will be the pointer (address of string/slice)
+// if !isIndirect, we use the offset to find the local variable. TOS is still index.
+// isConst==true means the index is in the parameter "index", and not on stack.
 func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, size int) {
-	// Load variable address into rax
-	if !isIndirect {
-		EmitFlushRax("LoadIndexedValue")
-		code.SetAx()
-		emit("mov", "rax", BpRel(offset), "LoadIndexedValue")
-	}
-	if isConst {
+	if !isIndirect && !isConst {
+		// Load index into rax
+		EmitAssertTosInRax("LoadIndexedValue: Assure index in rax")
+		emit("mov", "rbx", BpRel(offset), "LoadIndexedValue: Get local var string address into rbx")
+		if size > 1 {
+			emit("imul", "rax", strconv.Itoa(size), "")
+		}
+		emit("add", "rax", "8", "Skip len/cap")
+		emit("add", "rax", "rbx", "Calculate address by adding offset")
+	} else if !isIndirect {
+		// Local variable with constant index
+		emit("mov", "rax", BpRel(offset), "LoadIndexedValue: Get local var string address into rbx")
 		emit("add", "rax", strconv.Itoa(int(index)*size+8), "LoadIndexedValue: Index element "+strconv.Itoa(int(index))+" of string/slice")
-	} else {
+	} else if !isConst {
 		// TOS is index, NOS is pointer
-		EmitAssertTosInRax("LoadIndexedValue")
-		emit("pop", "rbx", "", "LoadIndexedValue. Pointer in NOS into rbx"+Sp(-1))
+		EmitAssertTosInRax("LoadIndexedValue: Assure tos in rax")
+		emit("pop", "rbx", "", "LoadIndexedValue. Get pointer in NOS into rbx"+Sp(-1))
 		// Check for nil pointer
-		emit("or", "rbx", "rbx", "Check for nil pøointer")
+		emit("or", "rbx", "rbx", "Check for nil pointer")
 		lbl := code.NewLabel()
 		emit("jnz", Label(lbl), "", "")
 		emit("mov", "r15", "105", "")
-		emit("jmp", ".L9999", "", "Panic termination")
+		// emit("jmp", ".L9999", "", "Panic termination")
 		EmitLabel(lbl, "")
 		if size > 1 {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "Skip len/cap")
 		emit("add", "rax", "rbx", "Calculate address by adding offset")
-		code.SetAx()
+	} else {
+		// Tos is index. Pointer in local variable at offset
+		EmitAssertTosInRax("LoadIndexedValue: Assure index in rax")
+		emit("mov", "rbx", BpRel(offset), "LoadIndexedValue: Get local var string address into rbx")
+		emit("add", "rax", "8", "Skip len/cap")
+		emit("add", "rax", "rbx", "Calculate address by adding offset")
 	}
+	code.SetAx()
 	if size == 1 {
 		emit("movzx", "rax", "byte [rax]", "LoadIndexedValue: Get char from string")
 	} else if size == 2 || size == 4 {

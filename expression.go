@@ -81,8 +81,10 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		EmitAssertTosInRax("Assigning TOS to lvalue, assert righthand the value is in rax")
 		if lvalue.IsIndirect {
 			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
-		} else if value.Offset != 0 {
+		} else if lvalue.Offset != 0 {
 			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
+		} else {
+			return fmt.Errorf("LValue offset is zero")
 		}
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_F64 {

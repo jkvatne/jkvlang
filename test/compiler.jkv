@@ -1,4 +1,4 @@
-
+/*
 type State = struct {
     token I32
     ch1   I32
@@ -135,9 +135,10 @@ func Parse(s State) {
     }
 }
 
-
+*/
 func main() {
     filename = "compiler.jkv"
+    /*
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
@@ -157,6 +158,6 @@ func main() {
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     Parse(s)
-
+*/
 }
 

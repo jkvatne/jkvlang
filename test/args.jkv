@@ -29,7 +29,7 @@ func main() {
 
     // Test nested integer functions
     w = sum(3, mpy(4,5))   // = 23
-    assert(w==23, "Failed 1")
+    assert(w==23, "Expected w==23, got %d", w)
 
     // Test functions without parameters
     assert(f3()==25)
@@ -44,7 +44,7 @@ func main() {
 
     // Test simple integer function call
     x = sum(1,2)
-    assert(x==3, "Failed sum(1,2)")
+    assert(x==3, "Expected sum(1,2)==3, got %d", x)
 
 
     // Test function call inside assert and with integer arg to assert
