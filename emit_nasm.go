@@ -877,8 +877,8 @@ func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
 	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit "+comment)
 }
 
-func EmitAssignIndirectConstInt(size int, value int64, comment string) {
-	emit("mov", DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
+func EmitAssignIndirectConstInt(op string, size int, value int64, comment string) {
+	emit(op, DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
 }
 
 func EmitGetAddrOfLocal(ofs int) {

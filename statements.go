@@ -54,6 +54,7 @@ func ParseReturn(s *State) error {
 	code.ConsArgCode(i, false)
 	code.OutputArgCode()
 	s.DidReturn = true
+	s.ParsingReturnValue = false
 	return nil
 }
 

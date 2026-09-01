@@ -47,7 +47,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 				}
 			} else if t.IsInteger() {
 				if lvalue.IsIndirect {
-					EmitAssignIndirectConstInt(lvalue.Typ.Pt.Size(), value.IntValue, "Assign to field")
+					EmitAssignIndirectConstInt(TokenOp[op], lvalue.Typ.Pt.Size(), value.IntValue, "Assign to field")
 				} else if lvalue.Name == "err" {
 					EmitStoreErr(int(value.IntValue))
 				} else {

@@ -21,12 +21,12 @@ type State = struct {
     p I32
 }
 
-func nextChar(s State) {
+func nextChar(s State) I32 {
 	s.ch1 = s.text[s.p]
 	s.p += 1
 	s.ch2 = s.text[s.p]
+	return s.ch1
 }
-
 
 type RangeIterator = struct {
     start I32
@@ -106,24 +106,32 @@ const (
     TOK_EOF I32 = 0
 )
 
-func nextToken(s State) I32 {
+func nextToken(s State) {
     if s.p>=s.textSize {
-        return 0
+        s.token = 0
     }
-    //nextChar(s)
-    if s.ch1 == 13 {
+    ch = nextChar(s)
+    if ch == 13 {
         s.tokenString = "<cr>"
-    } else if s.ch1 == 10 {
+        s.token = 1
+    } else if ch == 10 {
         s.tokenString = "<lf>"
+        s.token = 2
     } else if s.ch1 == 9 {
         s.tokenString = "<tab>"
+        s.token = 3
+    } else {
+        s.tokenString = ""
+        s.token = s.ch1
     }
 }
 
 func Parse(s State) {
     loop{
-        token = nextToken(s)
-        if token == 0 ? break
+        nextToken(s)
+        if s.token == 0 ? break
+        print("ch1=0x%02x", s.ch1)
+        fflush()
     }
 }
 
@@ -152,9 +160,9 @@ func main() {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
 
-    print("Argument=%s",filename)
+    print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
-    print("Filename=%s", u)
+    print("Filename from command line argument is '%s'", u)
 
     // Must use excpicit filename during tests
     filename = "C:/doc/compiler/test/compiler.jkv"
@@ -162,7 +170,7 @@ func main() {
     s.text = read_all(filename)
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
-    // Parse(s)
+    Parse(s)
 
 }
 
