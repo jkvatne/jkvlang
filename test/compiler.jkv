@@ -1,4 +1,16 @@
-/*
+
+const (
+    // dwCreationDisposition.
+    CREATE_NEW     I32 = 1    // Fails if file already exists
+    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
+    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
+    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
+
+    FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
+    FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
+    FILE_ATTRIBUTE_READONLY  I32 = 0x0001
+)
+
 type State = struct {
     token I32
     ch1   I32
@@ -35,17 +47,6 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-const (
-    // dwCreationDisposition.
-    CREATE_NEW     I32 = 1    // Fails if file already exists
-    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
-    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
-    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
-
-    FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
-    FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
-    FILE_ATTRIBUTE_READONLY  I32 = 0x0001
-)
 
 //  open_file calls the Windows CreateFileA function
 //  lpFileName              File name as a C string. must be Ansi
@@ -84,15 +85,6 @@ func write_file(f I32, txt String) I32 {
     return n
 }
 
-func read_all(name String) String {
-    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
-    n = call(GetFileSize, f, 0)
-    // if n>=0 ? fail(123)
-    buf = new(String, n)
-    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
-    close_file(f)
-    return buf
-}
 
 
 func has_prefix(s String, sub String) Bool {
@@ -135,29 +127,42 @@ func Parse(s State) {
     }
 }
 
-*/
+func read_all(name String) String {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    if f<=0 {
+        print("Could not open file %s", name)
+        return ""
+    }
+    n = call(GetFileSize, f, 0)
+    // if n<0 ? fail(123)
+    buf = new(String, n)
+    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
+    e = call(CloseHandle, f)
+    return buf
+}
+
 func main() {
-    filename = "compiler.jkv"
-    /*
+
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
     print("Text size=%d", s.textSize)
-
     filename=""
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
+
     print("Argument=%s",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename=%s", u)
 
-    filename = "compiler.jkv"
-    s = new(State)
+    // Must use excpicit filename during tests
+    filename = "C:/doc/compiler/test/compiler.jkv"
+
     s.text = read_all(filename)
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
-    Parse(s)
-*/
+    // Parse(s)
+
 }
 

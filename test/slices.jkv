@@ -18,14 +18,14 @@ type Points = []I16
  }
 
 func main() {
+
     // 1. Test assign strings to struct and verify char from string
     n = new(Name)
     n.last = "Vatne"
     print("n.last[2]=0x%x", n.last[2])
 
-    //assert(n.last[2]=='t', "Expected n.last[2]=='t', got 0x%x", n.last[2])
+    assert(n.last[2]=='t', "Expected n.last[2]=='t', got 0x%x", n.last[2])
 
-/*
     n.first = "Jan Kåre"
     assert(n.last=="Vatne", "Failed 1")
     assert(n.first=="Jan Kåre", "Failed 2")
@@ -72,5 +72,5 @@ func main() {
     // It should panic or give compiler warning, but currently it does not.
     p.name.last[j+k]='x'
     assert(p.name.last=="Vaxne", "Failed 17")
-*/
+
 }

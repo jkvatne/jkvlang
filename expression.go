@@ -94,7 +94,11 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of string")
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
+		if lvalue.Offset == 0 {
+			EmitIndirectAssignment(lvalue.Name)
+		} else {
+			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
+		}
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_SLICE {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of slice")
