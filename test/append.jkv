@@ -1,0 +1,15 @@
+
+
+func main() {
+    s =  new(String,32)
+    s = s + "xxx"
+    s += 'H'
+    // s += 'e'
+    print("s='%s'", s)
+/*
+    t = "Hello"
+    u = s+t
+    print("%s", u)
+*/
+
+}

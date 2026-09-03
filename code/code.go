@@ -72,6 +72,7 @@ var (
 	LabelNo     int
 	LocalSp     int
 	LineNum     int
+	LastLineNum int
 	UnitName    string
 	OutputFile  *os.File // File where the assembly is put
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
@@ -207,7 +208,7 @@ func ConsArgCode(count int, reverse bool) {
 
 func OutputArgCode() {
 	if len(ArgCode) > 1 {
-		panic("Line " + strconv.Itoa(LineNum) + ": OutputArgCode should have only one entry in ArgCode")
+		panic("Line " + strconv.Itoa(LastLineNum) + ": OutputArgCode should have only one entry in ArgCode")
 	}
 	if len(ArgCode) == 0 {
 		return
@@ -232,7 +233,7 @@ func Write(txt string) int {
 }
 
 func EmitLineNo(currentLine string) {
-	Write("\n   ; Line " + strconv.Itoa(LineNum) + " " + strings.Trim(currentLine, "\r\n") + "\n")
+	Write("\n   ; Line " + strconv.Itoa(LineNum) + ": " + strings.Trim(currentLine, "\r\n") + "\n")
 }
 
 func EmitBlankLine() {

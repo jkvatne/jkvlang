@@ -282,70 +282,6 @@ func AxName(size int) string {
 	panic("AxName with invalid size")
 }
 
-// EmitOpAssignF64 constant float value to variable
-func EmitOpAssignF64(op Token, adr int, x float64, comment string) error {
-	if op == TOK_ASSIGN {
-		litNo := AddF64Lit(x)
-		code.SetAx()
-		emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", comment)
-		code.SetUndef()
-		emit("mov", BpRel(adr), "rax", "")
-	} else {
-		return fmt.Errorf("type F64 assign operation %s not implemented", op.Name())
-	}
-	return nil
-}
-
-// EmitOpAssignF32 constant float value to variable
-func EmitOpAssignF32(op Token, adr int, x float32, comment string) error {
-	if op == TOK_ASSIGN {
-		litNo := AddF32Lit(x)
-		code.SetAx()
-		emit("mov", "rax", "[f32_"+strconv.Itoa(litNo)+"]", comment)
-		code.SetUndef()
-		emit("mov", BpRel(adr), "rax", "")
-	} else {
-		return fmt.Errorf("type F32 assign operation %s not implemented", op.Name())
-	}
-	return nil
-}
-
-// EmitOpAssign will set variable at <adr> to <adr> op <value>
-func EmitOpAssign(op Token, adr int, size int, value int64, comment string) error {
-	instr := TokenOp[op]
-	if instr == "" {
-		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
-	}
-	if instr == "imul" {
-		emit("mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
-		if size == 4 {
-			emit("mov", "ebx", DataType(size)+BpRel(adr), comment)
-		} else {
-			emit("mov", "rbx", DataType(size)+BpRel(adr), comment)
-		}
-		emit("imul", "rbx", "", "")
-		// Move result to local variable at BpRel(adr)
-		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
-	} else {
-		if value > 0x7FFFFFFF || value < -0x7FFFFFFF {
-			if instr == "mov" {
-				emit(instr, DataType(4)+BpRel(adr), strconv.FormatInt(value&0xFFFFFFFF, 10), comment)
-				emit(instr, DataType(4)+BpRel(adr+4), strconv.FormatInt((value>>32)&0xFFFFFFFF, 10), comment)
-			} else {
-				return fmt.Errorf("value out of range")
-			}
-		} else {
-			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
-		}
-	}
-	return nil
-}
-
-func EmitOpAssignString(offset int, litno int) error {
-	emit("mov", DataType(8)+BpRel(offset), "str"+strconv.Itoa(litno), "")
-	return nil
-}
-
 // Number interface defines the constraint for types that can be used
 // with the generic Abs function.
 type Number interface {
@@ -401,12 +337,6 @@ func MovOpcode(size int) string {
 	return "movsx"
 }
 
-// EmitStoreConst will store a constant of given size into a local variable at [BP+offset]
-func EmitStoreConst(size int, value int64, offset int, comment string) {
-	num := strconv.FormatInt(value, 10)
-	emit("mov", DataType(size)+BpRel(offset), num, comment)
-}
-
 func EmitLoadFloat(size int, adr int, comment string) {
 	EmitFlushRax("Before LoadFloat")
 	code.SetAx()
@@ -429,18 +359,18 @@ func EmitLoad(size int, adr int, comment string) {
 	code.SetAx()
 }
 
-// EmitStoreToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
+// EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
-func EmitStoreToLocal(opcode string, size int, adr int, comment string) {
+func EmitStoreIntToLocal(opcode string, size int, adr int, comment string) {
 	emit(opcode, BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
 	code.SetUndef()
 }
 
-func EmitStoreF64(adr int, comment string) {
+func EmitStoreF64ToLocal(adr int, comment string) {
 	emit("mov", BpRel(adr), "rax", comment)
 }
 
-func EmitStoreF32(adr int, comment string) {
+func EmitStoreF32ToLocal(adr int, comment string) {
 	emit("mov", BpRel(adr), "eax", "Store F32")
 }
 
@@ -742,7 +672,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 func EmitFreeString(comment string) {
 	lbl := code.NewLabel()
 	// Verify that rax is not nil
-	emit("or", "rax", "rax", "EmitFreeString")
+	emit("or", "rax", "rax", "EmitFreeString: "+comment)
 	emit("jz", EmitNumericLabel(lbl), "", "")
 	// Load len/cap
 	emit("mov", "rbx", "[rax]", "")
@@ -754,7 +684,7 @@ func EmitFreeString(comment string) {
 	// Address is in rax. Just call _free_str
 	emit("call", "_free_str", "", comment)
 	// Exit label
-	EmitLabel(lbl, "")
+	EmitLabel(lbl, "End of EmitFreeString")
 	code.SetUndef()
 }
 
@@ -855,30 +785,6 @@ func EmitStoreErr(err int) {
 
 func EmitPopBx(comment string) {
 	emit("pop", "rbx", "", comment+Sp(-1))
-}
-
-// EmitStoreIndirect has Pointer on stack, value in rax
-func EmitStoreIndirect(op string, size int) {
-	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
-	if size == 8 {
-		emit(op, "[rsi]", "rax", "EmitStoreIndirect quad")
-	} else if size == 4 {
-		emit(op, "dword [rsi]", "eax", "EmitStoreIndirect dword")
-	} else if size == 2 {
-		emit(op, "word [rsi]", "ax", "EmitStoreIndirect word")
-	} else if size == 1 {
-		emit(op, "byte [rsi]", "al", "EmitStoreIndirect byte")
-	} else {
-		panic("Internal error - store indirect with wrong size")
-	}
-}
-
-func EmitAssignIndirectStrLit(litNo int, size int, comment string) {
-	emit("mov", DataType(size)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit "+comment)
-}
-
-func EmitAssignIndirectConstInt(op string, size int, value int64, comment string) {
-	emit(op, DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
 }
 
 func EmitGetAddrOfLocal(ofs int) {
@@ -1139,12 +1045,6 @@ func EmitModifyIndexedSlice(size int) {
 	emit("add", "rax", "rbx", "Index into lvalue slice not const")
 }
 
-func EmitIndirectAssignment(name string) {
-	emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
-	emit("mov", "[rbx]", "rax", "Assign slice to "+name)
-	code.SetUndef()
-}
-
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
 		EmitFlushRax("Flush rax before EmitLoadField")
@@ -1401,8 +1301,6 @@ func EmitOpIntConst(op Token, value int64, comment string) error {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
-	} else if op == TOK_ASSIGN {
-		emit("mov", "rax", sval, "Assign OpIntConst")
 	} else if op == TOK_MULT {
 		emit("imul", "rax", "rax, "+sval, "")
 	} else if op == TOK_INV_MINUS {
@@ -1435,9 +1333,9 @@ func emitFloatOp(op Token, size int) {
 	if size == 32 {
 		sufix = "s"
 	}
-	if op == TOK_PLUS {
+	if op == TOK_PLUS || op == TOK_PLUS_ASGN {
 		emit("adds"+sufix, xmm(1), xmm(2), "Add tos to nos")
-	} else if op == TOK_MINUS {
+	} else if op == TOK_MINUS || op == TOK_MINUS_ASGN {
 		emit("subs"+sufix, xmm(1), xmm(2), "Subtract nos from tos")
 	} else if op == TOK_INV_MINUS {
 		emit("subs"+sufix, xmm(2), xmm(1), "Subtract nos from tos")
@@ -1446,9 +1344,9 @@ func emitFloatOp(op Token, size int) {
 		} else {
 			emit("movq", xmm(1), xmm(2), "")
 		}
-	} else if op == TOK_MULT {
+	} else if op == TOK_MULT || op == TOK_MULT_ASGN {
 		emit("muls"+sufix, xmm(1), xmm(2), "Multiply nos by tos")
-	} else if op == TOK_DIV {
+	} else if op == TOK_DIV || op == TOK_DIV_ASGN {
 		emit("divs"+sufix, xmm(1), xmm(2), "Divide tos by nos")
 	} else if op == TOK_INV_DIV {
 		emit("divs"+sufix, xmm(2), xmm(1), "Divide nos by tos")
@@ -1470,7 +1368,7 @@ func EmitOpF64Const(op Token, x float64) {
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "emitOpF64Const")
 	emit("movq", xmm(2), "rax", "emitOpF64Const mov nos to xmm2")
 	emitFloatOp(op, 64)
-	emit("movq", "rax", xmm(1), "Move float result into rax")
+	emit("movq", "rax", xmm(1), "EmitOpF64Const: Move float result into rax")
 }
 
 func EmitOpF32Const(op Token, x float32) {
@@ -1481,7 +1379,7 @@ func EmitOpF32Const(op Token, x float32) {
 	emit("movd", xmm(2), "eax", "emitOpF32Const mov nos to xmm2")
 	emitFloatOp(op, 32)
 	code.SetAx()
-	emit("movd", "eax", xmm(1), "Move float result into rax")
+	emit("movd", "eax", xmm(1), "EmitOpF32Const: Move float result into rax")
 }
 
 func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
@@ -1508,7 +1406,7 @@ func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	}
 	// Do F64 opertion
 	emitFloatOp(op, 64)
-	emit("movq", "rax", xmm(1), "Move float result into rax")
+	emit("movq", "rax", xmm(1), "EmitF64Op: Move float result into rax")
 	return nil
 }
 
@@ -1532,7 +1430,7 @@ func EmitF32Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 	}
 	emitFloatOp(op, 32)
-	emit("movq", "rax", xmm(1), "Move float result into rax")
+	emit("movq", "rax", xmm(1), "EmitF32Op: Move float result into rax")
 	return nil
 }
 
@@ -1591,4 +1489,152 @@ func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 	// Todo : Use type to determine size to move
 	emit("mov", "rax", "["+name+"]", "Load variable "+name)
 	code.SetAx()
+}
+
+// ====================================================================================
+//  ASSIGN
+// ====================================================================================
+
+func EmitAssignIndirectStrLit(op Token, litNo int) error {
+	if op == TOK_ASSIGN {
+		emit("mov", DataType(8)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit")
+	} else if op == TOK_PLUS_ASGN {
+		EmitComment("Concatenate existing string with litteral string")
+		EmitConcat(false, false)
+	} else {
+		return fmt.Errorf("%s not implemented for string", op.Name())
+	}
+	return nil
+}
+
+func EmitOpAssignIndirectF64Const(op Token, offset int, value float64) error {
+	return fmt.Errorf("%s not implemented for string", op.Name())
+}
+
+func EmitOpAssignIndirectF32Const(op Token, offset int, value float32) error {
+	return fmt.Errorf("%s not implemented for string", op.Name())
+}
+
+func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
+	return fmt.Errorf("%s not implemented for string", op.Name())
+}
+
+// EmitAssignTosToIndirect has Pointer on stack, value in rax
+func EmitAssignTosToIndirect(op Token, size int) {
+	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
+	if size == 8 {
+		emit(TokenOp[op], "[rsi]", "rax", "EmitStoreIndirect quad")
+	} else if size == 4 {
+		emit(TokenOp[op], "dword [rsi]", "eax", "EmitStoreIndirect dword")
+	} else if size == 2 {
+		emit(TokenOp[op], "word [rsi]", "ax", "EmitStoreIndirect word")
+	} else if size == 1 {
+		emit(TokenOp[op], "byte [rsi]", "al", "EmitStoreIndirect byte")
+	} else {
+		panic("Internal error - store indirect with wrong size")
+	}
+}
+
+func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
+	emit(TokenOp[op], DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
+	return nil
+}
+
+// EmitAssignIndirectConstChar assumes pointer to string in rax
+func EmitAssignIndirectConstChar(op Token, size int, value int) error {
+	if op == TOK_ASSIGN {
+		return fmt.Errorf("Append a character to a string. Not implemented!")
+	} else if op == TOK_PLUS_ASGN {
+		return fmt.Errorf("Append a characgter to a string. Not implemented!")
+	} else {
+		return fmt.Errorf("%s not implemented for string", op.Name())
+	}
+	return nil
+}
+
+// EmitAssignF64ConstToLocal constant float value to variable
+func EmitAssignF64ConstToLocal(op Token, adr int, x float64, comment string) error {
+	if op == TOK_ASSIGN {
+		litNo := AddF64Lit(x)
+		code.SetAx()
+		emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", comment)
+		code.SetUndef()
+		emit("mov", BpRel(adr), "rax", "")
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		litNo := AddF64Lit(x)
+		code.SetAx()
+		emit("mov", "rax", BpRel(adr), comment)
+		emit("movq", xmm(1), "rax", "move tos in rax to xmm1")
+		emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
+		emit("movq", xmm(2), "rax", "mov nos to xmm2")
+		emitFloatOp(op, 64)
+		emit("movq", "rax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
+		emit("mov", BpRel(adr), "rax", "")
+	} else {
+		return fmt.Errorf("type F64 assign operation %s not implemented", op.Name())
+	}
+	return nil
+}
+
+// EmitAssignF32ConstToLocal constant float value to variable
+func EmitAssignF32ConstToLocal(op Token, adr int, x float32, comment string) error {
+	if op == TOK_ASSIGN {
+		litNo := AddF32Lit(x)
+		code.SetAx()
+		emit("mov", "rax", "[f32_"+strconv.Itoa(litNo)+"]", comment)
+		code.SetUndef()
+		emit("mov", BpRel(adr), "rax", "")
+	} else {
+		return fmt.Errorf("type F32 assign operation %s not implemented", op.Name())
+	}
+	return nil
+}
+
+// EmitAssignConstToInt will set variable at <adr> to <adr> op <value>
+func EmitAssignConstToInt(op Token, adr int, size int, value int64, comment string) error {
+	instr := TokenOp[op]
+	if instr == "" {
+		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
+	}
+	if instr == "imul" {
+		emit("mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
+		if size == 4 {
+			emit("mov", "ebx", DataType(size)+BpRel(adr), comment)
+		} else {
+			emit("mov", "rbx", DataType(size)+BpRel(adr), comment)
+		}
+		emit("imul", "rbx", "", "")
+		// Move result to local variable at BpRel(adr)
+		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
+	} else {
+		if value > 0x7FFFFFFF || value < -0x7FFFFFFF {
+			if instr == "mov" {
+				emit(instr, DataType(4)+BpRel(adr), strconv.FormatInt(value&0xFFFFFFFF, 10), comment)
+				emit(instr, DataType(4)+BpRel(adr+4), strconv.FormatInt((value>>32)&0xFFFFFFFF, 10), comment)
+			} else {
+				return fmt.Errorf("value out of range")
+			}
+		} else {
+			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
+		}
+	}
+	return nil
+}
+
+func EmitOpAssignString(offset int, litno int) error {
+	emit("mov", DataType(8)+BpRel(offset), "str"+strconv.Itoa(litno), "")
+	return nil
+}
+
+func EmitIndirectAssignment(name string) {
+	emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
+	emit("mov", "[rbx]", "rax", "Assign slice to "+name)
+	code.SetUndef()
+}
+
+// EmitAssignIntegerConst will store a constant of given size into a local variable at [BP+offset]
+func EmitAssignIntegerConst(op Token, size int, value int64, offset int, comment string) error {
+	num := strconv.FormatInt(value, 10)
+	emit(TokenOp[op], DataType(size)+BpRel(offset), num, comment)
+	return nil
 }

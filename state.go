@@ -12,6 +12,7 @@ type State struct {
 	p                  int    // Points to the current character in text
 	currentLine        string // The content of the current source code text line
 	AtLineEnd          bool   // Flag used for lineNum calculation
+	NewLine            bool
 	token              Token  // The current token as a number
 	tokenString        string // The current token as a string
 	ConstValue         ConstValue

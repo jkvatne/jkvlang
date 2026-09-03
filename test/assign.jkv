@@ -1,0 +1,72 @@
+type Rec = struct {
+    intval I32
+    byteval U8
+    floatval F64
+}
+
+func main() {
+    // Start
+    print ("Testing assignments")
+
+    x = 1
+    y = 2
+    x = y
+    assert(x==2, "Expected x==2, got %d", x)
+
+    x+=2
+    assert(x==4, "Expected x==4, got %d", x)
+
+    x*=2
+    assert(x==8, "Expected x==8, got %d", x)
+
+    y = 2*x
+    assert(y==16, "Expected y==16, got %d", y)
+
+    y -= 7
+    assert(y#==9, "Expected y==9, got %d", y)
+
+    y /=3
+
+    // assert(y==3, "Expected y==3, got %d", y)
+
+    x64 = 2.0
+    x64 += 3.0
+    assert(x64==5.0, "Expected x64==5.0, got %f", x64)
+
+
+    f = 1.0
+    g = 2.0
+    f = g
+    assert(f==2.0, "Expected f=2.0 , got %f", f)
+
+    r = new(Rec)
+    r.intval = 123
+    assert(r.intval==123, "Expected r.intval=123, got %d", r.intval)
+
+    r.intval +=1
+    assert(r.intval==124, "Expected r.intval=124, got %d", r.intval)
+
+    u = 12
+    r.intval = u
+    assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
+
+    x32 = F32(2.0)
+    y32 = F32(3.0)
+    x32 = y32
+    assert(x32==3.0, "Expected x32==3.0, got %f", x32)
+
+    x32 += F32(1.0)
+    assert(x32==4.0, "Expected x32==4.0, got %f", x32)
+
+    x32 = y32+5.0
+    assert(x32==8.0, "Expected x32==8.0, got %f", x32)
+
+    y64 = 3.0
+    x64 = y64
+    assert(x64==3.0, "Expected x64==3.0, got %f", x64)
+
+
+    x64 = y64+5.0
+    assert(x64==8.0, "Expected x64==8.0, got %f", x64)
+
+}

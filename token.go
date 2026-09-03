@@ -209,33 +209,52 @@ func isAlfaNum(ch rune) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func (s *State) nextChar() {
-	if s.AtLineEnd {
-		s.AtLineEnd = false
-		code.LineNum++
-		s.currentLine = ""
-		for i := s.p; i < len(s.text); {
-			ch, n := utf8.DecodeRune(s.text[i:])
-			if ch == '\n' {
-				break
-			}
-			s.currentLine += string(ch)
-			i += n
+func (s *State) nextLitChar() {
+	var n int
+	s.ch1, n = utf8.DecodeRune(s.text[s.p:])
+	s.p += n
+	if s.p >= len(s.text) {
+		return
+	}
+	s.ch2, _ = utf8.DecodeRune(s.text[s.p:])
+}
+
+func (s *State) CollectNextLine() {
+	s.currentLine = s.tokenString
+	for i := s.p; i < len(s.text); {
+		ch, n := utf8.DecodeRune(s.text[i:])
+		if ch == '\n' {
+			break
 		}
+		s.currentLine += string(ch)
+		i += n
+	}
+}
+
+func (s *State) nextChar() {
+	if s.NewLine {
+		s.NewLine = false
+		s.CollectNextLine()
 	}
 	if eof(s) {
 		return
 	}
-	n := 0
-	s.ch1, n = utf8.DecodeRune(s.text[s.p:])
-	if s.ch1 == '\n' {
-		s.AtLineEnd = true
-	}
-	s.p += n
-	if s.p >= len(s.text) {
-		s.token = TOK_EOF
-		s.ch2 = 0
-		return
+	for {
+		n := 0
+		s.ch1, n = utf8.DecodeRune(s.text[s.p:])
+		if s.ch1 == '\n' {
+			code.LineNum++
+			s.AtLineEnd = true
+		}
+		s.p += n
+		if s.p >= len(s.text) {
+			s.token = TOK_EOF
+			s.ch2 = 0
+			return
+		}
+		if s.ch1 > ' ' {
+			break
+		}
 	}
 	s.ch2, _ = utf8.DecodeRune(s.text[s.p:])
 }
@@ -350,19 +369,6 @@ func nextToken(s *State) {
 		s.nextChar()
 		s.tokenString = string(s.ch1)
 		switch {
-		case s.ch1 == '\r':
-			s.tokenString = "<cr>"
-			continue
-		case s.ch1 == '\n':
-			s.tokenString = "<lf>"
-			continue
-		case s.ch1 == '\t':
-			s.tokenString = "<tab>"
-			continue
-		case s.ch1 == '\f':
-			continue
-		case s.ch1 == ' ':
-			continue
 		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
 			s.nextChar()
@@ -370,7 +376,7 @@ func nextToken(s *State) {
 		case s.ch1 == '"':
 			s.tokenString = ""
 			for {
-				s.nextChar()
+				s.nextLitChar()
 				if s.ch1 == '"' || s.ch1 == 0 {
 					break
 				}
@@ -443,14 +449,14 @@ func nextToken(s *State) {
 		case s.ch1 == '/' && s.ch2 == '/':
 			// Skip comment
 			for s.ch1 != '\n' && !eof(s) {
-				s.nextChar()
+				s.nextLitChar()
 			}
 			continue
 		case s.ch1 == '/' && s.ch2 == '*':
 			// Skip /* */ comment
 			s.CommentLevel = 1
 			for !eof(s) && s.CommentLevel > 0 {
-				s.nextChar()
+				s.nextLitChar()
 				if s.ch1 == '/' && s.ch2 == '*' {
 					s.CommentLevel++
 				} else if s.ch1 == '*' && s.ch2 == '/' {
@@ -591,6 +597,11 @@ func nextToken(s *State) {
 		}
 		break
 	}
+	if s.AtLineEnd {
+		s.NewLine = true
+		s.AtLineEnd = false
+	}
+
 }
 
 func Expect(s *State, token Token) error {

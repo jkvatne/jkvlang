@@ -122,6 +122,9 @@ func CanAssignToVar(dstVar *VarDef, src code.PrimaryType) bool {
 
 // CanAssign is true if we can assign type "src" to "dst"
 func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
+	if src == code.TYP_U8 && dst == code.TYP_STRING {
+		return true
+	}
 	if src == dst {
 		return true
 	}
@@ -143,6 +146,9 @@ func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
 // A F64 can accept anything. An F32 value can accept everything except F64.
 // For integers, it depends on the value.
 func CanAssignConst(dst code.PrimaryType, value *ValueDef) bool {
+	if value.Typ.Pt == code.TYP_U8 && dst == code.TYP_STRING {
+		return true
+	}
 	if dst == value.Typ.Pt {
 		return true
 	}

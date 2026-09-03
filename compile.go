@@ -31,6 +31,7 @@ func CompileFile(name string, workdir string, libPath string) error {
 
 	// Top level statements can only be func, const or type.
 	// Global variables are not allowed!
+	s.CollectNextLine()
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			err = ParseFuncDef(s)
@@ -44,7 +45,7 @@ func CompileFile(name string, workdir string, libPath string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 		if err != nil {
-			return fmt.Errorf("%s:%d %v", name, code.LineNum, err)
+			return fmt.Errorf("%s:%d %v", name, code.LastLineNum, err)
 		}
 	}
 	EmitSection("rodata")

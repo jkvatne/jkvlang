@@ -28,76 +28,139 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if !CanAssignToVar(lvalue, value.Typ.Pt) {
 		return fmt.Errorf("assignment expected type %s but got %s", lvalue.Typ.Pt.Name(), value.Typ.Name())
 	}
-	EmitComment(">>> GenerateAssignment")
-	// If the value is known (a compile time constant)
-	if value.HasValue() {
-		t := lvalue.Typ.Pt
-		if t == code.TYP_STRUCT {
-			t = lvalue.Typ.Pt
-		}
-		if CanAssignConst(t, value) {
-			if t == code.TYP_STRING {
-				if lvalue.IsIndirect {
-					EmitAssignIndirectStrLit(value.StringLitNo, lvalue.Typ.Pt.Size(), "")
-				} else if lvalue.Typ.Pt == code.TYP_STRUCT {
-					// err = EmitOpAssignStringLitToField(lvalue.Offset(), lvalue.FieldOfs, value.StringLitNo)
-					panic("Test")
-				} else {
-					err = EmitOpAssignString(lvalue.Offset, value.StringLitNo)
-				}
-			} else if t.IsInteger() {
-				if lvalue.IsIndirect {
-					EmitAssignIndirectConstInt(TokenOp[op], lvalue.Typ.Pt.Size(), value.IntValue, "Assign to field")
-				} else if lvalue.Name == "err" {
-					EmitStoreErr(int(value.IntValue))
-				} else {
-					if lvalue.Offset == 0 {
-						return fmt.Errorf("GenerateAssignment with offset=0")
-					}
-					err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
-				}
-			} else if t == code.TYP_F64 {
-				err = EmitOpAssignF64(op, lvalue.Offset, value.FloatValue, "")
-			} else if t == code.TYP_F32 {
-				err = EmitOpAssignF32(op, lvalue.Offset, float32(value.FloatValue), "")
-			} else if t == code.TYP_BOOL {
-				EmitStoreConst(1, value.IntValue, lvalue.Offset, "Assign bool")
-			} else {
-				err = fmt.Errorf("unimplemented assignment of %s", t.Name())
-			}
-			code.SetUndef()
-			if err != nil {
-				return err
-			}
 
+	if lvalue.IsIndirect && value.HasValue() {
+		// Assign constant to indirect variable
+		return AssignConstToIndirect(op, lvalue, value)
+	} else if lvalue.IsIndirect && !value.HasValue() {
+		// Assign evaluated value to indirect variable
+		return AssignTosToIndirect(op, lvalue, value, wasNew)
+	} else if value.HasValue() {
+		// Assign constant to local variable
+		return AssignConstToLocal(op, lvalue, value, wasNew)
+	} else {
+		// Assign evaluated value to local variable
+		return AssignTosToLocal(op, lvalue, value, wasNew)
+	}
+}
+
+func AssignConstToIndirect(op Token, lvalue *VarDef, value *ValueDef) error {
+	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
+		return EmitAssignIndirectStrLit(op, value.StringLitNo)
+	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == code.TYP_BOOL {
+		return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), value.IntValue, "")
+	} else if lvalue.Typ.Pt == code.TYP_F64 {
+		return EmitOpAssignIndirectF64Const(op, lvalue.Offset, value.FloatValue)
+	} else if lvalue.Typ.Pt == code.TYP_F32 {
+		return EmitOpAssignIndirectF32Const(op, lvalue.Offset, float32(value.FloatValue))
+	}
+	return fmt.Errorf("illegal assignment")
+}
+
+func AssignTosToIndirect(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+	if op == TOK_ASSIGN {
+		EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
+	} else {
+		err = fmt.Errorf("AssignTosToIndirect: Operation %s not implemented for %s", op.Name(), value.Typ.Name())
+	}
+	return err
+}
+
+func AssignConstToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
+		return EmitAssignConstStrToLocal(op, lvalue.Offset, value.StringLitNo)
+	} else if value.Typ.Pt.IsInteger() {
+		return EmitAssignConstToInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+	} else if lvalue.Typ.Pt == code.TYP_F64 {
+		return EmitAssignF64ConstToLocal(op, lvalue.Offset, value.FloatValue, "")
+	} else if lvalue.Typ.Pt == code.TYP_F32 {
+		return EmitAssignF32ConstToLocal(op, lvalue.Offset, float32(value.FloatValue), "")
+	}
+	return fmt.Errorf("operation %s not implemented for %s", op.Name(), value.Typ.Name())
+}
+
+func AssignTosToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
+		err = fmt.Errorf("Not implemented for %s", value.Typ.Name())
+	} else if lvalue.Typ.Pt.IsInteger() {
+		EmitStoreIntToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
+	} else if value.Typ.Pt == code.TYP_F64 && op == TOK_ASSIGN {
+		EmitStoreF64ToLocal(lvalue.Offset, "Assign F64 to "+lvalue.Name)
+	} else if value.Typ.Pt == code.TYP_F32 && op == TOK_ASSIGN {
+		EmitStoreF32ToLocal(lvalue.Offset, "Assign F32 to "+lvalue.Name)
+	} else if value.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
+		EmitStoreIntToLocal(TokenOp[op], 8, lvalue.Offset, "Assign struct to "+lvalue.Name)
+	} else {
+		err = fmt.Errorf("Not implemented for %s", value.Typ.Name())
+	}
+	return err
+}
+
+/*
+func Old(op Token, lvalue *VarDef, value *ValueDef) (err error) {
+	// If the value is known, i.e. assigning a compile time constant to the lvalue
+	if value.HasValue() {
+		if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
+			// Assign/Append string to string
+			if lvalue.IsIndirect {
+				err = EmitAssignIndirectStrLit(op, value.StringLitNo, lvalue.Typ.Pt.Size())
+			} else if value.Typ.Pt.IsInteger() {
+				err = EmitAssignIndirectConstChar(op, lvalue.Typ.Pt.Size(), int(value.IntValue))
+			} else {
+				err = fmt.Errorf("Illegal assignment")
+			}
+		} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
+			EmitComment("Assign char to string")
+
+		} else if lvalue.Typ.Pt.IsInteger() {
+			if lvalue.IsIndirect {
+				EmitAssignIndirectConstInt(TokenOp[op], lvalue.Typ.Pt.Size(), value.IntValue, "Assign to field")
+			} else if lvalue.Name == "err" {
+				EmitStoreErr(int(value.IntValue))
+			} else {
+				if lvalue.Offset == 0 {
+					return fmt.Errorf("GenerateAssignment with offset=0")
+				}
+				err = EmitOpAssign(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+			}
+		} else if lvalue.Typ.Pt == code.TYP_F64 {
+			err = EmitOpAssignF64Const(op, lvalue.Offset, value.FloatValue, "")
+		} else if lvalue.Typ.Pt == code.TYP_F32 {
+			err = EmitOpAssignF32Const(op, lvalue.Offset, float32(value.FloatValue), "")
+		} else if lvalue.Typ.Pt == code.TYP_BOOL {
+			EmitAssignIntegerConst(1, value.IntValue, lvalue.Offset, "Assign bool")
 		} else {
-			return fmt.Errorf("cannot assign const to variable \"%s\"", lvalue.Name)
+			err = fmt.Errorf("unimplemented assignment of %s", lvalue.Typ.Pt.Name())
+		}
+		code.SetUndef()
+		if err != nil {
+			return err
 		}
 	} else if value.Typ.Pt.IsInteger() || value.Typ.Pt == code.TYP_PTR {
 		// The value is in TOS/rax. Save it to the lvalue.
 		EmitAssertTosInRax("Assigning TOS to lvalue, assert righthand the value is in rax")
 		if lvalue.IsIndirect {
-			EmitStoreIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
+			EmitStoreValueIndirect(TokenOp[op], lvalue.Typ.Pt.Size())
 		} else if lvalue.Offset != 0 {
-			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
+			EmitStoreIntToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 		} else {
 			return fmt.Errorf("LValue offset is zero")
 		}
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_F64 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
-		EmitStoreF64(lvalue.Offset, "Assign F64 to "+lvalue.Name)
+		EmitStoreF64ToLocal(lvalue.Offset, "Assign F64 to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_F32 {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of F64")
-		EmitStoreF32(lvalue.Offset, "Assign F32 to "+lvalue.Name)
+		EmitStoreF32ToLocal(lvalue.Offset, "Assign F32 to "+lvalue.Name)
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_STRING {
 		EmitAssertTosInRax("Pop TOS into rax before assignment of string")
 		if lvalue.Offset == 0 {
 			EmitIndirectAssignment(lvalue.Name)
 		} else {
-			EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
+			EmitStoreIntToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign string to "+lvalue.Name)
 		}
 		code.SetUndef()
 	} else if value.Typ.Pt == code.TYP_SLICE {
@@ -110,7 +173,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 			if !wasNew {
 				EmitFreeIfExists(lvalue.Offset, lvalue.Typ.StructSize, "Free if "+lvalue.Name+" exists")
 			}
-			EmitStoreToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
+			EmitStoreIntToLocal("mov", lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign struct to "+lvalue.Name)
 			code.SetUndef()
 		} else {
 			EmitAssertTosInRax("Pop TOS into rax before indirect assignment")
@@ -118,12 +181,13 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		}
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
-		EmitStoreToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign bool to "+lvalue.Name)
+		EmitStoreIntToLocal(TokenOp[op], lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign bool to "+lvalue.Name)
 	} else {
 		return fmt.Errorf("cannot assign to variable \"%s\"", lvalue.Name)
 	}
 	return nil
 }
+*/
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments
 func ParseFormalArgList(s *State) ([]*VarDef, error) {
@@ -522,7 +586,10 @@ func ParseAssign(s *State, id string) error {
 				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
 					if !lv.IsIndirect {
 						EmitLoad(8, lv.Offset, "Load ptr to string")
-						EmitFreeString("Free old string when assigning new")
+						// TODO  MOve free to avfter expression evaluation.
+						// EmitFreeString("Free old string when assigning new")
+						code.SetUndef()
+
 					}
 				}
 			}
