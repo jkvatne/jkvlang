@@ -5,7 +5,6 @@ type Rec = struct {
 }
 
 func main() {
-    // Start
     print ("Testing assignments")
 
     x = 1
@@ -23,16 +22,14 @@ func main() {
     assert(y==16, "Expected y==16, got %d", y)
 
     y -= 7
-    assert(y#==9, "Expected y==9, got %d", y)
+    assert(y==9, "Expected y==9, got %d", y)
 
     y /=3
-
-    // assert(y==3, "Expected y==3, got %d", y)
+    assert(y==3, "Expected y==3, got %d", y)
 
     x64 = 2.0
     x64 += 3.0
     assert(x64==5.0, "Expected x64==5.0, got %f", x64)
-
 
     f = 1.0
     g = 2.0

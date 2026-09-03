@@ -199,12 +199,14 @@ var TokenOp = map[Token]string{
 	TOK_PLUS:       "add",
 	TOK_MINUS:      "sub",
 	TOK_MULT:       "mul",
+	TOK_DIV:        "div",
 	TOK_PLUS_ASGN:  "add",
 	TOK_MINUS_ASGN: "sub",
 	TOK_OR_ASGN:    "or",
 	TOK_AND_ASGN:   "and",
 	TOK_ASSIGN:     "mov",
 	TOK_MULT_ASGN:  "imul",
+	TOK_DIV_ASGN:   "idiv",
 	TOK_SHL:        "shl",
 	TOK_SHR:        "shr",
 	TOK_AND_NOT:    "andnot",
@@ -362,6 +364,9 @@ func EmitLoad(size int, adr int, comment string) {
 // EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
 func EmitStoreIntToLocal(opcode string, size int, adr int, comment string) {
+	if opcode == "idiv" {
+		panic("Debugging")
+	}
 	emit(opcode, BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
 	code.SetUndef()
 }
@@ -1584,6 +1589,16 @@ func EmitAssignF32ConstToLocal(op Token, adr int, x float32, comment string) err
 		emit("mov", "rax", "[f32_"+strconv.Itoa(litNo)+"]", comment)
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		litNo := AddF32Lit(x)
+		code.SetAx()
+		emit("mov", "eax", "dword "+BpRel(adr), comment)
+		emit("movd", xmm(1), "eax", "move tos in rax to xmm1")
+		emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "")
+		emit("movd", xmm(2), "eax", "mov nos to xmm2")
+		emitFloatOp(op, 32)
+		emit("movd", "eax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
+		emit("mov", "dword "+BpRel(adr), "eax", "")
 	} else {
 		return fmt.Errorf("type F32 assign operation %s not implemented", op.Name())
 	}
@@ -1596,7 +1611,18 @@ func EmitAssignConstToInt(op Token, adr int, size int, value int64, comment stri
 	if instr == "" {
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
 	}
-	if instr == "imul" {
+	if instr == "idiv" {
+		emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
+		if size == 4 {
+			emit("mov", "eax", DataType(size)+BpRel(adr), comment)
+		} else {
+			return fmt.Errorf("Only 32 bit integer divide currently supported")
+		}
+		emit("cdq", "", "", "")
+		emit("idiv", "ecx", "", "")
+		// Move result to local variable at BpRel(adr)
+		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
+	} else if instr == "imul" {
 		emit("mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
 		if size == 4 {
 			emit("mov", "ebx", DataType(size)+BpRel(adr), comment)
