@@ -1,7 +1,7 @@
 type Rec = struct {
     intval I32
-    byteval U8
-    floatval F64
+    float64val F64
+    float32val F64
 }
 
 func main() {
@@ -47,8 +47,43 @@ func main() {
     r.intval = u
     assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
 
+    // ========= 64 bit floats =================
+
+    y64 = 3.0
+    x64 = y64
+    assert(x64==3.0, "Expected x64==3.0, got %f", x64)
+
+    x64 = y64+5.0
+    assert(x64==8.0, "Expected x64==8.0, got %f", x64)
+
+    x64 += 5.0
+    assert(x64==13.0, "Expected x64==13.0, got %f", x64)
+
+    x64 -= 4.0
+    assert(x64==9.0, "Expected x64==9.0, got %f", x64)
+
+    x64 *= 1.5
+    assert(x64==13.5, "Expected x64==13.5, got %f", x64)
+
+    x64 /= 2.0
+    assert(x64==6.75, "Expected x64==6.75, got %f", x64)
+
+    x64 += y64
+    assert(x64==9.75, "Expected x64==9.75, got %f", x64)
+
+    x64 *= y64
+    assert(x64==29.25, "Expected x64==29.25, got %f", x64)
+
+    x64 /= y64
+    assert(x64==9.75, "Expected x64==9.75, got %f", x64)
+
+    x64 -= y64
+    assert(x64==6.75, "Expected x64==6.75, got %f", x64)
+
+    // ========= 32 bit floats =================
     x32 = F32(2.0)
     y32 = F32(3.0)
+
     x32 = y32
     assert(x32==3.0, "Expected x32==3.0, got %f", x32)
 
@@ -58,12 +93,51 @@ func main() {
     x32 = y32+5.0
     assert(x32==8.0, "Expected x32==8.0, got %f", x32)
 
-    y64 = 3.0
-    x64 = y64
-    assert(x64==3.0, "Expected x64==3.0, got %f", x64)
+    x32 *= F32(2.0)
+    assert(x32==16.0, "Expected x32==16.0, got %f", x32)
 
+    x32 -= F32(6.0)
+    assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
-    x64 = y64+5.0
-    assert(x64==8.0, "Expected x64==8.0, got %f", x64)
+    x32 += y32
+    assert(x32==13.0, "Expected x32==13.0, got %f", x32)
+
+    x32 *= y32
+    assert(x32==39.0, "Expected x32==39.0, got %f", x32)
+
+    x32 /= y32
+    assert(x32==13.0, "Expected x32==13.0, got %f", x32)
+
+    x32 -= y32
+    assert(x32==10.0, "Expected x32==10.0, got %f", x32)
+
+    r = new(Rec)
+    r.intval=8
+    r.float64val = 3.0
+    r.float32val = 4.0
+
+    r.intval +=1
+    assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
+
+    r.float64val += 1.0
+    assert(r.float64val==4.0, "Expected r.float64val==4.0, got %f", r.float64val)
+
+    r.float32val += 1.0
+    assert(r.float32val==5.0, "Expected r.float32val==5.0, got %f", r.float32val)
+
+    r.intval -=2
+    assert(r.intval==7, "Expected r.intval==7, got %d", r.intval)
+
+    r.float64val -= 2.0
+    assert(r.float64val==2.0, "Expected r.float64val==2.0, got %f", r.float64val)
+
+    r.float32val -= 3.0
+    assert(r.float32val==2.0, "Expected r.float32val==2.0, got %f", r.float32val)
+
+    r.float64val /= 2.0
+    assert(r.float64val==1.0, "Expected r.float64val==1.0, got %f", r.float64val)
+
+    r.float32val /= 2.0
+    assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
 
 }

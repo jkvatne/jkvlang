@@ -345,12 +345,7 @@ func EmitLoadFloat(size int, adr int, comment string) {
 	if size == 8 {
 		emit("mov", "rax", BpRel(adr), comment)
 	} else if size == 4 {
-		// if fun == "print" || fun == "printf" {
-		//	emit("cvtss2sd", "xmm0", "dword "+BpRel(adr), "Load F32 and convert to F64")
-		//	emit("movq", "rax", "xmm0", "Set rax to 64bit float value")
-		// } else {
 		emit("mov", "eax", "dword "+BpRel(adr), comment)
-		// }
 	}
 }
 
@@ -359,24 +354,6 @@ func EmitLoad(size int, adr int, comment string) {
 	EmitFlushRax("EmitLoad, flush rax onto stack")
 	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
 	code.SetAx()
-}
-
-// EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
-// It will then clear RaxIsTos, effectively doing a pop
-func EmitStoreIntToLocal(opcode string, size int, adr int, comment string) {
-	if opcode == "idiv" {
-		panic("Debugging")
-	}
-	emit(opcode, BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
-	code.SetUndef()
-}
-
-func EmitStoreF64ToLocal(adr int, comment string) {
-	emit("mov", BpRel(adr), "rax", comment)
-}
-
-func EmitStoreF32ToLocal(adr int, comment string) {
-	emit("mov", BpRel(adr), "eax", "Store F32")
 }
 
 // EmitJumpFalse will emit an instruction to jump if top of stack is false.
@@ -1333,6 +1310,8 @@ func EmitOpIntConst(op Token, value int64, comment string) error {
 
 // Float operations
 
+// emitFloatOp assumes the operands are already in xmm1 and xmm2
+// The result will be in xmm1
 func emitFloatOp(op Token, size int) {
 	sufix := "d"
 	if size == 32 {
@@ -1500,6 +1479,46 @@ func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 //  ASSIGN
 // ====================================================================================
 
+// EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
+// It will then clear RaxIsTos, effectively doing a pop
+func EmitStoreIntToLocal(op Token, size int, adr int, comment string) error {
+	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
+	code.SetUndef()
+	return nil
+}
+
+func EmitStoreF64ToLocal(op Token, adr int, comment string) error {
+	if op == TOK_ASSIGN {
+		emit("mov", BpRel(adr), "rax", comment)
+		return nil
+	} else {
+		emit("movq", "xmm2", "rax", comment)
+		emit("mov", "rax", BpRel(adr), comment)
+		emit("movq", "xmm1", "rax", comment)
+		emitFloatOp(op, 64)
+		emit("movq", "rax", "xmm1", "")
+		emit("mov", BpRel(adr), "rax", comment)
+		return nil
+	}
+	return fmt.Errorf("%s not implemented %s", op.Name(), comment)
+}
+
+func EmitStoreF32ToLocal(op Token, adr int, comment string) error {
+	if op == TOK_ASSIGN {
+		emit("mov", BpRel(adr), "eax", comment)
+		return nil
+	} else {
+		emit("movd", "xmm2", "eax", comment)
+		emit("mov", "eax", BpRel(adr), comment)
+		emit("movd", "xmm1", "eax", comment)
+		emitFloatOp(op, 32)
+		emit("movd", "eax", "xmm1", "")
+		emit("mov", BpRel(adr), "eax", comment)
+		return nil
+	}
+	return fmt.Errorf("%s not implemented %s", op.Name(), comment)
+}
+
 func EmitAssignIndirectStrLit(op Token, litNo int) error {
 	if op == TOK_ASSIGN {
 		emit("mov", DataType(8)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit")
@@ -1512,16 +1531,33 @@ func EmitAssignIndirectStrLit(op Token, litNo int) error {
 	return nil
 }
 
-func EmitOpAssignIndirectF64Const(op Token, offset int, value float64) error {
-	return fmt.Errorf("%s not implemented for string", op.Name())
+func EmitOpAssignIndirectF64Const(op Token, value float64) error {
+	litNo := AddF64Lit(value)
+	code.SetAx()
+	emit("mov", "rdi", "rax", "")
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
+	if op == TOK_ASSIGN {
+		code.SetUndef()
+		emit("mov", "[rdi]", "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		emit("movq", xmm(2), "rax", "move tos in rax to xmm1")
+		emit("mov", "rax", "[rdi]", "")
+		emit("movq", xmm(1), "rax", "")
+		emitFloatOp(op, 64)
+		emit("movq", "rax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
+		emit("mov", "[rdi]", "rax", "")
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for storing F64 indirect", op.Name())
 }
 
 func EmitOpAssignIndirectF32Const(op Token, offset int, value float32) error {
-	return fmt.Errorf("%s not implemented for string", op.Name())
+	return fmt.Errorf("%s not implemented for storing F32 indirect", op.Name())
 }
 
 func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
-	return fmt.Errorf("%s not implemented for string", op.Name())
+	return fmt.Errorf("%s not implemented for storing const string to local variable", op.Name())
 }
 
 // EmitAssignTosToIndirect has Pointer on stack, value in rax
