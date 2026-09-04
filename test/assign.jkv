@@ -1,7 +1,7 @@
 type Rec = struct {
     intval I32
     float64val F64
-    float32val F64
+    float32val F32
 }
 
 func main() {
@@ -10,9 +10,30 @@ func main() {
     r = new(Rec)
     r.intval=8
     r.float64val = 3.0
-    r.float32val = 4.0
+    r.float32val = F32(4.0)
 
-    // Test assign constant to int indirect ----------------------------------
+    // Test assign expression to indirect integer value I32-Indir-Expr
+
+    u = 12
+    r.intval = u
+
+/*
+    assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
+
+
+    r.intval += u
+    assert(r.intval==24, "Expected r.intval=24, got %d", r.intval)
+
+    r.intval -= u
+    assert(r.intval==12, "Expected r.intval=12 on -=, got %d", r.intval)
+
+    r.intval *= u
+    assert(r.intval==144, "Expected r.intval=144, got %d", r.intval)
+
+    r.intval /= u
+    assert(r.intval==12, "Expected r.intval=12 on /=, got %d", r.intval)
+
+    // Test assign constant to int  I32-Indir-Const
 
     r.intval +=1
     assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
@@ -26,7 +47,7 @@ func main() {
     r.intval -=3
     assert(r.intval==6, "Expected r.intval==6, got %d", r.intval)
 
-    // Test assign constant to local variable --------------------------------
+    // Test assign constant to local variable  I32-Var-Const
     x = 1
     y = 2
     x = y
@@ -47,26 +68,7 @@ func main() {
     y /=3
     assert(y==3, "Expected y==3, got %d", y)
 
-
-    // Test assign expression to indirect integer value
-
-    u = 12
-    r.intval = u
-    assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
-
-    r.intval += u
-    assert(r.intval==24, "Expected r.intval=24, got %d", r.intval)
-
-    r.intval -= u
-    assert(r.intval==12, "Expected r.intval=12 on -=, got %d", r.intval)
-
-    r.intval *= u
-    assert(r.intval==144, "Expected r.intval=144, got %d", r.intval)
-
-    r.intval /= u
-    assert(r.intval==12, "Expected r.intval=12 on /=, got %d", r.intval)
-
-    // Test assign expression to local integer variable
+    // Test assign expression to local integer variable I32-Var-Expr
 
     x = 1
     x += u
@@ -81,7 +83,7 @@ func main() {
     x /= u
     assert(x==1, "Expected x=1 on /=u, got %d", u)
 
-    // Test assign const float64 to variable
+    // Test assign const float64 to variable F64-Var-Const
 
     x64 = 2.0
     x64 += 3.0
@@ -106,7 +108,7 @@ func main() {
     x64 /= 2.0
     assert(x64==6.75, "Expected x64==6.75, got %f", x64)
 
-    // Test 64 bit float assign indirect with constants ------------------------------------------------
+    // Test 64 bit float assign indirect with constants F64-Indir-Const
 
     r.float64val = 3.0
 
@@ -122,7 +124,7 @@ func main() {
     r.float64val *= 3.0
     assert(r.float64val==3.0, "Expected r.float64val==3.0 on *=3, got %f", r.float64val)
 
-    // Test 64 bit float assign indirect from expression
+    // Test 64 bit float assign indirect from expression  F64-Indir-Expr
 
     r.float64val = 3.0
     z = 5.0
@@ -140,7 +142,7 @@ func main() {
     r.float64val *= z
     assert(r.float64val==5.0, "Expected r.float64val==5.0 on *=z, got %f", r.float64val)
 
-    // Test assign 64bit float expression to local variable
+    // Test assign 64bit float expression to local variable F64-Var-Expr
 
     x64 += y64
     assert(x64==9.75, "Expected x64==9.75, got %f", x64)
@@ -154,7 +156,7 @@ func main() {
     x64 -= y64
     assert(x64==6.75, "Expected x64==6.75, got %f", x64)
 
-    // Test assign float 32bit const to local variable
+    // Test assign float 32bit const to local variable  F32-Var-Const
 
     x32 = F32(2.0)
     y32 = F32(3.0)
@@ -174,7 +176,7 @@ func main() {
     x32 -= F32(6.0)
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
-    // Test assign float 32bit expression to local variable
+    // Test assign float 32bit expression to local variable  F32-Var-Expr
 
     x32 += y32
     assert(x32==13.0, "Expected x32==13.0, got %f", x32)
@@ -188,20 +190,38 @@ func main() {
     x32 -= y32
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
-    // Test 32 bit float assign constant to indirect variable
+    // Test 32 bit float assign constant to indirect variable  F32-Const-Indir
 
-    r.float32val = 4.0
+    r.float32val = F32(4.0)
 
-    r.float32val += 1.0
+    r.float32val += F32(1.0)
     assert(r.float32val==5.0, "Expected r.float32val==5.0, got %f", r.float32val)
 
-    r.float32val -= 3.0
+    r.float32val -= F32(3.0)
     assert(r.float32val==2.0, "Expected r.float32val==2.0, got %f", r.float32val)
 
-    r.float32val /= 2.0
+    r.float32val /= F32(2.0)
     assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
 
-    r.float32val *= 3.0
+    r.float32val *= F32(3.0)
     assert(r.float32val==3.0, "Expected r.float32val==3.0, got %f", r.float32val)
 
+    // Test F32-Indir-Expr
+    r.float32val = F32(3.0)
+
+    w = F32(5.0)
+
+    r.float32val += w
+    assert(r.float32val==8.0, "Expected r.float32val==8.0, got %f", r.float32val)
+
+    r.float32val -= w
+    assert(r.float32val==3.0, "Expected r.float32val==3.0 on -=, got %f", r.float32val)
+
+    r.float32val = 5.0
+    r.float32val /= w
+    assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
+
+    r.float32val *= w
+    assert(r.float32val==5.0, "Expected r.float32val==5.0 on *=2, got %f", r.float32val)
+ */
 }

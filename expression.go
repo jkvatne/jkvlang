@@ -1080,6 +1080,7 @@ func ParseExpressions(s *State) ([]*ValueDef, error) {
 	n := 0
 	for {
 		n++
+		code.SetUndef()
 		v, err := ParseExpression(s)
 		if err != nil {
 			return nil, err

@@ -1000,7 +1000,7 @@ func EmitModifyIndexedChar(addr int) {
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "Update variable to point at new string in case it has changed")
-	emit("pop", "rbx", "", "")
+	emit("pop", "rbx", "", Sp(-1))
 	emit("add", "rax", "rbx", "Add index")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
@@ -1564,6 +1564,23 @@ func EmitOpAssignIndirectF64Const(op Token, value float64) error {
 }
 
 func EmitOpAssignIndirectF32Const(op Token, offset int, value float32) error {
+	litNo := AddF32Lit(value)
+	code.SetAx()
+	emit("mov", "rdi", "rax", "")
+	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "")
+	if op == TOK_ASSIGN {
+		code.SetUndef()
+		emit("mov", "dword [rdi]", "eax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
+		emit("mov", "eax", "dword [rdi]", "")
+		emit("movd", xmm(1), "eax", "")
+		emitFloatOp(op, 64)
+		emit("movd", "eax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
+		emit("mov", "dword [rdi]", "eax", "")
+		return nil
+	}
 	return fmt.Errorf("%s not implemented for storing F32 indirect", op.Name())
 }
 
@@ -1660,7 +1677,7 @@ func EmitAssignTosF64ToIndirect(op Token, comment string) error {
 }
 
 func EmitAssignTosF32ToIndirect(op Token, comment string) error {
-	emit("pop", "rdi", "", comment)
+	emit("pop", "rdi", "", Sp(-1))
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "dword [rdi]", "eax", "")
@@ -1670,7 +1687,7 @@ func EmitAssignTosF32ToIndirect(op Token, comment string) error {
 		emit("mov", "eax", "dword [rdi]", "")
 		emit("movd", xmm(1), "eax", "")
 		emitFloatOp(op, 64)
-		emit("movd", "rex", xmm(1), "EmitAssignTosF32ToIndirect: Move float result into rax")
+		emit("movd", "eax", xmm(1), "EmitAssignTosF32ToIndirect: Move float result into rax")
 		emit("mov", "[rdi]", "rax", "")
 		return nil
 	} else {
