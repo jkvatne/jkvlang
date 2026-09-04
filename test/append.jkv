@@ -3,13 +3,18 @@
 func main() {
     s =  new(String,32)
     s = s + "xxx"
-    s += 'H'
-    // s += 'e'
-    print("s='%s'", s)
-/*
+    assert(s=="xxx", "Expected s='xxx', got '%s'", s)
+
     t = "Hello"
     u = s+t
-    print("%s", u)
+    assert(u=="xxxHello", "Expected u='xxxHello', got '%s'", u)
+
+/*
+    s += 'H'
+    assert(s=="xxxH", "Expected s='xxxH', got '%s'", s)
+
+    // s += 'e'
+    print("s='%s'", s)
 */
 
 }

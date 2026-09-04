@@ -1584,6 +1584,12 @@ func EmitOpAssignIndirectF32Const(op Token, value float32) error {
 }
 
 func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
+	if op == TOK_ASSIGN {
+		code.SetAx()
+		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		emit("mov", BpRel(offset), "rax", "")
+		return nil
+	}
 	return fmt.Errorf("%s not implemented for storing const string to local variable", op.Name())
 }
 

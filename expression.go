@@ -84,7 +84,8 @@ func AssignConstToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) 
 
 func AssignTosToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		err = fmt.Errorf("Not implemented for %s", value.Typ.Name())
+		// err = fmt.Errorf("Not implemented for %s", value.Typ.Name())
+		emit(TokenOp[op], BpRel(lvalue.Offset), "rax", "AssignTosToLocal ")
 	} else if lvalue.Typ.Pt.IsInteger() {
 		err = EmitStoreIntToLocal(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	} else if value.Typ.Pt == code.TYP_F64 {
