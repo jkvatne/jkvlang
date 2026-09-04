@@ -52,7 +52,7 @@ func AssignConstToIndirect(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
 		return EmitOpAssignIndirectF64Const(op, value.FloatValue)
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
-		return EmitOpAssignIndirectF32Const(op, lvalue.Offset, float32(value.FloatValue))
+		return EmitOpAssignIndirectF32Const(op, float32(value.FloatValue))
 	}
 	return fmt.Errorf("illegal assignment")
 }
@@ -246,6 +246,8 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		if err2 != nil {
 			return nil, err2
 		}
+		lvalue.IsIndirect = code.AxIsTos()
+		EmitFlushRax("Assure pointer is on stack")
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {
 			break

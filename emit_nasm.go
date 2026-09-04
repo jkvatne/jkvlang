@@ -1032,10 +1032,10 @@ func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName str
 		EmitFlushRax("Flush rax before EmitLoadField")
 		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
 	}
-	code.SetAx()
 	if fieldOffset != 0 {
 		emit("add", "rax", strconv.Itoa(fieldOffset), "LoadField: Add field offset for field '"+fieldName+"'")
 	}
+	code.SetAx()
 }
 
 func EmitLoadWithOffset(ofs int, comment string) {
@@ -1545,7 +1545,7 @@ func EmitAssignIndirectStrLit(op Token, litNo int) error {
 func EmitOpAssignIndirectF64Const(op Token, value float64) error {
 	litNo := AddF64Lit(value)
 	code.SetAx()
-	emit("mov", "rdi", "rax", "")
+	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const"+Sp(-1))
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1563,10 +1563,9 @@ func EmitOpAssignIndirectF64Const(op Token, value float64) error {
 	return fmt.Errorf("%s not implemented for storing F64 indirect", op.Name())
 }
 
-func EmitOpAssignIndirectF32Const(op Token, offset int, value float32) error {
+func EmitOpAssignIndirectF32Const(op Token, value float32) error {
 	litNo := AddF32Lit(value)
-	code.SetAx()
-	emit("mov", "rdi", "rax", "")
+	emit("pop", "rdi", "", "EmitOpAssignIndirectF32Const "+Sp(-1))
 	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1576,7 +1575,7 @@ func EmitOpAssignIndirectF32Const(op Token, offset int, value float32) error {
 		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
 		emit("mov", "eax", "dword [rdi]", "")
 		emit("movd", xmm(1), "eax", "")
-		emitFloatOp(op, 64)
+		emitFloatOp(op, 32)
 		emit("movd", "eax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
 		emit("mov", "dword [rdi]", "eax", "")
 		return nil
@@ -1617,8 +1616,9 @@ func EmitAssignTosToIndirect(op Token, size int) error {
 	return nil
 }
 
+// EmitAssignIndirectConstInt assumes pointer on stack and constant in parameter "value"
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
-	emit("mov", "rdi", "rax", "")
+	emit("pop", "rdi", "", "EmitAssignIndirectConstInt"+Sp(-1))
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token", "op", op.Name())
@@ -1644,7 +1644,7 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 	return nil
 }
 
-// EmitAssignIndirectConstChar assumes pointer to string in rax
+// EmitAssignIndirectConstChar assumes pointer in rax
 func EmitAssignIndirectConstChar(op Token, size int, value int) error {
 	if op == TOK_ASSIGN {
 		return fmt.Errorf("Append a character to a string. Not implemented!")
@@ -1686,7 +1686,7 @@ func EmitAssignTosF32ToIndirect(op Token, comment string) error {
 		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
 		emit("mov", "eax", "dword [rdi]", "")
 		emit("movd", xmm(1), "eax", "")
-		emitFloatOp(op, 64)
+		emitFloatOp(op, 32)
 		emit("movd", "eax", xmm(1), "EmitAssignTosF32ToIndirect: Move float result into rax")
 		emit("mov", "[rdi]", "rax", "")
 		return nil
