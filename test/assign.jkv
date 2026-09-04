@@ -10,7 +10,7 @@ func main() {
     r = new(Rec)
     r.intval=8
     r.float64val = 3.0
-    r.float32val = F32(4.0)
+    r.float32val = 4.0
 
     // Test assign expression to indirect integer value I32-Indir-Expr
 
@@ -156,22 +156,22 @@ func main() {
 
     // Test assign float 32bit const to local variable  F32-Var-Const
 
-    x32 = F32(2.0)
-    y32 = F32(3.0)
+    x32 = 2.0
+    y32 = 3.0
 
     x32 = y32
     assert(x32==3.0, "Expected x32==3.0, got %f", x32)
 
-    x32 += F32(1.0)
+    x32 += 1.0
     assert(x32==4.0, "Expected x32==4.0, got %f", x32)
 
     x32 = y32+5.0
     assert(x32==8.0, "Expected x32==8.0, got %f", x32)
 
-    x32 *= F32(2.0)
+    x32 *= 2.0
     assert(x32==16.0, "Expected x32==16.0, got %f", x32)
 
-    x32 -= F32(6.0)
+    x32 -= 6.0
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
     // Test assign float 32bit expression to local variable  F32-Var-Expr
@@ -190,21 +190,21 @@ func main() {
 
     // Test 32 bit float assign constant to indirect variable  F32-Const-Indir
 
-    r.float32val = F32(4.0)
-    r.float32val += F32(1.0)
+    r.float32val = 4.0
+    r.float32val += 1.0
     assert(r.float32val==5.0, "Expected r.float32val==5.0, got %f", r.float32val)
 
-    r.float32val -= F32(3.0)
+    r.float32val -= 3.0
     assert(r.float32val==2.0, "Expected r.float32val==2.0, got %f", r.float32val)
 
-    r.float32val /= F32(2.0)
+    r.float32val /= 2.0
     assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
 
-    r.float32val *= F32(3.0)
+    r.float32val *= 3.0
     assert(r.float32val==3.0, "Expected r.float32val==3.0, got %f", r.float32val)
 
     // Test F32-Indir-Expr
-    r.float32val = F32(3.0)
+    r.float32val = 3.0
 
     w = F32(5.0)
 
@@ -214,7 +214,7 @@ func main() {
     r.float32val -= w
     assert(r.float32val==3.0, "Expected r.float32val==3.0 on -=, got %f", r.float32val)
 
-    r.float32val = F32(5.0)
+    r.float32val = 5.0
     r.float32val /= w
     assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
 
