@@ -136,7 +136,7 @@ func ParseStatement(s *State) (err error) {
 func ParseStatements(s *State) error {
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		code.EmitLineNo(s.currentLine)
-		code.LastLineNum = code.LineNum + 1
+		code.LineNum = code.NextLineNum
 		err := ParseStatement(s)
 		if err != nil {
 			return err

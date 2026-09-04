@@ -45,7 +45,7 @@ func CompileFile(name string, workdir string, libPath string) error {
 			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
 		}
 		if err != nil {
-			return fmt.Errorf("%s:%d %v", name, code.LastLineNum, err)
+			return fmt.Errorf("%s:%d %v", name, code.LineNum, err)
 		}
 	}
 	EmitSection("rodata")

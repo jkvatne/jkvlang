@@ -212,6 +212,9 @@ func isAlfaNum(ch rune) bool {
 func (s *State) nextLitChar() {
 	var n int
 	s.ch1, n = utf8.DecodeRune(s.text[s.p:])
+	if s.ch1 == '\n' {
+		code.NextLineNum++
+	}
 	s.p += n
 	if s.p >= len(s.text) {
 		return
@@ -243,8 +246,7 @@ func (s *State) nextChar() {
 		n := 0
 		s.ch1, n = utf8.DecodeRune(s.text[s.p:])
 		if s.ch1 == '\n' {
-			code.LineNum++
-			s.AtLineEnd = true
+			code.NextLineNum++
 		}
 		s.p += n
 		if s.p >= len(s.text) {

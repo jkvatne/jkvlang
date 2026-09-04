@@ -71,8 +71,8 @@ var (
 	state       stackState
 	LabelNo     int
 	LocalSp     int
+	NextLineNum int
 	LineNum     int
-	LastLineNum int
 	UnitName    string
 	OutputFile  *os.File // File where the assembly is put
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
@@ -138,6 +138,7 @@ func New(name string, workdir string) (err error) {
 	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 	fn := filepath.Join(workdir, UnitName+".asm")
 	OutputFile, err = os.Create(fn)
+	NextLineNum = 1
 	LineNum = 1
 	return err
 }
@@ -208,7 +209,7 @@ func ConsArgCode(count int, reverse bool) {
 
 func OutputArgCode() {
 	if len(ArgCode) > 1 {
-		panic("Line " + strconv.Itoa(LastLineNum) + ": OutputArgCode should have only one entry in ArgCode")
+		panic("Line " + strconv.Itoa(LineNum) + ": OutputArgCode should have only one entry in ArgCode")
 	}
 	if len(ArgCode) == 0 {
 		return
