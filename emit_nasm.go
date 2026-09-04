@@ -1482,6 +1482,17 @@ func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 // EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
 func EmitStoreIntToLocal(op Token, size int, adr int, comment string) error {
+	if op == TOK_MULT_ASGN {
+		emit("imul", "rax", BpRel(adr), "")
+		emit("mov", BpRel(adr), "rax", "")
+		return nil
+	} else if op == TOK_DIV_ASGN {
+		emit("mov", "rcx", BpRel(adr), "")
+		emit("cdq", "", "", "")
+		emit("idiv", "ecx", "", "")
+		emit("mov", BpRel(adr), "rax", "")
+		return nil
+	}
 	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
 	code.SetUndef()
 	return nil
@@ -1628,6 +1639,45 @@ func EmitAssignIndirectConstChar(op Token, size int, value int) error {
 	return nil
 }
 
+// EmitAssignTosF64ToIndirect assumes pointer to F64 on stack and operand in rax
+func EmitAssignTosF64ToIndirect(op Token, comment string) error {
+	emit("pop", "rdi", "", Sp(-1))
+	if op == TOK_ASSIGN {
+		code.SetUndef()
+		emit("mov", "[rdi]", "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		emit("movq", xmm(2), "rax", "move tos in rax to xmm1")
+		emit("mov", "rax", "[rdi]", "")
+		emit("movq", xmm(1), "rax", "")
+		emitFloatOp(op, 64)
+		emit("movq", "rax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
+		emit("mov", "[rdi]", "rax", "")
+		return nil
+	} else {
+		return fmt.Errorf("%s not implemented for indirect assign F64", op.Name())
+	}
+}
+
+func EmitAssignTosF32ToIndirect(op Token, comment string) error {
+	emit("pop", "rdi", "", comment)
+	if op == TOK_ASSIGN {
+		code.SetUndef()
+		emit("mov", "dword [rdi]", "eax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
+		emit("mov", "eax", "dword [rdi]", "")
+		emit("movd", xmm(1), "eax", "")
+		emitFloatOp(op, 64)
+		emit("movd", "rex", xmm(1), "EmitAssignTosF32ToIndirect: Move float result into rax")
+		emit("mov", "[rdi]", "rax", "")
+		return nil
+	} else {
+		return fmt.Errorf("%s not implemented for indirect assign F64", op.Name())
+	}
+}
+
 // EmitAssignF64ConstToLocal constant float value to variable
 func EmitAssignF64ConstToLocal(op Token, adr int, x float64, comment string) error {
 	if op == TOK_ASSIGN {
@@ -1715,23 +1765,5 @@ func EmitAssignConstToInt(op Token, adr int, size int, value int64, comment stri
 			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
 		}
 	}
-	return nil
-}
-
-func EmitOpAssignString(offset int, litno int) error {
-	emit("mov", DataType(8)+BpRel(offset), "str"+strconv.Itoa(litno), "")
-	return nil
-}
-
-func EmitIndirectAssignment(name string) {
-	emit("pop", "rbx", "", "Indirect assignment"+Sp(-1))
-	emit("mov", "[rbx]", "rax", "Assign slice to "+name)
-	code.SetUndef()
-}
-
-// EmitAssignIntegerConst will store a constant of given size into a local variable at [BP+offset]
-func EmitAssignIntegerConst(op Token, size int, value int64, offset int, comment string) error {
-	num := strconv.FormatInt(value, 10)
-	emit(TokenOp[op], DataType(size)+BpRel(offset), num, comment)
 	return nil
 }

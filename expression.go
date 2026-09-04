@@ -58,7 +58,15 @@ func AssignConstToIndirect(op Token, lvalue *VarDef, value *ValueDef) error {
 }
 
 func AssignTosToIndirect(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
-	return EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
+	// return EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
+	if value.Typ.Pt.IsInteger() {
+		return EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
+	} else if value.Typ.Pt == code.TYP_F64 {
+		return EmitAssignTosF64ToIndirect(op, "Assign F64 to indirect")
+	} else if value.Typ.Pt == code.TYP_F32 {
+		return EmitAssignTosF32ToIndirect(op, "Assign F32 to "+lvalue.Name)
+	}
+	return fmt.Errorf("Not implemented for %s", value.Typ.Name())
 }
 
 func AssignConstToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {

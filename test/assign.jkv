@@ -7,11 +7,12 @@ type Rec = struct {
 func main() {
     print ("Testing assignments")
 
-    // Test assign constant to int indirect ----------------------------------
     r = new(Rec)
     r.intval=8
     r.float64val = 3.0
     r.float32val = 4.0
+
+    // Test assign constant to int indirect ----------------------------------
 
     r.intval +=1
     assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
@@ -46,14 +47,6 @@ func main() {
     y /=3
     assert(y==3, "Expected y==3, got %d", y)
 
-    x64 = 2.0
-    x64 += 3.0
-    assert(x64==5.0, "Expected x64==5.0, got %f", x64)
-
-    f = 1.0
-    g = 2.0
-    f = g
-    assert(f==2.0, "Expected f=2.0 , got %f", f)
 
     // Test assign expression to indirect integer value
 
@@ -73,7 +66,26 @@ func main() {
     r.intval /= u
     assert(r.intval==12, "Expected r.intval=12 on /=, got %d", r.intval)
 
-    // ========= 64 bit floats =================
+    // Test assign expression to local integer variable
+
+    x = 1
+    x += u
+    assert(x==13, "Expected x=13, got %d", u)
+
+    x -= u
+    assert(x==1, "Expected x=1, got %d", u)
+
+    x *= u
+    assert(x==12, "Expected x=12, got %d", u)
+
+    x /= u
+    assert(x==1, "Expected x=1 on /=u, got %d", u)
+
+    // Test assign const float64 to variable
+
+    x64 = 2.0
+    x64 += 3.0
+    assert(x64==5.0, "Expected x64==5.0, got %f", x64)
 
     y64 = 3.0
     x64 = y64
@@ -94,6 +106,42 @@ func main() {
     x64 /= 2.0
     assert(x64==6.75, "Expected x64==6.75, got %f", x64)
 
+    // Test 64 bit float assign indirect with constants ------------------------------------------------
+
+    r.float64val = 3.0
+
+    r.float64val += 1.0
+    assert(r.float64val==4.0, "Expected r.float64val==4.0, got %f", r.float64val)
+
+    r.float64val -= 2.0
+    assert(r.float64val==2.0, "Expected r.float64val==2.0, got %f", r.float64val)
+
+    r.float64val /= 2.0
+    assert(r.float64val==1.0, "Expected r.float64val==1.0, got %f", r.float64val)
+
+    r.float64val *= 3.0
+    assert(r.float64val==3.0, "Expected r.float64val==3.0 on *=3, got %f", r.float64val)
+
+    // Test 64 bit float assign indirect from expression
+
+    r.float64val = 3.0
+    z = 5.0
+
+    r.float64val += z
+    assert(r.float64val==8.0, "Expected r.float64val==8.0, got %f", r.float64val)
+
+    r.float64val -= z
+    assert(r.float64val==3.0, "Expected r.float64val==3.0 on -=, got %f", r.float64val)
+
+    r.float64val = 5.0
+    r.float64val /= z
+    assert(r.float64val==1.0, "Expected r.float64val==1.0, got %f", r.float64val)
+
+    r.float64val *= z
+    assert(r.float64val==5.0, "Expected r.float64val==5.0 on *=z, got %f", r.float64val)
+
+    // Test assign 64bit float expression to local variable
+
     x64 += y64
     assert(x64==9.75, "Expected x64==9.75, got %f", x64)
 
@@ -106,7 +154,8 @@ func main() {
     x64 -= y64
     assert(x64==6.75, "Expected x64==6.75, got %f", x64)
 
-    // ========= 32 bit floats =================
+    // Test assign float 32bit const to local variable
+
     x32 = F32(2.0)
     y32 = F32(3.0)
 
@@ -125,6 +174,8 @@ func main() {
     x32 -= F32(6.0)
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
+    // Test assign float 32bit expression to local variable
+
     x32 += y32
     assert(x32==13.0, "Expected x32==13.0, got %f", x32)
 
@@ -137,23 +188,7 @@ func main() {
     x32 -= y32
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
-    // Test 64 bit float assign with constants ------------------------------------------------
-
-    r.float64val = 3.0
-
-    r.float64val += 1.0
-    assert(r.float64val==4.0, "Expected r.float64val==4.0, got %f", r.float64val)
-
-    r.float64val -= 2.0
-    assert(r.float64val==2.0, "Expected r.float64val==2.0, got %f", r.float64val)
-
-    r.float64val /= 2.0
-    assert(r.float64val==1.0, "Expected r.float64val==1.0, got %f", r.float64val)
-
-    r.float64val *= 3.0
-    assert(r.float64val==3.0, "Expected r.float64val==3.0, got %f", r.float64val)
-
-    // Test 32 bit float assign with constant ---------------------------------------------------------------
+    // Test 32 bit float assign constant to indirect variable
 
     r.float32val = 4.0
 
