@@ -235,10 +235,6 @@ func (s *State) CollectNextLine() {
 }
 
 func (s *State) nextChar() {
-	if s.NewLine {
-		s.NewLine = false
-		s.CollectNextLine()
-	}
 	if eof(s) {
 		return
 	}
@@ -598,10 +594,6 @@ func nextToken(s *State) {
 			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", s.ch1))
 		}
 		break
-	}
-	if s.AtLineEnd {
-		s.NewLine = true
-		s.AtLineEnd = false
 	}
 
 }
