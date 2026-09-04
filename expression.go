@@ -58,12 +58,7 @@ func AssignConstToIndirect(op Token, lvalue *VarDef, value *ValueDef) error {
 }
 
 func AssignTosToIndirect(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
-	if op == TOK_ASSIGN {
-		EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
-	} else {
-		err = fmt.Errorf("AssignTosToIndirect: Operation %s not implemented for %s", op.Name(), value.Typ.Name())
-	}
-	return err
+	return EmitAssignTosToIndirect(op, lvalue.Typ.Pt.Size())
 }
 
 func AssignConstToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {

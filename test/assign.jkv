@@ -7,6 +7,25 @@ type Rec = struct {
 func main() {
     print ("Testing assignments")
 
+    // Test assign constant to int indirect ----------------------------------
+    r = new(Rec)
+    r.intval=8
+    r.float64val = 3.0
+    r.float32val = 4.0
+
+    r.intval +=1
+    assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
+
+    r.intval *=2
+    assert(r.intval==18, "Expected r.intval==18, got %d", r.intval)
+
+    r.intval /=2
+    assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
+
+    r.intval -=3
+    assert(r.intval==6, "Expected r.intval==6, got %d", r.intval)
+
+    // Test assign constant to local variable --------------------------------
     x = 1
     y = 2
     x = y
@@ -36,16 +55,23 @@ func main() {
     f = g
     assert(f==2.0, "Expected f=2.0 , got %f", f)
 
-    r = new(Rec)
-    r.intval = 123
-    assert(r.intval==123, "Expected r.intval=123, got %d", r.intval)
-
-    r.intval +=1
-    assert(r.intval==124, "Expected r.intval=124, got %d", r.intval)
+    // Test assign expression to indirect integer value
 
     u = 12
     r.intval = u
     assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
+
+    r.intval += u
+    assert(r.intval==24, "Expected r.intval=24, got %d", r.intval)
+
+    r.intval -= u
+    assert(r.intval==12, "Expected r.intval=12 on -=, got %d", r.intval)
+
+    r.intval *= u
+    assert(r.intval==144, "Expected r.intval=144, got %d", r.intval)
+
+    r.intval /= u
+    assert(r.intval==12, "Expected r.intval=12 on /=, got %d", r.intval)
 
     // ========= 64 bit floats =================
 
@@ -111,37 +137,34 @@ func main() {
     x32 -= y32
     assert(x32==10.0, "Expected x32==10.0, got %f", x32)
 
-    r = new(Rec)
-    r.intval=8
-    r.float64val = 3.0
-    r.float32val = 4.0
+    // Test 64 bit float assign with constants ------------------------------------------------
 
-    r.intval +=1
-    assert(r.intval==9, "Expected r.intval==9, got %d", r.intval)
+    r.float64val = 3.0
 
     r.float64val += 1.0
     assert(r.float64val==4.0, "Expected r.float64val==4.0, got %f", r.float64val)
 
-    r.float32val += 1.0
-    assert(r.float32val==5.0, "Expected r.float32val==5.0, got %f", r.float32val)
-
-    r.intval -=2
-    assert(r.intval==7, "Expected r.intval==7, got %d", r.intval)
-
     r.float64val -= 2.0
     assert(r.float64val==2.0, "Expected r.float64val==2.0, got %f", r.float64val)
-
-    r.float32val -= 3.0
-    assert(r.float32val==2.0, "Expected r.float32val==2.0, got %f", r.float32val)
 
     r.float64val /= 2.0
     assert(r.float64val==1.0, "Expected r.float64val==1.0, got %f", r.float64val)
 
-    r.float32val /= 2.0
-    assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
-
     r.float64val *= 3.0
     assert(r.float64val==3.0, "Expected r.float64val==3.0, got %f", r.float64val)
+
+    // Test 32 bit float assign with constant ---------------------------------------------------------------
+
+    r.float32val = 4.0
+
+    r.float32val += 1.0
+    assert(r.float32val==5.0, "Expected r.float32val==5.0, got %f", r.float32val)
+
+    r.float32val -= 3.0
+    assert(r.float32val==2.0, "Expected r.float32val==2.0, got %f", r.float32val)
+
+    r.float32val /= 2.0
+    assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
 
     r.float32val *= 3.0
     assert(r.float32val==3.0, "Expected r.float32val==3.0, got %f", r.float32val)

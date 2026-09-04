@@ -1209,8 +1209,8 @@ func EmitCompareIntConst(op Token, value int64, unsigned bool) error {
 
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
 // The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
-// We assume TOS is in rax. Then NOS will be popped to rbx.
-// For subtraction we should calculate NOS-TOS or rbx-rax
+// We assume TOS is in rax. Then NOS will be popped to rcx.
+// For subtraction we should calculate NOS-TOS or rcx-rax
 func EmitIntegerOp(op Token) {
 	if !code.AxIsTos() {
 		panic("emitIntegerOp assumes RaxIsTOS=true")
@@ -1561,8 +1561,20 @@ func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
 }
 
 // EmitAssignTosToIndirect has Pointer on stack, value in rax
-func EmitAssignTosToIndirect(op Token, size int) {
+func EmitAssignTosToIndirect(op Token, size int) error {
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
+	if op == TOK_MULT_ASGN {
+		emit("imul", "rax", "[rsi]", "")
+		emit("mov", "[rsi]", "rax", "")
+		return nil
+	} else if op == TOK_DIV_ASGN {
+		emit("mov", "rcx", "rax", "")
+		emit("mov", "rax", "[rsi]", "")
+		emit("cdq", "", "", "")
+		emit("idiv", "ecx", "", "")
+		emit("mov", "[rsi]", "rax", "")
+		return nil
+	}
 	if size == 8 {
 		emit(TokenOp[op], "[rsi]", "rax", "EmitStoreIndirect quad")
 	} else if size == 4 {
@@ -1572,12 +1584,35 @@ func EmitAssignTosToIndirect(op Token, size int) {
 	} else if size == 1 {
 		emit(TokenOp[op], "byte [rsi]", "al", "EmitStoreIndirect byte")
 	} else {
-		panic("Internal error - store indirect with wrong size")
+		return fmt.Errorf("Store indirect with wrong size")
 	}
+	return nil
 }
 
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
-	emit(TokenOp[op], DataType(size)+"[rax]", strconv.Itoa(int(value)), comment)
+	emit("mov", "rdi", "rax", "")
+	instr := TokenOp[op]
+	if instr == "" {
+		return fmt.Errorf("EmitIntegerOp called with invalid token", "op", op.Name())
+	}
+	if size == 4 {
+		emit("mov", "eax", "[rdi]", comment)
+	} else if size == 8 {
+		emit("mov", "rax", "[rdi]", "")
+	} else {
+		return fmt.Errorf("%s not implemented for size %d", op.Name(), size)
+	}
+	if instr == "idiv" {
+		emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
+		if size != 4 {
+			return fmt.Errorf("Only 32 bit integer divide currently supported")
+		}
+		emit("cdq", "", "", "")
+		emit("idiv", "ecx", "", "")
+	} else {
+		emit(TokenOp[op], "rax", strconv.Itoa(int(value)), "Integer op other")
+	}
+	emit("mov", "[rdi]", AxName(size), "")
 	return nil
 }
 
