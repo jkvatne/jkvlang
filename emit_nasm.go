@@ -454,14 +454,25 @@ func EmitConcat(free1 bool, free2 bool) {
 	emit("add", "rsi", "8", "Skip len/ca string 2")
 	emit("mov", "rcx", "r12", "")
 	emit("rep", "movsb", "", "")
+	lbl := code.NewLabel()
 	if free1 {
+		emit("mov", "rax", "[rbx]", "Free first argument to Concatenate")
+		emit("shr", "rax", "32", "")
+		emit("or", "rax", "rax", "")
+		emit("jz", Label(lbl), "", "")
 		emit("mov", "rax", "rbx", "Free first argument to Concatenate")
 		emit("call", "_free_str", "", "")
 	}
 	if free2 {
+		emit("mov", "rax", "[r13]", "Free first argument to Concatenate")
+		emit("shr", "rax", "32", "")
+		emit("or", "rax", "rax", "")
+		emit("jz", Label(lbl), "", "")
 		emit("mov", "rax", "r13", "Free second argument to Concatenate")
 		emit("call", "_free_str", "", "")
 	}
+	EmitLabel(lbl, "")
+
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
 	EmitPopAx("Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
@@ -1587,6 +1598,16 @@ func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
 	if op == TOK_ASSIGN {
 		code.SetAx()
 		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		emit("mov", BpRel(offset), "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN {
+		// EmitConcat will concatenate the two strings at the top of the stack
+		emit("mov", "rax", BpRel(offset), "")
+		emit("push", "rax", "", Sp(1))
+		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		emit("push", "rax", "", Sp(1))
+		code.SetSp()
+		EmitConcat(true, false)
 		emit("mov", BpRel(offset), "rax", "")
 		return nil
 	}

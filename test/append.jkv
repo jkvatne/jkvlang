@@ -1,15 +1,16 @@
 
 
 func main() {
-    s =  new(String,32)
-    s = s + "xxx"
+    s =  "aaa" // new(String,32)
+    s += "xxx"
+        assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
+/*
     assert(s=="xxx", "Expected s='xxx', got '%s'", s)
 
     t = "Hello"
     u = s+t
     assert(u=="xxxHello", "Expected u='xxxHello', got '%s'", u)
 
-/*
     s += 'H'
     assert(s=="xxxH", "Expected s='xxxH', got '%s'", s)
 
