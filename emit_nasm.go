@@ -480,6 +480,24 @@ func EmitConcat(free1 bool, free2 bool) {
 	EmitComment("")
 }
 
+func EmitAssignIntToStringLocal(op Token, adr int, value int, comment string) error {
+	if value > 128 {
+		return fmt.Errorf("only ascii values <128 is supported for now.")
+	}
+	if op != TOK_PLUS_ASGN {
+		return fmt.Errorf("only += supported for string += int")
+	}
+	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
+	emit("mov", "rsi", "rdi", "save copy of pointer")
+	emit("mov", "rax", "[rdi]", "Load len/cap")
+	emit("mov", "eax", "eax", "Clear upper 32 bits - keep length")
+	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
+	emit("add", "rdi", "8", "Skip len/cap also")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
+	emit("inc", "qword [rsi]", "", "")
+	return nil
+}
+
 func EmitPrologue(libPath string, inc bool) {
 	if inc {
 		EmitComment("File \"" + code.UnitName + ".asm\"\n")

@@ -72,6 +72,8 @@ func AssignTosToIndirect(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 func AssignConstToLocal(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		return EmitAssignConstStrToLocal(op, lvalue.Offset, value.StringLitNo)
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
+		return EmitAssignIntToStringLocal(op, lvalue.Offset, int(value.IntValue), "")
 	} else if value.Typ.Pt.IsInteger() {
 		return EmitAssignConstToInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {

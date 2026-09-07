@@ -1,21 +1,25 @@
 
 
 func main() {
-    s =  "aaa" // new(String,32)
-    s += "xxx"
-        assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
 /*
-    assert(s=="xxx", "Expected s='xxx', got '%s'", s)
+    // Concatenate two literals
+    s =  "aaa"
+    s += "xxx"
+    assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
 
+    // Concatenate rw string with litteral
     t = "Hello"
     u = s+t
-    assert(u=="xxxHello", "Expected u='xxxHello', got '%s'", u)
-
-    s += 'H'
-    assert(s=="xxxH", "Expected s='xxxH', got '%s'", s)
-
-    // s += 'e'
-    print("s='%s'", s)
+    assert(u=="aaaxxxHello", "Expected u='xxxHello', got '%s'", u)
 */
 
+    // Append character to string
+    v = new(String, 8)
+    v += 'H'
+    assert(v=="H", "Expected v='H', got '%s'", v)
+
+    v += 'e'
+    assert(v=="He", "Expected v='He', got '%s'", v)
+
+// new(String,32)
 }
