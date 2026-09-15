@@ -1,7 +1,58 @@
 
+type Person = struct {
+  adr String
+  name String
+}
 
 func main() {
+
+    // Test concat two strings and assign to local variable
+    s = "Hello"
+    t = "World"
+    w = s+t
+    assert(w=="HelloWorld", "Failed concat, got %s", w)
+
 /*
+
+   p = new(Person)
+   p.name = "Jan"
+   // EmitAssignIndirectConstStrChar
+   p.name += 'X'
+   print("%s", p.name)
+
+    v = "Hello"
+    w = "World"
+    p.name = "Jan Kåre"
+    n = 'A'
+
+    // Test EmitAssignVariableExpressionStrStr
+    v += w
+    assert(v=="HelloWorld", "Expected v=HelloWorld, got '%s'", v)
+
+    // Test EmitAssignIndirectConstStrStr
+    p.name += " Vatne"
+    //assert(p.name=="Jan Kåre Vatne", "Epected p.name==Jan Kåre, got '%s'", p.name)
+
+
+    // Test EmitAssignIndirectExpressionStrStr
+    p.name = v + w
+    assert(p.name=="HelloWorldWorld", "Expected p.name=HelloWorldWorld, got '%s'", p.name)
+
+    // EmitAssignVariableExpressionStrChar
+    v += n+1
+    assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
+
+    v = ""
+    v += 'H'
+    assert(v=="H", "Expected v='H', got '%s'", v)
+
+    v += 'e'
+    assert(v=="He", "Expected v='He', got '%s'", v)
+
+    ch = 'e'
+    v += ch
+    assert(v=="Hee", "Expected v='Hee', got '%s'", v)
+
     // Concatenate two literals
     s =  "aaa"
     s += "xxx"
@@ -13,13 +64,4 @@ func main() {
     assert(u=="aaaxxxHello", "Expected u='xxxHello', got '%s'", u)
 */
 
-    // Append character to string
-    v = new(String, 8)
-    v += 'H'
-    assert(v=="H", "Expected v='H', got '%s'", v)
-
-    v += 'e'
-    assert(v=="He", "Expected v='He', got '%s'", v)
-
-// new(String,32)
 }

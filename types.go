@@ -122,7 +122,7 @@ func CanAssignToVar(dstVar *VarDef, src code.PrimaryType) bool {
 
 // CanAssign is true if we can assign type "src" to "dst"
 func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
-	if src == code.TYP_U8 && dst == code.TYP_STRING {
+	if src.IsInteger() && dst == code.TYP_STRING {
 		return true
 	}
 	if src == dst {

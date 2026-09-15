@@ -411,93 +411,6 @@ func EmitAssertTosInRax(comment string) {
 	}
 }
 
-// EmitConcat will concatenate the two strings at the top of the stack
-// First string pointer in [rsp], second string pointer in [rax]
-// It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
-// Calls _alloc to allocate a new string with size for both the input strings + 32 bytes extra.
-func EmitConcat(free1 bool, free2 bool) {
-	EmitComment("Start of EmitConcat")
-	EmitAssertTosInRax("Get TOS before concat string")
-	// Get string 1 sizes/ptr into r14, rbx from [rsp]
-	emit("mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
-	emit("mov", "rbx", "rdx", "Get string 1 ptr into rbx")
-	emit("mov", "r14d", "dword [rdx]", "String 1 size into r14")
-	// Get string 2 sizes/ptr into r12, r13 from rax
-	emit("mov", "r12d", "dword [rax]", "Get string 2 size into r12d from TOS (rax)")
-	emit("mov", "r13", "rax", "Save string 2 ptr in r13")
-	// Calculate new size to allocate, including 32 extra bytes
-	emit("mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
-	emit("add", "rax", "r14", "")
-	emit("add", "rax", "40", "Add 32+8 to include len/cap")
-	// Allocate string
-	emit("call", "_alloc", "", "Allocate new string")
-	// Save pointer in r9 and rdi for later use
-	emit("mov", "rdi", "rax", "Save pointer in rdi for later use")
-	emit("push", "rax", "", "Save pointer on stack for later use"+Sp(1))
-	// Save new capacity/length
-	emit("mov", "rsi", "r12", "First string length")
-	emit("add", "rsi", "r14", "Add second length")
-	emit("mov", "rax", "rsi", "New length")
-	emit("add", "rsi", "32", "Add 32 for extra bytes")
-	emit("shl", "rsi", "32", "Move to cap (msw)")
-	emit("or", "rax", "rsi", "")
-	emit("mov", "[rdi]", "rax", "Save len/cap")
-	emit("add", "rdi", "8", "move pointer to actual string data")
-	// Copy string 1
-	emit("mov", "rsi", "rbx", "Copy string 1")
-	emit("add", "rsi", "8", "")
-	emit("mov", "rcx", "r14", "")
-	emit("cld", "", "", "")
-	emit("rep", "movsb", "", "")
-	// Copy string 2
-	emit("mov", "rsi", "r13", "Copy string 2")
-	emit("add", "rsi", "8", "Skip len/ca string 2")
-	emit("mov", "rcx", "r12", "")
-	emit("rep", "movsb", "", "")
-	lbl := code.NewLabel()
-	if free1 {
-		emit("mov", "rax", "[rbx]", "Free first argument to Concatenate")
-		emit("shr", "rax", "32", "")
-		emit("or", "rax", "rax", "")
-		emit("jz", Label(lbl), "", "")
-		emit("mov", "rax", "rbx", "Free first argument to Concatenate")
-		emit("call", "_free_str", "", "")
-	}
-	if free2 {
-		emit("mov", "rax", "[r13]", "Free first argument to Concatenate")
-		emit("shr", "rax", "32", "")
-		emit("or", "rax", "rax", "")
-		emit("jz", Label(lbl), "", "")
-		emit("mov", "rax", "r13", "Free second argument to Concatenate")
-		emit("call", "_free_str", "", "")
-	}
-	EmitLabel(lbl, "")
-
-	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
-	EmitPopAx("Now AX should point to the string")
-	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
-	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax"+Sp(-1))
-	EmitComment("")
-}
-
-func EmitAssignIntToStringLocal(op Token, adr int, value int, comment string) error {
-	if value > 128 {
-		return fmt.Errorf("only ascii values <128 is supported for now.")
-	}
-	if op != TOK_PLUS_ASGN {
-		return fmt.Errorf("only += supported for string += int")
-	}
-	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
-	emit("mov", "rsi", "rdi", "save copy of pointer")
-	emit("mov", "rax", "[rdi]", "Load len/cap")
-	emit("mov", "eax", "eax", "Clear upper 32 bits - keep length")
-	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
-	emit("add", "rdi", "8", "Skip len/cap also")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
-	emit("inc", "qword [rsi]", "", "")
-	return nil
-}
-
 func EmitPrologue(libPath string, inc bool) {
 	if inc {
 		EmitComment("File \"" + code.UnitName + ".asm\"\n")
@@ -1508,9 +1421,9 @@ func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 //  ASSIGN
 // ====================================================================================
 
-// EmitStoreIntToLocal will save the Top of Stack (AX) into a local variable of given size and offset.
+// EmitAssignVariableExpressionInt will save the Top of Stack (AX) into a local variable of given size and offset.
 // It will then clear RaxIsTos, effectively doing a pop
-func EmitStoreIntToLocal(op Token, size int, adr int, comment string) error {
+func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string) error {
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", BpRel(adr), "")
 		emit("mov", BpRel(adr), "rax", "")
@@ -1527,7 +1440,7 @@ func EmitStoreIntToLocal(op Token, size int, adr int, comment string) error {
 	return nil
 }
 
-func EmitStoreF64ToLocal(op Token, adr int, comment string) error {
+func EmitAssignVariableExpressionF64(op Token, adr int, comment string) error {
 	if op == TOK_ASSIGN {
 		emit("mov", BpRel(adr), "rax", comment)
 		return nil
@@ -1543,7 +1456,7 @@ func EmitStoreF64ToLocal(op Token, adr int, comment string) error {
 	return fmt.Errorf("%s not implemented %s", op.Name(), comment)
 }
 
-func EmitStoreF32ToLocal(op Token, adr int, comment string) error {
+func EmitAssignVariableExpressionF32(op Token, adr int, comment string) error {
 	if op == TOK_ASSIGN {
 		emit("mov", BpRel(adr), "eax", comment)
 		return nil
@@ -1559,19 +1472,7 @@ func EmitStoreF32ToLocal(op Token, adr int, comment string) error {
 	return fmt.Errorf("%s not implemented %s", op.Name(), comment)
 }
 
-func EmitAssignIndirectStrLit(op Token, litNo int) error {
-	if op == TOK_ASSIGN {
-		emit("mov", DataType(8)+"[rax]", "str"+strconv.Itoa(litNo), "EmitAssignIndirectStrLit")
-	} else if op == TOK_PLUS_ASGN {
-		EmitComment("Concatenate existing string with litteral string")
-		EmitConcat(false, false)
-	} else {
-		return fmt.Errorf("%s not implemented for string", op.Name())
-	}
-	return nil
-}
-
-func EmitOpAssignIndirectF64Const(op Token, value float64) error {
+func EmitOpAssignIndirectConstF64(op Token, value float64) error {
 	litNo := AddF64Lit(value)
 	code.SetAx()
 	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const"+Sp(-1))
@@ -1592,7 +1493,7 @@ func EmitOpAssignIndirectF64Const(op Token, value float64) error {
 	return fmt.Errorf("%s not implemented for storing F64 indirect", op.Name())
 }
 
-func EmitOpAssignIndirectF32Const(op Token, value float32) error {
+func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 	litNo := AddF32Lit(value)
 	emit("pop", "rdi", "", "EmitOpAssignIndirectF32Const "+Sp(-1))
 	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "")
@@ -1612,28 +1513,8 @@ func EmitOpAssignIndirectF32Const(op Token, value float32) error {
 	return fmt.Errorf("%s not implemented for storing F32 indirect", op.Name())
 }
 
-func EmitAssignConstStrToLocal(op Token, offset int, strLitNo int) error {
-	if op == TOK_ASSIGN {
-		code.SetAx()
-		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-		emit("mov", BpRel(offset), "rax", "")
-		return nil
-	} else if op == TOK_PLUS_ASGN {
-		// EmitConcat will concatenate the two strings at the top of the stack
-		emit("mov", "rax", BpRel(offset), "")
-		emit("push", "rax", "", Sp(1))
-		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-		emit("push", "rax", "", Sp(1))
-		code.SetSp()
-		EmitConcat(true, false)
-		emit("mov", BpRel(offset), "rax", "")
-		return nil
-	}
-	return fmt.Errorf("%s not implemented for storing const string to local variable", op.Name())
-}
-
-// EmitAssignTosToIndirect has Pointer on stack, value in rax
-func EmitAssignTosToIndirect(op Token, size int) error {
+// EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
+func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
@@ -1701,8 +1582,8 @@ func EmitAssignIndirectConstChar(op Token, size int, value int) error {
 	return nil
 }
 
-// EmitAssignTosF64ToIndirect assumes pointer to F64 on stack and operand in rax
-func EmitAssignTosF64ToIndirect(op Token, comment string) error {
+// EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax
+func EmitAssignIndirectExpressionF64(op Token) error {
 	emit("pop", "rdi", "", Sp(-1))
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1721,7 +1602,7 @@ func EmitAssignTosF64ToIndirect(op Token, comment string) error {
 	}
 }
 
-func EmitAssignTosF32ToIndirect(op Token, comment string) error {
+func EmitAssignIndirectExpressionF32(op Token) error {
 	emit("pop", "rdi", "", Sp(-1))
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1740,8 +1621,8 @@ func EmitAssignTosF32ToIndirect(op Token, comment string) error {
 	}
 }
 
-// EmitAssignF64ConstToLocal constant float value to variable
-func EmitAssignF64ConstToLocal(op Token, adr int, x float64, comment string) error {
+// EmitAssignVariableConstF64 constant float value to variable
+func EmitAssignVariableConstF64(op Token, adr int, x float64, comment string) error {
 	if op == TOK_ASSIGN {
 		litNo := AddF64Lit(x)
 		code.SetAx()
@@ -1764,8 +1645,8 @@ func EmitAssignF64ConstToLocal(op Token, adr int, x float64, comment string) err
 	return nil
 }
 
-// EmitAssignF32ConstToLocal constant float value to variable
-func EmitAssignF32ConstToLocal(op Token, adr int, x float32, comment string) error {
+// EmitAssignVariableConstF32 constant float value to variable
+func EmitAssignVariableConstF32(op Token, adr int, x float32, comment string) error {
 	if op == TOK_ASSIGN {
 		litNo := AddF32Lit(x)
 		code.SetAx()
@@ -1788,8 +1669,8 @@ func EmitAssignF32ConstToLocal(op Token, adr int, x float32, comment string) err
 	return nil
 }
 
-// EmitAssignConstToInt will set variable at <adr> to <adr> op <value>
-func EmitAssignConstToInt(op Token, adr int, size int, value int64, comment string) error {
+// EmitAssignVariableConstInt will set variable at <adr> to <adr> op <value>
+func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, comment string) error {
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
@@ -1828,4 +1709,302 @@ func EmitAssignConstToInt(op Token, adr int, size int, value int64, comment stri
 		}
 	}
 	return nil
+}
+
+// EmitConcat will concatenate the two strings at the top of the stack
+// First string pointer in [rsp], second string pointer in rax
+// It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
+// Calls _alloc to allocate a new string with size for both the input strings + 32 bytes extra.
+// This works fine
+func EmitConcat(free1 bool, free2 bool) {
+	EmitComment("Start of EmitConcat")
+	EmitAssertTosInRax("Get TOS before concat string")
+	// Get string 1 sizes/ptr into r14, rbx from [rsp]
+	emit("mov", "rdx", "[rsp]", "Get string 1 ptr into rdx")
+	emit("mov", "rbx", "rdx", "Get string 1 ptr into rbx")
+	emit("mov", "r14d", "dword [rdx]", "String 1 size into r14")
+	// Get string 2 sizes/ptr into r12, r13 from rax
+	emit("mov", "r12d", "dword [rax]", "Get string 2 size into r12d from TOS (rax)")
+	emit("mov", "r13", "rax", "Save string 2 ptr in r13")
+	// Calculate new size to allocate, including 32 extra bytes
+	emit("mov", "rax", "r12", "Calculate new size to allocate, including 32 extra bytes")
+	emit("add", "rax", "r14", "")
+	emit("add", "rax", "40", "Add 32+8 to include len/cap")
+	// Allocate string
+	emit("call", "_alloc", "", "Allocate new string")
+	// Save pointer in r9 and rdi for later use
+	emit("mov", "rdi", "rax", "Save pointer in rdi for later use")
+	emit("push", "rax", "", "Save pointer on stack for later use"+Sp(1))
+	// Save new capacity/length
+	emit("mov", "rsi", "r12", "First string length")
+	emit("add", "rsi", "r14", "Add second length")
+	emit("mov", "rax", "rsi", "New length")
+	emit("add", "rsi", "32", "Add 32 for extra bytes")
+	emit("shl", "rsi", "32", "Move to cap (msw)")
+	emit("or", "rax", "rsi", "")
+	emit("mov", "[rdi]", "rax", "Save len/cap")
+	emit("add", "rdi", "8", "move pointer to actual string data")
+	// Copy string 1
+	emit("mov", "rsi", "rbx", "Copy string 1")
+	emit("add", "rsi", "8", "")
+	emit("mov", "rcx", "r14", "")
+	emit("cld", "", "", "")
+	emit("rep", "movsb", "", "")
+	// Copy string 2
+	emit("mov", "rsi", "r13", "Copy string 2")
+	emit("add", "rsi", "8", "Skip len/ca string 2")
+	emit("mov", "rcx", "r12", "")
+	emit("rep", "movsb", "", "")
+	if free1 {
+		lbl := code.NewLabel()
+		emit("mov", "rax", "[rbx]", "Free first argument to Concatenate")
+		emit("shr", "rax", "32", "")
+		emit("or", "rax", "rax", "")
+		emit("jz", Label(lbl), "", "")
+		emit("mov", "rax", "rbx", "Free first argument to Concatenate")
+		emit("call", "_free_str", "", "")
+		EmitLabel(lbl, "")
+	}
+	if free2 {
+		lbl := code.NewLabel()
+		emit("mov", "rax", "[r13]", "Free first argument to Concatenate")
+		emit("shr", "rax", "32", "")
+		emit("or", "rax", "rax", "")
+		emit("jz", Label(lbl), "", "")
+		emit("mov", "rax", "r13", "Free second argument to Concatenate")
+		emit("call", "_free_str", "", "")
+		EmitLabel(lbl, "")
+	}
+
+	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
+	EmitPopAx("Now AX should point to the string")
+	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
+	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax"+Sp(-1))
+}
+
+// ExtendCapacity of a string by copying it into new memory
+// ebx should contain the required extra length, f.ex. the length of the appended string
+// rsi should point to the old string, so [rsi] is the old len/cap
+// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32
+// [rsi] shr 32 will be the current capacity of the string in [rsi] since rsi points to len/cap.
+// At exit, rdi will point to the new string, and its capacity set to the new capacity.
+// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
+// Uses r12 ands r13
+func ExtendStringCapacity(bytesExtra int) {
+	lbl := code.NewLabel()
+	emit("mov", "rax", "[rsi]", "Load old len/cap")
+	emit("mov", "rcx", "rax", "Save len/cap")
+	emit("shr", "rcx", "32", "Get old cap cap")
+	emit("mov", "eax", "eax", "Clear cap, leave length in rax")
+	emit("add", "rbx", "rax", "Add extra length to old length")
+	emit("shr", "rax", "32", "Get old cap")
+	emit("cmp", "rbx", "rcx", "Compare len to cap")
+	emit("jl", Label(lbl), "", "jump if we have enough space")
+	// Extend capacity, including extra bytes. New minimum in rbx
+	emit("add", "rbx", strconv.Itoa(bytesExtra+16), "Add extra and space for len/cap")
+	emit("mov", "rax", "rbx", "")
+	emit("mov", "r12", "rbx", "Save new cap in r12")
+	emit("shl", "r12", "32", "Save new cap in correct half of len/cap")
+	emit("call", "_alloc", "", "Allocate new string")
+	// Copy old string
+	emit("mov", "rdi", "rax", "Pointer to new string")
+	emit("mov", "r13", "rax", "Save pointer to new string")
+	emit("add", "rdi", "8", "Skip len/cap when moving string")
+	emit("mov", "rcx", "[rsi]", "Get old length")
+	emit("mov", "ecx", "ecx", "Clear cap, leave old length in rcx")
+	emit("add", "r12", "rcx", "Copy old length to new length of len/cap in r12")
+	emit("add", "rsi", "8", "Skip len/cap when moving string")
+	emit("cld", "", "", "")
+	emit("rep", "movsb", "", "copy old string")
+	emit("mov", "[r13]", "r12", "Mov len/cap into string")
+	emit("mov", "rax", "r13", "rax now points to the new string's len/cap")
+	EmitLabel(lbl, "")
+}
+
+// EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.
+func EmitAssignVariableConstStrChar(op Token, adr int, value int, comment string) error {
+	if value > 128 {
+		return fmt.Errorf("only ascii values <128 is supported for now.")
+	}
+	if op != TOK_PLUS_ASGN {
+		return fmt.Errorf("only += supported for string += int")
+	}
+	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
+	emit("mov", "rsi", "rdi", "save copy of pointer")
+	emit("mov", "rax", "[rdi]", "Load len/cap")
+	emit("shr", "rax", "32", "Get cap")
+	emit("mov", "rbx", "[rdi]", "Load len/cap")
+	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
+	emit("cmp", "rbx", "rax", "Compare len to cap")
+	lbl := code.NewLabel()
+	emit("jnz", Label(lbl), "", "jump if we have enought space")
+	// Extend capacity, including 64 extra bytes
+	emit("mov", "r13", "rax", "Old len")
+	emit("add", "rax", "64", "Add 64+8 to include len/cap")
+	emit("mov", "r12", "rax", "")
+	emit("add", "rax", "8", "")
+	emit("call", "_alloc", "", "Allocate new string")
+	// Save new string pointer
+	emit("mov", BpRel(adr), "rax", "")
+	EmitLabel(lbl, "")
+	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
+	emit("add", "rdi", "8", "Skip len/cap also")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
+	emit("inc", "qword [rsi]", "", "")
+	return nil
+}
+
+// EmitAssignIndirectConstStrStr
+// TOS is indirect pointer to first string, Second string is constant in strLitNo
+func EmitAssignIndirectConstStrStr(op Token, strLitNo int) error {
+	if op == TOK_ASSIGN {
+		EmitAssertTosInRax("EmitAssignIndirectConstStrStr")
+		emit("mov", DataType(8)+"[rax]", "str"+strconv.Itoa(strLitNo), "EmitAssignIndirectStrLit")
+		// emit("pop", "rax", "", Sp(-1))
+		code.SetAx()
+	} else if op == TOK_PLUS_ASGN {
+		EmitFlushRax("")
+		emit("pop", "rax", "", "")
+		emit("mov", "rax", "[rax]", "")
+		emit("push", "rax", "", "")
+		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		code.SetAx()
+		// First string pointer in [rsp], second string pointer in rax
+		EmitConcat(true, true)
+	} else {
+		return fmt.Errorf("%s not implemented for string", op.Name())
+	}
+	return nil
+}
+
+func EmitAssignVariableConstStrStr(op Token, offset int, strLitNo int) error {
+	if op == TOK_ASSIGN {
+		code.SetAx()
+		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		emit("mov", BpRel(offset), "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN {
+		// EmitConcat will concatenate the two strings at the top of the stack
+		emit("mov", "rax", BpRel(offset), "")
+		emit("push", "rax", "", Sp(1))
+		emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+		emit("push", "rax", "", Sp(1))
+		code.SetSp()
+		EmitConcat(true, false)
+		emit("mov", BpRel(offset), "rax", "")
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for storing const string to local variable", op.Name())
+}
+
+// EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
+func EmitAssignVariableExpressionStrStr(op Token, adr int) error {
+	if op == TOK_ASSIGN {
+		emit("mov", BpRel(adr), "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN {
+		emit("mov", "rbx", BpRel(adr), "")
+		emit("push", "rbx", "", Sp(1))
+		code.SetAx()
+		// EmitConcat will concatenate the two strings at the top of the stack
+		EmitConcat(true, false)
+		emit("mov", BpRel(adr), "rax", "")
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for EmitAssignVariableExpressionStrStr", op.Name())
+}
+
+// EmitAssignIndirectExpressionStrStr assigns string pointed to by NOS from string in rax
+func EmitAssignIndirectExpressionStrStr(op Token) error {
+	if op == TOK_ASSIGN {
+		emit("mov", "rdi", "[rsp]", "")
+		emit("mov", DataType(8)+"[rdi]", "rax", "")
+		return nil
+	} else if op == TOK_PLUS_ASGN {
+		emit("push", "rbx", "", Sp(1))
+		code.SetAx()
+		// EmitConcat will concatenate the two strings at the top of the stack
+		EmitConcat(true, false)
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for EmitAssignIndirectExpressionStrStr", op.Name())
+}
+
+// EmitAssignVariableExpressionStrChar appends a character in rax to the string in the variable at <adr>
+func EmitAssignVariableExpressionStrChar(op Token, adr int) error {
+	if op == TOK_PLUS_ASGN {
+		emit("mov", "r14", "rax", "Save character value")
+		emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
+
+		emit("mov", "rsi", "rdi", "save copy of pointer")
+		emit("mov", "rax", "[rdi]", "Load len/cap")
+		emit("shr", "rax", "32", "Get cap")
+		emit("mov", "rbx", "[rdi]", "Load len/cap")
+		emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
+		emit("cmp", "rbx", "rax", "Compare len to cap")
+		lbl := code.NewLabel()
+		emit("jnz", Label(lbl), "", "jump if we have enought space")
+		// Extend capacity, including 64 extra bytes
+		emit("mov", "r13", "rax", "Old len")
+		emit("add", "rax", "64", "Add 64+8 to include len/cap")
+		emit("mov", "r12", "rax", "")
+		emit("add", "rax", "8", "")
+		emit("call", "_alloc", "", "Allocate new string")
+		// Save new string pointer
+		emit("mov", BpRel(adr), "rax", "")
+		EmitLabel(lbl, "")
+		emit("add", "rdi", "rbx", "Add length to pointer - we will save to end of string")
+		emit("add", "rdi", "8", "Skip len/cap also")
+		// TODO Handle longer characters (UTF)
+		emit("mov", "rax", "r14", "Char to rax")
+		emit("mov", "byte [rdi]", "al", "Add char to string")
+		emit("inc", "qword [rsi]", "", "")
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for EmitAssignVariableExpressionStrChar", op.Name())
+}
+
+// EmitAssignIndirectConstStrChar appends a constant character value to string in NOS.
+func EmitAssignIndirectConstStrChar(op Token, value int) error {
+	if op == TOK_PLUS_ASGN {
+		emit("mov", "rdi", "[rsp]", "Load pointer to string (indirect)")
+		emit("mov", "rsi", "rdi", "save copy of pointer")
+		emit("mov", "rsi", "[rsi]", "Load string pointer from indirect")
+		emit("mov", "rax", "[rsi]", "Load len/cap")
+		emit("shr", "rax", "32", "Get cap")
+		emit("mov", "rbx", "[rsi]", "Load len/cap")
+		emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
+		emit("cmp", "rbx", "rax", "Compare len to cap")
+		lbl := code.NewLabel()
+		emit("jl", Label(lbl), "", "jump if we have enough space")
+		// Extend capacity, including 64 extra bytesr
+		emit("mov", "r13", "rax", "Old len")
+		emit("add", "rax", "64", "Add 64+8 to include len/cap")
+		emit("mov", "r12", "rax", "")
+		emit("add", "rax", "8", "")
+		emit("call", "_alloc", "", "Allocate new string")
+		// Copy old string
+		emit("mov", "rdi", "rax", "rdi is now new location of string")
+		emit("mov", "[rdi]", "r12", "Move length/cap")
+		emit("add", "rdi", "8", "Skip len/cap")
+		emit("mov", "rcx", "rbx", "")
+		emit("cld", "", "", "")
+		emit("rep", "movsb", "", "")
+		// Save new string pointer
+		emit("mov", "[rsp]", "rax", "")
+		EmitLabel(lbl, "")
+		emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
+		emit("add", "rdi", "8", "Skip len/cap also")
+		// TODO Handle longer characters (UTF)
+		emit("mov", "byte [rdi]", strconv.Itoa(value), "Add char to string")
+		emit("inc", "qword [rsi]", "", "")
+		emit("pop", "rax", "", Sp(-1))
+		code.SetUndef()
+		return nil
+	}
+	return fmt.Errorf("%s not implemented for EmitAssignIndirectConstStrChar", op.Name())
+}
+
+func EmitAssignIndirectExpressionStrChar(op Token) error {
+	return fmt.Errorf("%s not implemented fore", op.Name())
 }

@@ -367,6 +367,8 @@ func nextToken(s *State) {
 		s.nextChar()
 		s.tokenString = string(s.ch1)
 		switch {
+		case s.ch1 == '\r' || s.ch1 == '\n':
+			continue
 		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
 			s.nextChar()

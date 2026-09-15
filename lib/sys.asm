@@ -1,4 +1,21 @@
 ; sys.asm  Contains file IO functions
+;  Register Windows ABI           JKV ABI
+;  0  rax   Return value
+;  1  rcx   First argument
+;  2  rdx   Second argument
+;  3  rbx   Preserved             Size of arguments on stack (bytes)
+;  4  rsp   Stack pointer
+;  5  rbp   Preserved
+;  6  rsi   Preserved
+;  7  rdi   Preserved             Function called for syscall
+;  8  r8    Third argument
+;  9  r9    Forth argument
+;  10 r10   Used in syscall
+;  11 r11   Used in syscall
+;  12 r12   Preserved
+;  13 r13   Preserved
+;  14 r14   Preserved
+;  15 r15   Preserved              Error pointer. 0 (nil) means ok.
 
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
@@ -149,10 +166,9 @@ _alloc:
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 32                      ; Reserve shadow space
     add [allocation_count], rax      ; Increment total allocated count
-    mov rdi, rax                     ; Save size into rdi
+    mov r8, rax                      ; Argument 3, size requested
     mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 8                       ; Arbument 2, Flags into rdx, 8 means allocated memory is zeroed
-    mov r8, rdi
     call HeapAlloc
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
