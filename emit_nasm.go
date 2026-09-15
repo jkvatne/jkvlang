@@ -1888,6 +1888,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "rax", "rbx", "")
 	emit("mov", "r12", "rbx", "Save new cap in r12")
 	emit("shl", "r12", "32", "Save new cap in correct half of len/cap")
+	emit("add", "rax", "8", "Allocate 8 bytes more than capacity, to store len/cap")
 	emit("call", "_alloc", "", "Allocate new string")
 	// Copy old string
 	emit("mov", "rdi", "rax", "Pointer to new string")
