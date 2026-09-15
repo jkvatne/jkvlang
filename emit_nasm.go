@@ -1871,7 +1871,8 @@ func EmitConcat(free1 bool, free2 bool) {
 // [rsi] shr 32 will be the current capacity of the string in [rsi] since rsi points to len/cap.
 // At exit, rdi will point to the new string, and its capacity set to the new capacity.
 // The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
-// Uses r12 ands r13
+// Uses r12 ands r13.
+// At exit, rsi points to the first character of the source string, and rdi to the first empty character of the new string
 func ExtendStringCapacity(bytesExtra int) {
 	lbl := code.NewLabel()
 	emit("mov", "rax", "[rsi]", "Load old len/cap")
@@ -1903,13 +1904,29 @@ func ExtendStringCapacity(bytesExtra int) {
 	EmitLabel(lbl, "")
 }
 
+// EmitAppendVariableExpressionStrStr appends the string on stack to the variable at adr.
 func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rbx", BpRel(adr), "")
 	emit("push", "rbx", "", Sp(1))
 	code.SetAx()
-	// EmitConcat will concatenate the two strings at the top of the stack
-	EmitConcat(true, false)
+	// Set bx to the appended length (on stack)
+	emit("mov", "rbx", "[rsp]", "Get pointer")
+	emit("mov", "rbx", "[rbx]", "Get len/cap")
+	emit("mov", "ebx", "ebx", "Clear capacity. ")
+	emit("mov", "r14", "rbx", "Save length")
+	// Set si to point to len/cap of string to be possibly extended
+	emit("mov", "rsi", "[rsp]", "")
+	ExtendStringCapacity(32)
+	// Move the string to be appended.
+	emit("add", "[rax]", "r14", "")
+	emit("mov", "rcx", "r14", "Get saved length")
+	emit("mov", "rsi", "[rsp+8]", "Get appended string")
+	emit("add", "rsi", "8", "")
+	emit("rep", "movsb", "", "copy appended string")
+	// Update new len/cap
+	// Now update local variable
 	emit("mov", BpRel(adr), "rax", "")
+	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
 

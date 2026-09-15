@@ -7,10 +7,10 @@ type Person = struct {
 func main() {
 
     // Test EmitAssignVariableExpressionStrStr
-    v = "Hello"
+    v = "Hello-"
     w = "World"
     v += w
-    assert(v=="HelloWorld", "Expected v=HelloWorld, got '%s'", v)
+    assert(v=="HelloWorld", "Expected v=Hello-World, got '%s'", v)
 
 /*
 
