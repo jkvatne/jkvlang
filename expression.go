@@ -8,6 +8,9 @@ import (
 	"github.com/jkvatne/jkv/code"
 )
 
+// GenerateAssignment generates code for generic assignments, including +=, -= etc.
+// lvalue is the left side, and value the right side of the equal sign.
+// The op is already verified to be one of the assignment operators.
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	wasNew := false
@@ -29,6 +32,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return fmt.Errorf("assignment expected type %s but got %s", lvalue.Typ.Pt.Name(), value.Typ.Name())
 	}
 
+	// Check type of left and right side and handle indirect, local, const, var
 	if lvalue.IsIndirect && value.HasValue() {
 		// Assign constant to indirect variable
 		return AssignIndirectConst(op, lvalue, value)
@@ -40,14 +44,21 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return AssignVariableConst(op, lvalue, value, wasNew)
 	} else {
 		// Assign evaluated value to local variable
-		return AssignVariableExpression(op, lvalue, value, wasNew)
+		return AssignVariableExpression(op, lvalue, value)
 	}
 }
 
-func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		return EmitAssignVariableConstStrStr(op, lvalue.Offset, value.StringLitNo)
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
+		if op == TOK_ASSIGN {
+			// Handle assigning a const string to a string variable
+			return EmitAssignVariableConstStrStr(lvalue.Offset, value.StringLitNo)
+		} else if op == TOK_PLUS_ASGN {
+			// Handle appending a const string to a string variable
+			return EmitAppendVariableConstStrStr(lvalue.Offset, value.StringLitNo)
+		}
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+		// Handle appending a single character to a string
 		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(value.IntValue), "")
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
@@ -56,34 +67,42 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableConstF32(op, lvalue.Offset, float32(value.FloatValue), "")
 	}
-	return fmt.Errorf("operation %s not implemented for %s", op.Name(), value.Typ.Name())
+	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
-func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		err = EmitAssignVariableExpressionStrStr(op, lvalue.Offset)
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
-		err = EmitAssignVariableExpressionStrChar(op, lvalue.Offset)
+		if op == TOK_ASSIGN {
+			// Handle assigning a string expression to a string variable
+			return EmitAssignVariableExpressionStrStr(lvalue.Offset)
+		} else if op == TOK_PLUS_ASGN {
+			// Handle appending a string expression to a string variable
+			return EmitAppendVariableExpressionStrStr(lvalue.Offset)
+		}
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+		return EmitAppendVariableExpressionStrChar(lvalue.Offset)
 	} else if lvalue.Typ.Pt.IsInteger() {
-		err = EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
+		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
-		err = EmitAssignVariableExpressionF64(op, lvalue.Offset, "Assign F64 to "+lvalue.Name)
+		return EmitAssignVariableExpressionF64(op, lvalue.Offset, "Assign F64 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
-		err = EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
+		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		err = EmitAssignVariableExpressionInt(op, 8, lvalue.Offset, "Assign struct to "+lvalue.Name)
-	} else {
-		err = fmt.Errorf("Not implemented for %s", value.Typ.Name())
+		return EmitAssignVariableExpressionInt(op, 8, lvalue.Offset, "Assign struct to "+lvalue.Name)
 	}
-	return err
+	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		return EmitAssignIndirectConstStrStr(op, value.StringLitNo)
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
-		c, _ := strconv.Atoi(lvalue.constValue) // / TODO Err check
-		return EmitAssignIndirectConstStrChar(op, c)
+		if op == TOK_ASSIGN {
+			return EmitAssignIndirectConstStrStr(value.StringLitNo)
+		} else if op == TOK_PLUS_ASGN {
+			return EmitAppendIndirectConstStrStr(value.StringLitNo)
+		}
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+		c, _ := strconv.Atoi(lvalue.constValue)
+		return EmitAppendIndirectConstStrChar(c)
 	} else if lvalue.Typ.Pt.IsInteger() {
 		return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
@@ -91,22 +110,26 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitOpAssignIndirectConstF32(op, float32(value.FloatValue))
 	}
-	return fmt.Errorf("illegal assignment")
+	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
 	if value.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		return EmitAssignIndirectExpressionF64(op)
-	} else if value.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() {
-		return EmitAssignIndirectExpressionF64(op)
-	} else if value.Typ.Pt.IsInteger() {
+		if op == TOK_ASSIGN {
+			return EmitAssignIndirectExpressionStrStr()
+		} else if op == TOK_PLUS_ASGN {
+			return EmitAppendIndirectExpressionStrStr()
+		}
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+		return EmitAssignIndirectExpressionStrChar()
+	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		return EmitAssignIndirectExpressionInt(op, lvalue.Typ.Pt.Size())
 	} else if value.Typ.Pt == code.TYP_F64 {
 		return EmitAssignIndirectExpressionF64(op)
 	} else if value.Typ.Pt == code.TYP_F32 {
 		return EmitAssignIndirectExpressionF32(op)
 	}
-	return fmt.Errorf("Not implemented for %s", value.Typ.Name())
+	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments
