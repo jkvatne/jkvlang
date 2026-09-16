@@ -1916,8 +1916,22 @@ func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
 // EmitAssignIndirectConstStrStr ok
 func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	EmitAssertTosInRax("")
+	// Free old string in [rax] if it exists
+	lbl := code.NewLabel()
+	emit("mov", "r12", "rax", "")
+	emit("mov", "rbx", "[rax]", "Free existing in EmitAssignIndirectConstStrStr")
+	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rbx", "[rbx]", "")
+	emit("shr", "rbx", "32", "")
+	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rax", "[rax]", "")
+	emit("call", "_free_str", "", "")
+	EmitLabel(lbl, "")
+
 	emit("mov", "rbx", "str"+strconv.Itoa(strLitNo), "")
-	emit("mov", "[rax]", "rbx", "")
+	emit("mov", "[r12]", "rbx", "")
 	return nil
 }
 

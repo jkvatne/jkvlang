@@ -12,10 +12,11 @@ func main() {
     s = " Kåre"
     p.name += s
     assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
+
+    //EmitAssignIndirectConstStrStr
     p.name = "Jan"
 
 /*
-    //EmitAssignIndirectConstStrStr
     p.name = "Jan"
     assert(p.name=="Jan", "Expected p.name='Jan', got '%s'", p.name)
 
