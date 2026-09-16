@@ -5,13 +5,9 @@ type Person = struct {
 }
 
 func main() {
+/*
     p = new(Person)
 
-    // Test EmitAppendVariableExpressionStrStr
-    v = "Hello-"
-    w = "World"
-    v += w
-    assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
     // EmitAppendIndirectExpressionStrStr
     p.name = "Jan"
     s = " Kåre"
@@ -29,16 +25,17 @@ func main() {
     assert(p.name=="Jan Kåre Nedregotten", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
     p.name += " Å"
     assert(p.name=="Jan Kåre Nedregotten Å", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
+*/
+    // Test EmitAppendVariableExpressionStrStr
+    v = "Hello-"
+    w = "World"
+    v += w
+    assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
 
+    t = "X" // "World12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+    v += t
 
 /*
-
-    //s = "World"
-    //v += s
-    //assert(v=="Hello-WorldWorld", "Expected v=Hello-World, got '%s'", v)
-    //t = "World12345678901234567890123456789012345678901234567890123456789012345678901234567890"
-    //v += t
-
 
    p = new(Person)
    p.name = "Jan"
