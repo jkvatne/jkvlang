@@ -15,6 +15,12 @@ func main() {
     p.name += " Kåre"
     assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
 
+    p.name += " Nedregotten"
+    assert(p.name=="Jan Kåre Nedregotten", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
+
+    p.name += " Å"
+    assert(p.name=="Jan Kåre Nedregotten Å", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
+
 /*
 
     // EmitAppendIndirectExpressionStrStr

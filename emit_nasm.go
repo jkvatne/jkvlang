@@ -1819,7 +1819,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("cld", "", "", "")
 	emit("rep", "movsb", "", "copy old string")
 	emit("mov", "[rdx]", "r12", "Mov new len/cap into string")
-	emit("mov", "rax", "rdx", "rax now points to the new string's len/cap")
+	emit("mov", "rsi", "rdx", "rdx now points to the new string's len/cap")
 	EmitLabel(lbl, "")
 }
 
@@ -1837,9 +1837,9 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	// Set si to point to len/cap of string to be possibly extended
 	emit("mov", "rsi", "[rsp]", "")
-	ExtendStringCapacity(2)
+	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part and di to the first empty character
-	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
+	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "[rax]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
@@ -1861,9 +1861,9 @@ func EmitAppendIndirectExpressionStrStr() error {
 	emit("mov", "rbx", "[r13]", "Get len/cap of second part")
 	emit("mov", "ebx", "ebx", "Clear capacity. Ready to extend.")
 	emit("mov", "r14", "rbx", "Save length of second part")
-	ExtendStringCapacity(2)
+	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part
-	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
+	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "[rax]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
@@ -1884,17 +1884,17 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "rbx", "[rax]", "Get part 2 len/cap")
 	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
 	emit("mov", "r14", "rbx", "Save length of second part")
-	ExtendStringCapacity(2)
+	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part. Copy part 2 after part 1
-	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
-	emit("mov", "rcx", "[rax]", "Get saved length")
+	emit("add", "[rdx]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "[rdx]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
 	emit("add", "rsi", "8", "")
 	emit("rep", "movsb", "", "copy appended string")
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
-	emit("mov", "qword [rdi]", "rax", "")
+	emit("mov", "qword [rdi]", "rdx", "")
 	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
