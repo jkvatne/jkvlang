@@ -1844,9 +1844,9 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
-	emit("rep", "movsb", "", "copy appended string")
+	emit("rep", "movsb", "", "copy appended string 1")
 	// Now update local variable
-	emit("mov", BpRel(adr), "rax", "")
+	emit("mov", BpRel(adr), "rdx", "")
 	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
@@ -1868,10 +1868,10 @@ func EmitAppendIndirectExpressionStrStr() error {
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
-	emit("rep", "movsb", "", "copy appended string")
+	emit("rep", "movsb", "", "copy appended string 2")
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
-	emit("mov", "qword [rdi]", "rax", "")
+	emit("mov", "qword [rdi]", "rdx", "")
 	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
@@ -1891,7 +1891,7 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
 	emit("add", "rsi", "8", "")
-	emit("rep", "movsb", "", "copy appended string")
+	emit("rep", "movsb", "", "copy appended string 3")
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
