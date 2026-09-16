@@ -1765,28 +1765,6 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int, comment string
 	return nil
 }
 
-// EmitAssignIndirectConstStrStr
-// TOS is indirect pointer to first string, Second string is constant in strLitNo
-func EmitAssignIndirectConstStrStr(strLitNo int) error {
-	EmitAssertTosInRax("EmitAssignIndirectConstStrStr")
-	emit("mov", DataType(8)+"[rax]", "str"+strconv.Itoa(strLitNo), "EmitAssignIndirectStrLit")
-	// emit("pop", "rax", "", Sp(-1))
-	code.SetAx()
-	return nil
-}
-
-func EmitAppendIndirectConstStrStr(strLitNo int) error {
-	EmitFlushRax("")
-	emit("pop", "rax", "", "")
-	emit("mov", "rax", "[rax]", "")
-	emit("push", "rax", "", "")
-	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-	code.SetAx()
-	// First string pointer in [rsp], second string pointer in rax
-	EmitConcat(true, true)
-	return nil
-}
-
 // EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
 func EmitAssignVariableExpressionStrStr(adr int) error {
 	emit("mov", BpRel(adr), "rax", "")
@@ -1916,8 +1894,8 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	// Set si to point to len/cap of string to be possibly extended
 	emit("mov", "rsi", "[rsp]", "")
-	ExtendStringCapacity(32)
-	// Now rax points to the possibly extended first part
+	ExtendStringCapacity(2)
+	// Now rax points to the possibly extended first part and di to the first empty character
 	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "[rax]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
@@ -1930,18 +1908,34 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	return nil
 }
 
-// EmitAssignIndirectExpressionStrStr assigns string pointed to by NOS from string in rax
-func EmitAssignIndirectExpressionStrStr() error {
+// EmitAppendIndirectExpressionStrStr appends string pointed to by rax (second part) to string in [rsp] (first part)
+func EmitAppendIndirectExpressionStrStr() error {
+	// Set si to point to len/cap of string to be possibly extended
+	emit("mov", "rsi", "[rsp]", "EmitAppendIndirectExpressionStrStr")
+	emit("mov", "rsi", "[rsi]", "Get string len/cap pointer")
+	emit("mov", "r13", "[rsp+8]", "Save second part to r13")
+	emit("mov", "rbx", "[r13]", "Get len/cap of second part")
+	emit("mov", "ebx", "ebx", "Clear capacity. Ready to extend.")
+	emit("mov", "r14", "rbx", "Save length of second part")
+	ExtendStringCapacity(2)
+	// Now rax points to the possibly extended first part
+	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "[rax]", "Get saved length")
+	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
+	emit("mov", "rsi", "r13", "Get appended string")
+	emit("add", "rsi", "8", "")
+	emit("rep", "movsb", "", "copy appended string")
+	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
-	emit("mov", DataType(8)+"[rdi]", "rax", "")
+	emit("mov", "qword [rdi]", "rax", "")
+	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
 
-func EmitAppendIndirectExpressionStrStr() error {
-	emit("push", "rbx", "", Sp(1))
-	code.SetAx()
-	// EmitConcat will concatenate the two strings at the top of the stack
-	EmitConcat(true, false)
+func EmitAssignIndirectConstStrStr(strLitNo int) error {
+	EmitAssertTosInRax("EmitAssignIndirectConstStrStr")
+	emit("mov", "rbx", "str"+strconv.Itoa(strLitNo), "")
+	emit("mov", "[rax]", "rbx", "")
 	return nil
 }
 
@@ -1976,8 +1970,8 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	return nil
 }
 
-// EmitAssignIndirectConstStrChar appends a constant character value to string in NOS.
-func EmitAppendIndirectConstStrChar(value int) error {
+// EmitAssignIndirectConstStrStr appends a constant character value to string in NOS.
+func EmitAppendIndirectConstStrStr(litNo int) error {
 	emit("mov", "rdi", "[rsp]", "Load pointer to string (indirect)")
 	emit("mov", "rsi", "rdi", "save copy of pointer")
 	emit("mov", "rsi", "[rsi]", "Load string pointer from indirect")
@@ -2007,7 +2001,7 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
 	emit("add", "rdi", "8", "Skip len/cap also")
 	// TODO Handle longer characters (UTF)
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Add char to string")
+	// emit("mov", "byte [rdi]", strconv.Itoa(value), "Add char to string")
 	emit("inc", "qword [rsi]", "", "")
 	emit("pop", "rax", "", Sp(-1))
 	code.SetUndef()
@@ -2015,5 +2009,13 @@ func EmitAppendIndirectConstStrChar(value int) error {
 }
 
 func EmitAssignIndirectExpressionStrChar() error {
-	return fmt.Errorf("%s not implemented")
+	return fmt.Errorf("EmitAssignIndirectExpressionStrChar not implemented")
+}
+
+func EmitAppendIndirectConstStrChar(litNo int) error {
+	return fmt.Errorf("EmitAppendIndirectConstStrStr not implemented")
+}
+
+func EmitAssignIndirectExpressionStrStr() error {
+	return fmt.Errorf("EmitAssignIndirectExpressionStrStr not implemented")
 }
