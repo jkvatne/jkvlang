@@ -5,20 +5,30 @@ type Person = struct {
 }
 
 func main() {
-    //EmitAssignIndirectExpressionStrStr
     p = new(Person)
+
+    //EmitAssignIndirectConstStrStr
+    p.name = "Jan"
+    assert(p.name=="Jan", "Expected p.name='Jan', got '%s'", p.name)
+
+    // EmitAppendIndirectConstStrStr
+    p.name += " Kåre"
+    assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
+
+/*
+
+    // EmitAppendIndirectExpressionStrStr
     p.name = "Jan"
     s = " Kåre"
     p.name += s
-    assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'")
+    assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
 
-    // Test EmitAssignVariableExpressionStrStr
+    // Test EmitAppendVariableExpressionStrStr
     v = "Hello-"
     w = "World"
     v += w
     assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
 
-/*
 
     //s = "World"
     //v += s

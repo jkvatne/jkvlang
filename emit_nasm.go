@@ -1711,66 +1711,6 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 	return nil
 }
 
-// EmitAssignVariableConstStrStr will append a litteral string to the tstring in local variabl at adr
-// The old string may be replaced with a bigger string if needed.
-func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
-	code.SetAx()
-	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-	emit("mov", BpRel(adr), "rax", "")
-	return nil
-}
-
-func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
-	// EmitConcat will concatenate the two strings at the top of the stack
-	emit("mov", "rax", BpRel(adr), "")
-	emit("push", "rax", "", Sp(1))
-	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-	emit("push", "rax", "", Sp(1))
-	code.SetSp()
-	EmitConcat(true, false)
-	emit("mov", BpRel(adr), "rax", "")
-	return nil
-}
-
-// EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.
-func EmitAssignVariableConstStrChar(op Token, adr int, value int, comment string) error {
-	if value > 128 {
-		return fmt.Errorf("only ascii values <128 is supported for now.")
-	}
-	if op != TOK_PLUS_ASGN {
-		return fmt.Errorf("only += supported for string += int")
-	}
-	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
-	emit("mov", "rsi", "rdi", "save copy of pointer")
-	emit("mov", "rax", "[rdi]", "Load len/cap")
-	emit("shr", "rax", "32", "Get cap")
-	emit("mov", "rbx", "[rdi]", "Load len/cap")
-	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
-	emit("cmp", "rbx", "rax", "Compare len to cap")
-	lbl := code.NewLabel()
-	emit("jnz", Label(lbl), "", "jump if we have enought space")
-	// Extend capacity, including 64 extra bytes
-	emit("mov", "r13", "rax", "Old len")
-	emit("add", "rax", "64", "Add 64+8 to include len/cap")
-	emit("mov", "r12", "rax", "")
-	emit("add", "rax", "8", "")
-	emit("call", "_alloc", "", "Allocate new string")
-	// Save new string pointer
-	emit("mov", BpRel(adr), "rax", "")
-	EmitLabel(lbl, "")
-	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
-	emit("add", "rdi", "8", "Skip len/cap also")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
-	emit("inc", "qword [rsi]", "", "")
-	return nil
-}
-
-// EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
-func EmitAssignVariableExpressionStrStr(adr int) error {
-	emit("mov", BpRel(adr), "rax", "")
-	return nil
-}
-
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in rax
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
@@ -1883,7 +1823,10 @@ func ExtendStringCapacity(bytesExtra int) {
 	EmitLabel(lbl, "")
 }
 
+// =======   APPEND STR-STR ===========
+
 // EmitAppendVariableExpressionStrStr appends the string on stack to the variable at adr.
+// Ok
 func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rbx", BpRel(adr), "Get pointer to first part")
 	emit("push", "rbx", "", "and save it to stack"+Sp(1))
@@ -1909,6 +1852,7 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 }
 
 // EmitAppendIndirectExpressionStrStr appends string pointed to by rax (second part) to string in [rsp] (first part)
+// OK
 func EmitAppendIndirectExpressionStrStr() error {
 	// Set si to point to len/cap of string to be possibly extended
 	emit("mov", "rsi", "[rsp]", "EmitAppendIndirectExpressionStrStr")
@@ -1932,18 +1876,117 @@ func EmitAppendIndirectExpressionStrStr() error {
 	return nil
 }
 
+// EmitAppendIndirectConstStrStr appends a constant character value to string in NOS.
+func EmitAppendIndirectConstStrStr(strLitNo int) error {
+	emit("mov", "rsi", "[rsp]", "Load pointer to string (EmitAppendIndirectConstStrStr)")
+	emit("mov", "rsi", "[rsi]", "Get string len/cap pointer")
+	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+	emit("mov", "rbx", "[rax]", "Get part 2 len/cap")
+	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
+	emit("mov", "r14", "rbx", "Save length of second part")
+	ExtendStringCapacity(2)
+	// Now rax points to the possibly extended first part. Copy part 2 after part 1
+	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "[rax]", "Get saved length")
+	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
+	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
+	emit("add", "rsi", "8", "")
+	emit("rep", "movsb", "", "copy appended string")
+	// Now update indirect variable
+	emit("mov", "rdi", "[rsp]", "")
+	emit("mov", "qword [rdi]", "rax", "")
+	emit("pop", "rax", "", Sp(-1))
+	return nil
+}
+
+func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
+	// EmitConcat will concatenate the two strings at the top of the stack
+	emit("mov", "rax", BpRel(adr), "")
+	emit("push", "rax", "", Sp(1))
+	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+	emit("push", "rax", "", Sp(1))
+	code.SetSp()
+	EmitConcat(true, false)
+	emit("mov", BpRel(adr), "rax", "")
+	return nil
+}
+
+// =======   ASSIGN STR-STR ===========
+
+// EmitAssignIndirectConstStrStr ok
 func EmitAssignIndirectConstStrStr(strLitNo int) error {
-	EmitAssertTosInRax("EmitAssignIndirectConstStrStr")
+	EmitAssertTosInRax("")
 	emit("mov", "rbx", "str"+strconv.Itoa(strLitNo), "")
 	emit("mov", "[rax]", "rbx", "")
 	return nil
 }
 
-// EmitAssignVariableExpressionStrChar appends a character in rax to the string in the variable at <adr>
+func EmitAssignIndirectExpressionStrStr() error {
+	return fmt.Errorf("EmitAssignIndirectExpressionStrStr not implemented")
+}
+
+// EmitAssignVariableConstStrStr will append a litteral string to the tstring in local variabl at adr
+// The old string may be replaced with a bigger string if needed.
+func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
+	code.SetAx()
+	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
+	emit("mov", BpRel(adr), "rax", "")
+	return nil
+}
+
+// EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
+func EmitAssignVariableExpressionStrStr(adr int) error {
+	emit("mov", BpRel(adr), "rax", "")
+	return nil
+}
+
+// ========== APPEND STR-CHAR ===========
+
+func EmitAppendIndirectConstStrChar(charNo int) error {
+	return fmt.Errorf("EmitAppendIndirectConstStrStr not implemented")
+}
+
+func EmitAssignIndirectExpressionStrChar() error {
+	return fmt.Errorf("EmitAssignIndirectExpressionStrChar not implemented")
+}
+
+// EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.
+func EmitAssignVariableConstStrChar(op Token, adr int, value int, comment string) error {
+	if value > 128 {
+		return fmt.Errorf("only ascii values <128 is supported for now.")
+	}
+	if op != TOK_PLUS_ASGN {
+		return fmt.Errorf("only += supported for string += int")
+	}
+	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
+	emit("mov", "rsi", "rdi", "save copy of pointer")
+	emit("mov", "rax", "[rdi]", "Load len/cap")
+	emit("shr", "rax", "32", "Get cap")
+	emit("mov", "rbx", "[rdi]", "Load len/cap")
+	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
+	emit("cmp", "rbx", "rax", "Compare len to cap")
+	lbl := code.NewLabel()
+	emit("jnz", Label(lbl), "", "jump if we have enought space")
+	// Extend capacity, including 64 extra bytes
+	emit("mov", "r13", "rax", "Old len")
+	emit("add", "rax", "64", "Add 64+8 to include len/cap")
+	emit("mov", "r12", "rax", "")
+	emit("add", "rax", "8", "")
+	emit("call", "_alloc", "", "Allocate new string")
+	// Save new string pointer
+	emit("mov", BpRel(adr), "rax", "")
+	EmitLabel(lbl, "")
+	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
+	emit("add", "rdi", "8", "Skip len/cap also")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
+	emit("inc", "qword [rsi]", "", "")
+	return nil
+}
+
+// EmitAppendVariableExpressionStrChar appends a character in rax to the string in the variable at <adr>
 func EmitAppendVariableExpressionStrChar(adr int) error {
 	emit("mov", "r14", "rax", "Save character value")
 	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
-
 	emit("mov", "rsi", "rdi", "save copy of pointer")
 	emit("mov", "rax", "[rdi]", "Load len/cap")
 	emit("shr", "rax", "32", "Get cap")
@@ -1968,54 +2011,4 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	emit("mov", "byte [rdi]", "al", "Add char to string")
 	emit("inc", "qword [rsi]", "", "")
 	return nil
-}
-
-// EmitAssignIndirectConstStrStr appends a constant character value to string in NOS.
-func EmitAppendIndirectConstStrStr(litNo int) error {
-	emit("mov", "rdi", "[rsp]", "Load pointer to string (indirect)")
-	emit("mov", "rsi", "rdi", "save copy of pointer")
-	emit("mov", "rsi", "[rsi]", "Load string pointer from indirect")
-	emit("mov", "rax", "[rsi]", "Load len/cap")
-	emit("shr", "rax", "32", "Get cap")
-	emit("mov", "rbx", "[rsi]", "Load len/cap")
-	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
-	emit("cmp", "rbx", "rax", "Compare len to cap")
-	lbl := code.NewLabel()
-	emit("jl", Label(lbl), "", "jump if we have enough space")
-	// Extend capacity, including 64 extra bytesr
-	emit("mov", "r13", "rax", "Old len")
-	emit("add", "rax", "64", "Add 64+8 to include len/cap")
-	emit("mov", "r12", "rax", "")
-	emit("add", "rax", "8", "")
-	emit("call", "_alloc", "", "Allocate new string")
-	// Copy old string
-	emit("mov", "rdi", "rax", "rdi is now new location of string")
-	emit("mov", "[rdi]", "r12", "Move length/cap")
-	emit("add", "rdi", "8", "Skip len/cap")
-	emit("mov", "rcx", "rbx", "")
-	emit("cld", "", "", "")
-	emit("rep", "movsb", "", "")
-	// Save new string pointer
-	emit("mov", "[rsp]", "rax", "")
-	EmitLabel(lbl, "")
-	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
-	emit("add", "rdi", "8", "Skip len/cap also")
-	// TODO Handle longer characters (UTF)
-	// emit("mov", "byte [rdi]", strconv.Itoa(value), "Add char to string")
-	emit("inc", "qword [rsi]", "", "")
-	emit("pop", "rax", "", Sp(-1))
-	code.SetUndef()
-	return nil
-}
-
-func EmitAssignIndirectExpressionStrChar() error {
-	return fmt.Errorf("EmitAssignIndirectExpressionStrChar not implemented")
-}
-
-func EmitAppendIndirectConstStrChar(litNo int) error {
-	return fmt.Errorf("EmitAppendIndirectConstStrStr not implemented")
-}
-
-func EmitAssignIndirectExpressionStrStr() error {
-	return fmt.Errorf("EmitAssignIndirectExpressionStrStr not implemented")
 }
