@@ -1918,8 +1918,8 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	EmitAssertTosInRax("")
 	// Free old string in [rax] if it exists
 	lbl := code.NewLabel()
-	emit("mov", "r12", "rax", "")
 	emit("mov", "rbx", "[rax]", "Free existing in EmitAssignIndirectConstStrStr")
+	emit("mov", "r14", "rax", "")
 	emit("or", "rbx", "rbx", "")
 	emit("jz", Label(lbl), "", "")
 	emit("mov", "rbx", "[rbx]", "")
@@ -1931,7 +1931,7 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	EmitLabel(lbl, "")
 
 	emit("mov", "rbx", "str"+strconv.Itoa(strLitNo), "")
-	emit("mov", "[r12]", "rbx", "")
+	emit("mov", "[r14]", "rbx", "")
 	return nil
 }
 

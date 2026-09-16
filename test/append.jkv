@@ -15,22 +15,17 @@ func main() {
 
     //EmitAssignIndirectConstStrStr
     p.name = "Jan"
-
-/*
-    p.name = "Jan"
     assert(p.name=="Jan", "Expected p.name='Jan', got '%s'", p.name)
 
     // EmitAppendIndirectConstStrStr
     p.name += " Kåre"
     assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
-
     p.name += " Nedregotten"
     assert(p.name=="Jan Kåre Nedregotten", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
-
     p.name += " Å"
     assert(p.name=="Jan Kåre Nedregotten Å", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
 
-
+/*
     // Test EmitAppendVariableExpressionStrStr
     v = "Hello-"
     w = "World"
