@@ -1839,8 +1839,8 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rsi", "[rsp]", "")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part and di to the first empty character
+	emit("mov", "rcx", "[rsi]", "Get added length")
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
-	emit("mov", "rcx", "[rax]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
@@ -1863,8 +1863,8 @@ func EmitAppendIndirectExpressionStrStr() error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part
+	emit("mov", "rcx", "[rsi]", "Get added length")
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
-	emit("mov", "rcx", "[rax]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
@@ -1886,8 +1886,8 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part. Copy part 2 after part 1
+	emit("mov", "rcx", "[rsi]", "Get added length")
 	emit("add", "[rdx]", "r14", "Add length of second part to length/cap of first part")
-	emit("mov", "rcx", "[rdx]", "Get saved length")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
 	emit("add", "rsi", "8", "")
