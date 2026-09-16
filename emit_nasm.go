@@ -1896,37 +1896,40 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("add", "rdi", "8", "Skip len/cap when moving string")
 	emit("mov", "rcx", "[rsi]", "Get old length")
 	emit("mov", "ecx", "ecx", "Clear cap, leave old length in rcx")
-	emit("add", "r12", "rcx", "Copy old length to new length of len/cap in r12")
+	emit("add", "r12", "rcx", "Add old length to len/cap in r12")
 	emit("add", "rsi", "8", "Skip len/cap when moving string")
 	emit("cld", "", "", "")
 	emit("rep", "movsb", "", "copy old string")
-	emit("mov", "[r13]", "r12", "Mov len/cap into string")
+	emit("mov", "[r13]", "r12", "Mov new len/cap into string")
 	emit("mov", "rax", "r13", "rax now points to the new string's len/cap")
 	EmitLabel(lbl, "")
 }
 
 // EmitAppendVariableExpressionStrStr appends the string on stack to the variable at adr.
 func EmitAppendVariableExpressionStrStr(adr int) error {
-	emit("mov", "rbx", BpRel(adr), "")
-	emit("push", "rbx", "", Sp(1))
+	EmitFlushRax("Save second part to stack")
+	emit("mov", "rbx", BpRel(adr), "Get pointer to first part")
+	emit("push", "rbx", "", "and save it to stack"+Sp(1))
 	code.SetAx()
 	// Set bx to the appended length (on stack)
-	emit("mov", "rbx", "[rsp]", "Get pointer")
-	emit("mov", "rbx", "[rbx]", "Get len/cap")
+	emit("mov", "rbx", "[rsp+8]", "Get pointer to second part")
+	emit("mov", "rbx", "[rbx]", "Get len/cap of second part")
 	emit("mov", "ebx", "ebx", "Clear capacity. ")
-	emit("mov", "r14", "rbx", "Save length")
+	emit("mov", "r14", "rbx", "Save length of second part")
 	// Set si to point to len/cap of string to be possibly extended
 	emit("mov", "rsi", "[rsp]", "")
 	ExtendStringCapacity(32)
-	// Move the string to be appended.
-	emit("add", "[rax]", "r14", "")
-	emit("mov", "rcx", "r14", "Get saved length")
+	// Now rax points to the possibly extended first part
+	emit("add", "[rax]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "[rax]", "Get saved length")
+	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "[rsp+8]", "Get appended string")
 	emit("add", "rsi", "8", "")
 	emit("rep", "movsb", "", "copy appended string")
 	// Update new len/cap
 	// Now update local variable
 	emit("mov", BpRel(adr), "rax", "")
+	emit("pop", "rax", "", Sp(-1))
 	emit("pop", "rax", "", Sp(-1))
 	return nil
 }

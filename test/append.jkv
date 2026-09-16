@@ -8,9 +8,17 @@ func main() {
 
     // Test EmitAssignVariableExpressionStrStr
     v = "Hello-"
+    print("len(v)=%d", len(v))
     w = "World"
+    print("len(w)=%d", len(w))
     v += w
-    assert(v=="HelloWorld", "Expected v=Hello-World, got '%s'", v)
+    print("len(v+=w)=%d", len(v))
+    assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
+    //s = "World"
+    //v += s
+    //assert(v=="Hello-WorldWorld", "Expected v=Hello-World, got '%s'", v)
+    //t = "World12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+    //v += t
 
 /*
 
