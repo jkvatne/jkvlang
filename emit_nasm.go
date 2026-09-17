@@ -1823,10 +1823,8 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "rsi", "rdx", "rdx now points to the new string's len/cap")
 	// Free old string
 	emit("push", "rdx", "", "")
-	emit("push", "rdi", "", "")
 	emit("mov", "rax", "rbx", "rbx points to the old string")
 	emit("call", "_free_str", "", "")
-	emit("pop", "rdi", "", "")
 	emit("pop", "rdx", "", "")
 	EmitLabel(lbl, "End of ExtendStringCapacity")
 }
@@ -1965,7 +1963,7 @@ func EmitAssignVariableExpressionStrStr(adr int) error {
 // ========== APPEND STR-CHAR ===========
 
 func EmitAppendIndirectConstStrChar(charNo int) error {
-	return fmt.Errorf("EmitAppendIndirectConstStrStr not implemented")
+	return fmt.Errorf("EmitAppendIndirectConstStrChar not implemented")
 }
 
 func EmitAssignIndirectExpressionStrChar() error {

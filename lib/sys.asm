@@ -250,12 +250,13 @@ _free_str:
     sub [allocation_count], rcx      ; Decrement allocated count
     push rax                    ; Save object pointer
 
-    ; Clear area to avoid double use
-    mov rdi, rax                     ; Destination pointer (buffer address)
-    xor eax, eax                     ; Value to store (0)
-    cld                              ; Clear direction flag (process forward)
-    rep stosb                        ; Repeat storing AL into [RDI] (use stosd for dwords)
-
+    ; Clear area to avoid double use (???)
+    ; push rdi
+    ; mov rdi, rax                     ; Destination pointer (buffer address)
+    ; xor eax, eax                     ; Value to store (0)
+    ; cld                              ; Clear direction flag (process forward)
+    ; rep stosb                        ; Repeat storing AL into [RDI] (use stosd for dwords)
+    ; pop rdi
     mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
     pop r8

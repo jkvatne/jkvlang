@@ -19,7 +19,6 @@ func main() {
     v += t
     assert(v=="Hello-WorldX123456789012345678901234567890", "Expected v='Hello-WorldX123456789012345678901234567890', got '%s'", v)
 
-/*
     p = new(Person)
 
     // EmitAppendIndirectExpressionStrStr
@@ -39,6 +38,8 @@ func main() {
     assert(p.name=="Jan Kåre Nedregotten", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
     p.name += " Å"
     assert(p.name=="Jan Kåre Nedregotten Å", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
+
+/*
 
    p = new(Person)
    p.name = "Jan"
