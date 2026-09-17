@@ -1793,18 +1793,17 @@ func EmitConcat(free1 bool, free2 bool) {
 // At exit, rsi points to the first character of the source string, and rdi to the first empty character of the new string
 func ExtendStringCapacity(bytesExtra int) {
 	lbl := code.NewLabel()
-	emit("mov", "rax", "[rsi]", "Load old len/cap")
-	emit("mov", "rcx", "rax", "Save len/cap")
-	emit("shr", "rcx", "32", "Get old cap cap")
-	emit("mov", "eax", "eax", "Clear cap, leave length in rax")
-	emit("add", "rbx", "rax", "Add extra length to old length")
-	emit("shr", "rax", "32", "Get old cap")
-	emit("cmp", "rbx", "rcx", "Compare len to cap")
-	emit("jl", Label(lbl), "", "jump if we have enough space")
-	// Extend capacity, including extra bytes. New minimum in rbx
-	emit("add", "rbx", strconv.Itoa(bytesExtra+16), "Add extra and space for len/cap")
-	emit("mov", "rax", "rbx", "")
-	emit("mov", "r12", "rbx", "Save new cap in r12")
+	// Check if old len + new len (rbx) is more than old cap (rcx)
+	emit("mov", "rax", "[rsi]", "Start ExtendStringCapacity, load old len/cap")
+	emit("mov", "rcx", "rax", "Old len/cap into rcx")
+	emit("shr", "rcx", "32", "Get only old cap in rcx")
+	emit("mov", "eax", "eax", "Clear cap, leave old length in rax")
+	emit("add", "rax", "rbx", "Add extra length to old length")
+	emit("cmp", "rax", "rcx", "Compare len to cap")
+	emit("jb", Label(lbl), "", "jump if we have enough space")
+	// Extend capacity, including extra bytes.
+	emit("add", "rax", strconv.Itoa(bytesExtra+16), "Add extra and space for len/cap")
+	emit("mov", "r12", "rax", "Save new cap in r12")
 	emit("shl", "r12", "32", "Save new cap in correct half of len/cap")
 	emit("add", "rax", "8", "Allocate 8 bytes more than capacity, to store len/cap")
 	emit("call", "_alloc", "", "Allocate new string")
@@ -1815,12 +1814,21 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "rcx", "[rsi]", "Get old length")
 	emit("mov", "ecx", "ecx", "Clear cap, leave old length in rcx")
 	emit("add", "r12", "rcx", "Add old length to len/cap in r12")
+	emit("mov", "rbx", "rsi", "Save pointer to old string in order to free it if needed")
 	emit("add", "rsi", "8", "Skip len/cap when moving string")
 	emit("cld", "", "", "")
 	emit("rep", "movsb", "", "copy old string")
+	// Update new string
 	emit("mov", "[rdx]", "r12", "Mov new len/cap into string")
 	emit("mov", "rsi", "rdx", "rdx now points to the new string's len/cap")
-	EmitLabel(lbl, "")
+	// Free old string
+	emit("push", "rdx", "", "")
+	emit("push", "rdi", "", "")
+	emit("mov", "rax", "rbx", "rbx points to the old string")
+	emit("call", "_free_str", "", "")
+	emit("pop", "rdi", "", "")
+	emit("pop", "rdx", "", "")
+	EmitLabel(lbl, "End of ExtendStringCapacity")
 }
 
 // =======   APPEND STR-STR ===========
@@ -1839,8 +1847,8 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rsi", "[rsp]", "")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part and di to the first empty character
-	emit("mov", "rcx", "[rsi]", "Get added length")
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
@@ -1863,8 +1871,8 @@ func EmitAppendIndirectExpressionStrStr() error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part
-	emit("mov", "rcx", "[rsi]", "Get added length")
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
@@ -1886,8 +1894,8 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
 	// Now rax points to the possibly extended first part. Copy part 2 after part 1
-	emit("mov", "rcx", "[rsi]", "Get added length")
-	emit("add", "[rdx]", "r14", "Add length of second part to length/cap of first part")
+	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
+	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
 	emit("add", "rsi", "8", "")

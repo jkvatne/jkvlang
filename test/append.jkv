@@ -10,10 +10,14 @@ func main() {
     v = "Hello-"
     w = "World"
     v += w
-    // assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
+    assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
 
-    t = "X" // "World12345678901234567890123456789012345678901234567890123456789012345678901234567890"
+    t = "X"
     v += t
+    assert(v=="Hello-WorldX", "Expected v='Hello-WorldX', got '%s'", v)
+    t = "123456789012345678901234567890"
+    v += t
+    assert(v=="Hello-WorldX123456789012345678901234567890", "Expected v='Hello-WorldX123456789012345678901234567890', got '%s'", v)
 
 /*
     p = new(Person)

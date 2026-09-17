@@ -569,7 +569,7 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Destroy local variables that are pointers (destructive read).
 		for _, value := range values {
-			if value.localVar != nil {
+			if value.localVar != nil && op == TOK_ASSIGN {
 				value.localVar.Destroyed = true
 			}
 		}

@@ -166,9 +166,9 @@ _alloc:
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 32                      ; Reserve shadow space
     add [allocation_count], rax      ; Increment total allocated count
-    mov r8, rax                      ; Argument 3, size requested
     mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 8                       ; Arbument 2, Flags into rdx, 8 means allocated memory is zeroed
+    mov r8, rax                      ; Argument 3, size requested
     call HeapAlloc
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
@@ -227,30 +227,38 @@ _free_slice:
 
 ; _free_str will free the string pointed to by rax, assuming it is a string with len/cap.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
-; No return value.
+; No return value. Will set r15 on error.
 _free_str:
     push rbp
     mov rbp, rsp
+    ; Check for nil
+    or rax, rax
+    jz .L1
+    ; Check for zero cap
+    mov rcx, [rax]
+    shr rcx, 32
+    or rcx, rcx
+    jz .L1
+
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 40                      ; Reserve shadow space
-    mov r12,  rax                    ; Save object pointer
 
     mov rcx, [rax]                   ; Load len/cap qword
     shr rcx, 32                      ; Extract capacity in the high 32bits
     add rcx, 8
     jz .L1                           ; Do not free if cap is zero
     sub [allocation_count], rcx      ; Decrement allocated count
+    push rax                    ; Save object pointer
 
     ; Clear area to avoid double use
     mov rdi, rax                     ; Destination pointer (buffer address)
     xor eax, eax                     ; Value to store (0)
     cld                              ; Clear direction flag (process forward)
     rep stosb                        ; Repeat storing AL into [RDI] (use stosd for dwords)
-    mov rax, r12
 
     mov rcx, [processHeap]           ; Argument 1, Handle from GetProcessHeap moved into rcx
     mov rdx, 0                       ; Argument 2, flags into rdx, 0 must be used
-    mov r8, r12                      ; Argument 3, move memory pointer into r8
+    pop r8
     call HeapFree                    ; Do the actual freeing of the memory
     or rax, rax                      ; Check that Free returned 1
     jnz .L1
