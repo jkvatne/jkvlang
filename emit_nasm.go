@@ -1857,7 +1857,7 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	return nil
 }
 
-// EmitAppendIndirectExpressionStrStr appends string pointed to by rax (second part) to string in [rsp] (first part)
+// EmitAppendIndirectExpressionStrStr appends string in  [rsp+8] (second part) to string in [rsp] (first part)
 // OK
 func EmitAppendIndirectExpressionStrStr() error {
 	// Set si to point to len/cap of string to be possibly extended
@@ -1941,16 +1941,34 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	return nil
 }
 
-func EmitAssignIndirectExpressionStrStr() error {
-	return fmt.Errorf("EmitAssignIndirectExpressionStrStr not implemented")
-}
-
 // EmitAssignVariableConstStrStr will append a litteral string to the tstring in local variabl at adr
 // The old string may be replaced with a bigger string if needed.
 func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 	code.SetAx()
 	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
 	emit("mov", BpRel(adr), "rax", "")
+	return nil
+}
+
+// EmitAssignIndirectExpressionStrStr assigns  string in  [rsp+8] (second part) to string in [rsp] (first part)
+func EmitAssignIndirectExpressionStrStr() error {
+	// Free old string in [rax] if it exists
+	lbl := code.NewLabel()
+	emit("mov", "rbx", "[rsp]", "Free existing in EmitAssignIndirectExpressionStrStr")
+	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rbx", "[rbx]", "")
+	emit("shr", "rbx", "32", "")
+	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rax", "[rax]", "")
+	emit("call", "_free_str", "", "")
+	EmitLabel(lbl, "")
+
+	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
+	emit("mov", "rax", "[rsp+8]", "Second part")
+	emit("mov", "qword [rdi]", "rax", "Save expresion")
+	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
 

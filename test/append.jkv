@@ -36,10 +36,24 @@ func main() {
     assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
     p.name += " Nedregotten"
     assert(p.name=="Jan Kåre Nedregotten", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
-    p.name += " Å"
-    assert(p.name=="Jan Kåre Nedregotten Å", "Expected p.name='Jan Kåre Nedregotten', got '%s'", p.name)
 
+    // EmitAssignIndirectExpressionStrStr
+    a = "Å"
+    p.name += a
+    assert(p.name=="Jan Kåre NedregottenÅ", "Expected p.name='Jan Kåre NedregottenÅ', got '%s'", p.name)
+
+    // EmitAppendVariableConstStrStr
+    z = "Hello-"
+    z += "World"
+    assert(z=="Hello-World", "Expected z='Hello-World', got %s", z)
+
+    // Test EmitAssignIndirectExpressionStrStr
 /*
+    v = "Hello-"
+    p.name = v
+    assert(p.name=="Hello-World", "Expected p.name='Hello-World', got '%s'", p.name)
+
+    w = "World"
 
    p = new(Person)
    p.name = "Jan"
@@ -60,10 +74,6 @@ func main() {
     p.name += " Vatne"
     //assert(p.name=="Jan Kåre Vatne", "Epected p.name==Jan Kåre, got '%s'", p.name)
 
-
-    // Test EmitAssignIndirectExpressionStrStr
-    p.name = v + w
-    assert(p.name=="HelloWorldWorld", "Expected p.name=HelloWorldWorld, got '%s'", p.name)
 
     // EmitAssignVariableExpressionStrChar
     v += n+1
