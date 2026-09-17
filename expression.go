@@ -530,11 +530,7 @@ func ParseAssign(s *State, id string) error {
 			for _, lv := range lvalues {
 				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
 					if !lv.IsIndirect {
-						EmitLoad(8, lv.Offset, "Load ptr to string")
-						// TODO  MOve free to avfter expression evaluation.
-						// EmitFreeString("Free old string when assigning new")
-						code.SetUndef()
-
+						// TODO  Move free to after expression evaluation.
 					}
 				}
 			}

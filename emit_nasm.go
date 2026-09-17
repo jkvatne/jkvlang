@@ -377,7 +377,8 @@ func EmitJumpTrue(reg string, lbl int, comment string) {
 // EmitAllocLocalVar will allocate a local variable
 // TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
 func EmitAllocLocalVar(comment string) int {
-	emit("sub", "rsp", "8", comment+Sp(1))
+	emit("xor", "rax", "rax", "EmitAllocLocalVar")
+	emit("push", "rax", "", Sp(1))
 	return -8 * code.LocalSp
 }
 
@@ -1945,6 +1946,9 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 // The old string may be replaced with a bigger string if needed.
 func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 	code.SetAx()
+	// Check if we must free old variable
+	emit("mov", "rax", BpRel(adr), "EmitAssignVariableConstStrStr")
+	emit("call", "_free_str", "", "")
 	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
 	emit("mov", BpRel(adr), "rax", "")
 	return nil

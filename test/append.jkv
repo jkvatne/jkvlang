@@ -50,9 +50,9 @@ func main() {
     // Test EmitAssignIndirectExpressionStrStr
     v = "Hello-"
 
+   // p.name = v
+   // assert(p.name=="Hello-World", "Expected p.name='Hello-World', got '%s'", p.name)
 /*
-    p.name = v
-    assert(p.name=="Hello-World", "Expected p.name='Hello-World', got '%s'", p.name)
 
     w = "World"
 
