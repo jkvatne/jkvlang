@@ -175,9 +175,6 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 // followed by a bracket expression. We can have a row of indexes/fields
 func ParseLvalue(s *State, id string) (*VarDef, error) {
 	lvalue := VarDefs[id]
-	if lvalue != nil && lvalue.Destroyed {
-		return nil, fmt.Errorf("cannot modify destroyed local variable \"%s\"", lvalue.Name)
-	}
 	var ok bool
 	// Loop over field access or indexed access.
 	for {

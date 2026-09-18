@@ -7,6 +7,6 @@ type Person = struct {
 func main() {
     v = "Hello"
     p = new(Person)
-    p.name = v  // Needed
-    v = "Hello"   // Needed
+    p.name = v  // Needed. This is a destructive read! v might no longer be valid.
+    v = "Hello"   // Needed. Crash is wrong. Ok to assing into destroyed var
 }
