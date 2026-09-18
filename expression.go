@@ -1306,7 +1306,7 @@ func FreeStruct(t *TypeDef) {
 			continue
 		}
 		ofs := t.Offsets[i]
-		EmitLoadWithOffset(ofs, "Free struct field "+f.Name())
+		EmitLoadWithOffset(ofs, "Free struct field '"+i+"' of type "+f.Name())
 		lbl := code.NewLabel()
 		// Check that pointer is not null
 		EmitJumpFalse("rax", lbl, "")
@@ -1315,12 +1315,12 @@ func FreeStruct(t *TypeDef) {
 		} else if f.Pt == code.TYP_SLICE {
 			EmitFreeSlice(f)
 		} else if f.Pt == code.TYP_STRING {
-			EmitFreeString("")
+			EmitFreeString(i)
 		}
 		EmitLabel(lbl, "")
 		EmitPopAx("")
 	}
-	EmitFreeStruct(t.StructSize, "")
+	EmitFreeStruct(t.StructSize, "Now free the struct "+t.Name()+" itself")
 }
 
 func ParseFuncDef(s *State) error {

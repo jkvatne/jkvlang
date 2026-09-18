@@ -116,6 +116,7 @@ func ParseStructType(s *State) (*TypeDef, error) {
 	t := &TypeDef{Pt: code.TYP_STRUCT}
 	t.Fields = make(map[string]*TypeDef)
 	t.Offsets = make(map[string]int)
+	t.FieldNames = make(map[string]string)
 	count := 0
 	for {
 		fieldName := s.tokenString

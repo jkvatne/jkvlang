@@ -597,7 +597,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 func EmitFreeString(comment string) {
 	lbl := code.NewLabel()
 	// Verify that rax is not nil
-	emit("or", "rax", "rax", "EmitFreeString: "+comment)
+	emit("or", "rax", "rax", "EmitFreeString "+comment)
 	emit("jz", EmitNumericLabel(lbl), "", "")
 	// Load len/cap
 	emit("mov", "rbx", "[rax]", "")
@@ -750,6 +750,14 @@ func EmitNewStruct(t *TypeDef) {
 	code.SetAx()
 	emit("mov", "rax", strconv.Itoa(t.Size()), "")
 	emit("call", "_alloc", "", "Allocate new struct")
+	// Zero struct
+	emit("mov", "rdx", "rax", "")
+	emit("mov", "rdi", "rax", "")
+	emit("mov", "rcx", strconv.Itoa(t.Size()), "")
+	emit("cld", "", "", "")
+	emit("xor", "rax", "rax", "")
+	emit("rep", "stosb", "", "")
+	emit("mov", "rax", "rdx", "")
 }
 
 func EmitNewSlice(elementSize int, hasLen bool) {
@@ -1954,11 +1962,13 @@ func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 	return nil
 }
 
-// EmitAssignIndirectExpressionStrStr assigns  string in  [rsp+8] (second part) to string in [rsp] (first part)
+// EmitAssignIndirectExpressionStrStr assigns  string in  [rax] (right side) to string pointed to by [rsp] (left side)
 func EmitAssignIndirectExpressionStrStr() error {
 	// Free old string in [rax] if it exists
+	EmitAssertTosInRax("")
 	lbl := code.NewLabel()
-	emit("mov", "rbx", "[rsp]", "Free existing in EmitAssignIndirectExpressionStrStr")
+	EmitComment("EmitAssignIndirectExpressionStrStr")
+	emit("mov", "rbx", "[rsp]", "Free existing string pointed to by indirect expression if needed.")
 	emit("or", "rbx", "rbx", "")
 	emit("jz", Label(lbl), "", "")
 	emit("mov", "rbx", "[rbx]", "")
@@ -1970,7 +1980,6 @@ func EmitAssignIndirectExpressionStrStr() error {
 	EmitLabel(lbl, "")
 
 	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
-	emit("mov", "rax", "[rsp+8]", "Second part")
 	emit("mov", "qword [rdi]", "rax", "Save expresion")
 	emit("pop", "rax", "", Sp(-1))
 	return nil

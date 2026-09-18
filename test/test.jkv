@@ -1,0 +1,12 @@
+
+type Person = struct {
+  adr String
+  name String
+}
+
+func main() {
+    v = "Hello-"
+    p = new(Person)
+    p.name = v
+    print("p.name=%s", p.name)
+}
