@@ -1720,6 +1720,23 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 	return nil
 }
 
+// EmitAssignVariableExpressionStruct assigns rax to the variable given and frees old variable contents.
+func EmitAssignVariableExpressionStruct(op Token, size int, adr int, comment string) error {
+	EmitFlushRax("")
+	// Check for existing struct - free it if needed
+	emit("mov", "rax", BpRel(adr), "EmitAssignVariableExpressionStruct, Get old value")
+	emit("or", "rax", "rax", "")
+	lbl := code.NewLabel()
+	emit("jz", Label(lbl), "", "")
+	// Now free old struct
+	EmitFreeStruct(size, "")
+	EmitLabel(lbl, "")
+	emit("pop", "rax", "", Sp(-1))
+	emit(TokenOp[op], BpRel(adr), "rax", "EmitStoreToLocal "+comment)
+	code.SetUndef()
+	return nil
+}
+
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in rax
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.

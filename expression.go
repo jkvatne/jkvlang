@@ -88,7 +88,7 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		return EmitAssignVariableExpressionInt(op, 8, lvalue.Offset, "Assign struct to "+lvalue.Name)
+		return EmitAssignVariableExpressionStruct(op, lvalue.Typ.StructSize, lvalue.Offset, "Assign struct to "+lvalue.Name)
 	}
 	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }

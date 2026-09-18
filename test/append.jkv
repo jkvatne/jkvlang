@@ -7,7 +7,6 @@ type Person = struct {
 func main() {
     // Test EmitAppendVariableExpressionStrStr
     v = "Hello-"
-/*
     w = "World"
     v += w
     assert(v=="Hello-World", "Expected v='Hello-World', got '%s'", v)
@@ -18,7 +17,7 @@ func main() {
     t = "123456789012345678901234567890"
     v += t
     assert(v=="Hello-WorldX123456789012345678901234567890", "Expected v='Hello-WorldX123456789012345678901234567890', got '%s'", v)
-*/
+
     p = new(Person)
 
     // EmitAppendIndirectExpressionStrStr
@@ -26,7 +25,6 @@ func main() {
     p.adr = "Mo"
     s = " Kåre"
     p.name += s
-/*
     assert(p.name=="Jan Kåre", "Expected p.name='Jan Kåre', got '%s'", p.name)
 
     //EmitAssignIndirectConstStrStr
@@ -47,18 +45,19 @@ func main() {
     z = "Hello-"
     z += "World"
     assert(z=="Hello-World", "Expected z='Hello-World', got %s", z)
-*/
-    // Test EmitAssignIndirectExpressionStrStr
-    v = "Hello-"
-    p.name = v
-    print("p.name=%s", p.name)
-    // assert(p.name=="Hello-World", "Expected p.name='Hello-World', got '%s'", p.name)
 
-/*
+    // Test EmitAssignIndirectExpressionStrStr
+    v = "Hello"
+    p.name = v
+    assert(p.name=="Hello", "Expected p.name='Hello', got '%s'", p.name)
+
     w = "World"
 
    p = new(Person)
    p.name = "Jan"
+
+/*
+
    // EmitAssignIndirectConstStrChar
    p.name += 'X'
    print("%s", p.name)

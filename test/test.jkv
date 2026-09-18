@@ -7,7 +7,12 @@ type Person = struct {
 func main() {
     p = new(Person)
     p.name = "Ola Olsen"
-    p.name += "xxx"   // Needed
+    p.name += "xxx"
     v = "Hello"
-    p.name = v        // Needed. Leaks 40
+    p.name = v
+    assert(p.name=="Hello", "Expected p.name='Hello', got %s", p.name)
+
+    p = new(Person)
+    p.name = "Jan"
+
 }
