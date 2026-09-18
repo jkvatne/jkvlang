@@ -1966,21 +1966,26 @@ func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 func EmitAssignIndirectExpressionStrStr() error {
 	// Free old string in [rax] if it exists
 	EmitAssertTosInRax("")
+	emit("mov", "r12", "rax", "")
 	lbl := code.NewLabel()
 	EmitComment("EmitAssignIndirectExpressionStrStr")
 	emit("mov", "rbx", "[rsp]", "Free existing string pointed to by indirect expression if needed.")
 	emit("or", "rbx", "rbx", "")
 	emit("jz", Label(lbl), "", "")
 	emit("mov", "rbx", "[rbx]", "")
+	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rdi", "rbx", "Save pointer to string that might be freed")
+	emit("mov", "rbx", "[rbx]", "Now rbx should be len/cap")
 	emit("shr", "rbx", "32", "")
 	emit("or", "rbx", "rbx", "")
 	emit("jz", Label(lbl), "", "")
-	emit("mov", "rax", "[rax]", "")
+	emit("mov", "rax", "rdi", "")
 	emit("call", "_free_str", "", "")
 	EmitLabel(lbl, "")
 
 	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
-	emit("mov", "qword [rdi]", "rax", "Save expresion")
+	emit("mov", "qword [rdi]", "r12", "Save new string")
 	emit("pop", "rax", "", Sp(-1))
 	return nil
 }
