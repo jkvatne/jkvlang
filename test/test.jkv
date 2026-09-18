@@ -5,8 +5,9 @@ type Person = struct {
 }
 
 func main() {
-    v = "Hello-"
     p = new(Person)
-    p.name = v
-    print("p.name=%s", p.name)
+    p.name = "Ola Olsen"
+    p.name += "xxx"   // Needed
+    v = "Hello"
+    p.name = v        // Needed. Leaks 40
 }
