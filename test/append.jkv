@@ -47,14 +47,15 @@ func main() {
     b += 'G'
     assert(b=="HG", "Expected b='HG', got '%s'", b)
 
-/*
 
     v += 'e'
-    assert(v=="He", "Expected v='He', got '%s'", v)
+    assert(v=="HelloWorldBe", "Expected v='HelloWorldBe', got '%s'", v)
+
 
     ch = 'e'
     v += ch
-    assert(v=="Hee", "Expected v='Hee', got '%s'", v)
+    assert(v=="HelloWorldBee", "Expected v='HelloWorldBee', got '%s'", v)
+
 
     // Concatenate two literals
     s =  "aaa"
@@ -71,6 +72,4 @@ func main() {
     t = "World"
     w = s+t
     assert(w=="HelloWorld", "Failed concat, got %s", w)
-
-*/
 }
