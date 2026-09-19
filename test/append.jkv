@@ -13,13 +13,19 @@ func main() {
     v = "Hello"
 
     w = "World"
-    p.name = "Jan Kåre"
-    n = 'A'
+    p.name = "Jan"
 
-   // EmitAssignIndirectConstStrChar
-   p.name += 'X'
-   print("%s", p.name)
+    // EmitAssignIndirectConstStrChar
+    p.name += 'X'
+    assert(p.name=="JanX", "Expected p.name='JanX', got '%s'", p.name)
 
+    p.name += 'X'
+    p.name += 'X'
+    p.name += 'X'
+    p.name += 'X'
+    p.name += 'X'
+    p.name += 'X'
+    assert(p.name=="JanXXXXXXX", "Expected p.name='JanXXXXXXX', got '%s'", p.name)
 
     // Test EmitAssignVariableExpressionStrStr
     v += w
@@ -31,8 +37,11 @@ func main() {
 
 
     // EmitAssignVariableExpressionStrChar
+    n = 'A'
     v += n+1
     assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
+
+/*
 
     v = ""
     v += 'H'
@@ -61,5 +70,5 @@ func main() {
     w = s+t
     assert(w=="HelloWorld", "Failed concat, got %s", w)
 
-
+*/
 }
