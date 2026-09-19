@@ -5,11 +5,15 @@ type Person = struct {
 }
 
 func main() {
-   p = new(Person)
-   p.name = "Jan"
+    p = new(Person)
+    p.name = "Jan"
+    // EmitAppendIndirectConstStrStr
+    p.name += "Kåre"
+    print("%s", p.name)
 
-   // EmitAssignIndirectConstStrChar
-   p.name += 'X'
-   print("%s", p.name)
+    // EmitAssignIndirectConstStrChar
+    p.name += 'X'
+    //assert(p.name=="JanX", "Expected p.name='JanX', got '%s'", p.name)
+    print("%s", p.name)
 
 }
