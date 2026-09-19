@@ -1897,7 +1897,8 @@ func EmitAppendIndirectExpressionStrStr() error {
 	emit("mov", "ebx", "ebx", "Clear capacity. Ready to extend.")
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
-	// Now rax points to the possibly extended first part
+	// rdi points to the first empty character of the new string (ready for move)
+	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
@@ -1920,7 +1921,8 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
 	emit("mov", "r14", "rbx", "Save length of second part")
 	ExtendStringCapacity(4)
-	// At exit, rsi points to the first character of the source string, and rdi to the first empty character of the new string
+	// rdi points to the first empty character of the new string (ready for move)
+	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
@@ -2052,26 +2054,15 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	}
 	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
 	emit("mov", "rsi", "rdi", "save copy of pointer")
-	emit("mov", "rax", "[rdi]", "Load len/cap")
-	emit("shr", "rax", "32", "Get cap")
-	emit("mov", "rbx", "[rdi]", "Load len/cap")
-	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
-	emit("cmp", "rbx", "rax", "Compare len to cap")
-	lbl := code.NewLabel()
-	emit("jnz", Label(lbl), "", "jump if we have enought space")
-	// Extend capacity, including 64 extra bytes
-	emit("mov", "r13", "rax", "Old len")
-	emit("add", "rax", "64", "Add 64+8 to include len/cap")
-	emit("mov", "r12", "rax", "")
-	emit("add", "rax", "8", "")
-	emit("call", "_alloc", "", "Allocate new string")
-	// Save new string pointer
-	emit("mov", BpRel(adr), "rax", "")
-	EmitLabel(lbl, "")
-	emit("add", "rdi", "rax", "Add length to pointer - we will save to end of string")
-	emit("add", "rdi", "8", "Skip len/cap also")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Save  value into string")
-	emit("inc", "qword [rsi]", "", "")
+	emit("mov", "rbx", "1", "Load needed extra space")
+	// Now ebx should contain the required extra length (1) and rsi should point to the old string, so [rsi] is the old len/cap
+	ExtendStringCapacity(4)
+	// rdi points to the first empty character of the new string (ready for move)
+	// rdx points to the extended string's len/cap or the old string's len/cap
+	emit("inc", "dword [rdx]", "", "Incr original length by one")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character")
+	// Update variable
+	emit("mov", BpRel(adr), "rdx", "")
 	return nil
 }
 

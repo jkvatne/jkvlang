@@ -41,11 +41,13 @@ func main() {
     v += n+1
     assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
 
-/*
+    b = ""
+    b += 'H'
+    assert(b=="H", "Expected b='H', got '%s'", b)
+    b += 'G'
+    assert(b=="HG", "Expected b='HG', got '%s'", b)
 
-    v = ""
-    v += 'H'
-    assert(v=="H", "Expected v='H', got '%s'", v)
+/*
 
     v += 'e'
     assert(v=="He", "Expected v='He', got '%s'", v)
