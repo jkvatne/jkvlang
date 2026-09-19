@@ -12,7 +12,6 @@ func main() {
     p.name = v  // Needed
     v = "Hello"
 
-/*
     w = "World"
     p.name = "Jan Kåre"
     n = 'A'
@@ -62,6 +61,5 @@ func main() {
     w = s+t
     assert(w=="HelloWorld", "Failed concat, got %s", w)
 
-*/
 
 }

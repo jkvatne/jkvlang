@@ -2015,8 +2015,23 @@ func EmitAssignVariableExpressionStrStr(adr int) error {
 
 // ========== APPEND STR-CHAR ===========
 
-func EmitAppendIndirectConstStrChar(charNo int) error {
-	return fmt.Errorf("EmitAppendIndirectConstStrChar not implemented")
+func EmitAppendIndirectConstStrChar(value int) error {
+	if value > 128 {
+		return fmt.Errorf("only ascii values <128 is supported for now.")
+	}
+	emit("mov", "rsi", "[rsp]", "Load pointer to string (EmitAppendIndirectConstStrChar)")
+	emit("mov", "rsi", "rsi", "save copy of pointer")
+	emit("mov", "rdi", "[rdi]", "Load original string")
+	emit("mov", "rbx", "1", "Load needed extra space")
+	ExtendStringCapacity(4)
+	// Now rax points to the possibly extended first part. Append character
+	emit("inc", "dword [rdi]", "", "Incr original length by one")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character")
+	// Now update indirect variable
+	emit("mov", "rdi", "[rsp]", "")
+	emit("mov", "qword [rdi]", "rdx", "")
+	emit("pop", "rax", "", Sp(-1))
+	return nil
 }
 
 func EmitAssignIndirectExpressionStrChar() error {
@@ -2024,7 +2039,7 @@ func EmitAssignIndirectExpressionStrChar() error {
 }
 
 // EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.
-func EmitAssignVariableConstStrChar(op Token, adr int, value int, comment string) error {
+func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	if value > 128 {
 		return fmt.Errorf("only ascii values <128 is supported for now.")
 	}

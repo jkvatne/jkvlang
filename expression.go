@@ -59,7 +59,7 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 		}
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
 		// Handle appending a single character to a string
-		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(value.IntValue), "")
+		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(value.IntValue))
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
@@ -101,8 +101,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 			return EmitAppendIndirectConstStrStr(value.StringLitNo)
 		}
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
-		c, _ := strconv.Atoi(lvalue.constValue)
-		return EmitAppendIndirectConstStrChar(c)
+		return EmitAppendIndirectConstStrChar(int(value.IntValue))
 	} else if lvalue.Typ.Pt.IsInteger() {
 		return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
