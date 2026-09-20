@@ -6,9 +6,6 @@ type Person = struct {
 
 func main() {
     p = new(Person)
-    p.name += " Vatne"
-
-/*
 
     //=============================================
     // Test EmitAppendVariableExpressionStrStr
@@ -21,26 +18,38 @@ func main() {
     //=============================================
     // Test EmitAppendIndirectExpressionStrStr
     //=============================================
+    p.name = "Jan"
+    w = "Vatne"
+    p.name+=w
+    assert(p.name=="JanVatne", "Expected p.name=JanVatne, got '%s'", p.name)
 
     //=============================================
     // Test EmitAppendIndirectConstStrStr
     //=============================================
+    p.name = "Jan"
+    p.name += "Vatne"
+    assert(p.name=="JanVatne", "Expected p.name=='JanVatne', got '%s'", p.name)
 
-
+    p.name += "Vatne"
+    assert(p.name=="JanVatneVatne", "Expeccted p.name=='JanVatneVatne', got '%s'", p.name)
 
     //=============================================
     // Test EmitAssignVariableExpressionStrStr
     //=============================================
+    q = w
+    assert(q=="Vatne", "Expected q=='Vatne', got '%s'", q)
 
     //=============================================
     // Test EmitAssignIndirectExpressionStrStr
     //=============================================
+    p.name = w
+    assert(p.name=="Vatne", "Expected p.name=='Vatne', got '%s'", p.name)
 
     //=============================================
     // Test EmitAssignIndirectConstStrStr
     //=============================================
     p.name += " Vatne"
-    //assert(p.name=="Jan Kåre Vatne", "Epected p.name==Jan Kåre, got '%s'", p.name)
+    assert(p.name=="Vatne Vatne", "Epected p.name=='Vatne Vatne', got '%s'", p.name)
 
     //=============================================
     // EmitAppendVariableExpressionStrChar
@@ -67,6 +76,9 @@ func main() {
     //=============================================
     // Test EmitAppendIndirectExpressionStrChar
     //=============================================
+    p.name = "Vatne"
+    p.name+='X'
+    assert(p.name=="VatneX", "Expected p.name=='VatneX', got '%s'", p.name)
 
     //=============================================
     // EmitAppendIndirectConstStrChar
@@ -101,5 +113,4 @@ func main() {
     t = "World"
     w = s+t
     assert(w=="HelloWorld", "Failed concat, got %s", w)
-    */
 }
