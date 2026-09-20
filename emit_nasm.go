@@ -1816,8 +1816,14 @@ func EmitConcat(free1 bool, free2 bool) {
 // * At exit, rdi points to the first empty character of the new string (ready for move)
 // * At exit, rdx points to the extended string's len/cap or the old string's len/cap
 func ExtendStringCapacity(bytesExtra int) {
-	lbl := code.NewLabel()
+	lbl1 := code.NewLabel()
+	lbl2 := code.NewLabel()
+	lbl3 := code.NewLabel()
 	emit("push", "rsi", "", Sp(1))
+	// Check if old string was nil.
+	emit("mov", "rax", "rbx", "")
+	emit("or", "rsi", "rsi", "")
+	emit("jz", Label(lbl2), "", "")
 	// Check if old len + new len (rbx) is more than old cap (rcx)
 	emit("mov", "rax", "[rsi]", "Start ExtendStringCapacity, load old len/cap")
 	emit("mov", "rcx", "rax", "Old len/cap into rcx")
@@ -1828,8 +1834,9 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("add", "rdi", "8", "")
 	emit("add", "rax", "rbx", "Add extra length to old length")
 	emit("cmp", "rax", "rcx", "Compare len to cap")
-	emit("jb", Label(lbl), "", "jump if we have enough space")
+	emit("jb", Label(lbl1), "", "jump if we have enough space")
 	// Extend capacity, including extra bytes.
+	EmitLabel(lbl2, "")
 	emit("add", "rax", strconv.Itoa(bytesExtra+16), "Add extra and space for len/cap")
 	emit("mov", "r12", "rax", "Save new cap in r12")
 	emit("shl", "r12", "32", "Save new cap in correct half of len/cap")
@@ -1838,8 +1845,12 @@ func ExtendStringCapacity(bytesExtra int) {
 	// Copy old string
 	emit("mov", "rdi", "rax", "Pointer to new string")
 	emit("mov", "rdx", "rax", "Save pointer to new string")
+	emit("xor", "rcx", "rcx", "")
 	emit("add", "rdi", "8", "Skip len/cap when moving string")
+	emit("or", "rsi", "rsi", "")
+	emit("jz", Label(lbl3), "", "")
 	emit("mov", "rcx", "[rsi]", "Get old length")
+	EmitLabel(lbl3, "")
 	emit("mov", "ecx", "ecx", "Clear cap, leave old length in rcx")
 	emit("add", "r12", "rcx", "Add old length to len/cap in r12")
 	emit("mov", "rbx", "rsi", "Save pointer to old string in order to free it if needed")
@@ -1853,7 +1864,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "[rsp]", "rdx", "")
 	emit("mov", "rax", "rbx", "rbx points to the old string")
 	emit("call", "_free_str", "", "")
-	EmitLabel(lbl, "End of ExtendStringCapacity")
+	EmitLabel(lbl1, "End of ExtendStringCapacity")
 	emit("pop", "rdx", "", Sp(-1))
 }
 
