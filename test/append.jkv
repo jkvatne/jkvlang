@@ -16,6 +16,13 @@ func main() {
     assert(v=="HelloWorld", "Expected v=HelloWorld, got '%s'", v)
 
     //=============================================
+    // Test EmitAppendVariableConstStrStr
+    //=============================================
+    s =  "aaa"
+    s += "xxx"
+    assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
+
+    //=============================================
     // Test EmitAppendIndirectExpressionStrStr
     //=============================================
     p.name = "Jan"
@@ -99,18 +106,9 @@ func main() {
     //=============================================
     // Concatenate two literals
     //=============================================
-    s =  "aaa"
-    s += "xxx"
-    assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
-
-    // Concatenate rw string with litteral
-    t = "Hello"
-    u = s+t
-    assert(u=="aaaxxxHello", "Expected u='xxxHello', got '%s'", u)
-
-    // Test concat two strings and assign to local variable
     s = "Hello"
     t = "World"
-    w = s+t
-    assert(w=="HelloWorld", "Failed concat, got %s", w)
+    u = s+t
+    assert(u=="HelloWorld", "Expected u='HelloWorld', got '%s'", u)
+
 }

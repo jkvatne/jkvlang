@@ -6,7 +6,13 @@ type Person = struct {
 
 func main() {
     p = new(Person)
-    p.name = "Vatne"
-    p.name+='X'
-    assert(p.name=="VatneX", "Expected p.name=='VatneX', got '%s'", p.name)
+
+    v = "Hello"
+    w = "World"
+    v += w
+    s =  "aaa"
+    p.name = "Jan"
+    p.name+=w
+    assert(p.name=="JanWorld", "Expected p.name=JanWorld, got '%s'", p.name)
+
 }
