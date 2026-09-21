@@ -66,6 +66,8 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 		return EmitAssignVariableConstF64(op, lvalue.Offset, value.FloatValue, "")
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableConstF32(op, lvalue.Offset, float32(value.FloatValue), "")
+	} else if lvalue.Typ.Pt == code.TYP_BOOL {
+		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	}
 	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
