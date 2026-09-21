@@ -111,4 +111,15 @@ func main() {
     u = s+t
     assert(u=="HelloWorld", "Expected u='HelloWorld', got '%s'", u)
 
+    //=============================================
+    // Retesting code that failed previously
+    //=============================================
+    v = "Hello"
+    w = "World"
+    v += w
+    s =  "aaa"
+    p.name = "Jan"
+    p.name+=w
+    assert(p.name=="JanWorld", "Expected p.name=JanWorld, got '%s'", p.name)
+
 }

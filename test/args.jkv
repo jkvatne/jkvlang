@@ -6,7 +6,7 @@ func gg(a Bool, c I32) I32 {
 
 func test_g()  {
     r = gg(true, 30)
-    assert(r==32, "Failed 6")
+    assert(r==32, "Expected r==32, got %d", r)
 }
 
 func mpy(x I32, y I32) I32 {
@@ -34,7 +34,7 @@ func main() {
     // Test functions without parameters
     assert(f3()==25)
     assert(f2()==25)
-    assert(f2()==21,"Intentionaly failed 4 : f2()==21, got %d", f2())
+    assert(f2()==21,"Intentionally failed 4 : f2()==21, got %d", f2())
     invert_err()
 
     // Test divide
