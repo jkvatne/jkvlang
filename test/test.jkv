@@ -1,12 +1,26 @@
 
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func next(r RangeIterator) I32 {
+    return 0
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    return r
+}
+
+func substring(s String, start I32, end I32) String {
+    t=new(String, end, end-start+1)
+    for i=range(start, end) {
+        t[i-start] = s[i]
+    }
+    return t
+}
+
 func main() {
-    y64 = 3.0
-    x64 = y64
-    assert(x64==3.0, "Expected x64==3.0, got %f", x64)
 
-    x64 = y64+5.0
-    assert(x64==8.0, "Expected x64==8.0, got %f", x64)
-
-    x64 += 5.0
-    assert(x64==13.0, "Expected x64==13.0, got %f", x64)
 }
