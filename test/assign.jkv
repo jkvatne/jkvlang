@@ -1,11 +1,7 @@
 type Rec = struct {
     intval I32
     float64val F64
-<<<<<<< HEAD
     float32val F32
-=======
-    float32val F64
->>>>>>> c9ccfac79873d06e456e955e94e9c667433ff0c6
 }
 
 func main() {
@@ -91,14 +87,13 @@ func main() {
     x64 += 3.0
     assert(x64==5.0, "Expected x64==5.0, got %f", x64)
 
-<<<<<<< HEAD
     y64 = 3.0
     x64 = y64
     assert(x64==3.0, "Expected x64==3.0, got %f", x64)
 
     x64 = y64+5.0
     assert(x64==8.0, "Expected x64==8.0, got %f", x64)
-=======
+
     f = 1.0
     g = 2.0
     f = g
@@ -207,19 +202,6 @@ func main() {
 
     r.float32val /= 2.0
     assert(r.float32val==1.0, "Expected r.float32val==1.0, got %f", r.float32val)
->>>>>>> c9ccfac79873d06e456e955e94e9c667433ff0c6
-
-    x64 += 5.0
-    assert(x64==13.0, "Expected x64==13.0, got %f", x64)
-
-    x64 -= 4.0
-    assert(x64==9.0, "Expected x64==9.0, got %f", x64)
-
-    x64 *= 1.5
-    assert(x64==13.5, "Expected x64==13.5, got %f", x64)
-
-    x64 /= 2.0
-    assert(x64==6.75, "Expected x64==6.75, got %f", x64)
 
     // Test 64 bit float assign indirect with constants F64-Indir-Const
 

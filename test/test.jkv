@@ -1,13 +1,12 @@
-func gg(a Bool, c I32) I32 {
-    if a ? c+=2 : c+=1
-    return c
-}
-
-func foo()  {
-    r = gg(true, 30)
-    assert(r==32, "Expected r==32, got %d", r)
-}
 
 func main() {
-    foo()
+    y64 = 3.0
+    x64 = y64
+    assert(x64==3.0, "Expected x64==3.0, got %f", x64)
+
+    x64 = y64+5.0
+    assert(x64==8.0, "Expected x64==8.0, got %f", x64)
+
+    x64 += 5.0
+    assert(x64==13.0, "Expected x64==13.0, got %f", x64)
 }
