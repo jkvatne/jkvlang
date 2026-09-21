@@ -1390,7 +1390,8 @@ func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string
 		emit("mov", BpRel(adr), "rax", "")
 		return nil
 	}
-	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitStoreToLocal "+comment)
+	EmitAssertTosInRax("")
+	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitAssignVariableExpressionInt "+comment)
 	code.SetUndef()
 	return nil
 }

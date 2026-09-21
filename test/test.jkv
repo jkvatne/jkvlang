@@ -9,5 +9,5 @@ func foo()  {
 }
 
 func main() {
-    test_g()
+    foo()
 }
