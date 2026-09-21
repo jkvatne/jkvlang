@@ -49,6 +49,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 }
 
 func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) error {
+	if lvalue.Offset == 0 {
+		return fmt.Errorf("Local variable adr is zero")
+	}
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
 			// Handle assigning a const string to a string variable
@@ -277,7 +280,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		if err2 != nil {
 			return nil, err2
 		}
-		lvalue.IsIndirect = code.AxIsTos()
+		// lvalue.IsIndirect = code.AxIsTos()
 		EmitFlushRax("Assure pointer is on stack")
 		lvalues = append(lvalues, lvalue)
 		if !s.found(TOK_COMMA) {

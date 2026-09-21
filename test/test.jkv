@@ -1,15 +1,10 @@
 
-func open_file(name String) I32 {
-    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, 3, 0x0080, 0)
-    return f
+type State = struct {
+    text String
+    p I32
 }
-func read_string(f I32, cnt I32) String {
-    buf=new(String,cnt)
-    ok = call(ReadFile, f, cptr(buf), cnt, lptr(buf), 0)
-    return buf
-}
+
 func main() {
-    fn = "./test.txt"
-    f2 = open_file(fn)
-    buffer = read_string(f2, 12)
+    s = new(State)
+    s.text[s.p] = 'h'
 }

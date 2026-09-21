@@ -1507,6 +1507,8 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 		emit("mov", "eax", "[rdi]", comment)
 	} else if size == 8 {
 		emit("mov", "rax", "[rdi]", "")
+	} else if size == 1 {
+		emit("mov", "al", "byte [rdi]", "")
 	} else {
 		return fmt.Errorf("%s not implemented for size %d", op.Name(), size)
 	}
