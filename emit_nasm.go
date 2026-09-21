@@ -891,7 +891,7 @@ func EmitModifyIndexedCharIndirect() {
 // String pointer in variable at <addr>
 // TOS is new value
 func EmitModifyIndexedChar(addr int) {
-	emit("push", "rax", "", "EmitModifyIndexedChar")
+	emit("push", "rax", "", Sp(1)+"EmitModifyIndexedChar")
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "Update variable to point at new string in case it has changed")
