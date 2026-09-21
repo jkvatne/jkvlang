@@ -1959,6 +1959,7 @@ func EmitAssignIndirectExpressionStrStr() error {
 
 // EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
 func EmitAssignVariableExpressionStrStr(adr int) error {
+	EmitAssertTosInRax("")
 	emit("mov", BpRel(adr), "rax", "")
 	return nil
 }
