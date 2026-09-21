@@ -1,13 +1,15 @@
-func mpy(x F32, y F32) F32 {
-   return x*y
-}
 
-func sum(x F32, y F32) F32 {
-   return x+y
+func open_file(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, 3, 0x0080, 0)
+    return f
 }
-
+func read_string(f I32, cnt I32) String {
+    buf=new(String,cnt)
+    ok = call(ReadFile, f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
+}
 func main() {
-  a = F32(2.2)
-  b = F32(3.3)
-  c = mpy(a,b)
+    fn = "./test.txt"
+    f2 = open_file(fn)
+    buffer = read_string(f2, 12)
 }

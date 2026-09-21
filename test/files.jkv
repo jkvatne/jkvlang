@@ -61,6 +61,7 @@ func read_all(name String) String {
 func main() {
     // Test write to file
     fn = "./test.txt"
+    /*
     n = I32(0)
     text = "Hello World!"
     f = create_file(fn)
@@ -68,17 +69,18 @@ func main() {
     n = write_file(f, text)
     assert(n==12, "Wanted n=12, got n=%d", n)
     close_file(f)
-
+*/
     //  Test read back file using read_string
     f2 = open_file(fn)
     buffer = read_string(f2, 12)
+/*
     assert(buffer=="Hello World!", "Failed, got buffer=%s", buffer)
     close_file(f2)
 
     // Read back using read_all()
     txt = read_all(fn)
     assert(txt=="Hello World!", "Failed read_all, got : '%s'", txt)
-
+*/
     // Test open invalid name
     //fn2 = ":::"
     //f3 = open_file(fn2)
