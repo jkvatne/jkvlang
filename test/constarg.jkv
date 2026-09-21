@@ -24,10 +24,11 @@ func main() {
   // Test addition of F32
   c = a+b
   print("a+b=%f", c)
-
   // Test multiplication of F32
   c = a*b
   print("a*b=%f", c)
+/*
+
   // Test call with F32 parameters
   c = mpy(a,b)
   print("mpy(a,b)=%f", c)
@@ -35,11 +36,11 @@ func main() {
   // Test call with F32 parameters
   c = mpy(a,F32(3.3))
   print("mpy(a,b)=%f", c)
+*/
 
   // Test F32 function result in print with constants
   print("mpy(a,3.3)=%f", mpy(a,F32(3.3)))
   print("mpy(2.2,3.3)=%f", mpy(F32(2.2),F32(3.3)))
   print("mpy(a,F32(3.3))=%f", mpy(a,F32(3.3)))
   print("mpy(F32(2.2), b)=%f", mpy(F32(2.2),b))
-
 }

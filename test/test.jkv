@@ -1,26 +1,13 @@
-
-type RangeIterator = struct {
-    start I32
-    end I32
+func mpy(x F32, y F32) F32 {
+   return x*y
 }
 
-func next(r RangeIterator) I32 {
-    return 0
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    return r
-}
-
-func substring(s String, start I32, end I32) String {
-    t=new(String, end, end-start+1)
-    for i=range(start, end) {
-        t[i-start] = s[i]
-    }
-    return t
+func sum(x F32, y F32) F32 {
+   return x+y
 }
 
 func main() {
-
+  a = F32(2.2)
+  b = F32(3.3)
+  c = mpy(a,b)
 }

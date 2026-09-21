@@ -1397,8 +1397,8 @@ func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string
 }
 
 func EmitAssignVariableExpressionF64(op Token, adr int, comment string) error {
-
 	if op == TOK_ASSIGN {
+		EmitAssertTosInRax("")
 		emit("mov", BpRel(adr), "rax", comment)
 		return nil
 	}
@@ -1413,6 +1413,7 @@ func EmitAssignVariableExpressionF64(op Token, adr int, comment string) error {
 
 func EmitAssignVariableExpressionF32(op Token, adr int, comment string) error {
 	if op == TOK_ASSIGN {
+		EmitAssertTosInRax("")
 		emit("mov", BpRel(adr), "eax", comment)
 		return nil
 	}

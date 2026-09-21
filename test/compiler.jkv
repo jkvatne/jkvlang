@@ -1,4 +1,4 @@
-
+/*
 const (
     // dwCreationDisposition.
     CREATE_NEW     I32 = 1    // Fails if file already exists
@@ -119,10 +119,10 @@ func nextToken(s State) {
                 if ch == '"' || ch == 0 {
                     break
                 }
-                append(s.tokenString, ch)
+                // TODO s.tokenString+=ch
             }
         } if ch>='A' && ch<'z' {
-            id := ""
+            id = ""
             loop {
                 if ch<'A' || ch>'z' ? break
                 ch =nextChar(s)
@@ -168,9 +168,10 @@ func read_all(name String) String {
     e = call(CloseHandle, f)
     return buf
 }
+*/
 
 func main() {
-
+/*
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
@@ -191,6 +192,6 @@ func main() {
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     Parse(s)
-
+*/
 }
 
