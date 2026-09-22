@@ -21,7 +21,7 @@ var (
 	run       = flag.Bool("run", true, "Set true to run after compile")
 	test      = flag.Bool("test", false, "Set true to run after compile")
 	link      = flag.Bool("link", true, "Set true to just do linking")
-	linklib   = flag.Bool("linklib", true, "Set true to just do linking")
+	linklib   = flag.Bool("linklib", false, "Set true to just do linking")
 	sourceDir = flag.String("src", "", "Source directory where code is found. Defaults to current directory.")
 	oneFile   = flag.String("file", "", "Compile a single file")
 	debug     = flag.Bool("debug", false, "Enable debug mode")

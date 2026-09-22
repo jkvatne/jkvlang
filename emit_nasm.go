@@ -816,12 +816,11 @@ func EmitLoadGlobalConst(name string) {
 
 // EmitCopyStringToRam will copy a read-only string (with cap=0) to RAM
 // Assumes the string pointer is given in rax
-// R13 is pointer to const string
-// R12 is new capacity
+// Uses R12, R13
 // On return, rax is pointer to new string
 func EmitCopyStringToRam() {
 	lbl := code.NewLabel()
-	EmitComment("Copy string to RAM if it is read-only")
+	EmitComment("EmitCopyStringToRam -copy string to RAM if it is read-only. rax is string pointer")
 	emit("mov", "rdx", "rax", "Load pointer to constant string")
 	emit("mov", "rdx", "[rdx]", "Load pointer to constant string")
 	emit("shr", "rdx", "32", "")
@@ -845,7 +844,7 @@ func EmitCopyStringToRam() {
 	emit("rep", "movsb", "", "copy old string")
 	emit("mov", "[r14]", "r12", "Mov len/cap into string")
 	emit("mov", "rax", "r14", "")
-	EmitLabel(lbl, "Writeable string now in rax")
+	EmitLabel(lbl, "EmitCopyStringToRam done, Writeable string now in rax")
 }
 
 func EmitLea(ofs int, comment string) {
@@ -855,6 +854,7 @@ func EmitLea(ofs int, comment string) {
 
 // EmitModifyConstIndexedCharIndirect assumes pointer to string in rax
 func EmitModifyConstIndexedCharIndirect(offset int) {
+	EmitComment("EmitModifyConstIndexedCharIndirect")
 	emit("push", "rax", "", "Save rax before copying string"+Sp(1))
 	emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
@@ -865,7 +865,8 @@ func EmitModifyConstIndexedCharIndirect(offset int) {
 }
 
 func EmitModifyConstIndexedChar(addr int, offset int) {
-	emit("mov", "rax", BpRel(addr), "")
+	EmitComment("EmitModifyConstIndexedChar")
+	emit("mov", "rax", BpRel(addr), "EmitModifyConstIndexedChar")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "")
 	emit("add", "rax", strconv.Itoa(offset), "EmitModifyConstIndexedChar")
@@ -873,24 +874,25 @@ func EmitModifyConstIndexedChar(addr int, offset int) {
 }
 
 // EmitModifyIndexedCharIndirect
-// TOS is value of index in rax
-// NOS is pointer to string
+// TOS is value of index in rax,  NOS is pointer to string
 func EmitModifyIndexedCharIndirect() {
-	EmitFlushRax("Flush rax before EmitModifyIndexedCharIndirect")
-	emit("mov", "rax", "[rsp+8]", "")
-	emit("mov", "rax", "[rax]", "")
+	EmitComment("EmitModifyIndexedCharIndirect")
+	EmitFlushRax("Flush rax")
+	emit("mov", "rax", "[rsp+8]", "Load pointer to string")
+	// emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
 	emit("mov", "rbx", "[rsp+8]", "")
 	emit("mov", "[rbx]", "rax", "")
 	emit("add", "rax", "[rsp]", "")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
-	emit("add", "rsp", "16", Sp(-2))
+	emit("add", "rsp", "8", "Done EmitModifyIndexedCharIndirect"+Sp(-1))
 }
 
 // EmitModifyIndexedChar
 // String pointer in variable at <addr>
 // TOS is new value
 func EmitModifyIndexedChar(addr int) {
+	EmitComment("EmitModifyIndexedChar")
 	emit("push", "rax", "", Sp(1)+"EmitModifyIndexedChar")
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
@@ -924,7 +926,7 @@ func EmitModifyIndexedSlice(size int) {
 
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
-		EmitFlushRax("Flush rax before EmitLoadField")
+		EmitFlushRax("Flush rax before EmitLoadField of " + fieldName)
 		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
 	}
 	if fieldOffset != 0 {
@@ -992,8 +994,10 @@ func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
 }
 
 func EmitLoadTosIndirect(size int, fieldName string) {
+	EmitComment("EmitLoadTosIndirect")
 	code.SetAx()
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "EmitLoadTosIndirect Load value in field '"+fieldName+"'")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
+	EmitComment("")
 }
 
 // EmitLoadGlobal TOS is index. Pointer is in global variable <id>
@@ -1496,9 +1500,11 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	return nil
 }
 
-// EmitAssignIndirectConstInt assumes pointer on stack and constant in parameter "value"
+// EmitAssignIndirectConstInt assumes pointer in TOS and constant in parameter "value"
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
-	emit("pop", "rdi", "", "EmitAssignIndirectConstInt"+Sp(-1))
+	EmitComment("EmitAssignIndirectConstInt")
+	EmitFlushRax("")
+	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt"+Sp(-1))
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token %s", op.Name())
