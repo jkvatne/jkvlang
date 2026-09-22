@@ -5,15 +5,9 @@ type State = struct {
 }
 
 func main() {
-    print("%s", "Test.jkv")
-    a = 5
-    a +=6
-    print("a=%d", a)
-
-/*    s = new(State)
-    s.p=0
+    s = new(State)
+    s.p=2
     s.text = "ABCDEF"
     s.text[s.p] = 'x'
-    assert(s.text=="xBCDEFX", "Expected s.text='xBCDEFX', got ''%s'", s.text)
-    */
+    assert(s.text=="ABxDEF", "Expected s.text='ABxDEF', got '%s'", s.text)
 }

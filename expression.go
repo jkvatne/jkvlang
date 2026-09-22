@@ -180,6 +180,7 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 func ParseLvalue(s *State, id string) (*VarDef, error) {
 	lvalue := VarDefs[id]
 	var ok bool
+	startsp := code.LocalSp
 	// Loop over field access or indexed access.
 	for {
 		if lvalue == nil && s.found(TOK_DOT) {
@@ -252,6 +253,10 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 		} else {
 			break
 		}
+	}
+	if code.LocalSp > startsp+1 {
+		fmt.Printf("Start stack=%d, exit stack=%d\n", startsp, code.LocalSp)
+		panic("Stack error for lvalue")
 	}
 	return lvalue, nil
 }

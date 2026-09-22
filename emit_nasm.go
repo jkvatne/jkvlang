@@ -829,7 +829,7 @@ func EmitCopyStringToRam() {
 	lbl := code.NewLabel()
 	EmitComment("EmitCopyStringToRam -copy string to RAM if it is read-only. rax is string pointer")
 	emit("mov", "rdx", "rax", "Load pointer to constant string")
-	emit("mov", "rdx", "[rdx]", "Load pointer to constant string")
+	emit("mov", "rdx", "[rdx]", "Load string len/cap")
 	emit("shr", "rdx", "32", "")
 	emit("or", "rdx", "rdx", "Test if capacity is zero")
 	emit("jnz", Label(lbl), "", "")
@@ -881,18 +881,19 @@ func EmitModifyConstIndexedChar(addr int, offset int) {
 }
 
 // EmitModifyIndexedCharIndirect
-// TOS is value of index in rax,  NOS is pointer to string
+// TOS is value of index in rax,  NOS is pointer to string pointer
 func EmitModifyIndexedCharIndirect() {
 	EmitComment("EmitModifyIndexedCharIndirect")
 	EmitFlushRax("Flush rax")
-	emit("mov", "rax", "[rsp+8]", "Load pointer to string")
-	// emit("mov", "rax", "[rax]", "")
+	emit("mov", "rax", "[rsp+8]", "Load pointer to string pointer")
+	emit("mov", "rax", "[rax]", "Get string itself")
 	EmitCopyStringToRam()
 	emit("mov", "rbx", "[rsp+8]", "")
 	emit("mov", "[rbx]", "rax", "")
 	emit("add", "rax", "[rsp]", "")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 	emit("add", "rsp", "8", "Done EmitModifyIndexedCharIndirect")
+	emit("mov", "[rsp]", "rax", "")
 }
 
 // EmitModifyIndexedChar
@@ -1516,26 +1517,31 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token %s", op.Name())
 	}
-	if size == 4 {
-		emit("mov", "eax", "[rdi]", comment)
-	} else if size == 8 {
-		emit("mov", "rax", "[rdi]", "")
-	} else if size == 1 {
-		emit("mov", "al", "byte [rdi]", "")
+	if op == TOK_ASSIGN {
+		emit("mov", DataType(size)+" [rdi]", strconv.Itoa(int(value)), "")
 	} else {
-		return fmt.Errorf("%s not implemented for size %d", op.Name(), size)
-	}
-	if instr == "idiv" {
-		emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
-		if size != 4 {
-			return fmt.Errorf("only 32 bit integer divide currently supported")
+		// Do a read modify write operation, f.e.x +=
+		if size == 4 {
+			emit("mov", "eax", "[rdi]", comment)
+		} else if size == 8 {
+			emit("mov", "rax", "[rdi]", "")
+		} else if size == 1 {
+			emit("mov", "al", "byte [rdi]", "")
+		} else {
+			return fmt.Errorf("%s not implemented for size %d", op.Name(), size)
 		}
-		emit("cdq", "", "", "")
-		emit("idiv", "ecx", "", "")
-	} else {
-		emit(TokenOp[op], "rax", strconv.Itoa(int(value)), "Integer op other")
+		if instr == "idiv" {
+			emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
+			if size != 4 {
+				return fmt.Errorf("only 32 bit integer divide currently supported")
+			}
+			emit("cdq", "", "", "")
+			emit("idiv", "ecx", "", "")
+		} else {
+			emit(TokenOp[op], "rax", strconv.Itoa(int(value)), "Integer op other")
+		}
+		emit("mov", "[rdi]", AxName(size), "")
 	}
-	emit("mov", "[rdi]", AxName(size), "")
 	return nil
 }
 
