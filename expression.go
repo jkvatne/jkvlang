@@ -72,7 +72,7 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
 	}
-	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
+	return fmt.Errorf("4 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
@@ -94,7 +94,10 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		return EmitAssignVariableExpressionStruct(op, lvalue.Typ.StructSize, lvalue.Offset, "Assign struct to "+lvalue.Name)
+	} else if lvalue.Typ.Pt == code.TYP_BOOL {
+		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	}
+	fmt.Printf("3 ")
 	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
@@ -114,7 +117,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitOpAssignIndirectConstF32(op, float32(value.FloatValue))
 	}
-	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
+	return fmt.Errorf("2 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
@@ -133,7 +136,7 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew 
 	} else if value.Typ.Pt == code.TYP_F32 {
 		return EmitAssignIndirectExpressionF32(op)
 	}
-	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
+	return fmt.Errorf("1 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments
