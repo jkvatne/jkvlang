@@ -2001,8 +2001,26 @@ func EmitAssignIndirectExpressionStrStr() error {
 }
 
 // EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
+// Free old string if it is on heap.
 func EmitAssignVariableExpressionStrStr(adr int) error {
 	EmitAssertTosInRax("")
+
+	lbl := code.NewLabel()
+	EmitComment("EmitAssignVariableExpressionStrStr")
+	emit("mov", "rbx", BpRel(adr), "Free existing string pointed to by variable if needed.")
+	emit("mov", "rdi", "rbx", "Save string pointer")
+	emit("or", "rbx", "rbx", "Check for nil in variable")
+	emit("jz", Label(lbl), "", "")
+	emit("mov", "rbx", "[rbx]", "Load old len/cap")
+	emit("shr", "rbx", "32", "Extract capacity")
+	emit("or", "rbx", "rbx", "Check for zero capacity")
+	emit("jz", Label(lbl), "", "")
+	emit("push", "rax", "", "")
+	emit("mov", "rax", "rdi", "")
+	emit("call", "_free_str", "", "")
+	emit("pop", "rax", "", "")
+	EmitLabel(lbl, "")
+
 	emit("mov", BpRel(adr), "rax", "")
 	return nil
 }

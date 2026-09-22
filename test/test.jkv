@@ -4,9 +4,11 @@ func f(s String) String {
 }
 
 func main() {
+    w = "XXX"
     // Test concat three strings and assign to local variable
     s = "Hello "
     t = "World "
     w = s+t
     w = f("F")
+    assert(w=="XX", "Expected w='XX*', got '%s'")
 }
