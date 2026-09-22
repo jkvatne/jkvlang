@@ -1,6 +1,10 @@
 
+func test() String, I32, I32 {
+    buffer = "abcd"
+    return buffer, 1, 2
+}
 
 func main() {
-    t = "-file=test"
-    t[6]='T'
+    // Test returning 3 results
+    s, b, c = test()
 }

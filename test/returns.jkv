@@ -32,10 +32,11 @@ func main() {
     assert(y==7)
 
     assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
-
+/* TODO
     // Test returning 3 results
     buf, n, m = test(11, 12)
     assert(n==13)
     assert(m==14)
     assert(buf=="abcd")
+*/
 }

@@ -22,8 +22,6 @@ func main() {
     // 1. Test assign strings to struct and verify char from string
     n = new(Name)
     n.last = "Vatne"
-    print("n.last[2]=0x%x", n.last[2])
-
     assert(n.last[2]=='t', "Expected n.last[2]=='t', got 0x%x", n.last[2])
 
     n.first = "Jan Kåre"

@@ -121,12 +121,10 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 }
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
-	if value.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
-		if op == TOK_ASSIGN {
-			return EmitAssignIndirectExpressionStrStr()
-		} else if op == TOK_PLUS_ASGN {
-			return EmitAppendIndirectExpressionStrStr()
-		}
+	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
+		return EmitAssignIndirectExpressionStrStr()
+	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
+		return EmitAppendIndirectExpressionStrStr()
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
 		return EmitAssignIndirectExpressionStrChar()
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
@@ -135,8 +133,13 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew 
 		return EmitAssignIndirectExpressionF64(op)
 	} else if value.Typ.Pt == code.TYP_F32 {
 		return EmitAssignIndirectExpressionF32(op)
+	} else if op == TOK_ASSIGN && lvalue.Typ.Pt == code.TYP_SLICE && value.Typ.Pt == code.TYP_SLICE {
+		return EmitAssignIndirectExpressionSlice()
+	} else if op == TOK_ASSIGN && lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT {
+		return EmitAssignIndirectExpressionStruct()
+	} else {
+		return fmt.Errorf("1 %s not implemented for %s", op.Name(), value.Typ.Name())
 	}
-	return fmt.Errorf("1 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments

@@ -1692,6 +1692,26 @@ func EmitAssignVariableExpressionStruct(op Token, size int, adr int, comment str
 	return nil
 }
 
+// EmitAssignIndirectExpressionSlice
+// TOS is new slice, NOS is indirect pointer
+func EmitAssignIndirectExpressionSlice() error {
+	EmitAssertTosInRax("")
+	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
+	emit("mov", "qword [rdi]", "rax", "Save new slice")
+	emit("pop", "rax", "", "")
+	return nil
+}
+
+// EmitAssignIndirectExpressionStruct
+// TOS is new slice, NOS is indirect pointer
+func EmitAssignIndirectExpressionStruct() error {
+	EmitAssertTosInRax("")
+	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
+	emit("mov", "qword [rdi]", "rax", "Save new struct")
+	emit("pop", "rax", "", "")
+	return nil
+}
+
 // EmitConcat will concatenate the two strings at the top of the stack
 // First string pointer in [rsp], second string pointer in rax
 // It uses registers r12, r13, r14, rbx, rcx, rdx, rsi, rdi.
