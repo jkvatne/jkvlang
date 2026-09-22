@@ -873,11 +873,12 @@ func EmitModifyConstIndexedCharIndirect(offset int) {
 
 func EmitModifyConstIndexedChar(addr int, offset int) {
 	EmitComment("EmitModifyConstIndexedChar")
+	EmitFlushRax("Flush rax")
 	emit("mov", "rax", BpRel(addr), "EmitModifyConstIndexedChar")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "")
-	emit("add", "rax", strconv.Itoa(offset), "EmitModifyConstIndexedChar")
-	emit("add", "rax", "8", "Skip len/cap of string not const")
+	emit("add", "rax", strconv.Itoa(offset+8), "EmitModifyConstIndexedChar add offset + 8")
+	code.SetAx()
 }
 
 // EmitModifyIndexedCharIndirect

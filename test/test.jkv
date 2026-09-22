@@ -1,11 +1,6 @@
-type State = struct {
-    text String
-    size I32
-    p I32
-}
+
 
 func main() {
-    s = new(State)
-    s.text = "ABCDEFGH"
-    s.size = len(s.text)
+    t = "-file=test"
+    t[6]='T'
 }
