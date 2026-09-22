@@ -45,6 +45,26 @@ func includeFile(txt string, libPath string) {
 }
 
 func emit(op string, dst string, src string, comment string) {
+	startSp := code.LocalSp
+	if op == "push" {
+		code.LocalSp++
+	} else if op == "pop" {
+		code.LocalSp--
+	} else if (op == "add" || op == "sub") && dst == "rsp" {
+		n, err := strconv.Atoi(src)
+		if err != nil {
+			panic(err)
+		}
+		if n%8 != 0 {
+			panic("Stack add/sub must be multiple of 8")
+		}
+		if op == "add" {
+			code.LocalSp -= n / 8
+		} else {
+			code.LocalSp += n / 8
+		}
+	}
+	endSp := code.LocalSp
 	var txt string
 	txt = "   " + op
 	if dst != "" {
@@ -56,11 +76,8 @@ func emit(op string, dst string, src string, comment string) {
 	if src != "" {
 		txt = txt + " " + src
 	}
-	if !strings.Contains(comment, "->") {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + Sp(0) + "\n"
-	} else {
-		txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + comment + "\n"
-	}
+	ss := fmt.Sprintf("%d->%d", startSp, endSp)
+	txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + ss + " " + comment + "\n"
 	code.Write(txt)
 }
 
@@ -129,19 +146,15 @@ func EmitJump(n int, comment string) {
 	emit("jmp", Label(n), "", comment)
 }
 
-func Sp(delta int) string {
+func SpTxt() string {
 	ss := "-" + code.StackState()
-	if delta == 0 {
-		return " (" + strconv.Itoa(code.LocalSp) + ")" + ss
-	}
-	code.LocalSp += delta
-	return " (" + strconv.Itoa(code.LocalSp-delta) + "->" + strconv.Itoa(code.LocalSp) + ")" + ss
+	return " (" + strconv.Itoa(code.LocalSp) + "->" + strconv.Itoa(code.LocalSp) + ")" + ss
 }
 
 func EmitPushTos(argNo int, funcName string) {
 	if code.AxIsTos() {
-		code.Write("   push rax                             ; Push arg " +
-			strconv.Itoa(argNo) + " of " + funcName + Sp(1) + "\n")
+		// code.Write("   push rax                             ; Push arg " + strconv.Itoa(argNo) + " of " + funcName + "\n")
+		emit("push", "rax", "", "Push arg \" + strconv.Itoa(argNo) + \" of \" + funcName")
 		code.SetSp()
 	}
 }
@@ -152,7 +165,7 @@ func EmitCall(id string, nPar int, builtin bool) {
 		id = "_" + id
 	}
 	if nPar > 0 && code.AxIsTos() {
-		emit("push", "rax", "", "Push TOS from rax to stack"+Sp(1))
+		emit("push", "rax", "", "Push TOS from rax to stack")
 	}
 	// The following is needed only for variadic functioncode.
 	if nPar > 0 {
@@ -209,14 +222,14 @@ func xmm(sp int) string {
 func EmitPushF64Lit(x float64) {
 	litNo := AddF64Lit(x)
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "EmitPushF64Lit()")
-	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
+	emit("push", "rax", "", "Push old tos in rax")
 	code.SetSp()
 }
 
 func EmitPushF32Lit(x float32) {
 	litNo := AddF32Lit(x)
 	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "EmitPushF32Lit()")
-	emit("push", "rax", "", "Push old tos in rax"+Sp(1))
+	emit("push", "rax", "", "Push old tos in rax")
 	code.SetSp()
 }
 
@@ -368,7 +381,7 @@ func EmitJumpTrue(reg string, lbl int, comment string) {
 // TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
 func EmitAllocLocalVar(comment string) int {
 	emit("xor", "rax", "rax", "EmitAllocLocalVar "+comment)
-	emit("push", "rax", "", Sp(1))
+	emit("push", "rax", "", "")
 	return -8 * code.LocalSp
 }
 
@@ -390,7 +403,7 @@ func EmitPushConst(value int64, comment string) {
 
 func EmitFlushRax(comment string) {
 	if code.AxIsTos() {
-		emit("push", "rax", "", comment+Sp(1))
+		emit("push", "rax", "", comment)
 		code.SetUndef()
 	}
 }
@@ -398,7 +411,7 @@ func EmitFlushRax(comment string) {
 func EmitAssertTosInRax(comment string) {
 	if !code.AxIsTos() {
 		code.SetAx()
-		emit("pop", "rax", "", comment+Sp(-1))
+		emit("pop", "rax", "", comment)
 	}
 }
 
@@ -542,7 +555,7 @@ func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
 	emit("cld", "", "", "")
 	emit("repe", "cmpsb", "", "")
-	emit("pop", "rax", "", "Get nos ptr"+Sp(-1))
+	emit("pop", "rax", "", "Get nos ptr")
 	emit("mov", "rbx", "0", "Initialize result to false")
 	lbl := emitCompareString()
 	emit("mov", "rbx", "1", "Strings was equal, set rax=true")
@@ -566,7 +579,7 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	emit("mov", "rcx", "4", "Compare first 4 bytes")
 	emit("cld", "", "", "")
 	emit("repe", "cmpsb", "", "")
-	emit("pop", "rax", "", "Get nos ptr"+Sp(-1))
+	emit("pop", "rax", "", "Get nos ptr")
 	emit("mov", "rbx", "1", "Initialize result to true")
 	lbl := emitCompareString()
 	emit("mov", "rbx", "0", "Strings was equal, set rax=false")
@@ -612,11 +625,11 @@ func EmitFreeStruct(size int, comment string) {
 }
 
 func EmitPushAx(txt string) {
-	emit("push", "rax", "", txt+Sp(1))
+	emit("push", "rax", "", txt)
 }
 
 func EmitPopAx(txt string) {
-	emit("pop", "rax", "", txt+Sp(-1))
+	emit("pop", "rax", "", txt)
 }
 
 // EmitAddToSp adjusts stack pointer. Count is in qwordcode.
@@ -625,10 +638,10 @@ func EmitPopAx(txt string) {
 func EmitAddToSp(count int, comment string) {
 	if count > 0 {
 		// Stack grows downward
-		emit("sub", "rsp", strconv.Itoa(count*8), comment+Sp(count))
+		emit("sub", "rsp", strconv.Itoa(count*8), comment)
 		emit("mov", "qword [rsp]", "0", "Clear")
 	} else if count < 0 {
-		emit("add", "rsp", strconv.Itoa(-count*8), comment+Sp(count))
+		emit("add", "rsp", strconv.Itoa(-count*8), comment)
 	}
 }
 
@@ -651,15 +664,15 @@ func EmitEpilogue(name string) {
 		emit("jz", Label(oklbl), "", "Jump if zero flag is set")
 		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
 		EmitComment("main() returning. Printing allocation count end err.")
-		emit("push", "r15", "", ""+Sp(1))
+		emit("push", "r15", "", "")
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
-		emit("push", "rax", "", "d"+Sp(1))
+		emit("push", "rax", "", "")
 		emit("mov", "rax", "alloc_size_str+8", "")
-		emit("push", "rax", "", "c"+Sp(1))
+		emit("push", "rax", "", "")
 		emit("mov", "rbx", "24", "")
 		emit("call", "_printf", "", "")
 		emit("call", "_fflush", "", "")
-		emit("add", "rsp", "24", ""+Sp(-3))
+		emit("add", "rsp", "24", "")
 		EmitLabel(oklbl, "End of printing errors, returning error code via _exit()")
 		emit("mov", "rax", "[allocation_count]", "Check that allocation count is zero")
 		emit("or", "rax", "rax", "")
@@ -667,13 +680,7 @@ func EmitEpilogue(name string) {
 		emit("mov", "r15", "97", "If not zero, exit code=97")
 		EmitLabel(9999, "")
 		emit("mov", "rax", "r15", "Get error code")
-		// emit("call", "_exit", "", "")
-		emit("push", "rbp", "", "")
-		emit("mov", "rbp", "rsp", "")
-		emit("and", "rsp", "-16", "")
-		emit("sub", "rsp", "32", "")
-		emit("mov", "rcx", "rax", "")
-		emit("call", "ExitProcess", "", "")
+		emit("call", "_exit", "", "")
 	} else {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)
@@ -698,12 +705,12 @@ func EmitStoreErr(err int) {
 }
 
 func EmitPopBx(comment string) {
-	emit("pop", "rbx", "", comment+Sp(-1))
+	emit("pop", "rbx", "", comment)
 }
 
 func EmitGetAddrOfLocal(ofs int) {
 	emit("lea", "rax", BpRel(ofs), "")
-	emit("push", "rax", "", "b"+Sp(1))
+	emit("push", "rax", "", "b")
 }
 
 func EmitNewString(hasLen bool) {
@@ -711,7 +718,7 @@ func EmitNewString(hasLen bool) {
 	EmitAssertTosInRax("Before NewString")
 	if hasLen {
 		emit("mov", "r13", "rax", "save new string length")
-		emit("pop", "rax", "", Sp(-1)+"get capacity into rax")
+		emit("pop", "rax", "", ""+"get capacity into rax")
 	}
 	emit("mov", "r12", "rax", "save new string capacity")
 	emit("add", "rax", "8", "Add space for cap/len")
@@ -753,7 +760,7 @@ func EmitNewSlice(elementSize int, hasLen bool) {
 	EmitAssertTosInRax("Before NewSlice")
 	if hasLen {
 		emit("mov", "r14", "rax", "new slice length")
-		emit("pop", "rax", "", Sp(-1))
+		emit("pop", "rax", "", "")
 	} else {
 		emit("mov", "r14", "0", "new slice length is zero")
 	}
@@ -849,16 +856,16 @@ func EmitCopyStringToRam() {
 
 func EmitLea(ofs int, comment string) {
 	emit("lea", "rsi", BpRel(ofs), comment)
-	emit("push", "rsi", "", Sp(1))
+	emit("push", "rsi", "", "")
 }
 
 // EmitModifyConstIndexedCharIndirect assumes pointer to string in rax
 func EmitModifyConstIndexedCharIndirect(offset int) {
 	EmitComment("EmitModifyConstIndexedCharIndirect")
-	emit("push", "rax", "", "Save rax before copying string"+Sp(1))
+	emit("push", "rax", "", "Save rax before copying string")
 	emit("mov", "rax", "[rax]", "")
 	EmitCopyStringToRam()
-	emit("pop", "rdi", "", Sp(-1))
+	emit("pop", "rdi", "", "")
 	emit("mov", "[rdi]", "rax", "")
 	emit("add", "rax", strconv.Itoa(offset), "EmitModifyConstIndexedCharIndirect")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
@@ -885,7 +892,7 @@ func EmitModifyIndexedCharIndirect() {
 	emit("mov", "[rbx]", "rax", "")
 	emit("add", "rax", "[rsp]", "")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
-	emit("add", "rsp", "8", "Done EmitModifyIndexedCharIndirect"+Sp(-1))
+	emit("add", "rsp", "8", "Done EmitModifyIndexedCharIndirect")
 }
 
 // EmitModifyIndexedChar
@@ -893,11 +900,11 @@ func EmitModifyIndexedCharIndirect() {
 // TOS is new value
 func EmitModifyIndexedChar(addr int) {
 	EmitComment("EmitModifyIndexedChar")
-	emit("push", "rax", "", Sp(1)+"EmitModifyIndexedChar")
+	emit("push", "rax", "", ""+"EmitModifyIndexedChar")
 	emit("mov", "rax", BpRel(addr), "")
 	EmitCopyStringToRam()
 	emit("mov", BpRel(addr), "rax", "Update variable to point at new string in case it has changed")
-	emit("pop", "rbx", "", Sp(-1))
+	emit("pop", "rbx", "", "")
 	emit("add", "rax", "rbx", "Add index")
 	emit("add", "rax", "8", "Skip len/cap of string not const")
 }
@@ -919,7 +926,7 @@ func EmitModifyConstIndexedSlice(offset int, size int, returnLbl int) {
 func EmitModifyIndexedSlice(size int) {
 	emit("mov", "rax", "[rax]", "Load slice pointer 1")
 	emit("add", "rax", "8", "Skip len/cap in slice")
-	emit("pop", "rbx", "", "Get index"+Sp(-1))
+	emit("pop", "rbx", "", "Get index")
 	emit("shl", "rbx", ShiftFromSize(size), "")
 	emit("add", "rax", "rbx", "Index into lvalue slice not const")
 }
@@ -954,20 +961,20 @@ func EmitStartAppend(length int) {
 	emit("imul", "rax", strconv.Itoa(length), "")
 	emit("add", "rsi", "rax", "")
 	emit("add", "rsi", "8", "Add slice offset")
-	emit("push", "rsi", "", Sp(1))
+	emit("push", "rsi", "", "")
 	code.SetUndef()
 }
 
 func EmitDoAppend(length int) {
-	emit("pop", "rdi", "", Sp(-1))
+	emit("pop", "rdi", "", "")
 	emit("mov", DataType(length)+"[rdi]", AxName(length), "")
 	emit("add", "rdi", strconv.Itoa(length), "")
-	emit("push", "rdi", "", Sp(1))
+	emit("push", "rdi", "", "")
 	code.SetUndef()
 }
 
 func EmitUpdateAppendLength(n int) {
-	emit("pop", "rdi", "", Sp(-1))
+	emit("pop", "rdi", "", "")
 	emit("mov", "rax", "[rdi]", "Get length")
 	emit("add", "rax", strconv.Itoa(n), "")
 	emit("mov", "[rdi]", "rax", "")
@@ -1046,7 +1053,7 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 	} else if !isConst {
 		// TOS is index, NOS is pointer
 		EmitAssertTosInRax("LoadIndexedValue: Assure tos in rax")
-		emit("pop", "rbx", "", "LoadIndexedValue. Get pointer in NOS into rbx"+Sp(-1))
+		emit("pop", "rbx", "", "LoadIndexedValue. Get pointer in NOS into rbx")
 		// Check for nil pointer
 		emit("or", "rbx", "rbx", "Check for nil pointer")
 		lbl := code.NewLabel()
@@ -1115,22 +1122,22 @@ func EmitIntegerOp(op Token) {
 		panic("emitIntegerOp assumes RaxIsTOS=true")
 	}
 	if op == TOK_DIV {
-		emit("pop", "rcx", "", Sp(-1))
+		emit("pop", "rcx", "", "")
 		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
-		emit("pop", "rcx", "", Sp(-1))
+		emit("pop", "rcx", "", "")
 		emit("xchg", "rax", "rcx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rcx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_MINUS {
-		emit("pop", "rcx", "", Sp(-1))
+		emit("pop", "rcx", "", "")
 		emit("sub", "rax", "rcx", "Integer op minus")
 		emit("neg", "rax", "", "")
 	} else if op == TOK_AND_NOT {
-		emit("pop", "rcx", "", Sp(-1))
+		emit("pop", "rcx", "", "")
 		emit("not", "rax", "", "")
 		emit("and", "rax", "rcx", "AndNot")
 	} else {
@@ -1139,14 +1146,14 @@ func EmitIntegerOp(op Token) {
 			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
 		}
 		if op == TOK_MULT {
-			emit("pop", "rcx", "", Sp(-1))
+			emit("pop", "rcx", "", "")
 			emit("mul", "rcx", "", "Integer op mul")
 		} else if op == TOK_SHL || op == TOK_SHR {
 			emit("mov", "rcx", "rax", "Integer op shift")
-			emit("pop", "rax", "", Sp(-1))
+			emit("pop", "rax", "", "")
 			emit(instruction, "rax", "cl", "Integer op shift")
 		} else {
-			emit("pop", "rcx", "", Sp(-1))
+			emit("pop", "rcx", "", "")
 			emit(instruction, "rax", "rcx", "Integer op other")
 		}
 	}
@@ -1280,7 +1287,7 @@ func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 	}
 	// Load NOS into xmm2 and convert to F64 if necessary
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+	emit("pop", "rax", "", "EmitFloatOp pop nos")
 	if typ1.IsInteger() {
 		emit("cvtsi2sd", xmm(1), "rax", "convert integer into xmm1")
 	} else if typ1 == code.TYP_F32 {
@@ -1307,7 +1314,7 @@ func EmitF32Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
 	}
 	// Load NOS into xmm2 and convert to F32 if necessary
-	emit("pop", "rax", "", "EmitFloatOp pop nos"+Sp(-1))
+	emit("pop", "rax", "", "EmitFloatOp pop nos")
 	if typ2.IsInteger() {
 		emit("cvtsi2ss", xmm(1), "rax", "convert integer into xmm1")
 	} else if typ2 == code.TYP_F32 {
@@ -1433,7 +1440,7 @@ func EmitAssignVariableExpressionF32(op Token, adr int, comment string) error {
 func EmitOpAssignIndirectConstF64(op Token, value float64) error {
 	litNo := AddF64Lit(value)
 	code.SetAx()
-	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const"+Sp(-1))
+	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const")
 	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1453,7 +1460,7 @@ func EmitOpAssignIndirectConstF64(op Token, value float64) error {
 
 func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 	litNo := AddF32Lit(value)
-	emit("pop", "rdi", "", "EmitOpAssignIndirectF32Const "+Sp(-1))
+	emit("pop", "rdi", "", "EmitOpAssignIndirectF32Const ")
 	emit("mov", "eax", "dword [f32_"+strconv.Itoa(litNo)+"]", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1473,7 +1480,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
-	emit("pop", "rsi", "", "Pop lvalue pointer into rsi"+Sp(-1))
+	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
 		emit("mov", "[rsi]", "rax", "")
@@ -1504,7 +1511,7 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
 	EmitComment("EmitAssignIndirectConstInt")
 	EmitFlushRax("")
-	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt"+Sp(-1))
+	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt")
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token %s", op.Name())
@@ -1534,7 +1541,7 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 
 // EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax
 func EmitAssignIndirectExpressionF64(op Token) error {
-	emit("pop", "rdi", "", Sp(-1))
+	emit("pop", "rdi", "", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "[rdi]", "rax", "")
@@ -1553,7 +1560,7 @@ func EmitAssignIndirectExpressionF64(op Token) error {
 }
 
 func EmitAssignIndirectExpressionF32(op Token) error {
-	emit("pop", "rdi", "", Sp(-1))
+	emit("pop", "rdi", "", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "dword [rdi]", "eax", "")
@@ -1671,7 +1678,7 @@ func EmitAssignVariableExpressionStruct(op Token, size int, adr int, comment str
 	// Now free old struct
 	EmitFreeStruct(size, "")
 	EmitLabel(lbl, "")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	emit(TokenOp[op], BpRel(adr), "rax", "EmitStoreToLocal "+comment)
 	code.SetUndef()
 	return nil
@@ -1700,7 +1707,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	emit("call", "_alloc", "", "Allocate new string")
 	// Save pointer in r9 and rdi for later use
 	emit("mov", "rdi", "rax", "Save pointer in rdi for later use")
-	emit("push", "rax", "", "Save pointer on stack for later use"+Sp(1))
+	emit("push", "rax", "", "Save pointer on stack for later use")
 	// Save new capacity/length
 	emit("mov", "rsi", "r12", "First string length")
 	emit("add", "rsi", "r14", "Add second length")
@@ -1745,7 +1752,7 @@ func EmitConcat(free1 bool, free2 bool) {
 	// Copy the allocated buffer address from r9 to rax. Now rax points to the new string.
 	EmitPopAx("Now AX should point to the string")
 	// Remove the top of stack. New TOS is the pointer in rax. Arguments in rbx and r13.
-	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax"+Sp(-1))
+	emit("add", "rsp", "8", "Remove the top of stack. New TOS is the pointer in rax")
 }
 
 // ExtendStringCapacity of a string by copying it into new memory (uses r12)
@@ -1759,7 +1766,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	lbl1 := code.NewLabel()
 	lbl2 := code.NewLabel()
 	lbl3 := code.NewLabel()
-	emit("push", "rsi", "", Sp(1))
+	emit("push", "rsi", "", "")
 	// Check if old string was nil.
 	emit("mov", "rax", "rbx", "")
 	emit("or", "rsi", "rsi", "")
@@ -1805,7 +1812,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "rax", "rbx", "rbx points to the old string")
 	emit("call", "_free_str", "", "")
 	EmitLabel(lbl1, "End of ExtendStringCapacity")
-	emit("pop", "rdx", "", Sp(-1))
+	emit("pop", "rdx", "", "")
 }
 
 // =======   APPEND STR-STR ===========
@@ -1814,7 +1821,7 @@ func ExtendStringCapacity(bytesExtra int) {
 // Ok
 func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rbx", BpRel(adr), "Get pointer to first part")
-	emit("push", "rbx", "", "and save it to stack"+Sp(1))
+	emit("push", "rbx", "", "and save it to stack")
 	emit("mov", "r13", "rax", "Save second part to r13")
 	// Set bx to the appended length (on stack)
 	emit("mov", "rbx", "[r13]", "Get len/cap of second part")
@@ -1833,7 +1840,7 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("rep", "movsb", "", "copy appended string 1")
 	// Now update local variable
 	emit("mov", BpRel(adr), "rdx", "")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -1861,7 +1868,7 @@ func EmitAppendIndirectExpressionStrStr() error {
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -1885,16 +1892,16 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	return nil
 }
 
 func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
 	// EmitConcat will concatenate the two strings at the top of the stack
 	emit("mov", "rax", BpRel(adr), "")
-	emit("push", "rax", "", Sp(1))
+	emit("push", "rax", "", "")
 	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
-	emit("push", "rax", "", Sp(1))
+	emit("push", "rax", "", "")
 	code.SetSp()
 	EmitConcat(true, false)
 	emit("mov", BpRel(adr), "rax", "")
@@ -1961,7 +1968,7 @@ func EmitAssignIndirectExpressionStrStr() error {
 
 	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
 	emit("mov", "qword [rdi]", "r12", "Save new string")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -1990,7 +1997,7 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
-	emit("pop", "rax", "", Sp(-1))
+	emit("pop", "rax", "", "")
 	return nil
 }
 

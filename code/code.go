@@ -72,7 +72,6 @@ var (
 	LabelNo     int
 	LocalSp     int
 	NextLineNum int
-	PrevLineNum int
 	LineNum     int
 	UnitName    string
 	OutputFile  *os.File // File where the assembly is put

@@ -1655,9 +1655,9 @@ func ParseSyscall(s *State) error {
 	code.ConsArgCode(argNo+1, true)
 	emit("mov", "rdi", id, "Syscall function address")
 	emit("mov", "rbx", strconv.Itoa(argNo*8), "")
-	emit("push", "rax", "", "Dummy for _syscall "+Sp(1))
+	emit("push", "rax", "", "Dummy for _syscall ")
 	emit("call", "_syscall", "", "")
-	emit("add", "rsp", strconv.Itoa(argNo*8+16), Sp(-argNo-2)+" Drop arguments")
+	emit("add", "rsp", strconv.Itoa(argNo*8+16), " Drop arguments")
 	code.SetAx()
 	return nil
 }
