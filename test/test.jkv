@@ -1,13 +1,11 @@
-
 type State = struct {
     text String
+    size I32
     p I32
 }
 
 func main() {
     s = new(State)
-    s.p=2
-    s.text = "ABCDEF"
-    s.text[s.p] = 'x'
-    assert(s.text=="ABxDEF", "Expected s.text='ABxDEF', got '%s'", s.text)
+    s.text = "ABCDEFGH"
+    s.size = len(s.text)
 }

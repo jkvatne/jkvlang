@@ -154,7 +154,7 @@ func SpTxt() string {
 func EmitPushTos(argNo int, funcName string) {
 	if code.AxIsTos() {
 		// code.Write("   push rax                             ; Push arg " + strconv.Itoa(argNo) + " of " + funcName + "\n")
-		emit("push", "rax", "", "Push arg \" + strconv.Itoa(argNo) + \" of \" + funcName")
+		emit("push", "rax", "", "Push arg "+strconv.Itoa(argNo)+" of "+funcName)
 		code.SetSp()
 	}
 }
@@ -1481,6 +1481,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
+	EmitAssertTosInRax("")
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
