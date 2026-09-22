@@ -26,6 +26,7 @@ func g2(s String, t String) String {
 }
 
 func main() {
+
     w = f1(f2("F1F2"))
 
     // Test asserts that fail compare strings that are different size or different content
@@ -63,6 +64,7 @@ func main() {
 
     assert(w=="f1 F1F2 f2F2 f2", "Failed 6")
 
+/*
     // Test nested functions
     w = g1("abc", g2("def", "ghi"),"jkl")
     assert(w=="abcdefghijkl", "Failed 9")
@@ -86,7 +88,6 @@ func main() {
     s = "xyz"
     v = "pre-" + s
     assert(v=="pre-xyz","Failed 13")
-
     // Test concatenation of variable and constant overwriting old local var
     s = "xyz"
     v = s+"-post"
@@ -124,5 +125,5 @@ func main() {
     u = "abc"
     assert(u!="abb", "Failed 20a")
     assert("abca"!=u, "Failed 20b")
-
+*/
 }

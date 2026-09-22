@@ -1,10 +1,12 @@
 
-func test() String, I32, I32 {
-    buffer = "abcd"
-    return buffer, 1, 2
+func f(s String) String {
+    return "XX"
 }
 
 func main() {
-    // Test returning 3 results
-    s, b, c = test()
+    // Test concat three strings and assign to local variable
+    s = "Hello "
+    t = "World "
+    w = s+t
+    w = f("F")
 }

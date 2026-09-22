@@ -124,6 +124,8 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew 
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
 	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
+		return EmitAssignIndirectExpressionStrStr()
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING && op == TOK_PLUS_ASGN {
 		return EmitAppendIndirectExpressionStrStr()
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
 		return EmitAssignIndirectExpressionStrChar()
@@ -138,7 +140,7 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew 
 	} else if op == TOK_ASSIGN && lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT {
 		return EmitAssignIndirectExpressionStruct()
 	} else {
-		return fmt.Errorf("1 %s not implemented for %s", op.Name(), value.Typ.Name())
+		return fmt.Errorf("AssignIndirectExpression: %s not implemented for %s", op.Name(), value.Typ.Name())
 	}
 }
 
