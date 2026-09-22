@@ -4,7 +4,14 @@ func test(f I32, cnt I32) String, I32, I32 {
     return buffer, 1, 2
 }
 
+func f() I32, I32, I32 {
+    return 1,2,3
+}
+
 func main() {
-    // Test returning 3 results
+    //a,b,c=f()
     buf, n, m = test(11, 12)
+    assert(buf=="abcd", "Expected buf='abcd', got  '%s'", buf)
+    assert(n==1, "Expected n=1, got %d", n)
+    assert(m==2, "Expected m=2, got %d", m)
 }

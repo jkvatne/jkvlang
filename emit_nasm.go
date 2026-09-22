@@ -1403,7 +1403,7 @@ func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string
 		emit("mov", BpRel(adr), "rax", "")
 		return nil
 	}
-	EmitAssertTosInRax("")
+	EmitAssertTosInRax("EmitAssignVariableExpressionInt assert tos in rax")
 	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitAssignVariableExpressionInt "+comment)
 	code.SetUndef()
 	return nil
@@ -2003,10 +2003,10 @@ func EmitAssignIndirectExpressionStrStr() error {
 // EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
 // Free old string if it is on heap.
 func EmitAssignVariableExpressionStrStr(adr int) error {
-	EmitAssertTosInRax("")
 
 	lbl := code.NewLabel()
 	EmitComment("EmitAssignVariableExpressionStrStr")
+	EmitAssertTosInRax("EmitAssignVariableExpressionStrStr")
 	emit("mov", "rbx", BpRel(adr), "Free existing string pointed to by variable if needed.")
 	emit("mov", "rdi", "rbx", "Save string pointer")
 	emit("or", "rbx", "rbx", "Check for nil in variable")
@@ -2021,7 +2021,7 @@ func EmitAssignVariableExpressionStrStr(adr int) error {
 	emit("pop", "rax", "", "")
 	EmitLabel(lbl, "")
 
-	emit("mov", BpRel(adr), "rax", "")
+	emit("mov", BpRel(adr), "rax", "Update the variable to point to the new string")
 	return nil
 }
 

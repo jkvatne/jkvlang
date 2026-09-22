@@ -572,6 +572,7 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
+			code.SetUndef()
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
