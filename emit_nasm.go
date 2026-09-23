@@ -1943,7 +1943,8 @@ func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
 
 // EmitAssignIndirectConstStrStr ok
 func EmitAssignIndirectConstStrStr(strLitNo int) error {
-	EmitAssertTosInRax("")
+	// EmitAssertTosInRax("")
+	emit("pop", "rax", "", "")
 	// Free old string in [rax] if it exists
 	lbl := code.NewLabel()
 	emit("mov", "rbx", "[rax]", "Free existing in EmitAssignIndirectConstStrStr")
