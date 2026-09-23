@@ -1,4 +1,3 @@
-/*
 const (
     // dwCreationDisposition.
     CREATE_NEW     I32 = 1    // Fails if file already exists
@@ -112,21 +111,21 @@ func nextToken(s State) {
         s.token = TOK_EOF
     } else {
         ch = nextChar(s)
-        if ch == 0x22 {  // ""
-   			s.tokenString = ""
+        if ch == 0x22 {  // "
+   			s.tokenString = ">>>>>>>>"
             loop {
                 ch = nextChar(s)
                 if ch == '"' || ch == 0 {
                     break
                 }
-                // TODO s.tokenString+=ch
+                //TODO s.tokenString+=ch
             }
         } if ch>='A' && ch<'z' {
-            id = ""
+            id = "<<<<"
             loop {
                 if ch<'A' || ch>'z' ? break
                 ch =nextChar(s)
-                id += ch
+                //TODO id += ch
             }
             s.tokenString = id
             s.token = TOK_ID
@@ -150,8 +149,8 @@ func Parse(s State) {
     loop{
         nextToken(s)
         if s.token == 0 ? break
-        print("ch1=0x%02x", s.ch1)
-        fflush()
+        // print("ch1=0x%02x", s.ch1)
+        //fflush()
     }
 }
 
@@ -168,19 +167,19 @@ func read_all(name String) String {
     e = call(CloseHandle, f)
     return buf
 }
-*/
+
 
 func main() {
-/*
+
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
     print("Text size=%d", s.textSize)
+    /*
     filename=""
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
-
     print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
@@ -192,6 +191,6 @@ func main() {
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     Parse(s)
-*/
+   */
 }
 

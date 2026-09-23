@@ -49,7 +49,7 @@ func main() {
     assert(bitlen(0)==0, "Failed, bitlen(0) was %d", bitlen(0))
 
     // Test unpack64
-    /* TODO
+    /* TODO multiple returns missing
     a , b = unpack64(1.5)
 	e1 = I32((U64(f) >> 52) & (1<<11 - 1))
 	e2 = I32((U64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
