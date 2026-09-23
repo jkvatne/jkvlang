@@ -355,7 +355,7 @@ func EmitLoadFloat(size int, adr int, comment string) {
 // EmitLoad will push a local variable onto the stack (into AX)
 func EmitLoad(size int, adr int, comment string) {
 	EmitFlushRax("EmitLoad, flush rax onto stack")
-	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), comment)
+	emit(MovOpcode(size), "rax", DataType(size)+BpRel(adr), "EmitLoad: "+comment)
 	code.SetAx()
 }
 
@@ -409,9 +409,11 @@ func EmitFlushRax(comment string) {
 }
 
 func EmitAssertTosInRax(comment string) {
-	if !code.AxIsTos() {
+	if code.SpIsTos() {
 		code.SetAx()
 		emit("pop", "rax", "", comment)
+	} else if !code.AxIsTos() {
+		panic("Stack error")
 	}
 }
 
@@ -747,8 +749,9 @@ func EmitNewStruct(t *TypeDef) {
 	emit("mov", "rax", strconv.Itoa(t.Size()), "")
 	emit("call", "_alloc", "", "Allocate new struct")
 	// Zero struct
-	emit("mov", "rdx", "rax", "")
+	emit("mov", "rdx", "rax", "Zero new struct")
 	emit("mov", "rdi", "rax", "")
+	emit("push", "rax", "", "Save new struct")
 	emit("mov", "rcx", strconv.Itoa(t.Size()), "")
 	emit("cld", "", "", "")
 	emit("xor", "rax", "rax", "")
@@ -936,7 +939,7 @@ func EmitModifyIndexedSlice(size int) {
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
 		EmitFlushRax("Flush rax before EmitLoadField of " + fieldName)
-		emit("mov", "rax", BpRel(lvalueOffset), "Load local variable "+varName)
+		emit("mov", "rax", BpRel(lvalueOffset), "EmitLoadField: Load local variable "+varName)
 	}
 	if fieldOffset != 0 {
 		emit("add", "rax", strconv.Itoa(fieldOffset), "LoadField: Add field offset for field '"+fieldName+"'")
@@ -1482,7 +1485,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
-	EmitAssertTosInRax("")
+	EmitAssertTosInRax("EmitAssignIndirectExpressionInt assert rax")
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
@@ -1677,7 +1680,7 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 
 // EmitAssignVariableExpressionStruct assigns rax to the variable given and frees old variable contents.
 func EmitAssignVariableExpressionStruct(op Token, size int, adr int, comment string) error {
-	EmitFlushRax("")
+	// EmitFlushRax("EmitAssignVariableExpressionStruct flush rax")
 	// Check for existing struct - free it if needed
 	emit("mov", "rax", BpRel(adr), "EmitAssignVariableExpressionStruct, Get old value")
 	emit("or", "rax", "rax", "")
@@ -1686,7 +1689,7 @@ func EmitAssignVariableExpressionStruct(op Token, size int, adr int, comment str
 	// Now free old struct
 	EmitFreeStruct(size, "")
 	EmitLabel(lbl, "")
-	emit("pop", "rax", "", "")
+	emit("pop", "rax", "", "Get new struct")
 	emit(TokenOp[op], BpRel(adr), "rax", "EmitStoreToLocal "+comment)
 	code.SetUndef()
 	return nil

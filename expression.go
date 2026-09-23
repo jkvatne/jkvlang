@@ -572,7 +572,7 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			code.SetUndef()
+			// EmitFlushRax("Flush value before GenerateAssignment")
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
@@ -1451,7 +1451,7 @@ func ParseFuncDef(s *State) error {
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
-		return fmt.Errorf("Stack error at end of %s,  localstack=%d", fun, code.LocalSp)
+		return fmt.Errorf("Stack error at end of function '%s',  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
 	nextToken(s)

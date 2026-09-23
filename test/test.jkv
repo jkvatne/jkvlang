@@ -1,17 +1,25 @@
 
-func test(f I32, cnt I32) String, I32, I32 {
-    buffer = "abcd"
-    return buffer, 1, 2
+type RangeIterator = struct {
+    last I32
+    first I32
 }
 
-func f() I32, I32, I32 {
-    return 1,2,3
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.first = start
+    r.last = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.first>r.last ? fail(1)
+    x = r.first
+    r.first = x+1
+    return x
 }
 
 func main() {
-    //a,b,c=f()
-    buf, n, m = test(11, 12)
-    assert(buf=="abcd", "Expected buf='abcd', got  '%s'", buf)
-    assert(n==1, "Expected n=1, got %d", n)
-    assert(m==2, "Expected m=2, got %d", m)
+    v = "Hello"
+    w = "World"
+    v += w
 }

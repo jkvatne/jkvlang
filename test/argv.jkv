@@ -35,7 +35,7 @@ func main() {
         print("Arg%d=%s", i, args[i])
     }
     print("\nEnvironment variables, count=%d", envc)
-/*
+/* TODO
     print("\nEnvironment variables, count=%d", envc)
     for i=range(0, envc-1) {
         print("Env%d=%s", i, envs[i])

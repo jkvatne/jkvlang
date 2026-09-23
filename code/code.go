@@ -132,6 +132,10 @@ func AxIsTos() bool {
 	return state == ax
 }
 
+func SpIsTos() bool {
+	return state == sp
+}
+
 func New(name string, workdir string) (err error) {
 	ArgCode = make([]string, 0, 64)
 	CleanupCode = make([]string, 0, 64)

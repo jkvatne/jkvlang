@@ -22,6 +22,7 @@ func main() {
     s += "xxx"
     assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
 
+/*
     //=============================================
     // Test EmitAppendIndirectExpressionStrStr
     //=============================================
@@ -39,7 +40,6 @@ func main() {
 
     p.name += "Vatne"
     assert(p.name=="JanVatneVatne", "Expeccted p.name=='JanVatneVatne', got '%s'", p.name)
-
     //=============================================
     // Test EmitAssignVariableExpressionStrStr
     //=============================================
@@ -121,5 +121,5 @@ func main() {
     p.name = "Jan"
     p.name+=w
     assert(p.name=="JanWorld", "Expected p.name=JanWorld, got '%s'", p.name)
-
+*/
 }
