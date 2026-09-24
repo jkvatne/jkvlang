@@ -1780,6 +1780,7 @@ func EmitConcat(free1 bool, free2 bool) {
 // The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
 // * At exit, rdi points to the first empty character of the new string (ready for move)
 // * At exit, rdx points to the extended string's len/cap or the old string's len/cap
+// Uses r12
 func ExtendStringCapacity(bytesExtra int) {
 	lbl1 := code.NewLabel()
 	lbl2 := code.NewLabel()
@@ -2038,8 +2039,27 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	return nil
 }
 
-func EmitAssignIndirectExpressionStrChar() error {
-	return fmt.Errorf("EmitAssignIndirectExpressionStrChar not implemented")
+// EmitAppendIndirectExpressionStrChar has NOS=Pointer, TOS=character
+func EmitAppendIndirectExpressionStrChar() error {
+	EmitAssertTosInRax("")
+	emit("mov", "r14", "rax", "")
+	// emit("pop", "rsi", "", "")
+	emit("mov", "rsi", "[rsp]", "")
+
+	emit("mov", "rsi", "[rsi]", "Load string pointer")
+	emit("mov", "rbx", "1", "Load needed extra space")
+	// Now ebx should contain the required extra length (1) and rsi should point to the old string, so [rsi] is the old len/cap
+	ExtendStringCapacity(4)
+	// rdi points to the first empty character of the new string (ready for move)
+	// rdx points to the extended string's len/cap or the old string's len/cap
+	emit("inc", "dword [rdx]", "", "Incr original length by one")
+	emit("mov", "rax", "r14", "")
+	emit("mov", "byte [rdi]", "al", "Append character")
+	// Now update indirect variable
+	// emit("mov", "rdi", "rsi", "")  // WRONG
+	emit("pop", "rdi", "", "")
+	emit("mov", "qword [rdi]", "rdx", "")
+	return nil
 }
 
 // EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.

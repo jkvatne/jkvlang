@@ -46,7 +46,6 @@ func main() {
     t[i]='X'
     assert(t=="-file=Xest", "Expected t=='-file=Xest', got '%s'", t)
 
-    // TODO: This fails with leaked memory:
     s = new(State)
 
     s.p=2

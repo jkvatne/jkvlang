@@ -9,12 +9,11 @@ type RangeIterator = struct {
 
 
 func main() {
-    s = new(State)
-    s.text="Hello"
-    s.text[1] = 'h'
+    s=new(State)
+    s.text ="AB"
+    ch = 'C'
+    s.text+=ch
     print("s.text='%s'", s.text)
-    s = new(State)
-    s.text = "Goodby"
+    s.text+=ch
     print("s.text='%s'", s.text)
-
 }

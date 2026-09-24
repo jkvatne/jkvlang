@@ -118,7 +118,7 @@ func nextToken(s State) {
                 if ch == '"' || ch == 0 {
                     break
                 }
-                //TODO s.tokenString+=ch
+                s.tokenString+=ch
             }
         } if ch>='A' && ch<'z' {
             id = "<<<<"
@@ -149,8 +149,7 @@ func Parse(s State) {
     loop{
         nextToken(s)
         if s.token == 0 ? break
-        // print("ch1=0x%02x", s.ch1)
-        //fflush()
+        //print("ch1=0x%02x", s.ch1)
     }
 }
 
@@ -170,7 +169,6 @@ func read_all(name String) String {
 
 
 func main() {
-    /*
 
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
@@ -184,13 +182,12 @@ func main() {
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
 
-    // Must use excpicit filename during tests
+    // Must use explicit filename during tests
     filename = "C:/doc/compiler/test/compiler.jkv"
 
     s.text = read_all(filename)
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     Parse(s)
-   */
 }
 

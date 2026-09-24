@@ -131,7 +131,7 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err er
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING && op == TOK_PLUS_ASGN {
 		return EmitAppendIndirectExpressionStrStr()
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
-		return EmitAssignIndirectExpressionStrChar()
+		return EmitAppendIndirectExpressionStrChar()
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		return EmitAssignIndirectExpressionInt(op, lvalue.Typ.Pt.Size())
 	} else if value.Typ.Pt == code.TYP_F64 {
