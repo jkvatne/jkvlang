@@ -1,28 +1,29 @@
+
 const DONE I32 = 1
 
 type RangeIterator = struct {
-    start I32
-    end I32
+    first I32
+    last I32
 }
 
 func range(start I32, end I32) RangeIterator {
     r = new(RangeIterator)
-    r.start = start
-    r.end = end
+    r.first = start
+    r.last = end
     return r
 }
 
 func range(count I32) RangeIterator {
     r = new(RangeIterator)
-    r.start = 0
-    r.end = count-1
+    r.first = 0
+    r.last = count-1
     return r
 }
 
 func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(DONE)
-    x = r.start
-    r.start = x+1
+    if r.first>r.last ? fail(DONE)
+    x = r.first
+    r.first = x+1
     return x
 }
 

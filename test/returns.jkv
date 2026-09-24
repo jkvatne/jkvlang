@@ -7,6 +7,13 @@ func fi(a Bool, c I32) I32 {
     }
 }
 
+
+func test(f I32, cnt I32) String, I32, I32 {
+    n = I32(13)
+    buffer = "abcd"
+    return buffer, n, 14
+}
+
 func foo(a Bool, c I16) (I32, I32) {
     if a {
         return c+1, c+2
@@ -15,14 +22,15 @@ func foo(a Bool, c I16) (I32, I32) {
     }
 }
 
-func test(f I32, cnt I32) String, I32, I32 {
-    n = I32(13)
-    buffer = "abcd"
-    return buffer, n, 14
+func f() I32, I32 {
+    return 1,2
 }
 
 func main() {
-/* TODO Handle multiple returns
+    x,y=f()
+    assert(x==1, "Expected x==1, got %d", x)
+    assert(y==2, "Expected y==2, got %d", y)
+
     x, y = foo(false, 5)
     assert(x==10)
     assert(y==15)
@@ -31,12 +39,11 @@ func main() {
     assert(x==6)
     assert(y==7)
 
-    assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
-
     // Test returning 3 results
     buf, n, m = test(11, 12)
     assert(n==13)
     assert(m==14)
     assert(buf=="abcd", "Expected buf=='abcd', got '%s'", buf)
-*/
+
+    assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
 }

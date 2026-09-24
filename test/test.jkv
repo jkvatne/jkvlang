@@ -1,22 +1,14 @@
 
 type RangeIterator = struct {
-    last I32
     first I32
+    last I32
 }
 
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.first = start
-    r.last = end
-    return r
-}
+// Kommentart
 
-func next(r RangeIterator) I32 {
-    if r.first>r.last ? fail(1)
-    x = r.first
-    r.first = x+1
-    return x
-}
+/*
+Mer
+*/
 
 func main() {
     v = "Hello"

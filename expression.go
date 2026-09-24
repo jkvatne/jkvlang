@@ -173,12 +173,12 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 		if s.token != TOK_COMMA {
 			return parList, fmt.Errorf("expected comma or right parenthesis but got %s", s.tokenString)
 		}
-		nextToken(s)
+		s.next()
 	}
 	if s.token != TOK_RPAR {
 		return parList, fmt.Errorf("expected ')' but got %s", s.tokenString)
 	}
-	nextToken(s)
+	s.next()
 	return parList, nil
 }
 
@@ -304,7 +304,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 			return nil, fmt.Errorf("expected variable name after comma, but but got %s", s.tokenString)
 		}
 		id = s.tokenString
-		nextToken(s)
+		s.next()
 	}
 	// Create new vardefs for new local variables with unknown type.
 	for _, v := range lvalues {
@@ -419,13 +419,13 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 		if s.token != TOK_COMMA {
 			break
 		}
-		nextToken(s)
+		s.next()
 	}
 	if s.token != TOK_RPAR {
 		return nil, fmt.Errorf("expected right parenthesis but got %s", s.tokenString)
 	}
 	// Skip the final ")"
-	nextToken(s)
+	s.next()
 	return valueList, nil
 }
 
@@ -573,6 +573,7 @@ func ParseAssign(s *State, id string) error {
 		// Assign values to lvalues
 		for i, value := range values {
 			// EmitFlushRax("Flush value before GenerateAssignment")
+			code.SetSp()
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err
@@ -802,7 +803,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		return values, nil
 	} else if s.token == TOK_LPAR {
 		// Start of parenthesis term
-		nextToken(s)
+		s.next()
 		// EmitFlushRax("Begin parenthesis term")
 		values, err2 := ParseExpression(s)
 		if err2 != nil {
@@ -821,7 +822,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if value.Typ == nil {
 			return nil, fmt.Errorf("missing integer type")
 		}
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_FLOAT {
 		if hasUnaryMinus {
 			v := -math.Float64frombits(s.ConstValue.Bits)
@@ -830,36 +831,36 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
 		value.Typ = TypeDefs["F64"]
 		value.IsConst = true
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_CHAR {
 		value = &ValueDef{IsConst: true}
 		value.IntValue = int64(s.ConstValue.Bits)
 		value.UintValue = s.ConstValue.Bits
 		value.Typ = TypeDefs["U8"]
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_STRING {
 		litNo := AddLiteral(s.tokenString)
 		value.Typ = TypeDefs["String"]
 		value.StringValue = s.tokenString
 		value.StringLitNo = litNo
 		value.IsConst = true
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_LBRACK {
 		for {
-			nextToken(s)
+			s.next()
 			if s.token == TOK_RBRACK {
-				nextToken(s)
+				s.next()
 				break
 			}
 		}
 	} else if s.token == TOK_TRUE {
 		value = &True
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_FALSE {
 		value = &False
-		nextToken(s)
+		s.next()
 	} else if s.token == TOK_NOT {
-		nextToken(s)
+		s.next()
 		// EmitFlushRax("Begin parenthesis term")
 		values, err2 := ParseExpression(s)
 		if err2 != nil {
@@ -966,7 +967,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("* and / can only operate on 1 value but got %d", len(values1))
 		}
 		op := s.token
-		nextToken(s)
+		s.next()
 		code.NewArgCode()
 		values2, err = ParseUnary(s, false)
 		if err != nil {
@@ -1003,7 +1004,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 		}
 		// Loop through all strings that are concatenated
 		for s.token == TOK_PLUS {
-			nextToken(s)
+			s.next()
 			// ParseProd should push rax and leave new result in rax
 			code.NewArgCode()
 			values2, err = ParseProd(s)
@@ -1028,7 +1029,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(values1))
 		}
 		op := s.token
-		nextToken(s)
+		s.next()
 		code.NewArgCode()
 		values2, err = ParseProd(s)
 		if err != nil {
@@ -1056,7 +1057,7 @@ func ParseCompareTerm(s *State) ([]*ValueDef, error) {
 	}
 	values1[0].IsReturned = false
 	op := s.token
-	nextToken(s)
+	s.next()
 	code.NewArgCode()
 	values2, err := ParseSumTerm(s)
 	if err != nil {
@@ -1092,7 +1093,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		if results[0].Typ.Pt != code.TYP_BOOL {
 			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
-		nextToken(s)
+		s.next()
 
 		if op == TOK_LOG_OR {
 			EmitJumpTrue("al", endLabel, "")
@@ -1203,7 +1204,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 // ParseIfElse will parse the code after "if cond {"
 func ParseIfElse(s *State, value *ValueDef) error {
 	L1, L2 := 0, 0
-	nextToken(s)
+	s.next()
 	if !value.HasValue() {
 		L1 = code.NewLabel()
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
@@ -1228,7 +1229,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 		EmitLabel(L1, "")
 		L1 = 0
 		if s.token == TOK_IF {
-			nextToken(s)
+			s.next()
 			if len(code.ArgCode) > 0 {
 				panic("ParseIfElse has len(ArgCode)>0")
 			}
@@ -1267,7 +1268,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				EmitLabel(L2, "Skipped else block")
 				L2 = 0
 			}
-			nextToken(s)
+			s.next()
 		} else if s.found(TOK_LBRACE) {
 			// Else without if
 			err = ParseBlock(s, value.IsFalse())
@@ -1277,7 +1278,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			if s.token != TOK_RBRACE {
 				return fmt.Errorf("expected } after else clause, but got %s", s.tokenString)
 			}
-			nextToken(s)
+			s.next()
 		} else {
 			// Else without {
 			return fmt.Errorf("expected { after else but got %s", s.tokenString)
@@ -1293,7 +1294,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 }
 
 func ParseIf(s *State) error {
-	nextToken(s)
+	s.next()
 	code.NewArgCode()
 	// Parse the if condition
 	values, err := ParseExpression(s)
@@ -1341,7 +1342,7 @@ func FreeStruct(t *TypeDef) {
 func ParseFuncDef(s *State) error {
 	s.BlockLevel++
 	startLevel := s.BlockLevel
-	nextToken(s)
+	s.next()
 	code.LocalSp = 0
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
@@ -1354,11 +1355,11 @@ func ParseFuncDef(s *State) error {
 	} else {
 		EmitFunction(fun)
 	}
-	nextToken(s)
+	s.next()
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
-	nextToken(s)
+	s.next()
 	s.LocalVarCount = 0
 	parList, err := ParseFormalArgList(s)
 	if err != nil {
@@ -1454,7 +1455,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("Stack error at end of function '%s',  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
-	nextToken(s)
+	s.next()
 	// Delete parameters
 	for _, p := range parList {
 		DeleteLocalVar(s, p.Name)
@@ -1476,7 +1477,7 @@ func ParseTypeDef(s *State) error {
 		return fmt.Errorf("all types must start with uppercase, got %s", s.tokenString)
 	}
 	id := s.tokenString
-	nextToken(s)
+	s.next()
 	if !s.found(TOK_ASSIGN) {
 		return fmt.Errorf("expected \"=\" but got %s", s.tokenString)
 	}
@@ -1546,11 +1547,11 @@ func ParseVar(s *State, isGlobal bool) error {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
 	id := s.tokenString
-	nextToken(s)
+	s.next()
 	if s.token == TOK_LBRACK {
-		nextToken(s)
+		s.next()
 		// TODO: Parse array size
-		nextToken(s)
+		s.next()
 		if !s.found(TOK_RBRACK) {
 			return fmt.Errorf("expected ], got %s", s.tokenString)
 		}
@@ -1571,10 +1572,10 @@ func ParseVar(s *State, isGlobal bool) error {
 	}
 
 	if s.token == TOK_ASSIGN {
-		nextToken(s)
+		s.next()
 		val := ""
 		if s.token == TOK_MINUS {
-			nextToken(s)
+			s.next()
 			if s.token != TOK_INT && s.token != TOK_FLOAT {
 				return fmt.Errorf("expected int or float, got %s", s.tokenString)
 			}
@@ -1592,7 +1593,7 @@ func ParseVar(s *State, isGlobal bool) error {
 			return fmt.Errorf("internal error in ParseVar")
 		}
 		v.constValue = val
-		nextToken(s)
+		s.next()
 	}
 	return nil
 }

@@ -76,7 +76,7 @@ func emit(op string, dst string, src string, comment string) {
 	if src != "" {
 		txt = txt + " " + src
 	}
-	ss := fmt.Sprintf("%d->%d", startSp, endSp)
+	ss := fmt.Sprintf("%s %d->%d", code.StackState(), startSp, endSp)
 	txt += spaces[0:max(0, CommentIndent-len(txt))] + "; " + ss + " " + comment + "\n"
 	code.Write(txt)
 }
@@ -1485,7 +1485,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
-	EmitAssertTosInRax("EmitAssignIndirectExpressionInt assert rax")
+	EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")

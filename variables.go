@@ -192,7 +192,7 @@ func ParseType(s *State) (*TypeDef, error) {
 		return ParseSlice(s)
 	}
 	id := s.tokenString
-	nextToken(s)
+	s.next()
 	if id[0] > 'Z' {
 		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}

@@ -27,11 +27,11 @@ func CompileFile(name string, workdir string, libPath string) error {
 
 	InitTypes()
 	FuncInit()
-	nextToken(s)
 
 	// Top level statements can only be func, const or type.
 	// Global variables are not allowed!
-	s.CollectNextLine()
+	s.nextChar()
+	s.next()
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			err = ParseFuncDef(s)

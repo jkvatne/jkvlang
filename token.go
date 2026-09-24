@@ -209,52 +209,37 @@ func isAlfaNum(ch rune) bool {
 	return isNum(ch) || isAlfa(ch)
 }
 
-func (s *State) nextLitChar() {
-	var n int
-	s.ch1, n = utf8.DecodeRune(s.text[s.p:])
+// nextChar will read one rune from the input stream
+// s.ch1 is set to s.ch2, and the new rune will be put ins.ch2
+func (s *State) nextChar() {
+	n := 0
+	s.ch1 = s.ch2
 	if s.ch1 == '\n' {
 		code.NextLineNum++
 	}
-	s.p += n
 	if s.p >= len(s.text) {
-		return
+		s.ch1 = 0
+		s.token = TOK_EOF
+	} else {
+		s.ch2, n = utf8.DecodeRune(s.text[s.p:])
+		s.p += n
 	}
-	s.ch2, _ = utf8.DecodeRune(s.text[s.p:])
 }
 
 func (s *State) CollectNextLine() {
-	s.currentLine = s.tokenString
-	for i := s.p; i < len(s.text); {
-		ch, n := utf8.DecodeRune(s.text[i:])
-		if ch == '\n' {
-			break
-		}
-		s.currentLine += string(ch)
-		i += n
-	}
-}
-
-func (s *State) nextChar() {
-	if eof(s) {
-		return
-	}
+	s.currentLine = s.tokenString + " "
+	i := s.p
 	for {
-		n := 0
-		s.ch1, n = utf8.DecodeRune(s.text[s.p:])
-		if s.ch1 == '\n' {
-			code.NextLineNum++
+		ch, n := utf8.DecodeRune(s.text[i:])
+		i += n
+		if ch != '\n' && ch != '\r' {
+			s.currentLine += string(ch)
 		}
-		s.p += n
-		if s.p >= len(s.text) {
-			s.token = TOK_EOF
-			s.ch2 = 0
-			return
-		}
-		if s.ch1 > ' ' {
+		if ch == '\n' || i >= len(s.text) {
 			break
 		}
 	}
-	s.ch2, _ = utf8.DecodeRune(s.text[s.p:])
+	fmt.Printf("Line: %d = '%s'\n", code.NextLineNum, s.currentLine)
 }
 
 func eof(s *State) bool {
@@ -347,7 +332,7 @@ func parseNumber(s *State) {
 func (s *State) found(tokens ...Token) bool {
 	for _, t := range tokens {
 		if s.token == t {
-			nextToken(s)
+			s.next()
 			return true
 		}
 	}
@@ -355,10 +340,6 @@ func (s *State) found(tokens ...Token) bool {
 }
 
 func (s *State) next() {
-	nextToken(s)
-}
-
-func nextToken(s *State) {
 	s.token = TOK_EOF
 	for s.token == TOK_EOF {
 		if eof(s) {
@@ -367,7 +348,7 @@ func nextToken(s *State) {
 		s.nextChar()
 		s.tokenString = string(s.ch1)
 		switch {
-		case s.ch1 == '\r' || s.ch1 == '\n':
+		case s.ch1 == '\r' || s.ch1 == '\n' || s.ch1 == ' ' || s.ch1 == '\t':
 			continue
 		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
@@ -376,7 +357,7 @@ func nextToken(s *State) {
 		case s.ch1 == '"':
 			s.tokenString = ""
 			for {
-				s.nextLitChar()
+				s.nextChar()
 				if s.ch1 == '"' || s.ch1 == 0 {
 					break
 				}
@@ -448,15 +429,15 @@ func nextToken(s *State) {
 			s.token = TOK_DOT
 		case s.ch1 == '/' && s.ch2 == '/':
 			// Skip comment
-			for s.ch1 != '\n' && !eof(s) {
-				s.nextLitChar()
+			for s.ch1 != '\n' && s.ch1 != 0 {
+				s.nextChar()
 			}
 			continue
 		case s.ch1 == '/' && s.ch2 == '*':
 			// Skip /* */ comment
 			s.CommentLevel = 1
-			for !eof(s) && s.CommentLevel > 0 {
-				s.nextLitChar()
+			for s.ch1 != 0 && s.CommentLevel > 0 {
+				s.nextChar()
 				if s.ch1 == '/' && s.ch2 == '*' {
 					s.CommentLevel++
 				} else if s.ch1 == '*' && s.ch2 == '/' {
@@ -517,14 +498,13 @@ func nextToken(s *State) {
 			s.tokenString = "@"
 			s.token = TOK_AT
 		case isAlfa(s.ch1):
-			value := string(s.ch1)
+			s.tokenString = string(s.ch1)
 			for isAlfaNum(s.ch2) || s.ch2 == '_' {
 				s.nextChar()
-				value += string(s.ch1)
+				s.tokenString += string(s.ch1)
 			}
-			s.tokenString = value
 			s.token = TOK_ID
-			switch value {
+			switch s.tokenString {
 			case "func":
 				s.token = TOK_FUNC
 			case "true":
@@ -604,6 +584,6 @@ func Expect(s *State, token Token) error {
 	if s.token != token {
 		return fmt.Errorf("expected token '%s' but got '%s'", token.Name(), s.tokenString)
 	}
-	nextToken(s)
+	s.next()
 	return nil
 }

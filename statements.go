@@ -98,7 +98,7 @@ func ParseStatement(s *State) (err error) {
 		err = ParseIf(s)
 	case TOK_SEMICOLON:
 		// Ignore
-		nextToken(s)
+		s.next()
 	case TOK_VAR:
 		s.next()
 		err = ParseVars(s)
@@ -136,19 +136,18 @@ func ParseStatement(s *State) (err error) {
 func ParseStatements(s *State) error {
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		s.CollectNextLine()
-		code.EmitLineNo(s.currentLine)
 		code.LineNum = code.NextLineNum
+		code.EmitLineNo(s.currentLine)
 		err := ParseStatement(s)
 		if err != nil {
 			return err
 		}
 		EmitPrintSp()
 		if s.token == TOK_SEMICOLON {
-			nextToken(s)
+			s.next()
 		}
 		code.SetUndef()
 	}
-	s.CollectNextLine()
 	code.EmitLineNo(s.currentLine)
 	return nil
 }
