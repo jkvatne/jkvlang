@@ -30,18 +30,17 @@ func main() {
 
     // 2. Test new slice and assign/read from slice
     p = new(Person)
-/*  p.points = new(Points, 32)
-    p.points+=1
-    p.points+=2
+    p.points = new(Points, 32)
+    append(p.points, 0, 1, 2)
     assert(p.points[0]==0, "Failed 4")
     assert(p.points[1]==1, "Failed 5")
     assert(p.points[2]==2, "Failed 6")
-*/
+    assert(p.points[3]==0, "Failed 6")
+
     // 3. Append to slice
     k=4
     m=5
     append(p.points, 3, k, m)
-/*
     assert(p.points[2]==2, "Failed 7")
     assert(p.points[3]==3, "Failed 8")
     assert(p.points[4]==4, "Failed 9")
@@ -71,5 +70,5 @@ func main() {
     // It should panic or give compiler warning, but currently it does not.
     p.name.last[j+k]='x'
     assert(p.name.last=="Vaxne", "Failed 17")
-*/
+
 }
