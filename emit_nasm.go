@@ -1485,7 +1485,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
-	EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
+	// EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")

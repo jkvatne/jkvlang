@@ -6,6 +6,13 @@ type RangeIterator = struct {
     last I32
 }
 
+func next(r RangeIterator) I32 {
+    if r.first>r.last ? fail(DONE)
+    x = r.first
+    r.first = x+1
+    return x
+}
+
 func range(start I32, end I32) RangeIterator {
     r = new(RangeIterator)
     r.first = start
@@ -20,12 +27,6 @@ func range(count I32) RangeIterator {
     return r
 }
 
-func next(r RangeIterator) I32 {
-    if r.first>r.last ? fail(DONE)
-    x = r.first
-    r.first = x+1
-    return x
-}
 
 func main() {
     print("The number of arguments is %d", argc)

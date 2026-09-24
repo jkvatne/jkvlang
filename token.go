@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 	"strconv"
 	"unicode/utf8"
@@ -218,7 +217,7 @@ func (s *State) nextChar() {
 		code.NextLineNum++
 	}
 	if s.p >= len(s.text) {
-		s.ch1 = 0
+		s.ch2 = 0
 		s.token = TOK_EOF
 	} else {
 		s.ch2, n = utf8.DecodeRune(s.text[s.p:])
@@ -239,11 +238,11 @@ func (s *State) CollectNextLine() {
 			break
 		}
 	}
-	fmt.Printf("Line: %d = '%s'\n", code.NextLineNum, s.currentLine)
+	// fmt.Printf("Line: %d = '%s'\n", code.NextLineNum, s.currentLine)
 }
 
 func eof(s *State) bool {
-	return s.p >= len(s.text)
+	return s.p > len(s.text)
 }
 
 // TypeFromNumber will guess the type based on the value of the number
@@ -343,7 +342,7 @@ func (s *State) next() {
 	s.token = TOK_EOF
 	for s.token == TOK_EOF {
 		if eof(s) {
-			return
+			break
 		}
 		s.nextChar()
 		s.tokenString = string(s.ch1)
@@ -573,11 +572,13 @@ func (s *State) next() {
 			s.token = TOK_RBRACE
 			s.tokenString = "}"
 		default:
-			slog.Error("Unknown", "char", fmt.Sprintf("0x%02x", s.ch1))
+			// fmt.Printf("Unknown char 0x%02x", s.ch1)
+			s.token = TOK_EOF
+			s.tokenString = "EOF"
 		}
 		break
 	}
-
+	// fmt.Printf("Token=%s\n", s.token.Name())
 }
 
 func Expect(s *State, token Token) error {

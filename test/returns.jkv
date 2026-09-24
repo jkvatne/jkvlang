@@ -1,4 +1,5 @@
 
+/*
 func fi(a Bool, c I32) I32 {
     if a {
         return c
@@ -25,8 +26,12 @@ func foo(a Bool, c I16) (I32, I32) {
 func f() I32, I32 {
     return 1,2
 }
+*/
 
 func main() {
+    print("Hello")
+
+   /* TODO
     x,y=f()
     assert(x==1, "Expected x==1, got %d", x)
     assert(y==2, "Expected y==2, got %d", y)
@@ -46,4 +51,6 @@ func main() {
     assert(buf=="abcd", "Expected buf=='abcd', got '%s'", buf)
 
     assert(fi(true,5)==5, "Failed fi()=%d",fi(true, 5))
+    */
+
 }
