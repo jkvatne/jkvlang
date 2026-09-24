@@ -1,9 +1,11 @@
-
-func test(f I32, cnt I32) String, I32 {
-    return "asb", 12
+type State = struct {
+    ch1   I32
 }
 
 func main() {
-    buf, n = test(11, 12)
+	s = new(State)
+	if s.ch1 == '\n' {
+	    print("Eq")
+	}
 }
 

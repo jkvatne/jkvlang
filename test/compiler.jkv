@@ -18,11 +18,26 @@ type State = struct {
     text String
     textSize I32
     p I32
+    NextLineNum I32
 }
 
+
 func nextChar(s State) I32 {
-	s.ch1 = s.text[s.p]
-	s.p += 1
+	n = 0
+	s.ch1 = s.ch2
+	if s.ch1 == '\n' {
+		s.NextLineNum+=1
+	}
+	if s.p >= len(s.text) {
+		s.ch2 = 0
+		s.token = 0
+	} else {
+		// TODO s.ch2, n = DecodeRune(s.text[s.p:])
+		s.p += n
+	}
+    if s.p>=len(s.text) {
+        return 0
+    }
 	s.ch2 = s.text[s.p]
 	return s.ch1
 }
@@ -122,12 +137,14 @@ func nextToken(s State) {
                 s.tokenString+=ch
             }
         } if ch>='A' && ch<'z' {
-            id = "<<<<"
+            id = ""
             loop {
-                if ch<'A' || ch>'z' ? break
+                if ch<'A' || ch>'z' || ch==0 ? break
+                print("ch=0x%2x", ch)
                 ch =nextChar(s)
-                //TODO id += ch
+                id += ch
             }
+            print("id='%s'", id)
             s.tokenString = id
             s.token = TOK_ID
         } else if ch == 13 {

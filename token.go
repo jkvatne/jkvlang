@@ -420,7 +420,23 @@ func (s *State) next() {
 		case s.ch1 == '\'':
 			s.nextChar()
 			s.token = TOK_CHAR
-			s.tokenString = string(s.ch1)
+			if s.ch1 == 0x5C { // Backslash
+				s.nextChar()
+				if s.ch1 == 'n' {
+					s.ch1 = 0x0A
+					s.tokenString = "<LF>"
+				} else if s.ch1 == 'r' {
+					s.ch1 = 0x0D
+					s.tokenString = "<CR>"
+				} else if s.ch1 == 't' {
+					s.ch1 = 0x09
+					s.tokenString = "<TAB>"
+				} else {
+					panic("Invalid escaped character, only \\n, \\r and \\t are allowed")
+				}
+			} else {
+				s.tokenString = string(s.ch1)
+			}
 			s.ConstValue.Bits = uint64(s.ch1)
 			s.ConstValue.Pt = code.TYP_RUNE
 			s.nextChar()
