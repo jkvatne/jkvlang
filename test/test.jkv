@@ -18,20 +18,16 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-func has_prefix(s String, sub String) Bool {
-    for j=range(0, len(sub)-1) {
-        if s[j]!=sub[j] ? return false
+func substring(s String, start I32, end I32) String {
+    t=new(String, end, end-start+1)
+    for i=range(start, end) {
+        t[i-start] = s[i]
     }
-    return true
+    return t
 }
 
 func main() {
     filename=""
-    for i=range(0, argc-1) {
-        print("args[%d]='%s'", i, args[i])
-        if has_prefix(args[i],"xx") {
-            //filename=args[i]
-        }
-    }
-
+    u=substring(filename, 6, len(filename)-1)
 }
+

@@ -8,6 +8,11 @@ import (
 )
 
 func ParseReturn(s *State) error {
+	// Return from nested blocks not allowed, because it will not free range struct.
+	if s.BlockLevel > 1 {
+		panic("block level out of range")
+	}
+
 	f := s.currentFuncDef
 	if len(code.ArgCode) > 0 {
 		panic("ArgCode was not empty")

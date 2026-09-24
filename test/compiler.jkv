@@ -84,15 +84,16 @@ func write_file(f I32, txt String) I32 {
     return n
 }
 
-
-
 func has_prefix(s String, sub String) Bool {
+    ok = true
     for j=range(0, len(sub)-1) {
-        if s[j]!=sub[j] ? return false
+        if s[j]!=sub[j] {
+            ok = false
+            break
+        }
     }
-    return true
+    return ok
 }
-
 func substring(s String, start I32, end I32) String {
     t=new(String, end, end-start+1)
     for i=range(start, end) {
@@ -154,16 +155,17 @@ func Parse(s State) {
 }
 
 func read_all(name String) String {
+    buf ="  "
     f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
     if f<=0 {
         print("Could not open file %s", name)
-        return ""
+    } else {
+        n = call(GetFileSize, f, 0)
+        // if n<0 ? fail(123)
+        buf = new(String, n)
+        ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
+        e = call(CloseHandle, f)
     }
-    n = call(GetFileSize, f, 0)
-    // if n<0 ? fail(123)
-    buf = new(String, n)
-    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
-    e = call(CloseHandle, f)
     return buf
 }
 
