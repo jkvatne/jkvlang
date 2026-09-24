@@ -1674,19 +1674,7 @@ func EmitCheckForOldStruct(adr int) int {
 }
 
 // EmitAssignVariableExpressionStruct assigns rax to the variable given and frees old variable contents.
-func EmitAssignVariableExpressionStruct(lbl int, size int, adr int, comment string) error {
-	/*
-		// EmitFlushRax("EmitAssignVariableExpressionStruct flush rax")
-		// Check for existing struct
-		emit("mov", "rax", BpRel(adr), "EmitAssignVariableExpressionStruct, Get old value")
-		emit("or", "rax", "rax", "")
-		lbl := code.NewLabel()
-		emit("jz", Label(lbl), "", "")
-		// Free the struct's fields first
-
-		// Now free old struct itself
-		EmitFreeStruct(size, "")
-	*/
+func EmitAssignVariableExpressionStruct(lbl int, adr int, comment string) error {
 	EmitLabel(lbl, "")
 	emit("pop", "rax", "", "Get new struct")
 	emit("mov", BpRel(adr), "rax", "EmitStoreToLocal "+comment)

@@ -13,14 +13,12 @@ import (
 // The op is already verified to be one of the assignment operators.
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
-	wasNew := false
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		if value.Typ.Pt == code.TYP_U8 || value.Typ.Pt == code.TYP_U16 || value.Typ.Pt == code.TYP_I16 {
 			// Default to I32 when assigning smaller types to a local variable
 			lvalue.Typ = &I32Type
 		} else {
 			lvalue.Typ = value.Typ
-			wasNew = true
 		}
 	}
 	if lvalue.Typ == nil {
@@ -38,19 +36,18 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return AssignIndirectConst(op, lvalue, value)
 	} else if lvalue.IsIndirect && !value.HasValue() {
 		// Assign evaluated value to indirect variable
-		return AssignIndirectExpression(op, lvalue, value, wasNew)
+		return AssignIndirectExpression(op, lvalue, value)
 	} else if value.HasValue() {
 		// Assign constant to local variable
-		return AssignVariableConst(op, lvalue, value, wasNew)
-	} else {
-		// Assign evaluated value to local variable
-		return AssignVariableExpression(op, lvalue, value)
+		return AssignVariableConst(op, lvalue, value)
 	}
+	// Assign evaluated value to local variable
+	return AssignVariableExpression(op, lvalue, value)
 }
 
-func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) error {
+func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Offset == 0 {
-		return fmt.Errorf("Local variable adr is zero")
+		return fmt.Errorf("local variable adr is zero")
 	}
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
@@ -75,10 +72,10 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 	return fmt.Errorf("4 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
-func AssignStruct(lvalue *VarDef, value *ValueDef) (err error) {
+func AssignStruct(lvalue *VarDef) (err error) {
 	lbl := EmitCheckForOldStruct(lvalue.Offset)
 	FreeStruct(lvalue.Typ)
-	return EmitAssignVariableExpressionStruct(lbl, lvalue.Typ.StructSize, lvalue.Offset, "Assign struct to "+lvalue.Name)
+	return EmitAssignVariableExpressionStruct(lbl, lvalue.Offset, "Assign struct to "+lvalue.Name)
 }
 
 func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
@@ -99,7 +96,7 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		return AssignStruct(lvalue, value)
+		return AssignStruct(lvalue)
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
 		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	}
@@ -126,7 +123,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	return fmt.Errorf("2 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
-func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew bool) (err error) {
+func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
 	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
@@ -145,9 +142,8 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef, wasNew 
 		return EmitAssignIndirectExpressionSlice()
 	} else if op == TOK_ASSIGN && lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT {
 		return EmitAssignIndirectExpressionStruct()
-	} else {
-		return fmt.Errorf("AssignIndirectExpression: %s not implemented for %s", op.Name(), value.Typ.Name())
 	}
+	return fmt.Errorf("AssignIndirectExpression: %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 // ParseFormalArgList parses the function definition and returns a list of formal arguments
@@ -197,25 +193,29 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	startsp := code.LocalSp
 	// Loop over field access or indexed access.
 	for {
-		if lvalue == nil && s.found(TOK_DOT) {
-			return nil, fmt.Errorf("new identifier '%s' before dot. Struct must exist.", id)
-		} else if s.found(TOK_DOT) && lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
-			if lvalue.IsIndirect {
-				EmitLoadTosIndirect(8, lvalue.Name)
+		if s.found(TOK_DOT) {
+			if lvalue == nil {
+				return nil, fmt.Errorf("new identifier '%s' before dot. Struct must exist", id)
+			} else if lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
+				if lvalue.IsIndirect {
+					EmitLoadTosIndirect(8, lvalue.Name)
+				}
+				// The id was followed by a dot and a field id, indicated field access.
+				fieldName := s.tokenString
+				s.next()
+				v := &VarDef{}
+				v.Typ, ok = lvalue.Typ.Fields[fieldName]
+				if !ok {
+					return nil, fmt.Errorf("expected field name of the struct %s but was not found", fieldName)
+				}
+				v.Name = fieldName
+				fieldOfs := lvalue.Typ.Offsets[fieldName]
+				EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
+				v.IsIndirect = true
+				lvalue = v
+			} else {
+				return nil, fmt.Errorf("dot found after something that is not a struct")
 			}
-			// The id was followed by a dot and a field id, indicated field access.
-			fieldName := s.tokenString
-			s.next()
-			v := &VarDef{}
-			v.Typ, ok = lvalue.Typ.Fields[fieldName]
-			if !ok {
-				return nil, fmt.Errorf("expected field name of the struct %s but was not found", fieldName)
-			}
-			v.Name = fieldName
-			fieldOfs := lvalue.Typ.Offsets[fieldName]
-			EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
-			v.IsIndirect = true
-			lvalue = v
 		} else if s.found(TOK_LBRACK) {
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
 			index, err := ParseIndex(s, lvalue)
