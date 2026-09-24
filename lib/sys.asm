@@ -275,9 +275,12 @@ _lptr:
 
 _len:
     mov rax, [rsp+8]
+    or rax, rax
+    jz .L1
     mov rax, [rax]
     and rax, 0x7FFFFFFF
     mov [rsp+16], rax
+.L1:
     ret
 
 _bitlen:
