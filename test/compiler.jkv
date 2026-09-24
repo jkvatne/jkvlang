@@ -170,12 +170,12 @@ func read_all(name String) String {
 
 
 func main() {
+    /*
 
     s = new(State)
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
     print("Text size=%d", s.textSize)
-    /*
     filename=""
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]

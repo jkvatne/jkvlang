@@ -146,11 +146,6 @@ func EmitJump(n int, comment string) {
 	emit("jmp", Label(n), "", comment)
 }
 
-func SpTxt() string {
-	ss := "-" + code.StackState()
-	return " (" + strconv.Itoa(code.LocalSp) + "->" + strconv.Itoa(code.LocalSp) + ")" + ss
-}
-
 func EmitPushTos(argNo int, funcName string) {
 	if code.AxIsTos() {
 		// code.Write("   push rax                             ; Push arg " + strconv.Itoa(argNo) + " of " + funcName + "\n")
@@ -995,16 +990,6 @@ func EmitConvertF32toF64() {
 	emit("mov", "[rsp]", "rax", "")
 }
 
-func EmitLoadIndexedVar(frameOfs int, index int64, size int) {
-	ofs := int(index) * size
-	emit("mov", "rax", BpRel(frameOfs), "")
-	emit("add", "rax", strconv.Itoa(ofs), "")
-	if size == 1 {
-		emit("movzx", "eax", "byte [rax+8]", "")
-	}
-	code.SetAx()
-}
-
 func EmitLoadTosIndirect(size int, fieldName string) {
 	EmitComment("EmitLoadTosIndirect")
 	code.SetAx()
@@ -1383,7 +1368,7 @@ func EmitLoadBool(value bool) {
 }
 
 func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
-	// Todo : Use type to determine size to move
+	// TODO : Use type to determine size to move
 	emit("mov", "rax", "["+name+"]", "Load variable "+name)
 	code.SetAx()
 }
@@ -1486,6 +1471,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	// EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
+	EmitAssertTosInRax("")
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
