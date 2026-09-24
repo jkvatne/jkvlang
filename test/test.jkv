@@ -1,19 +1,37 @@
-type State = struct {
-    text String
-}
 
 type RangeIterator = struct {
     start I32
     end I32
 }
 
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func has_prefix(s String, sub String) Bool {
+    for j=range(0, len(sub)-1) {
+        if s[j]!=sub[j] ? return false
+    }
+    return true
+}
 
 func main() {
-    s=new(State)
-    s.text ="AB"
-    ch = 'C'
-    s.text+=ch
-    print("s.text='%s'", s.text)
-    s.text+=ch
-    print("s.text='%s'", s.text)
+    filename=""
+    for i=range(0, argc-1) {
+        print("args[%d]='%s'", i, args[i])
+        if has_prefix(args[i],"xx") {
+            //filename=args[i]
+        }
+    }
+
 }
