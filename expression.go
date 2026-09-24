@@ -42,7 +42,9 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return AssignVariableConst(op, lvalue, value)
 	}
 	// Assign evaluated value to local variable
-	return AssignVariableExpression(op, lvalue, value)
+	err = AssignVariableExpression(op, lvalue, value)
+	code.SetSp()
+	return err
 }
 
 func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
@@ -579,8 +581,6 @@ func ParseAssign(s *State, id string) error {
 		}
 		// Assign values to lvalues
 		for i, value := range values {
-			// EmitFlushRax("Flush value before GenerateAssignment")
-			// code.SetSp()
 			err = GenerateAssignment(op, lvalues[i], value)
 			if err != nil {
 				return err

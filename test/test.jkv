@@ -1,17 +1,9 @@
 
-type Points = []I16
+func test(f I32, cnt I32) String, I32 {
+    return "asb", 12
+}
 
 func main() {
-    points = new(Points, 10)
-    k=4
-    m=5
-    append(points, 3, k, m)
-
-    print("len=%d", len(points))
-    print("points[0]=%d", points[0])
-    print("points[1]=%d", points[1])
-    print("points[2]=%d", points[2])
-    print("points[3]=%d", points[3])
-    print("points[4]=%d", points[4])
+    buf, n = test(11, 12)
 }
 

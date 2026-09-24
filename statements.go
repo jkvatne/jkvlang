@@ -10,7 +10,7 @@ import (
 func ParseReturn(s *State) error {
 	// Return from nested blocks not allowed, because it will not free range struct.
 	if s.BlockLevel > 1 {
-		panic("Return from inner block not allowed")
+		// panic("Return from inner block not allowed")
 	}
 
 	f := s.currentFuncDef

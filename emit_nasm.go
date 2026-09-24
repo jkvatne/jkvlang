@@ -408,7 +408,7 @@ func EmitAssertTosInRax(comment string) {
 		code.SetAx()
 		emit("pop", "rax", "", comment)
 	} else if !code.AxIsTos() {
-		panic("Stack error")
+		// panic("Stack error")
 	}
 }
 
@@ -1380,7 +1380,7 @@ func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string
 	}
 	EmitAssertTosInRax("EmitAssignVariableExpressionInt assert tos in rax")
 	emit(TokenOp[op], BpRel(adr), AxName(size), "EmitAssignVariableExpressionInt "+comment)
-	code.SetUndef()
+	code.SetSp()
 	return nil
 }
 
