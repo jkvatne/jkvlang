@@ -1,10 +1,20 @@
 type State = struct {
     text String
-    size I32
 }
+
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
 
 func main() {
     s = new(State)
-    s.size = len(s.text)
-    //s = new(State)
+    s.text="Hello"
+    s.text[1] = 'h'
+    print("s.text='%s'", s.text)
+    s = new(State)
+    s.text = "Goodby"
+    print("s.text='%s'", s.text)
+
 }

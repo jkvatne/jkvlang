@@ -75,6 +75,12 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef, wasNew bool)
 	return fmt.Errorf("4 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
+func AssignStruct(lvalue *VarDef, value *ValueDef) (err error) {
+	lbl := EmitCheckForOldStruct(lvalue.Offset)
+	FreeStruct(lvalue.Typ)
+	return EmitAssignVariableExpressionStruct(lbl, lvalue.Typ.StructSize, lvalue.Offset, "Assign struct to "+lvalue.Name)
+}
+
 func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
@@ -93,7 +99,7 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		return EmitAssignVariableExpressionStruct(op, lvalue.Typ.StructSize, lvalue.Offset, "Assign struct to "+lvalue.Name)
+		return AssignStruct(lvalue, value)
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
 		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	}
