@@ -1,11 +1,35 @@
-type State = struct {
-    ch1   I32
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+func f(x I32, y I32) I32 {
+    sum = 0
+    for i=range(30) {
+        sum += i
+        if sum>16 {
+            return i
+        }
+    }
+    return sum
 }
 
 func main() {
-	s = new(State)
-	if s.ch1 == '\n' {
-	    print("Eq")
-	}
+    a = f(2,21)
+    print("a=%d", a)
 }
 

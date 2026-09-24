@@ -8,11 +8,6 @@ import (
 )
 
 func ParseReturn(s *State) error {
-	// Return from nested blocks not allowed, because it will not free range struct.
-	if s.BlockLevel > 1 {
-		// panic("Return from inner block not allowed")
-	}
-
 	f := s.currentFuncDef
 	if len(code.ArgCode) > 0 {
 		panic("ArgCode was not empty")
@@ -55,11 +50,16 @@ func ParseReturn(s *State) error {
 			return fmt.Errorf("expected %d returns but got %d", len(f.returnTypes), i)
 		}
 	}
-	EmitJump(s.returnLbl, "Return")
 	code.ConsArgCode(i, false)
 	code.OutputArgCode()
 	s.DidReturn = true
 	s.ParsingReturnValue = false
+	if s.LoopLevel >= 1 {
+		FreeBlockVars(s)
+		emit("mov", "r15", "2", "ParseReturn signal exit from function")
+		EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
+	}
+	EmitJump(s.returnLbl, "Return")
 	return nil
 }
 
@@ -153,6 +153,6 @@ func ParseStatements(s *State) error {
 		}
 		code.SetUndef()
 	}
-	code.EmitLineNo(s.currentLine)
+	//	code.EmitLineNo(s.currentLine)
 	return nil
 }

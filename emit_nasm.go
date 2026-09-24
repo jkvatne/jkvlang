@@ -2106,3 +2106,14 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	emit("inc", "qword [rsi]", "", "")
 	return nil
 }
+
+func EmitReturnIfErr2(eixtLbl int) {
+	lbl := code.NewLabel()
+	emit("mov", "rax", "r15", "")
+	emit("sub", "rax", "2", "")
+	emit("jnz", Label(lbl), "", "Return from function if r15==2")
+	// It r15 was 2, that means to exit now with r15=0
+	emit("xor", "r15", "r15", "")
+	emit("jmp", Label(eixtLbl), "", "Return from function")
+	EmitLabel(lbl, "")
+}

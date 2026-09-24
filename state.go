@@ -27,6 +27,8 @@ type State struct {
 	BlockLevel         int
 	FileName           string
 	ParsingReturnValue bool
+	Cleanup            string
+	LoopLevel          int
 }
 
 func NewState(name string) (*State, error) {

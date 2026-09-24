@@ -25,6 +25,10 @@ func GetTopStartLabel() int {
 }
 
 func GetTopEndLabel() int {
+	if len(EndLabelStack) == 0 {
+		fmt.Printf("Empty EndLabelStack on line %d\n", code.LineNum)
+		return 0
+	}
 	return EndLabelStack[len(EndLabelStack)-1]
 }
 
@@ -99,6 +103,7 @@ func ParseFor(s *State) error {
 	var err error
 	if !s.found(TOK_LBRACE) {
 		s.BlockLevel++
+		s.LoopLevel++
 		lvalues, err = ParseLoopVars(s)
 		if err != nil {
 			return err
@@ -154,9 +159,6 @@ func ParseFor(s *State) error {
 		}
 		EmitJump(GetTopStartLabel(), "Jump to start of loop")
 		EmitLabel(endLabel, "Exit from loop")
-		EmitClearErr()
-		// Clear err if it is 1 as this is used to signal break using pull iterators
-		EmitClearBreakErr()
 		PopLabels()
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
 		// TODO: Do this also for returns from inner loops
@@ -168,7 +170,11 @@ func ParseFor(s *State) error {
 			DeleteLocalVar(s, v.Name)
 		}
 		DeleteBlockVars(s)
+		EmitReturnIfErr2(s.returnLbl)
+		// Clear err if it is 1 as this is used to signal break using pull iterators
+		EmitClearBreakErr()
 		s.BlockLevel--
+		s.LoopLevel--
 	}
 	return err
 }
@@ -182,6 +188,7 @@ func ParseLoop(s *State) error {
 	if !s.found(TOK_LBRACE) {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
+	s.LoopLevel++
 	err := ParseBlock(s, false)
 	if err != nil {
 		return err
@@ -194,5 +201,6 @@ func ParseLoop(s *State) error {
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
+	s.LoopLevel--
 	return err
 }
