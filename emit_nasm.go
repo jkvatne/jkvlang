@@ -950,20 +950,17 @@ func EmitStartAppend(length int) {
 	emit("imul", "rax", strconv.Itoa(length), "")
 	emit("add", "rsi", "rax", "")
 	emit("add", "rsi", "8", "Add slice offset")
-	emit("push", "rsi", "", "")
+	emit("mov", "r13", "rsi", "")
 	code.SetUndef()
 }
 
 func EmitDoAppend(length int) {
-	emit("pop", "rdi", "", "")
-	emit("mov", DataType(length)+"[rdi]", AxName(length), "")
-	emit("add", "rdi", strconv.Itoa(length), "")
-	emit("push", "rdi", "", "")
+	emit("mov", DataType(length)+"[r13]", AxName(length), "")
+	emit("add", "r13", strconv.Itoa(length), "")
 	code.SetUndef()
 }
 
 func EmitUpdateAppendLength(n int) {
-	emit("pop", "rdi", "", "")
 	emit("mov", "rdi", "r12", "")
 	emit("mov", "rax", "[rdi]", "Get length")
 	emit("add", "rax", strconv.Itoa(n), "")
