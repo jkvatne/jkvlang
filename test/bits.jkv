@@ -15,9 +15,12 @@ func unpack64(f F64) (U64, I32) {
     	e = I32((U64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
 		s = 0
 		//s = 64 - bits.Len64(m)
-		return m << s, e - s
+		m = m << s
+		e = e - s
+	} else {
+	    e = (e - 1) -1085
 	}
-	return m, (e - 1) -1085
+	return m,e
 }
 
 

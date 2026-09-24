@@ -710,13 +710,9 @@ func EmitGetAddrOfLocal(ofs int) {
 	emit("push", "rax", "", "b")
 }
 
-func EmitNewString(hasLen bool) {
+func EmitNewString() {
 	// Allocate string
 	EmitAssertTosInRax("Before NewString")
-	if hasLen {
-		emit("mov", "r13", "rax", "save new string length")
-		emit("pop", "rax", "", ""+"get capacity into rax")
-	}
 	emit("mov", "r12", "rax", "save new string capacity")
 	emit("add", "rax", "8", "Add space for cap/len")
 	emit("call", "_alloc", "", "Allocate new string")
@@ -728,9 +724,6 @@ func EmitNewString(hasLen bool) {
 	emit("cld", "", "", "")
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")
-	if hasLen {
-		emit("add", "r12", "r13", "Insert length")
-	}
 	emit("mov", "[rsi]", "r12", "Store capacity")
 	code.SetAx()
 	emit("mov", "rax", "rsi", "Restore rax pointing to string")
@@ -754,26 +747,21 @@ func EmitNewStruct(t *TypeDef) {
 	emit("mov", "rax", "rdx", "")
 }
 
-func EmitNewSlice(elementSize int, hasLen bool) {
+// EmitNewSlice assumes TOS is new capacity (number of elements)
+func EmitNewSlice(elementSize int) {
 	EmitAssertTosInRax("Before NewSlice")
-	if hasLen {
-		emit("mov", "r14", "rax", "new slice length")
-		emit("pop", "rax", "", "")
-	} else {
-		emit("mov", "r14", "0", "new slice length is zero")
-	}
 	emit("mov", "r12", "rax", "new slice capacity (in elements)")
-	emit("imul", "rax", strconv.Itoa(elementSize), "")
+	emit("imul", "rax", strconv.Itoa(elementSize), "Calculate size in bytes")
 	emit("add", "rax", "8", "Add space for len/cap")
+	emit("mov", "r14", "rax", "Save byte size in r14")
 	emit("call", "_alloc", "", "Allocate new slice")
-	emit("mov", "r13", "rax", "Save rax")
+	emit("mov", "r13", "rax", "Save pointer to new slice")
 	emit("mov", "rdi", "rax", "Then clear the new slice")
 	emit("xor", "rax", "rax", "")
-	emit("mov", "rcx", "r12", "")
+	emit("mov", "rcx", "r14", "")
 	emit("cld", "", "", "")
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")
-	emit("add", "r12", "r14", "")
 	emit("mov", "[r13]", "r12", "Store capacity")
 	code.SetAx()
 	emit("mov", "rax", "r13", "Restore rax pointing to slice")
@@ -957,6 +945,7 @@ func EmitFreeSlice(t *TypeDef) {
 
 func EmitStartAppend(length int) {
 	emit("mov", "rsi", "[rax]", "Load slice pointer for append")
+	emit("mov", "r12", "rsi", "")
 	emit("mov", "eax", "[rsi]", "Get length")
 	emit("imul", "rax", strconv.Itoa(length), "")
 	emit("add", "rsi", "rax", "")
@@ -975,6 +964,7 @@ func EmitDoAppend(length int) {
 
 func EmitUpdateAppendLength(n int) {
 	emit("pop", "rdi", "", "")
+	emit("mov", "rdi", "r12", "")
 	emit("mov", "rax", "[rdi]", "Get length")
 	emit("add", "rax", strconv.Itoa(n), "")
 	emit("mov", "[rdi]", "rax", "")
@@ -1989,6 +1979,12 @@ func EmitAssignIndirectExpressionStrStr() error {
 	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
 	emit("mov", "qword [rdi]", "r12", "Save new string")
 	emit("pop", "rax", "", "")
+	return nil
+}
+
+func EmitAssignVariableExpressionSlice(adr int, comment string) error {
+	EmitAssertTosInRax("")
+	emit("mov", BpRel(adr), "rax", "")
 	return nil
 }
 

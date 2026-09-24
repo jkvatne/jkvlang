@@ -97,11 +97,12 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
 		return AssignStruct(lvalue)
+	} else if lvalue.Typ.Pt == code.TYP_SLICE && value.Typ.Pt == code.TYP_SLICE && op == TOK_ASSIGN {
+		return EmitAssignVariableExpressionSlice(lvalue.Offset, "Assign struct to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
 		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
 	}
-	fmt.Printf("3 ")
-	return fmt.Errorf("%s not implemented for %s", op.Name(), value.Typ.Name())
+	return fmt.Errorf("3 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
 func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
@@ -910,22 +911,10 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		if v[0].IsConst {
 			EmitPushConst(v[0].IntValue, "")
 		}
-		hasLen := false
-		if s.found(TOK_COMMA) {
-			// Has length also
-			v2, err2 := ParseExpression(s)
-			if err2 != nil {
-				return nil, err
-			}
-			if v2[0].IsConst {
-				EmitPushConst(v2[0].IntValue, "")
-			}
-			hasLen = true
-		}
 		if t.Pt == code.TYP_STRING {
-			EmitNewString(hasLen)
+			EmitNewString()
 		} else if t.Pt == code.TYP_SLICE {
-			EmitNewSlice(t.Element.Size(), hasLen)
+			EmitNewSlice(t.Element.Size())
 		}
 		if !s.found(TOK_RPAR) {
 			return nil, fmt.Errorf("expected right parenthesis")
@@ -1618,7 +1607,8 @@ func ParseAppend(s *State) error {
 		return fmt.Errorf("first argument to append must be a slice")
 	}
 	if !v.IsIndirect {
-		return fmt.Errorf("expected indirect value")
+		// return fmt.Errorf("expected indirect value")
+		emit("lea", "rax", BpRel(v.Offset), "")
 	}
 	if !s.found(TOK_COMMA) {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)

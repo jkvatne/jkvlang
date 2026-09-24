@@ -95,7 +95,7 @@ func has_prefix(s String, sub String) Bool {
     return ok
 }
 func substring(s String, start I32, end I32) String {
-    t=new(String, end, end-start+1)
+    t=new(String, end-start+1)
     for i=range(start, end) {
         t[i-start] = s[i]
     }
@@ -176,7 +176,7 @@ func main() {
     s.text = "asd fad fad f a dsfad sfasdfadf"
     s.textSize = len(s.text)
     print("Text size=%d", s.textSize)
-    filename=""
+    filename="-file=default.txt"
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }

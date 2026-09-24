@@ -1,33 +1,17 @@
 
-type RangeIterator = struct {
-    start I32
-    end I32
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func substring(s String, start I32, end I32) String {
-    t=new(String, end, end-start+1)
-    for i=range(start, end) {
-        t[i-start] = s[i]
-    }
-    return t
-}
+type Points = []I16
 
 func main() {
-    filename=""
-    u=substring(filename, 6, len(filename)-1)
+    points = new(Points, 10)
+    k=4
+    m=5
+    append(points, 3, k, m)
+
+    print("len=%d", len(points))
+    print("points[0]=%d", points[0])
+    print("points[1]=%d", points[1])
+    print("points[2]=%d", points[2])
+    print("points[3]=%d", points[3])
+    print("points[4]=%d", points[4])
 }
 
