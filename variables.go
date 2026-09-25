@@ -31,6 +31,9 @@ func InitVardefs() {
 	VarDefs["args"] = &VarDef{Name: "args", Typ: &SliceType, IsGlobal: true}
 	VarDefs["envs"] = &VarDef{Name: "envs", Typ: &SliceType, IsGlobal: true}
 	VarDefs["envc"] = &VarDef{Name: "envc", Typ: &I64Type, IsGlobal: true}
+	VarDefs["start_ticks"] = &VarDef{Name: "start_ticks", Typ: &I64Type, IsGlobal: true}
+	VarDefs["tick_count"] = &VarDef{Name: "tick_count", Typ: &I64Type, IsGlobal: true}
+	VarDefs["tick_frequency"] = &VarDef{Name: "tick_frequency", Typ: &I64Type, IsGlobal: true}
 }
 
 func init() {

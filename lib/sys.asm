@@ -75,7 +75,7 @@ alignb 8
 alloc_size_str  dq 76
                 db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
 time_used_str   dq 14
-                db `Ticks used: %d`, 00h
+                db `Time used: %d.%03d mS`, 00h
 
 ;-------------
 section .bss
@@ -121,7 +121,7 @@ section .text
 ;-------------
 
 ; tick will read the performace counter and return a signed 64 bit integer in rax
-_tick:
+_get_ticks:
     push rbp                         ; Prologue: Save frame pointer
     mov rbp, rsp                     ; Prologue: Setup new frame pointer.
     and rsp, -16                     ; Align stack by clearing the 4 lsb
@@ -129,6 +129,7 @@ _tick:
     mov rcx, tick_count              ; Argument 1, points to where tick count should be saved
     call QueryPerformanceCounter
     mov rax, [tick_count]
+    sub rax, [start_ticks]
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
 
@@ -372,7 +373,7 @@ _sysinit:
 
     ; Setup tick timer
     call _get_tick_freq
-    call _tick
+    call _get_ticks
     mov [start_ticks], rax
     leave
     ret

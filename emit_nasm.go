@@ -656,15 +656,23 @@ func EmitEpilogue(name string) {
 		errlbl := code.NewLabel()
 
 		EmitComment("Printing time used")
-		emit("call", "_tick", "", "")
-		emit("sub", "rax", "[start_ticks]", "Printing tick count")
+		emit("call", "_get_ticks", "", "")
+		// rax is now tick count with 100ns resolution. Divide by 10000 to get time in milliseconds
+		emit("mov", "rbx", "10000", "")
+		emit("xor", "rdx", "rdx", "")
+		emit("div", "rbx", "", "")
+
+		emit("push", "rdx", "", "")
+
 		emit("push", "rax", "", "")
+
 		emit("mov", "rax", "time_used_str+8", "")
 		emit("push", "rax", "", "")
-		emit("mov", "rbx", "24", "")
+
+		emit("mov", "rbx", "32", "")
 		emit("call", "_printf", "", "")
 		emit("call", "_fflush", "", "")
-		emit("add", "rsp", "16", "")
+		emit("add", "rsp", "24", "")
 
 		emit("or", "r15", "r15", "")
 		emit("jnz", Label(errlbl), "", "Jump if zero flag is set")
