@@ -1,12 +1,23 @@
+//package main
+
 // Test file
 import (
-    lib
+    iter
     "math"
 )
 
 func main() {
     print("Tick frequency=%d",tick_frequency)
     ok = call(Sleep, 1)
+    sum=0
+
+    /*
+    for i=range(5) {
+        sum+=i
+    }
+    assert(sum==10, "Expected sum=10, got %d", sum)
+    */
+
     print("Goodby")
 }
 

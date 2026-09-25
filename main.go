@@ -73,72 +73,11 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 func Build(workDir string, libPath string, fileName string) (err error) {
 	fmt.Printf("> Build '%s'\n", fileName)
 	outputName := strings.TrimSuffix(filepath.Base(fileName), ".jkv") + ".exe"
-	// Make sure output directory is empty
-	CreateBuildDir(workDir)
 	err = CompileFile(fileName, workDir, libPath)
 	if err == nil {
 		err = LinkRun(workDir, libPath, outputName)
 	}
 	return err
-}
-
-// CompileDir will compile all source files in the given directory
-// and put the object files in the outputPath
-func CompileDir(inputPath string, workDir string, libPath string) error {
-	outputName := path.Base(inputPath)
-	// Make sure output directory is empty
-	err := os.Mkdir(workDir, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("could make work dir, %s", err)
-	}
-	entries, err := os.ReadDir(inputPath)
-	if err != nil {
-		return fmt.Errorf("fatal error %s", err.Error())
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := filepath.Join(inputPath, entry.Name())
-			err = CompileFile(name, libPath, workDir)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("File %s compiled ok\n", name)
-		}
-	}
-	return LinkRun(workDir, libPath, outputName)
-}
-
-// CompileTests will compile all files in the test directory
-// Files starting with err_ should intentionally fail
-// Uses the build directory for outputs
-func CompileTests(inputPath string, workDir string, libPath string) (int, error) {
-	n := 0
-	entries, err := os.ReadDir(inputPath)
-	if err != nil {
-		return n, fmt.Errorf("fatal error %s", err.Error())
-	}
-	for _, entry := range entries {
-		// For each jkv file in the test directory
-		if !entry.IsDir() {
-			n++
-			name := filepath.Join(inputPath, entry.Name())
-			if strings.HasSuffix(name, ".jkv") {
-				if strings.Contains(name, "err_") {
-					err = Build(workDir, libPath, name)
-					if err == nil {
-						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
-					}
-					fmt.Printf("File %s failed with error %v\n", name, err)
-				} else {
-					err = Build(workDir, libPath, name)
-					if err != nil {
-						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
-					}
-				}
-			}
-		}
-	}
-	return n, err
 }
 
 // Assemble wil run the assembler on all *.asm files in the working directory
@@ -301,16 +240,16 @@ func main() {
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		err = Build(*buildDir, libPath, *oneFile)
+		err = CompileFile(*buildDir, libPath, *oneFile)
 	} else if *test {
 		n := 0
-		n, err = CompileTests(*sourceDir, *buildDir, libPath)
+		n, err = CompileTests(*buildDir, libPath, *sourceDir)
 		if err == nil {
 			fmt.Printf("------------------------------------------\n")
 			fmt.Printf("Run %d files. All tests passed\n", n)
 		}
 	} else {
-		err = CompileDir(*sourceDir, libPath, *buildDir)
+		err = CompileDir(*buildDir, libPath, *sourceDir)
 	}
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())

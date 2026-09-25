@@ -20,7 +20,6 @@
 %define STD_INPUT_HANDLE  -10
 %define STD_OUTPUT_HANDLE -11
 %define STD_ERROR_HANDLE  -12
-%define FORMAT_MESSAGE_FROM_SYSTEM  4096
 
 extern GetStdHandle
 extern GetProcessHeap
@@ -39,17 +38,11 @@ global allocation_count
 global f32sign_mask
 global f64sign_mask
 global processHeap
-global alloc_size_str
 
 ; Global functions
-global _exit
 global _sysinit
+global _exit
 global _cstrlen
-global _create_file
-global _write_file
-global _read_file
-global _close_file
-global _get_file_size
 global _lptr
 global _cptr
 global _len
@@ -66,7 +59,6 @@ global _syscall
 section .rodata
 ;-------------
 alignb 8
-sp_mess                db "...rsp=0x%X", 0Ah, 00h
 crlf                   db 0Ch, 0Ah, 00h
 crlf_str               db 0Ah, 00h
 default_assert_mess    db "Assert failed", 00h
@@ -75,7 +67,7 @@ alignb 8
 alloc_size_str  dq 76
                 db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
 time_used_str   dq 14
-                db `Time used: %d.%03d mS`, 00h
+                db `Time used: %d.%03d mS`,0Ah,  00h
 
 ;-------------
 section .bss
@@ -85,13 +77,10 @@ stdOutputHandle resq 1
 stdErrorHandle  resq 1
 stdInputHandle  resq 1
 processHeap     resq 1
-error           resq 1               ; 8 byte string length/capacity
-error_str       resq 32              ; 256 byte string
 
 ;-------------
 section .data
 ;-------------
-locale_str  db ".utf8", 0   ; "UTF" locale, or use "" for system default
 f64sign_mask: dq 0x8000000000000000
 f32sign_mask: dq 0x80000000
 argc: dq 0
@@ -104,17 +93,6 @@ allocation_count   dq 0
 tick_count: dq 0
 start_ticks: dq 0
 tick_frequency: dq 0
-
-;-------------
-section .text
-;-------------
-
-
-%define CREATE_NEW        1    ; Fail if file exists
-%define CREATE_ALWAYS     2    ; Truncate old file if it exists
-%define OPEN_EXISTING     3    ; Fails if file exists
-%define OPEN_ALLWAYS      4
-%define TRUNCATE_EXISTING 5    ; Fails if file exists
 
 ;-------------
 section .text
@@ -134,16 +112,6 @@ _get_ticks:
     ret                              ; Epilogue: Return
 
 _get_tick_freq:
-    push rbp                         ; Prologue: Save frame pointer
-    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
-    and rsp, -16                     ; Align stack by clearing the 4 lsb
-    sub rsp, 32                      ; Reserve shadow space
-    mov rcx, tick_frequency              ; Argument 1, points to where tick count should be saved
-    call QueryPerformanceFrequency
-    leave                            ; Epilogue: Restore old frame pointer
-    ret                              ; Epilogue: Return
-
-_sleep_ms:
     push rbp                         ; Prologue: Save frame pointer
     mov rbp, rsp                     ; Prologue: Setup new frame pointer.
     and rsp, -16                     ; Align stack by clearing the 4 lsb
@@ -186,17 +154,6 @@ _flush:
     call fflush
     leave
     ret
-
-global _printsp
-_printsp:
-    push rsp                    ; Value to be printed
-    mov rax, sp_mess            ; Message at top of stack
-    push rax
-    mov rbx, 16                  ; Stack size is 8 bytes
-    call _printf                ; system function to call
-    add sp, 16
-    ret
-
 
 ; alloc returns a pointerto the allocated memory in rax.
 ; One argument is needed, in rax, and that is the requested size in bytes.

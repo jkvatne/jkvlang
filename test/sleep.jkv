@@ -1,7 +1,7 @@
 
 func main() {
-    print("Hello")
-    ok = call(Sleep, 10)
+    print("Tick frequency=%d",tick_frequency)
+    ok = call(Sleep, 1)
     print("Goodby")
 }
 

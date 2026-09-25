@@ -147,7 +147,6 @@ func ParseStatements(s *State) error {
 		if err != nil {
 			return err
 		}
-		EmitPrintSp()
 		if s.token == TOK_SEMICOLON {
 			s.next()
 		}

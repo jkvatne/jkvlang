@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log/slog"
 	"os"
 )
 
@@ -31,13 +30,10 @@ type State struct {
 	LoopLevel          int
 }
 
-func NewState(name string) (*State, error) {
+func NewState(SourceFile string) (*State, error) {
 	s := new(State)
 	var err error
-	s.text, err = os.ReadFile(name)
-	if err != nil {
-		slog.Error("Could not open file %s : %s", name, err.Error())
-	}
-	s.FileName = name
+	s.text, err = os.ReadFile(SourceFile)
+	s.FileName = SourceFile
 	return s, err
 }

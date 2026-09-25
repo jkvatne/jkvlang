@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path"
 	"strconv"
@@ -184,7 +183,6 @@ func EmitFunction(id string) {
 	emit("mov", "rbp", "rsp", "")
 	code.LocalSp = 0
 	if id == "main" {
-		EmitPrintSp()
 		emit("call", "_sysinit", "", "")
 	}
 	code.SetUndef()
@@ -424,7 +422,6 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("allocation_count")
 		EmitExtern("_printf")
 		EmitExtern("_print")
-		EmitExtern("_printsp")
 		EmitExtern("_fflush")
 		EmitExtern("_exit")
 		EmitExtern("_invert_err")
@@ -443,9 +440,6 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("f64sign_mask")
 		EmitExtern("argv")
 		EmitExtern("argc")
-		EmitExtern("arg0")
-		EmitExtern("arg1")
-		EmitExtern("arg2")
 		EmitExtern("args")
 		EmitExtern("_cstrlen")
 		EmitSection("text")
@@ -454,13 +448,6 @@ func EmitPrologue(libPath string, inc bool) {
 	emit("global", "main", "", "")
 	code.EmitBlankLine()
 	code.EmitBlankLine()
-}
-
-func EmitPrintSp() {
-	if *PrintSp {
-		emit("call", "_printsp", "", "")
-		emit("call", "_fflush", "", "")
-	}
 }
 
 func Inverse(op Token) Token {
@@ -651,7 +638,6 @@ func EmitPushConstString(litNo int) {
 // EmitEpilogue - restores frame pointer and exit
 func EmitEpilogue(name string) {
 	if name == "main" {
-		EmitPrintSp()
 		oklbl := code.NewLabel()
 		errlbl := code.NewLabel()
 
@@ -1142,7 +1128,7 @@ func EmitIntegerOp(op Token) {
 	} else {
 		instruction := TokenOp[op]
 		if instruction == "" {
-			slog.Error("EmitIntegerOp called with invalid token", "op", op.Name())
+			panic("EmitIntegerOp called with invalid token " + op.Name())
 		}
 		if op == TOK_MULT {
 			emit("pop", "rcx", "", "")

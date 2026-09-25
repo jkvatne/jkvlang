@@ -136,7 +136,7 @@ func SpIsTos() bool {
 	return state == sp
 }
 
-func New(name string, workdir string) (err error) {
+func NewAsmFile(name string, workdir string) (err error) {
 	ArgCode = make([]string, 0, 64)
 	CleanupCode = make([]string, 0, 64)
 	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
@@ -151,7 +151,7 @@ func NewLabel() int {
 	LabelNo++
 	return LabelNo
 }
-func CloseObjFile() error {
+func CloseAsmFile() error {
 	return OutputFile.Close()
 }
 

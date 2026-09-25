@@ -2,36 +2,61 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
 
-func CompileFile(name string, workdir string, libPath string) error {
-	err := code.New(name, workdir)
-	if err != nil {
-		return err
+type pkg struct {
+	key  string
+	path string
+}
+
+type ImportedPackages map[string]*pkg
+
+func ParseImport(s *State) error {
+	if s.token != TOK_ID && s.token != TOK_STRING {
+		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
-	InitVardefs()
-	InitTypes()
-	s, err := NewState(name)
-	if err != nil {
-		return err
+	id := s.tokenString
+	fmt.Printf("Import: %s\n", id)
+	s.next()
+	return nil
+}
+
+// ParseImport parses import statements
+func ParseImports(s *State) error {
+	var err error
+	if s.token == TOK_LPAR {
+		s.next()
+		for s.token != TOK_RPAR {
+			err = ParseImport(s)
+			if err != nil {
+				return err
+			}
+		}
+		s.next()
+	} else {
+		err = ParseImport(s)
 	}
-	defer func(s *State) {
-		_ = code.CloseObjFile()
-	}(s)
+	return err
+}
 
-	LiteralInit()
-	EmitPrologue(libPath, true)
-
-	InitTypes()
-	FuncInit()
-
-	// Top level statements can only be func, const or type.
-	// Global variables are not allowed!
+func ScanFile(s *State, name string) (err error) {
 	s.nextChar()
 	s.next()
+	if s.token == TOK_PACKAGE {
+		s.next()
+		if s.token != TOK_ID {
+			return fmt.Errorf("%s:%d %v", name, code.LineNum, "package name should be on top line")
+		}
+		fmt.Printf("Package %s\n", s.tokenString)
+		s.next()
+	}
 
 	// Imports must be at top of file
 	if s.token == TOK_IMPORT {
@@ -55,6 +80,28 @@ func CompileFile(name string, workdir string, libPath string) error {
 			return fmt.Errorf("%s:%d %v", name, code.LineNum, err)
 		}
 	}
+	return err
+}
+
+func InitCompile(workdir string, libPath string, SourceFileName string) (*State, error) {
+	InitVardefs()
+	InitTypes()
+	err := code.NewAsmFile(SourceFileName, workdir)
+	if err != nil {
+		return nil, err
+	}
+	s, err := NewState(SourceFileName)
+	if err != nil {
+		return nil, err
+	}
+	LiteralInit()
+	EmitPrologue(libPath, true)
+	InitTypes()
+	FuncInit()
+	return s, nil
+}
+
+func OutputEpilogue(s *State) error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
@@ -70,4 +117,88 @@ func CompileFile(name string, workdir string, libPath string) error {
 		return fmt.Errorf("missing end of comment")
 	}
 	return nil
+}
+
+// CompileFile will compile and run a single file. It must have a main() function.
+func CompileFile(buildDir string, libPath string, name string) error {
+	s, err := InitCompile(buildDir, libPath, name)
+	if err != nil {
+		return err
+	}
+	defer func(s *State) {
+		_ = code.CloseAsmFile()
+	}(s)
+	err = ScanFile(s, name)
+	if err != nil {
+		return err
+	}
+	err = OutputEpilogue(s)
+	if err != nil {
+		return err
+	}
+	outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
+	return LinkRun(buildDir, libPath, outputName)
+}
+
+// CompileDir will compile all source files in the given directory
+// and put the object files in the outputPath
+func CompileDir(buildDir string, libPath string, inputPath string) error {
+	_, err := InitCompile(buildDir, libPath, "main")
+	outputName := path.Base(inputPath)
+	// Make sure output directory is empty
+	err = os.Mkdir(buildDir, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("could make work dir, %s", err)
+	}
+	entries, err := os.ReadDir(inputPath)
+	if err != nil {
+		return fmt.Errorf("fatal error %s", err.Error())
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			name := filepath.Join(inputPath, entry.Name())
+			err = CompileFile(name, libPath, buildDir)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("File %s compiled ok\n", name)
+		}
+	}
+	return LinkRun(buildDir, libPath, outputName)
+}
+
+// CompileTests will compile all files in the test directory
+// Files starting with err_ should intentionally fail
+// Uses the build directory for outputs
+func CompileTests(buildDir string, libPath string, inputPath string) (int, error) {
+	n := 0
+	entries, err := os.ReadDir(inputPath)
+	if err != nil {
+		return n, fmt.Errorf("fatal error %s", err.Error())
+	}
+	for _, entry := range entries {
+		// For each jkv file in the test directory
+		if !entry.IsDir() {
+			n++
+			name := filepath.Join(inputPath, entry.Name())
+			if strings.HasSuffix(name, ".jkv") {
+				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
+				err = CompileFile(name, buildDir, libPath)
+				if strings.Contains(name, "err_") {
+					if err == nil {
+						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
+					}
+					fmt.Printf("File %s failed with error %v\n", name, err)
+				} else {
+					if err == nil {
+						err = LinkRun(buildDir, libPath, outputName)
+					}
+					if err != nil {
+						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
+					}
+				}
+			}
+		}
+	}
+	return n, err
 }

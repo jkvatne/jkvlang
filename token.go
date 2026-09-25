@@ -90,6 +90,7 @@ const (
 	TOK_SYSCALL
 	TOK_HASH
 	TOK_IMPORT
+	TOK_PACKAGE
 	TOK_SIZE
 )
 
@@ -172,6 +173,7 @@ var TokenNames = [...]string{
 	TOK_SYSCALL:     "SYSCALL",
 	TOK_HASH:        "HASH",
 	TOK_IMPORT:      "IMPORT",
+	TOK_PACKAGE:     "PACKAGE",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -538,6 +540,8 @@ func (s *State) next() {
 				s.token = TOK_VAR
 			case "import":
 				s.token = TOK_IMPORT
+			case "package":
+				s.token = TOK_PACKAGE
 			case "const":
 				s.token = TOK_CONST
 			case "return":
