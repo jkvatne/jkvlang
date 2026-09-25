@@ -83,13 +83,29 @@ func ScanFile(s *State, name string) (err error) {
 	return err
 }
 
-func InitCompile(workdir string, libPath string, SourceFileName string) (*State, error) {
-	InitVardefs()
-	InitTypes()
-	err := code.NewAsmFile(SourceFileName, workdir)
+func CreateBuildDir(buildDir string) {
+	// Make sure output directory is empty
+	err := os.RemoveAll(buildDir)
+	if err != nil {
+		fmt.Printf("could not remove old working directory " + err.Error())
+		os.Exit(1)
+	}
+	err = os.Mkdir(buildDir, os.ModePerm)
+	if err != nil {
+		fmt.Printf("could not create working directory " + err.Error())
+		os.Exit(1)
+	}
+}
+
+func InitCompile(buildDir string, libPath string, SourceFileName string) (*State, error) {
+	CreateBuildDir(buildDir)
+	err := code.NewAsmFile(SourceFileName, buildDir)
 	if err != nil {
 		return nil, err
 	}
+
+	InitVardefs()
+	InitTypes()
 	s, err := NewState(SourceFileName)
 	if err != nil {
 		return nil, err
@@ -157,7 +173,7 @@ func CompileDir(buildDir string, libPath string, inputPath string) error {
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := filepath.Join(inputPath, entry.Name())
-			err = CompileFile(name, libPath, buildDir)
+			err = CompileFile(buildDir, libPath, name)
 			if err != nil {
 				return err
 			}
@@ -183,7 +199,7 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 			name := filepath.Join(inputPath, entry.Name())
 			if strings.HasSuffix(name, ".jkv") {
 				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
-				err = CompileFile(name, buildDir, libPath)
+				err = CompileFile(buildDir, libPath, name)
 				if strings.Contains(name, "err_") {
 					if err == nil {
 						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)

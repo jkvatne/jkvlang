@@ -32,20 +32,6 @@ var (
 	arg       = flag.String("arg", "", "Arguments to the compiled program when it is run")
 )
 
-func CreateBuildDir(buildDir string) {
-	// Make sure output directory is empty
-	err := os.RemoveAll(buildDir)
-	if err != nil {
-		fmt.Printf("could not remove old working directory " + err.Error())
-		os.Exit(1)
-	}
-	err = os.Mkdir(buildDir, os.ModePerm)
-	if err != nil {
-		fmt.Printf("could not create working directory " + err.Error())
-		os.Exit(1)
-	}
-}
-
 func LinkRun(workDir string, libPath string, outputName string) error {
 	var err error
 	// Assemble/link the files
@@ -70,27 +56,17 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 	return err
 }
 
-func Build(workDir string, libPath string, fileName string) (err error) {
-	fmt.Printf("> Build '%s'\n", fileName)
-	outputName := strings.TrimSuffix(filepath.Base(fileName), ".jkv") + ".exe"
-	err = CompileFile(fileName, workDir, libPath)
-	if err == nil {
-		err = LinkRun(workDir, libPath, outputName)
-	}
-	return err
-}
-
 // Assemble wil run the assembler on all *.asm files in the working directory
 // And also the syscall.asm from /tools
-func Assemble(workDir string) error {
-	entries, err := os.ReadDir(workDir)
+func Assemble(buildDir string) error {
+	entries, err := os.ReadDir(buildDir)
 	if err != nil {
 		return fmt.Errorf("collecting asm files error,  %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".asm") {
 			var args = []string{"-f", "win64"}
-			name := filepath.Join(workDir, strings.TrimSuffix(entry.Name(), ".asm"))
+			name := filepath.Join(buildDir, strings.TrimSuffix(entry.Name(), ".asm"))
 			args = append(args, name+".asm", "-o", name+".obj")
 			out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
 			if len(out) > 0 {
@@ -218,20 +194,10 @@ func main() {
 		*sourceDir = wd
 	}
 
-	exePath, err := os.Executable()
+	exePath, _ := os.Executable()
 	exePath = filepath.ToSlash(exePath)
-	if err != nil {
-		fmt.Printf("Error getting executable path: %s\n", err.Error())
-	}
-
 	fmt.Printf("Executable path : %s\n", exePath)
 
-	// Expand temporary build directory path
-	//	*buildDir, err = filepath.Abs(*buildDir)
-	if err != nil {
-		fmt.Printf("could expand working directory " + err.Error())
-		os.Exit(1)
-	}
 	libPath := path.Dir(exePath)
 	libPath = path.Join(libPath, "lib")
 
