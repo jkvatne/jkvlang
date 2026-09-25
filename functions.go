@@ -1,6 +1,9 @@
 package main
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type FuncDef struct {
 	name          string
@@ -66,6 +69,12 @@ func FindFuncDef(id string, parameters []*TypeDef) *FuncDef {
 
 func AddFunc(id string, parList []*TypeDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
 	n := FuncCount(id)
+	if n > 0 {
+		f := FindFuncDef(id, parList)
+		if f != nil {
+			return nil, fmt.Errorf("function %s already exists", id)
+		}
+	}
 	name := id
 	if !builtin {
 		name = id + "_" + strconv.Itoa(n+1)

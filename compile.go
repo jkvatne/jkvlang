@@ -97,27 +97,23 @@ func CreateBuildDir(buildDir string) {
 	}
 }
 
-func InitCompile(buildDir string, libPath string, SourceFileName string) (*State, error) {
+func InitCompile(buildDir string, libPath string, AsmFileName string) error {
 	CreateBuildDir(buildDir)
-	err := code.NewAsmFile(SourceFileName, buildDir)
+	err := code.NewAsmFile(AsmFileName, buildDir)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	InitVardefs()
 	InitTypes()
-	s, err := NewState(SourceFileName)
-	if err != nil {
-		return nil, err
-	}
 	LiteralInit()
 	EmitPrologue(libPath, true)
 	InitTypes()
 	FuncInit()
-	return s, nil
+	return nil
 }
 
-func OutputEpilogue(s *State) error {
+func OutputEpilogue() error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
@@ -129,18 +125,20 @@ func OutputEpilogue(s *State) error {
 	for i, l := range F32LiteralDefs {
 		EmitF32Litteral("f32_"+strconv.Itoa(i+1), l)
 	}
-	if s.CommentLevel > 0 {
-		return fmt.Errorf("missing end of comment")
-	}
 	return nil
 }
 
 // CompileFile will compile and run a single file. It must have a main() function.
 func CompileFile(buildDir string, libPath string, name string) error {
-	s, err := InitCompile(buildDir, libPath, name)
+	err := InitCompile(buildDir, libPath, name)
 	if err != nil {
 		return err
 	}
+	s, err := NewState(name)
+	if err != nil {
+		return err
+	}
+
 	defer func(s *State) {
 		_ = code.CloseAsmFile()
 	}(s)
@@ -148,7 +146,7 @@ func CompileFile(buildDir string, libPath string, name string) error {
 	if err != nil {
 		return err
 	}
-	err = OutputEpilogue(s)
+	err = OutputEpilogue()
 	if err != nil {
 		return err
 	}
@@ -159,27 +157,30 @@ func CompileFile(buildDir string, libPath string, name string) error {
 // CompileDir will compile all source files in the given directory
 // and put the object files in the outputPath
 func CompileDir(buildDir string, libPath string, inputPath string) error {
-	_, err := InitCompile(buildDir, libPath, "main")
+	err := InitCompile(buildDir, libPath, "main")
 	outputName := path.Base(inputPath)
-	// Make sure output directory is empty
-	err = os.Mkdir(buildDir, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("could make work dir, %s", err)
-	}
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
-		return fmt.Errorf("fatal error %s", err.Error())
+		return fmt.Errorf("could not open source directory, %v", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			name := filepath.Join(inputPath, entry.Name())
-			err = CompileFile(buildDir, libPath, name)
+			s, err := NewState(name)
+			if err != nil {
+				return err
+			}
+			err = ScanFile(s, name)
+			if err != nil {
+				return err
+			}
 			if err != nil {
 				return err
 			}
 			fmt.Printf("File %s compiled ok\n", name)
 		}
 	}
+	err = OutputEpilogue()
 	return LinkRun(buildDir, libPath, outputName)
 }
 
@@ -190,7 +191,7 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 	n := 0
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
-		return n, fmt.Errorf("fatal error %s", err.Error())
+		return n, fmt.Errorf("could not open source directory '%s'", err.Error())
 	}
 	for _, entry := range entries {
 		// For each jkv file in the test directory
