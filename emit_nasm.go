@@ -654,12 +654,25 @@ func EmitEpilogue(name string) {
 		EmitPrintSp()
 		oklbl := code.NewLabel()
 		errlbl := code.NewLabel()
+
+		EmitComment("Printing time used")
+		emit("call", "_tick", "", "")
+		emit("sub", "rax", "[start_ticks]", "Printing tick count")
+		emit("push", "rax", "", "")
+		emit("mov", "rax", "time_used_str+8", "")
+		emit("push", "rax", "", "")
+		emit("mov", "rbx", "24", "")
+		emit("call", "_printf", "", "")
+		emit("call", "_fflush", "", "")
+		emit("add", "rsp", "16", "")
+
 		emit("or", "r15", "r15", "")
 		emit("jnz", Label(errlbl), "", "Jump if zero flag is set")
 		emit("mov", "rax", "[allocation_count]", "")
 		emit("or", "rax", "rax", "")
 		emit("jz", Label(oklbl), "", "Jump if zero flag is set")
 		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
+
 		EmitComment("main() returning. Printing allocation count end err.")
 		emit("push", "r15", "", "")
 		emit("mov", "rax", "[allocation_count]", "Printing allocation count")
@@ -670,6 +683,7 @@ func EmitEpilogue(name string) {
 		emit("call", "_printf", "", "")
 		emit("call", "_fflush", "", "")
 		emit("add", "rsp", "24", "")
+
 		EmitLabel(oklbl, "End of printing errors, returning error code via _exit()")
 		emit("mov", "rax", "[allocation_count]", "Check that allocation count is zero")
 		emit("or", "rax", "rax", "")

@@ -32,6 +32,13 @@ func CompileFile(name string, workdir string, libPath string) error {
 	// Global variables are not allowed!
 	s.nextChar()
 	s.next()
+
+	// Imports must be at top of file
+	if s.token == TOK_IMPORT {
+		s.next()
+		err = ParseImports(s)
+	}
+
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			err = ParseFuncDef(s)

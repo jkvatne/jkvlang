@@ -1500,6 +1500,34 @@ func ParseTypeDefs(s *State) error {
 	return err
 }
 
+func ParseImport(s *State) error {
+	if s.token != TOK_ID && s.token != TOK_STRING {
+		return fmt.Errorf("expected id but got %s", s.tokenString)
+	}
+	id := s.tokenString
+	fmt.Printf("Import: %s\n", id)
+	s.next()
+	return nil
+}
+
+// ParseImport parses import statements
+func ParseImports(s *State) error {
+	var err error
+	if s.token == TOK_LPAR {
+		s.next()
+		for s.token != TOK_RPAR {
+			err = ParseImport(s)
+			if err != nil {
+				return err
+			}
+		}
+		s.next()
+	} else {
+		err = ParseImport(s)
+	}
+	return err
+}
+
 // ParseVars parses a parenthesis var declaration
 func ParseVars(s *State) error {
 	var err error

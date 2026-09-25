@@ -29,6 +29,9 @@ extern HeapAlloc
 extern HeapFree
 extern printf
 extern fflush
+extern QueryPerformanceCounter
+extern QueryPerformanceFrequency
+extern Sleep
 
 ; Global variables
 global argc, argv, args, env, envs, envc
@@ -69,8 +72,10 @@ crlf_str               db 0Ah, 00h
 default_assert_mess    db "Assert failed", 00h
 
 alignb 8
-alloc_size_str  dq 19
+alloc_size_str  dq 76
                 db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
+time_used_str   dq 14
+                db `Ticks used: %d`, 00h
 
 ;-------------
 section .bss
@@ -96,6 +101,9 @@ envs: dq 0   ; Slice for environment
 env: dq 0
 envc: dq 0
 allocation_count   dq 0
+tick_count: dq 0
+start_ticks: dq 0
+tick_frequency: dq 0
 
 ;-------------
 section .text
@@ -111,6 +119,38 @@ section .text
 ;-------------
 section .text
 ;-------------
+
+; tick will read the performace counter and return a signed 64 bit integer in rax
+_tick:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
+    mov rcx, tick_count              ; Argument 1, points to where tick count should be saved
+    call QueryPerformanceCounter
+    mov rax, [tick_count]
+    leave                            ; Epilogue: Restore old frame pointer
+    ret                              ; Epilogue: Return
+
+_get_tick_freq:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
+    mov rcx, tick_frequency              ; Argument 1, points to where tick count should be saved
+    call QueryPerformanceFrequency
+    leave                            ; Epilogue: Restore old frame pointer
+    ret                              ; Epilogue: Return
+
+_sleep_ms:
+    push rbp                         ; Prologue: Save frame pointer
+    mov rbp, rsp                     ; Prologue: Setup new frame pointer.
+    and rsp, -16                     ; Align stack by clearing the 4 lsb
+    sub rsp, 32                      ; Reserve shadow space
+    mov rcx, tick_frequency              ; Argument 1, points to where tick count should be saved
+    call QueryPerformanceFrequency
+    leave                            ; Epilogue: Restore old frame pointer
+    ret                              ; Epilogue: Return
 
 _print:
     mov rdi, printf
@@ -304,6 +344,7 @@ _sysinit:
     mov [argc],rcx
     mov [argv],rdx
     mov [env], r8
+
     ; Get this threads local allocation heap
     call GetProcessHeap
     mov [processHeap], rax
@@ -328,6 +369,11 @@ _sysinit:
     ; Initialize the error code
     mov  r15, 0
     mov qword [allocation_count], 0
+
+    ; Setup tick timer
+    call _get_tick_freq
+    call _tick
+    mov [start_ticks], rax
     leave
     ret
 
