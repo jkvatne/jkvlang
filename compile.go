@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -125,6 +124,9 @@ func OutputEpilogue() error {
 	for i, l := range F32LiteralDefs {
 		EmitF32Litteral("f32_"+strconv.Itoa(i+1), l)
 	}
+	for _, l := range SliceLiteralDefs {
+		EmitSliceLit(*l)
+	}
 	return nil
 }
 
@@ -158,7 +160,6 @@ func CompileFile(buildDir string, libPath string, name string) error {
 // and put the object files in the outputPath
 func CompileDir(buildDir string, libPath string, inputPath string) error {
 	err := InitCompile(buildDir, libPath, "main")
-	outputName := path.Base(inputPath)
 	entries, err := os.ReadDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("could not open source directory, %v", err.Error())
@@ -180,8 +181,7 @@ func CompileDir(buildDir string, libPath string, inputPath string) error {
 			fmt.Printf("File %s compiled ok\n", name)
 		}
 	}
-	err = OutputEpilogue()
-	return LinkRun(buildDir, libPath, outputName)
+	return OutputEpilogue()
 }
 
 // CompileTests will compile all files in the test directory
@@ -218,4 +218,21 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 		}
 	}
 	return n, err
+}
+
+func CompileImports(buildDir string, libPath string) error {
+	entries, err := os.ReadDir("./imports")
+	if err != nil {
+		return fmt.Errorf("could not open source directory, %v", err.Error())
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			name := filepath.Join("./imports", entry.Name())
+			err = CompileDir(buildDir, libPath, name)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

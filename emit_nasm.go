@@ -110,6 +110,13 @@ func EmitF32Litteral(litName string, litValue float32) {
 	code.Write(litName + " dd " + value + "\n")
 }
 
+func EmitSliceLit(l SliceLit) {
+	code.Write(l.name + " ")
+	for _, v := range l.IntValues {
+		code.Write(" dq " + strconv.Itoa(int(v)) + "\n")
+	}
+}
+
 func EmitExtern(name string) {
 	code.Write("extern " + name + "\n")
 }
@@ -1005,15 +1012,7 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 		emit("add", "rax", "8", "")
 		emit("add", "rax", "["+id+"]", "EmitLoadGlobal")
 	}
-	if size == 1 {
-		emit("movzx", "rax", "byte [rax]", "Get char from string in EmitLoadGlobal")
-	} else if size == 2 || size == 4 {
-		emit("movzx", "rax", DataType(size)+"[rax]", "")
-	} else if size == 8 {
-		emit("mov", "rax", "[rax]", "")
-	} else {
-		panic("TODO")
-	}
+	EmitLoadIndirectAx("rax", size)
 	code.SetAx()
 }
 
@@ -1059,15 +1058,7 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 		// emit("add", "rax", "rbx", "Calculate address by adding offset 3")
 	}
 	code.SetAx()
-	if size == 1 {
-		emit("movzx", "rax", "byte [rax]", "LoadIndexedValue: Get char from string")
-	} else if size == 2 || size == 4 {
-		emit("movzx", "rax", DataType(size)+"[rax]", "LoadIndexedValue: Get word/dword")
-	} else if size == 8 {
-		emit("mov", "rax", "[rax]", "LoadIndexedValue: Get qword")
-	} else {
-		panic("TODO")
-	}
+	EmitLoadIndirectAx("rax", size)
 }
 
 func EmitClearErr() {
@@ -1470,35 +1461,57 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
 		emit("imul", "rax", "[rsi]", "")
-		emit("mov", "[rsi]", "rax", "")
+		emit("mov", "[rdi]", "rax", "")
 		return nil
 	} else if op == TOK_DIV_ASGN {
 		emit("mov", "rcx", "rax", "")
-		emit("mov", "rax", "[rsi]", "")
+		emit("mov", "rax", "[rdi]", "")
 		emit("cdq", "", "", "")
 		emit("idiv", "ecx", "", "")
-		emit("mov", "[rsi]", "rax", "")
+		emit("mov", "[rdi]", "rax", "")
 		return nil
 	}
+	emit(TokenOp[op], DataType(size)+"[rsi]", AxName(size), "EmitStoreIndirect")
+	return nil
+}
+
+func EmitStoreIndirectAx(op Token, reg string, size int) error {
+	reg = DataType(size) + "[" + reg + "]"
 	if size == 8 {
-		emit(TokenOp[op], "[rsi]", "rax", "EmitStoreIndirect quad")
+		emit(TokenOp[op], reg, "rax", "EmitStoreIndirect quad")
 	} else if size == 4 {
-		emit(TokenOp[op], "dword [rsi]", "eax", "EmitStoreIndirect dword")
+		emit(TokenOp[op], reg, "eax", "EmitStoreIndirect dword")
 	} else if size == 2 {
-		emit(TokenOp[op], "word [rsi]", "ax", "EmitStoreIndirect word")
+		emit(TokenOp[op], reg, "ax", "EmitStoreIndirect word")
 	} else if size == 1 {
-		emit(TokenOp[op], "byte [rsi]", "al", "EmitStoreIndirect byte")
+		emit(TokenOp[op], reg, "al", "EmitStoreIndirect byte")
 	} else {
 		return fmt.Errorf("store indirect with wrong size")
 	}
 	return nil
 }
 
+func EmitLoadIndirectAx(reg string, size int) error {
+	reg = DataType(size) + "[" + reg + "]"
+	if size == 1 {
+		emit("mov", "al", reg, "")
+	} else if size == 2 {
+		emit("mov", "ax", reg, "")
+	} else if size == 4 {
+		emit("mov", "eax", reg, "")
+	} else if size == 8 {
+		emit("mov", "rax", reg, "")
+	} else {
+		return fmt.Errorf("load not implemented for size %d")
+	}
+	return nil
+}
+
 // EmitAssignIndirectConstInt assumes pointer in TOS and constant in parameter "value"
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
-	EmitComment("EmitAssignIndirectConstInt")
+	var err error
+	// EmitComment("EmitAssignIndirectConstInt")
 	EmitFlushRax("")
-	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt")
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token %s", op.Name())
@@ -1506,16 +1519,8 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 	if op == TOK_ASSIGN {
 		emit("mov", DataType(size)+" [rdi]", strconv.Itoa(int(value)), "")
 	} else {
-		// Do a read modify write operation, f.e.x +=
-		if size == 4 {
-			emit("mov", "eax", "[rdi]", comment)
-		} else if size == 8 {
-			emit("mov", "rax", "[rdi]", "")
-		} else if size == 1 {
-			emit("mov", "al", "byte [rdi]", "")
-		} else {
-			return fmt.Errorf("%s not implemented for size %d", op.Name(), size)
-		}
+		// Do a read modify write operation, f.e.x +=f
+		err = EmitLoadIndirectAx("rdi", size)
 		if instr == "idiv" {
 			emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
 			if size != 4 {
@@ -1528,12 +1533,11 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 		}
 		emit("mov", "[rdi]", AxName(size), "")
 	}
-	return nil
+	return err
 }
 
 // EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax
 func EmitAssignIndirectExpressionF64(op Token) error {
-	emit("pop", "rdi", "", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "[rdi]", "rax", "")
@@ -1552,7 +1556,6 @@ func EmitAssignIndirectExpressionF64(op Token) error {
 }
 
 func EmitAssignIndirectExpressionF32(op Token) error {
-	emit("pop", "rdi", "", "")
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "dword [rdi]", "eax", "")
@@ -1681,9 +1684,7 @@ func EmitAssignVariableExpressionStruct(lbl int, adr int, comment string) error 
 // TOS is new slice, NOS is indirect pointer
 func EmitAssignIndirectExpressionSlice() error {
 	EmitAssertTosInRax("")
-	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
 	emit("mov", "qword [rdi]", "rax", "Save new slice")
-	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -1691,9 +1692,7 @@ func EmitAssignIndirectExpressionSlice() error {
 // TOS is new slice, NOS is indirect pointer
 func EmitAssignIndirectExpressionStruct() error {
 	EmitAssertTosInRax("")
-	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
 	emit("mov", "qword [rdi]", "rax", "Save new struct")
-	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -2124,4 +2123,12 @@ func EmitReturnIfErr2(eixtLbl int) {
 	emit("xor", "r15", "r15", "")
 	emit("jmp", Label(eixtLbl), "", "Return from function")
 	EmitLabel(lbl, "")
+}
+
+func EmitIncrPtr(size int) {
+	emit("add", "rdi", strconv.Itoa(size), "Incr pointer")
+}
+
+func EmitSetupDi() {
+	emit("mov", "rsi", "rsp", "")
 }

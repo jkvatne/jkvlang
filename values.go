@@ -27,6 +27,16 @@ type ValueDef struct {
 	localVar    *VarDef
 }
 
+type SliceLit struct {
+	count        int
+	name         string
+	IntValues    []int64
+	UintValues   []uint64
+	FloatValues  []float64
+	BoolValues   []bool
+	StringValues []string
+}
+
 var (
 	False             = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
 	True              = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
@@ -35,6 +45,7 @@ var (
 	StringLiteralDefs []string
 	F64LiteralDefs    []float64
 	F32LiteralDefs    []float32
+	SliceLiteralDefs  []*SliceLit
 )
 
 func (v *ValueDef) HasValue() bool {

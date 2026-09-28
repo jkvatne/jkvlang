@@ -17,7 +17,7 @@ import (
 const Version string = "v0.0.2"
 
 var (
-	buildDir  = flag.String("build", "./build", "Path to intermediate files during build")
+	buildDir  = flag.String("build", "c:/doc/compiler/build", "Path to intermediate files during build")
 	run       = flag.Bool("run", true, "Set true to run after compile")
 	test      = flag.Bool("test", false, "Set true to run after compile")
 	link      = flag.Bool("link", true, "Set true to just do linking")
@@ -68,7 +68,7 @@ func Assemble(buildDir string) error {
 			var args = []string{"-f", "win64"}
 			name := filepath.Join(buildDir, strings.TrimSuffix(entry.Name(), ".asm"))
 			args = append(args, name+".asm", "-o", name+".obj")
-			out, err := exec.Command("../tools/nasm.exe", args...).CombinedOutput()
+			out, err := exec.Command("c:/doc/compiler/tools/nasm.exe", args...).CombinedOutput()
 			if len(out) > 0 {
 				fmt.Println(string(out))
 			}
@@ -100,7 +100,7 @@ func Link(workDir string, libPath string, outputName string) error {
 	}
 
 	outputPath := path.Join(workDir, outputName)
-	LinkerName := "../tools/"
+	LinkerName := "c:/doc/compiler/tools/"
 	if *UseGcc {
 		LinkerName += "MinGW64/bin/gcc.exe"
 		if *linklib {
@@ -156,8 +156,7 @@ func Link(workDir string, libPath string, outputName string) error {
 
 // Run will start execution of the exe file made by the link step
 func Run(outputName string) error {
-	cwd, _ := os.Getwd()
-	out, err := exec.Command(path.Join(cwd, outputName), *arg).CombinedOutput()
+	out, err := exec.Command(outputName, *arg).CombinedOutput()
 	fmt.Printf("%s", string(out))
 	if err != nil {
 		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())
@@ -201,6 +200,8 @@ func main() {
 	libPath := path.Dir(exePath)
 	libPath = path.Join(libPath, "lib")
 
+	// CompileImports(*buildDir, libPath)
+
 	// Now compile the source files into asm files
 	if *oneFile != "" {
 		if !strings.Contains(*oneFile, ".") {
@@ -216,6 +217,9 @@ func main() {
 		}
 	} else {
 		err = CompileDir(*buildDir, libPath, *sourceDir)
+		if err == nil {
+			err = LinkRun(*buildDir, libPath, "main")
+		}
 	}
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())

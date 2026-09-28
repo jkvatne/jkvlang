@@ -18,6 +18,7 @@ type Points = []I16
  }
 
 func main() {
+    var pts Points
 
     // 1. Test assign strings to struct and verify char from string
     n = new(Name)

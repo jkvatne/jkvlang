@@ -127,6 +127,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 }
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err error) {
+	emit("pop", "rdi", "", "")
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
 	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
@@ -1565,7 +1566,6 @@ func ParseVar(s *State, isGlobal bool) error {
 		v = AddLocalVar(s, id, typ)
 		v.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 	}
-
 	if s.token == TOK_ASSIGN {
 		s.next()
 		val := ""
@@ -1581,6 +1581,46 @@ func ParseVar(s *State, isGlobal bool) error {
 			} else {
 				s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
 			}
+		} else if s.token == TOK_LBRACE {
+			// EmitSetupDi()
+			s.next()
+			lit := new(SliceLit)
+			lit.name = id
+			for {
+				hasUnaryMinus := false
+				if s.token == TOK_MINUS {
+					hasUnaryMinus = true
+					s.next()
+				}
+				constVal, err := ParseUnary(s, hasUnaryMinus)
+				if err != nil {
+					return err
+				}
+				if v.Typ.Element.Pt.IsInteger() {
+					lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
+				} else {
+					return fmt.Errorf("Wrong type")
+				}
+				/*if err != nil {
+					return err
+				}
+				if v.Typ.Element.Pt.IsInteger() {
+					err = EmitAssignIndirectConstInt(TOK_ASSIGN, v.Typ.Pt.Size(), constVal[0].IntValue, "")
+					if err != nil {
+						return err
+					}
+				} else if v.Typ.Element.Pt == code.TYP_F32 {
+					err = EmitOpAssignIndirectConstF32(TOK_ASSIGN, float32(constVal[0].FloatValue))
+				} else if v.Typ.Element.Pt == code.TYP_F64 {
+					err = EmitOpAssignIndirectConstF64(TOK_ASSIGN, constVal[0].FloatValue)
+				}
+				EmitIncrPtr(v.Typ.Pt.Size())
+				*/
+				if !s.found(TOK_COMMA) {
+					break
+				}
+			}
+			SliceLiteralDefs = append(SliceLiteralDefs, lit)
 		} else {
 			val = s.tokenString
 		}

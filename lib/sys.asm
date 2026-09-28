@@ -203,8 +203,11 @@ _free_slice:
     mov rbp, rsp
     and rsp, -16                     ; Align stack by clearing the 4 lsb
     sub rsp, 40                      ; Reserve shadow space
-    mov rdi, rax                     ; Save objecgt pointer in rdi
 
+    or rax, rax                      ; Check for nil
+    jz .L2
+
+    mov rdi, rax                     ; Save objecgt pointer in rdi
     mov rax, [rdi]                   ; Load len/cap
     shr rax, 32                      ; Extract cap
     imul rax, rcx                    ; Multiply capacity by elementsize

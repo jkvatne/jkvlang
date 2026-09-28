@@ -1,5 +1,4 @@
 const (
-    // dwCreationDisposition.
     CREATE_NEW     I32 = 1    // Fails if file already exists
     CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
     OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
@@ -29,16 +28,15 @@ func nextChar(s State) I32 {
 		s.NextLineNum+=1
 	}
 	if s.p >= len(s.text) {
+	    print("End of test")
 		s.ch2 = 0
 		s.token = 0
 	} else {
 		// TODO s.ch2, n = DecodeRune(s.text[s.p:])
+		s.ch2 = s.text[s.p]
+		n = 1
 		s.p += n
 	}
-    if s.p>=len(s.text) {
-        return 0
-    }
-	s.ch2 = s.text[s.p]
 	return s.ch1
 }
 
@@ -126,6 +124,7 @@ func nextToken(s State) {
     if s.p>=s.textSize {
         s.token = TOK_EOF
     } else {
+        print("1")
         ch = nextChar(s)
         if ch == 0x22 {  // "
    			s.tokenString = ">>>>>>>>"
@@ -137,6 +136,7 @@ func nextToken(s State) {
                 s.tokenString+=ch
             }
         } if ch>='A' && ch<'z' {
+            print("2")
             id = ""
             loop {
                 if ch<'A' || ch>'z' || ch==0 ? break
@@ -163,14 +163,6 @@ func nextToken(s State) {
     }
 }
 
-func Parse(s State) {
-    loop{
-        nextToken(s)
-        if s.token == 0 ? break
-        //print("ch1=0x%02x", s.ch1)
-    }
-}
-
 func read_all(name String) String {
     buf ="  "
     f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
@@ -188,12 +180,8 @@ func read_all(name String) String {
 
 
 func main() {
-
     s = new(State)
-    s.text = "asd fad fad f a dsfad sfasdfadf"
-    s.textSize = len(s.text)
-    print("Text size=%d", s.textSize)
-    filename="-file=default.txt"
+    filename="-file=default.jkv"
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
@@ -201,12 +189,17 @@ func main() {
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
 
-    // Must use explicit filename during tests
+    // Must use explicit filename during tests. Testing self-compile.
     filename = "C:/doc/compiler/test/compiler.jkv"
 
     s.text = read_all(filename)
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
-    Parse(s)
+    ch = nextChar(s)
+    loop{
+        nextToken(s)
+        print("Token=%s", s.tokenString)
+        if s.token == 0 ? break
+    }
 }
 
