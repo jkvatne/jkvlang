@@ -1,0 +1,6 @@
+package main
+
+func print_freq() {
+    print("Tick frequency=%d",tick_frequency)
+    ok = call(Sleep, 1)
+}
