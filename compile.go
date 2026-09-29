@@ -132,6 +132,7 @@ func OutputEpilogue() error {
 
 // CompileFile will compile and run a single file. It must have a main() function.
 func CompileFile(buildDir string, libPath string, name string) error {
+	fmt.Printf(">>> Compiling %s\n", name)
 	err := InitCompile(buildDir, libPath, name)
 	if err != nil {
 		return err
@@ -152,8 +153,7 @@ func CompileFile(buildDir string, libPath string, name string) error {
 	if err != nil {
 		return err
 	}
-	outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
-	return LinkRun(buildDir, libPath, outputName)
+	return nil
 }
 
 // CompileDir will compile all source files in the given directory

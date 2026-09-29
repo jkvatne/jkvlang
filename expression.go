@@ -127,6 +127,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 }
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err error) {
+	EmitAssertTosInRax("")
 	emit("pop", "rdi", "", "")
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
@@ -724,7 +725,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				size = v.Typ.Element.Size()
 			}
 			if vp.IsGlobal {
-				EmitLoadGlobal(id, size, int(index.IntValue), index.IsConst)
+				EmitGlobalIndexedValue(id, size, int(index.IntValue), index.IsConst)
 			} else {
 				LoadIndexedValue(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
 			}
@@ -1456,7 +1457,9 @@ func ParseFuncDef(s *State) error {
 	for _, p := range parList {
 		DeleteLocalVar(s, p.Name)
 	}
-
+	if s.CommentLevel > 0 {
+		return fmt.Errorf("missing end of comment")
+	}
 	if startLevel != s.BlockLevel {
 		return fmt.Errorf("Block level wrong on exit from " + fun)
 	}
@@ -1587,6 +1590,9 @@ func ParseVar(s *State, isGlobal bool) error {
 			lit := new(SliceLit)
 			lit.name = id
 			for {
+				if s.token == TOK_RBRACE {
+					break
+				}
 				hasUnaryMinus := false
 				if s.token == TOK_MINUS {
 					hasUnaryMinus = true
@@ -1601,25 +1607,16 @@ func ParseVar(s *State, isGlobal bool) error {
 				} else {
 					return fmt.Errorf("Wrong type")
 				}
-				/*if err != nil {
-					return err
-				}
-				if v.Typ.Element.Pt.IsInteger() {
-					err = EmitAssignIndirectConstInt(TOK_ASSIGN, v.Typ.Pt.Size(), constVal[0].IntValue, "")
-					if err != nil {
-						return err
-					}
-				} else if v.Typ.Element.Pt == code.TYP_F32 {
-					err = EmitOpAssignIndirectConstF32(TOK_ASSIGN, float32(constVal[0].FloatValue))
-				} else if v.Typ.Element.Pt == code.TYP_F64 {
-					err = EmitOpAssignIndirectConstF64(TOK_ASSIGN, constVal[0].FloatValue)
-				}
-				EmitIncrPtr(v.Typ.Pt.Size())
-				*/
 				if !s.found(TOK_COMMA) {
 					break
 				}
 			}
+			if v.Typ.Element.Pt.IsInteger() {
+				lit.count = len(lit.IntValues)
+			} else {
+				return fmt.Errorf("Wrong type")
+			}
+			lit.size = v.Typ.Element.Pt.Size()
 			SliceLiteralDefs = append(SliceLiteralDefs, lit)
 		} else {
 			val = s.tokenString

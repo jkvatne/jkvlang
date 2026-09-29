@@ -110,10 +110,16 @@ func EmitF32Litteral(litName string, litValue float32) {
 	code.Write(litName + " dd " + value + "\n")
 }
 
+var SizeNames = [...]string{"0", "db", "dw", "3", "dd", "5", "6", "7", "dq"}
+
 func EmitSliceLit(l SliceLit) {
+	code.Write("alignb 8\n")
 	code.Write(l.name + " ")
+	code.Write(" dd " + strconv.Itoa(int(l.count)) + ";   len\n")
+	code.Write(" dd 0  ; cap\n")
+	sizeName := SizeNames[l.size]
 	for _, v := range l.IntValues {
-		code.Write(" dq " + strconv.Itoa(int(v)) + "\n")
+		code.Write(sizeName + " " + strconv.Itoa(int(v)) + "\n")
 	}
 }
 
@@ -999,10 +1005,10 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 	EmitComment("")
 }
 
-// EmitLoadGlobal TOS is index. Pointer is in global variable <id>
-func EmitLoadGlobal(id string, size int, index int, isConst bool) {
+// EmitGlobalIndexedValue TOS is index. Pointer is in global variable <id>
+func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
 	if isConst {
-		emit("mov", "rax", "["+id+"]", "EmitLoadGlobal")
+		emit("lea", "rax", "["+id+"]", "EmitLoadGlobal const")
 		emit("add", "rax", strconv.Itoa(index*size+8), "Index element "+strconv.Itoa(index)+" of string/slice")
 	} else {
 		EmitAssertTosInRax("Assure tos (index) is in rax")
@@ -1010,7 +1016,7 @@ func EmitLoadGlobal(id string, size int, index int, isConst bool) {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "")
-		emit("add", "rax", "["+id+"]", "EmitLoadGlobal")
+		emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
 	}
 	EmitLoadIndirectAx("rax", size)
 	code.SetAx()
@@ -1355,7 +1361,7 @@ func EmitLoadBool(value bool) {
 
 func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 	// TODO : Use type to determine size to move
-	emit("mov", "rax", "["+name+"]", "Load variable "+name)
+	emit("mov", "rax", "["+name+"]", "Load global variable "+name)
 	code.SetAx()
 }
 
@@ -1457,10 +1463,8 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	// EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
-	EmitAssertTosInRax("")
-	emit("pop", "rsi", "", "Pop lvalue pointer into rsi")
 	if op == TOK_MULT_ASGN {
-		emit("imul", "rax", "[rsi]", "")
+		emit("imul", "rax", "[rdi]", "")
 		emit("mov", "[rdi]", "rax", "")
 		return nil
 	} else if op == TOK_DIV_ASGN {
@@ -1471,7 +1475,7 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 		emit("mov", "[rdi]", "rax", "")
 		return nil
 	}
-	emit(TokenOp[op], DataType(size)+"[rsi]", AxName(size), "EmitStoreIndirect")
+	emit(TokenOp[op], DataType(size)+"[rdi]", AxName(size), "EmitAssignIndirectExpressionInt")
 	return nil
 }
 
@@ -1494,9 +1498,9 @@ func EmitStoreIndirectAx(op Token, reg string, size int) error {
 func EmitLoadIndirectAx(reg string, size int) error {
 	reg = DataType(size) + "[" + reg + "]"
 	if size == 1 {
-		emit("mov", "al", reg, "")
+		emit("movzx", "rax", reg, "")
 	} else if size == 2 {
-		emit("mov", "ax", reg, "")
+		emit("movzx", "rax", reg, "")
 	} else if size == 4 {
 		emit("mov", "eax", reg, "")
 	} else if size == 8 {
@@ -1512,6 +1516,7 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 	var err error
 	// EmitComment("EmitAssignIndirectConstInt")
 	EmitFlushRax("")
+	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt")
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitIntegerOp called with invalid token %s", op.Name())

@@ -1,3 +1,4 @@
+/*
 const (
     CREATE_NEW     I32 = 1    // Fails if file already exists
     CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
@@ -177,10 +178,12 @@ func read_all(name String) String {
     }
     return buf
 }
-
+*/
 
 func main() {
-    s = new(State)
+    print("Compiler")
+
+/*    s = new(State)
     filename="-file=default.jkv"
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
@@ -201,5 +204,6 @@ func main() {
         print("Token=%s", s.tokenString)
         if s.token == 0 ? break
     }
+    */
 }
 

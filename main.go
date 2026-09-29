@@ -208,6 +208,10 @@ func main() {
 			*oneFile += ".jkv"
 		}
 		err = CompileFile(*buildDir, libPath, *oneFile)
+		if err != nil {
+			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv") + ".exe"
+			LinkRun(*buildDir, libPath, outputName)
+		}
 	} else if *test {
 		n := 0
 		n, err = CompileTests(*buildDir, libPath, *sourceDir)

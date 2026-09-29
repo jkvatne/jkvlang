@@ -29,6 +29,7 @@ type ValueDef struct {
 
 type SliceLit struct {
 	count        int
+	size         int
 	name         string
 	IntValues    []int64
 	UintValues   []uint64
