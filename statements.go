@@ -52,7 +52,7 @@ func ParseReturn(s *State) error {
 	}
 	code.ConsArgCode(i, false)
 	code.OutputArgCode()
-	s.DidReturn = true
+	s.HasReturned = true
 	s.ParsingReturnValue = false
 	if s.LoopLevel >= 1 {
 		FreeBlockVars(s)
@@ -66,6 +66,9 @@ func ParseReturn(s *State) error {
 // ParseStatement will parse the statements inside a {} block or similar.
 // returned is true if the statement emitted a return instruction
 func ParseStatement(s *State) (err error) {
+	if s.HasReturned {
+		return fmt.Errorf("statement already has returned")
+	}
 	switch s.token {
 	case TOK_ID:
 		id := s.tokenString
@@ -139,6 +142,7 @@ func ParseStatement(s *State) (err error) {
 }
 
 func ParseStatements(s *State) error {
+	s.HasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		s.CollectNextLine()
 		code.LineNum = code.NextLineNum

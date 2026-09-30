@@ -22,7 +22,6 @@ type State struct {
 	LocalRetSize       int // The number of return values from the current function
 	CommentLevel       int
 	returnLbl          int
-	DidReturn          bool
 	BlockLevel         int
 	FileName           string
 	ParsingReturnValue bool

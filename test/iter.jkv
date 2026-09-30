@@ -32,7 +32,7 @@ func main() {
     r.start = x+1
     assert(r.start==1, "Expected r.start=1, got %d", r.start)
 
-    sum = 0
+    sum = I32(0)
     for i = range(2,5) {
         sum+=i
     }

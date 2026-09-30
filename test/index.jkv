@@ -25,8 +25,8 @@ func main() {
     assert(s.size==13, "Expected s.size==13, got %d", s.size)
 
     // Test len("")
-    n = len("")
-    assert(n==0, "Expected n==0, got %d", n)
+    m = len("")
+    assert(m==0, "Expected m==0, got %d", m)
     s.p=6
 	s.ch1 = s.text[s.p]
 	assert(s.ch1==0x61, "Expected s.ch1=0x61, got 0x%x", s.ch1)

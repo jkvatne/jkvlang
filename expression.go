@@ -14,12 +14,12 @@ import (
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		if value.Typ.Pt == code.TYP_U8 || value.Typ.Pt == code.TYP_U16 || value.Typ.Pt == code.TYP_I16 {
-			// Default to I32 when assigning smaller types to a local variable
-			lvalue.Typ = &I32Type
-		} else {
-			lvalue.Typ = value.Typ
-		}
+		// if value.Typ.Pt == code.TYP_U8 || value.Typ.Pt == code.TYP_U16 || value.Typ.Pt == code.TYP_I16 {
+		// Default to I32 when assigning smaller types to a local variable
+		// lvalue.Typ = &I32Type
+		// } else {
+		lvalue.Typ = value.Typ
+		// }
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -827,6 +827,13 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
 		if hasUnaryMinus {
 			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+			if value.Typ.Pt == code.TYP_U8 {
+				value.Typ = TypeDefs["I16"]
+			} else if value.Typ.Pt == code.TYP_U16 {
+				value.Typ = TypeDefs["I32"]
+			} else if value.Typ.Pt == code.TYP_U32 {
+				value.Typ = TypeDefs["I64"]
+			}
 		}
 		if value.Typ == nil {
 			return nil, fmt.Errorf("missing integer type")
@@ -1166,6 +1173,7 @@ func ParseBlock(s *State, isTrue bool) error {
 // ParseColonQmark will parse the code after '?' or ':'
 func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	L1, L2 := 0, 0
+	oldHasReturned := s.HasReturned
 	if !value.HasValue() {
 		L1 = code.NewLabel()
 		EmitAssertTosInRax("Pop TOS into rax before assignment")
@@ -1195,6 +1203,7 @@ func ParseColonQmark(s *State, value *ValueDef) (err error) {
 	} else {
 		EmitLabel(L1, "")
 	}
+	s.HasReturned = oldHasReturned
 	return nil
 }
 
@@ -1392,7 +1401,6 @@ func ParseFuncDef(s *State) error {
 		return err
 	}
 	// Now parse all the statements in the function
-	s.DidReturn = false
 	err = ParseStatements(s)
 	if err != nil {
 		return err
@@ -1403,7 +1411,7 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
 	if !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
-		// return fmt.Errorf("function definition does not return a value")
+		return fmt.Errorf("function definition does not return a value")
 	}
 	if f.name == "main" {
 		EmitComment("--------------------------------------------")

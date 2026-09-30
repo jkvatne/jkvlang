@@ -39,7 +39,7 @@ func main() {
     assert(p.points[3]==0, "Failed 6")
 
     // 3. Append to slice
-    k=4
+    k=I32(4)
     m=5
     append(p.points, 3, k, m)
     assert(p.points[2]==2, "Failed 7")

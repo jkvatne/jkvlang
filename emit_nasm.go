@@ -1633,22 +1633,20 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 	}
 	if instr == "idiv" {
 		emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
-		if size == 4 {
-			emit("mov", "eax", DataType(size)+BpRel(adr), comment)
-		} else {
-			return fmt.Errorf("only 32 bit integer divide currently supported")
+		if size < 4 {
+			emit("xor", "rax", "rax", "Clear rax before moving short int")
 		}
+		emit("mov", AxName(size), DataType(size)+BpRel(adr), comment)
 		emit("cdq", "", "", "")
 		emit("idiv", "ecx", "", "")
 		// Move result to local variable at BpRel(adr)
-		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
+		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of /= to local variable")
 	} else if instr == "imul" {
-		emit("mov", "rax", strconv.FormatInt(value, 10), "OpAssign imul")
-		if size == 4 {
-			emit("mov", "ebx", DataType(size)+BpRel(adr), comment)
-		} else {
-			emit("mov", "rbx", DataType(size)+BpRel(adr), comment)
+		emit("mov", "rbx", strconv.FormatInt(value, 10), "OpAssign imul")
+		if size < 4 {
+			emit("xor", "rax", "rax", "Clear rax before moving short int")
 		}
+		emit("mov", AxName(size), DataType(size)+BpRel(adr), comment)
 		emit("imul", "rbx", "", "")
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
