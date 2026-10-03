@@ -91,6 +91,7 @@ const (
 	TOK_HASH
 	TOK_IMPORT
 	TOK_PACKAGE
+	TOK_AS
 	TOK_SIZE
 )
 
@@ -174,6 +175,7 @@ var TokenNames = [...]string{
 	TOK_HASH:        "HASH",
 	TOK_IMPORT:      "IMPORT",
 	TOK_PACKAGE:     "PACKAGE",
+	TOK_AS:          "AS",
 	TOK_SIZE:        "SIZE",
 }
 
@@ -259,7 +261,7 @@ func TypeFromNumber(x int64) code.PrimaryType {
 		return code.TYP_I16
 	} else if x <= 65536 {
 		return code.TYP_U16
-	} else if x >= -2147483648 && x <= 2147483647 {
+	} else if x <= 2147483647 {
 		return code.TYP_I32
 	} else if x <= 4294967296 {
 		return code.TYP_U32
@@ -542,6 +544,8 @@ func (s *State) next() {
 				s.token = TOK_IMPORT
 			case "package":
 				s.token = TOK_PACKAGE
+			case "as":
+				s.token = TOK_AS
 			case "const":
 				s.token = TOK_CONST
 			case "return":

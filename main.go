@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Version must be manually updated.
@@ -22,7 +23,7 @@ var (
 	test      = flag.Bool("test", false, "Set true to run after compile")
 	link      = flag.Bool("link", true, "Set true to just do linking")
 	linklib   = flag.Bool("linklib", false, "Set true to just do linking")
-	sourceDir = flag.String("src", "", "Source directory where code is found. Defaults to current directory.")
+	sourceDir = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
 	oneFile   = flag.String("file", "", "Compile a single file")
 	debug     = flag.Bool("debug", false, "Enable debug mode")
 	UseGcc    = flag.Bool("gcc", true, "Use gcc")
@@ -183,6 +184,10 @@ func unpack64(f float64) (uint64, int) {
 }
 
 func main() {
+	// utf8.TestDecode()
+	t := time.Now()
+	fmt.Printf("%v\n", t)
+
 	flag.Parse()
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)

@@ -29,7 +29,7 @@ type State struct {
 	LoopLevel          int
 }
 
-func NewState(SourceFile string) (*State, error) {
+func ResetState(SourceFile string) (*State, error) {
 	s := new(State)
 	var err error
 	s.text, err = os.ReadFile(SourceFile)

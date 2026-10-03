@@ -201,7 +201,7 @@ func ParseType(s *State) (*TypeDef, error) {
 	}
 	typ, ok := TypeDefs[id]
 	if !ok {
-		return nil, fmt.Errorf("unknown type: %s", s.tokenString)
+		return nil, fmt.Errorf("unknown type: \"%s\"", id)
 	}
 	return typ, err
 }

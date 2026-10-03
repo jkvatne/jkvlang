@@ -3,12 +3,14 @@
 // Test file
 import (
     iter
+    github.com/jkvatne/date
 )
 
 func main() {
     print_freq()
     ok = call(Sleep, 1)
-
+    d = date(123)
+    print("Date=%d", d)
     /*
     sum=0
     for i=range(5) {
