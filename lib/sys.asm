@@ -38,6 +38,7 @@ global allocation_count
 global f32sign_mask
 global f64sign_mask
 global processHeap
+global tick_frequency
 
 ; Global functions
 global _sysinit

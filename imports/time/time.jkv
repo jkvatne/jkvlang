@@ -1,0 +1,13 @@
+package time
+
+// Time resolution is 0.01uS
+// Max time is 5849 years
+// Zero time is January 1, year 1, 00:00:00.000000000 UTC
+type Time = U64
+
+func now() I32 {
+    return 1234
+}
+
+
+

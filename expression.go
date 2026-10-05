@@ -754,6 +754,12 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	if id == "ptr" {
 		return ParsePointer(s, id)
 	}
+	path := ImportedPackages[id]
+	if path != "" {
+		s.next()
+		id = Mangle(path) + "@" + s.tokenString
+		s.next()
+	}
 	if s.found(TOK_LPAR) {
 		// An ID followed by left parantesis can be a type conversion or a function call
 		typ, ok := TypeDefs[id]
@@ -762,10 +768,8 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 		}
 		return ParseFuncCall(s, id, true)
 	} else if s.token == TOK_LBRACK || s.token == TOK_DOT {
-		// It is an array or a struct field. Handle them in a loop in the
-		// ParseArrayOrStruct function
+		// It is an array or a struct field. Handle them in a loop in the ParseArrayOrStruct function
 		return ParseArrayOrStruct(s, id)
-
 	}
 	// If none above, it is a simple variable
 	localVar, ok := VarDefs[id]
@@ -1492,8 +1496,19 @@ func ParseTypeDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	typ.TypeName = id
-	AddType(id, typ)
+	t := TypeDef{}
+	t.TypeName = id
+	t.Fields = make(map[string]*TypeDef)
+	for k, f := range typ.Fields {
+		t.Fields[k] = f
+	}
+	t.FieldNames = make(map[string]string)
+	for k, f := range typ.FieldNames {
+		t.FieldNames[k] = f
+	}
+	t.Pt = typ.Pt
+	t.Basic = false
+	AddType(id, &t)
 	return nil
 }
 

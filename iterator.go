@@ -136,7 +136,8 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected a single state in for-loop")
 		}
 		code.OutputArgCode()
-		f := FindFuncDef("next", []*TypeDef{&StructType})
+		p := &ParDef{name: "rec", typ: &StructType}
+		f := FindFuncDef("next", []*ParDef{p})
 		if f == nil {
 			return fmt.Errorf("range must have a next function")
 		}

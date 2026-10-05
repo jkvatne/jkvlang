@@ -431,6 +431,7 @@ func EmitPrologue(libPath string, inc bool) {
 
 	if !inc {
 		EmitExtern("_sysinit")
+		EmitExtern("_syscall")
 		EmitExtern("_assert")
 		EmitExtern("allocation_count")
 		EmitExtern("_printf")
@@ -456,9 +457,9 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("args")
 		EmitExtern("_cstrlen")
 		EmitSection("text")
+		EmitExtern("tick_frequency")
 	}
 
-	emit("global", "main", "", "")
 	code.EmitBlankLine()
 	code.EmitBlankLine()
 }
@@ -703,6 +704,8 @@ func EmitEpilogue(name string) {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)
 	}
+	EmitComment("--------------------------------------------")
+	EmitComment("External symbols")
 	for _, name = range Externals {
 		EmitExtern(name)
 	}

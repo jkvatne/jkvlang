@@ -105,8 +105,8 @@ func ParseImports(s *State) error {
 	} else {
 		err = ParseImport(s)
 	}
-	// Check that we have pkg and obj files for the imported packages.
-	// If not, we have to compile the missing packages.
+
+	// Check that we have cloned all the needed packages into the imports directory
 	MissingPackages = []string{}
 	for shortName, fullName := range ImportedPackages {
 		info, err2 := os.Stat("./imports/" + Mangle(fullName))
@@ -120,7 +120,49 @@ func ParseImports(s *State) error {
 	if len(MissingPackages) > 0 {
 		return fmt.Errorf(">> Missing one or more packages. Clone them in the imports directory")
 	}
-	return err
+
+	// Check that we have pkg and obj files for the imported packages.
+	// If not, we have to compile the missing packages.
+	MissingPackages = []string{}
+	for _, fullName := range ImportedPackages {
+		var info os.FileInfo
+		info, err = os.Stat("./cache/" + Mangle(fullName))
+		if err == nil && info.IsDir() {
+			var entries []os.DirEntry
+			entries, err = os.ReadDir("./cache/" + Mangle(fullName))
+			if len(entries) == 0 {
+				MissingPackages = append(MissingPackages, Mangle(fullName))
+			}
+			// for _, entry := range entries {
+			// TODO: Check that the source code is older than the obj files
+			// }
+		} else {
+			MissingPackages = append(MissingPackages, Mangle(fullName))
+		}
+	}
+	if len(MissingPackages) > 0 {
+		return fmt.Errorf("Missing packages")
+	}
+
+	// Now scan the pkg files for each import
+	for _, fullName := range ImportedPackages {
+		var info os.FileInfo
+		info, err = os.Stat("./cache/" + Mangle(fullName))
+		if err == nil && info.IsDir() {
+			var entries []os.DirEntry
+			entries, err = os.ReadDir("./cache/" + Mangle(fullName))
+			for _, entry := range entries {
+				if !entry.IsDir() && strings.Contains(entry.Name(), ".pkg") {
+					txt, err2 := os.ReadFile("./cache/" + Mangle(fullName) + "/" + entry.Name())
+					if err2 != nil || len(txt) == 0 {
+						panic("Missing package")
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func ScanFile(s *State, name string) (err error) {
@@ -186,10 +228,53 @@ func InitCompile(buildDir string, libPath string, AsmFileName string) error {
 	InitVardefs()
 	InitTypes()
 	LiteralInit()
-	EmitPrologue(libPath, true)
+	EmitPrologue(libPath, false)
 	InitTypes()
 	FuncInit()
 	ImportInit()
+	return nil
+}
+
+func OutputPkgFile(path string) error {
+	OutputFile, err := os.Create(path + "/import.pkg")
+	if err != nil {
+		return err
+	}
+	defer OutputFile.Close()
+	for key, t := range TypeDefs {
+		if !t.Basic {
+			if t.Pt == code.TYP_STRUCT {
+				fmt.Printf("Type definition %s %s\n", key, t.Name())
+				_, _ = OutputFile.WriteString("type " + t.TypeName + " = struct { ")
+				for _, field := range t.Fields {
+					_, _ = OutputFile.WriteString(field.Name() + " " + t.Name() + " ")
+				}
+				_, _ = OutputFile.WriteString("}\n")
+			} else {
+				fmt.Printf("Type definition %s %s\n", key, t.Name())
+				_, _ = OutputFile.WriteString("type " + t.TypeName + " = " + t.Pt.Name() + "\n")
+			}
+		}
+	}
+	for _, f := range funcDefList {
+		if !f.builtin {
+			_, _ = OutputFile.WriteString("func " + f.name + "(")
+			for i, a := range f.parameters {
+				_, _ = OutputFile.WriteString(a.name + " " + a.typ.Name())
+				if i < len(f.parameters)-1 {
+					_, _ = OutputFile.WriteString(", ")
+				}
+			}
+			_, _ = OutputFile.WriteString(") ")
+			for i, r := range f.returnTypes {
+				_, _ = OutputFile.WriteString(r.TypeName)
+				if i < len(f.returnTypes)-1 {
+					_, _ = OutputFile.WriteString(", ")
+				}
+			}
+			_, _ = OutputFile.WriteString("{}\n")
+		}
+	}
 	return nil
 }
 
@@ -239,44 +324,67 @@ func CompileFile(buildDir string, libPath string, name string) error {
 // CompileDir will compile a package in the given directory.
 // The package can consst of several source code files.
 // The output is a single assembly file in the buildDir
-func CompileDir(buildDir string, libPath string, inputPath string) error {
+func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) error {
 	var s *State
 	var f *os.File
 	inputFiles, err := os.ReadDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("CompileDir() could not open source directory, %v", err.Error())
 	}
-	err = InitCompile(buildDir, libPath, "main")
-	if err != nil {
-		return err
-	}
-	for _, inputFile := range inputFiles {
-		if !inputFile.IsDir() {
-			name := filepath.Join(inputPath, inputFile.Name())
-			f, err = os.Open(name)
-			if err != nil {
-				return fmt.Errorf("could not open directory, %v", err.Error())
-			}
-			s, err = ResetState(name)
-			if err != nil {
+	count := 0
+	for count == 0 && err == nil {
+		fmt.Printf(">>> Compiling package %s\n", inputPath)
+		err = InitCompile(buildDir, libPath, "main")
+		if isMain {
+			emit("global", "main", "", "")
+		}
+
+		if err != nil {
+			return err
+		}
+		for _, inputFile := range inputFiles {
+			if !inputFile.IsDir() {
+				name := filepath.Join(inputPath, inputFile.Name())
+				f, err = os.Open(name)
+				if err != nil {
+					return fmt.Errorf("could not open directory, %v", err.Error())
+				}
+				s, err = ResetState(name)
+				if err != nil {
+					_ = f.Close()
+					return err
+				}
+				err = ScanFile(s, name)
 				_ = f.Close()
+				if err != nil {
+					break
+				}
+			}
+		}
+		if err == nil {
+			err = OutputEpilogue()
+			if err != nil {
 				return err
 			}
-			err = ScanFile(s, name)
-			_ = f.Close()
+			err = code.CloseAsmFile()
 			if err != nil {
-				break
+				return err
+			}
+			if !isMain {
+				err = OutputPkgFile(buildDir)
+				if err != nil {
+					return err
+				}
+			}
+			count++
+		} else if err.Error() == "Missing packages" {
+			_ = code.CloseAsmFile()
+			for _, name := range MissingPackages {
+				fmt.Printf(">>> Compiling missing package %s\n", name)
+				err = CompileDir(false, "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
 			}
 		}
 	}
-	if err == nil {
-		return OutputEpilogue()
-	} else if err.Error() == "Missing packages" {
-		for _, name := range MissingPackages {
-			err = CompileDir(buildDir, libPath, "imports/"+Mangle(name))
-		}
-	}
-	_ = code.CloseAsmFile()
 	return err
 }
 

@@ -9,14 +9,6 @@ import (
 func main() {
     print_freq()
     ok = call(Sleep, 1)
-    d = date(123)
+    d = date.Date(123)
     print("Date=%d", d)
-    /*
-    sum=0
-    for i=range(5) {
-        sum+=i
-    }
-    assert(sum==10, "Expected sum=10, got %d", sum)
-    */
 }
-

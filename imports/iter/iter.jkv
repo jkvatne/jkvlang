@@ -6,7 +6,7 @@ type RangeIterator = struct {
 }
 
 func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
+    r = new(RangeIterator, 10)
     r.start = start
     r.end = end
     return r

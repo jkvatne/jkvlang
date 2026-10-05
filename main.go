@@ -25,6 +25,7 @@ var (
 	linklib   = flag.Bool("linklib", false, "Set true to just do linking")
 	sourceDir = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
 	oneFile   = flag.String("file", "", "Compile a single file")
+	clean     = flag.Bool("clean", false, "Set true to recompile all imports")
 	debug     = flag.Bool("debug", false, "Enable debug mode")
 	UseGcc    = flag.Bool("gcc", true, "Use gcc")
 	UseUcrt   = flag.Bool("ucrt", false, "Use gcc")
@@ -225,7 +226,18 @@ func main() {
 			fmt.Printf("Run %d files. All tests passed\n", n)
 		}
 	} else {
-		err = CompileDir(*buildDir, libPath, *sourceDir)
+		if *clean {
+			// Remove all cached files
+			err := os.RemoveAll("./cache")
+			if err != nil {
+				panic("Unable to remove cache directory")
+			}
+			err = os.Mkdir("./cache", os.ModePerm)
+			if err != nil {
+				panic("Unable to create cache directory")
+			}
+		}
+		err = CompileDir(true, *buildDir, libPath, *sourceDir)
 		if err == nil {
 			err = LinkRun(*buildDir, libPath, "main")
 		}
