@@ -1509,10 +1509,6 @@ func ParseTypeDef(s *State) error {
 	for k, f := range typ.Fields {
 		t.Fields[k] = f
 	}
-	t.FieldNames = make(map[string]string)
-	for k, f := range typ.FieldNames {
-		t.FieldNames[k] = f
-	}
 	t.Pt = typ.Pt
 	t.Basic = false
 	AddType(id, &t)

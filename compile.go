@@ -137,10 +137,10 @@ func ParseImports(s *State) error {
 	MissingPackages = []string{}
 	for _, fullName := range ImportedPackages {
 		var info os.FileInfo
-		info, err = os.Stat("./cache/" + Mangle(fullName))
+		info, err = os.Stat(*cacheDir + "/" + Mangle(fullName))
 		if err == nil && info.IsDir() {
 			var entries []os.DirEntry
-			entries, err = os.ReadDir("./cache/" + Mangle(fullName))
+			entries, err = os.ReadDir(*cacheDir + "/" + Mangle(fullName))
 			if len(entries) == 0 {
 				MissingPackages = append(MissingPackages, Mangle(fullName))
 			}
@@ -158,13 +158,13 @@ func ParseImports(s *State) error {
 	// Now scan the pkg files for each import
 	for _, fullName := range ImportedPackages {
 		var info os.FileInfo
-		info, err = os.Stat("./cache/" + Mangle(fullName))
+		info, err = os.Stat(*cacheDir + "/" + Mangle(fullName))
 		if err == nil && info.IsDir() {
 			var entries []os.DirEntry
-			entries, err = os.ReadDir("./cache/" + Mangle(fullName))
+			entries, err = os.ReadDir(*cacheDir + "/" + Mangle(fullName))
 			for _, entry := range entries {
 				if !entry.IsDir() && strings.Contains(entry.Name(), ".pkg") {
-					fileName := "./cache/" + Mangle(fullName) + "/" + entry.Name()
+					fileName := *cacheDir + "/" + Mangle(fullName) + "/" + entry.Name()
 					w := strings.Split(fullName, "/")
 					packageName := w[len(w)-1]
 					s, err2 := NewState(fileName, packageName)
@@ -261,8 +261,13 @@ func OutputPkgFile(path string) error {
 			if t.Pt == code.TYP_STRUCT {
 				fmt.Printf("Type definition %s %s\n", key, t.Name())
 				_, _ = OutputFile.WriteString("type " + t.TypeName + " = struct { ")
+				i := 0
 				for _, field := range t.Fields {
-					_, _ = OutputFile.WriteString(field.Name() + " " + t.Name() + " ")
+					i++
+					_, _ = OutputFile.WriteString(field.Name() + " " + t.Name())
+					if i < len(t.Fields) {
+						_, _ = OutputFile.WriteString(", ")
+					}
 				}
 				_, _ = OutputFile.WriteString("}\n")
 			} else {
@@ -398,6 +403,8 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				fmt.Printf(">>> Compiling missing package %s\n", name)
 				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
 			}
+		} else {
+			return err
 		}
 	}
 	return err

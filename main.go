@@ -27,11 +27,9 @@ var (
 	oneFile   = flag.String("file", "", "Compile a single file")
 	clean     = flag.Bool("clean", false, "Set true to recompile all imports")
 	debug     = flag.Bool("debug", false, "Enable debug mode")
-	UseGcc    = flag.Bool("gcc", true, "Use gcc")
-	UseUcrt   = flag.Bool("ucrt", false, "Use gcc")
-	UseGoLink = flag.Bool("golink", false, "Use gcc")
-	PrintSp   = flag.Bool("sp", false, "Print program SP")
+	linker    = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
 	arg       = flag.String("arg", "", "Arguments to the compiled program when it is run")
+	cacheDir  = flag.String("cache", "./cache", "Cache directory")
 )
 
 func LinkRun(workDir string, libPath string, outputName string) error {
@@ -44,6 +42,20 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 			err = Assemble(libPath)
 			if err != nil {
 				return err
+			}
+		}
+		// Assemble cached packages (if needed)
+		entries, err2 := os.ReadDir(*cacheDir)
+		if err2 != nil {
+			return err2
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				dir := path.Join(*cacheDir, entry.Name())
+				err = Assemble(dir)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		err = Assemble(workDir)
@@ -100,34 +112,50 @@ func Link(workDir string, libPath string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
-
+	entries, err = os.ReadDir(libPath)
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
+			args = append(args, path.Join(libPath, entry.Name()))
+		}
+	}
 	outputPath := path.Join(workDir, outputName)
 	LinkerName := "c:/doc/compiler/tools/"
-	if *UseGcc {
+	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
 		if *linklib {
-			entries, err = os.ReadDir(libPath)
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
-					args = append(args, path.Join(libPath, entry.Name()))
-				}
-			}
 			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		} else {
 			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		}
-	} else if *UseUcrt {
+	} else if *linker == "ucrt" {
 		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
 		args = append(args, "-DUCRT", "-m64", "-o", outputPath)
-	} else if *UseGoLink {
-		LinkerName = "golink.exe"
+	} else if *linker == "golink" {
+		LinkerName = "./tools/golink.exe"
 		args = append(args, "/fo", outputPath, "/entry=main", "/console")
 		if *debug {
 			args = append(args, "/debug=dbg")
 		}
-		args = append(args, "-g", "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
-		// Print the arguments and the command
+		args = append(args, "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
+
+	} else if *linker == "msvc" {
+		LinkerName = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx86/x86/link.exe"
+		entries, err = os.ReadDir(libPath)
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
+				args = append(args, path.Join(libPath, entry.Name()))
+			}
+		}
+		args = append(args, "/out:"+outputPath, "/entry:main")
+		args = append(args, "/SUBSYSTEM:CONSOLE")
+		args = append(args, "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64/kernel32.Lib")
+		args = append(args, "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64/ucrt.Lib")
+		args = append(args, "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64/legacy_stdio_definitions.lib")
+		if *debug {
+			args = append(args, "/debug")
+		}
+		// args = append(args, "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
 	} else {
 		fmt.Printf("Must specify either gcc, golink or ucrt")
 	}
@@ -226,11 +254,11 @@ func main() {
 	} else {
 		if *clean {
 			// Remove all cached files
-			err := os.RemoveAll("./cache")
+			err := os.RemoveAll(*cacheDir)
 			if err != nil {
 				panic("Unable to remove cache directory")
 			}
-			err = os.Mkdir("./cache", os.ModePerm)
+			err = os.Mkdir(*cacheDir, os.ModePerm)
 			if err != nil {
 				panic("Unable to create cache directory")
 			}

@@ -15,10 +15,9 @@ type TypeDef struct {
 	// Data offset is the offset from the start of a string/slice/buffer to the actual data contents (i.e. first element)
 	DataOffset int
 	// Element
-	Element    *TypeDef
-	Fields     map[string]*TypeDef
-	Offsets    map[string]int
-	FieldNames map[string]string
+	Element *TypeDef
+	Fields  map[string]*TypeDef
+	Offsets map[string]int
 }
 
 var TypeDefs map[string]*TypeDef
