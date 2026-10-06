@@ -13,7 +13,6 @@ const (
 	undef stackState = iota
 	sp
 	ax
-	xmm1
 )
 
 type PrimaryType int

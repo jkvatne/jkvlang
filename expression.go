@@ -1631,7 +1631,7 @@ func ParseVar(s *State, isGlobal bool) error {
 				if v.Typ.Element.Pt.IsInteger() {
 					lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
 				} else {
-					return fmt.Errorf("Wrong type")
+					return fmt.Errorf("wrong type")
 				}
 				if !s.found(TOK_COMMA) {
 					break
@@ -1640,7 +1640,7 @@ func ParseVar(s *State, isGlobal bool) error {
 			if v.Typ.Element.Pt.IsInteger() {
 				lit.count = len(lit.IntValues)
 			} else {
-				return fmt.Errorf("Wrong type")
+				return fmt.Errorf("wrong type")
 			}
 			lit.size = v.Typ.Element.Pt.Size()
 			SliceLiteralDefs = append(SliceLiteralDefs, lit)

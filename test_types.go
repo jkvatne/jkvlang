@@ -19,7 +19,9 @@ func TestCommonType(t *testing.T) {
 				if err != nil || tc == nil {
 					t.Fail()
 				}
-				fmt.Printf("%10s %10s %10s\n", code.PrimaryTypeNames[t1], code.PrimaryTypeNames[t2], code.PrimaryTypeNames[tc.Pt])
+				if tc != nil {
+					fmt.Printf("%10s %10s %10s\n", code.PrimaryTypeNames[t1], code.PrimaryTypeNames[t2], code.PrimaryTypeNames[tc.Pt])
+				}
 				if tc.Name() == "None" {
 					fmt.Printf("No common type for %s and %s\n", code.PrimaryTypeNames[t1], code.PrimaryTypeNames[t2])
 				}

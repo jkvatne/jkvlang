@@ -232,8 +232,6 @@ func main() {
 	libPath := path.Dir(exePath)
 	libPath = path.Join(libPath, "lib")
 
-	// CompileImports(*buildDir, libPath)
-
 	// Now compile the source files into asm files
 	if *oneFile != "" {
 		if !strings.Contains(*oneFile, ".") {

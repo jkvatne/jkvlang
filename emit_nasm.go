@@ -115,7 +115,7 @@ var SizeNames = [...]string{"0", "db", "dw", "3", "dd", "5", "6", "7", "dq"}
 func EmitSliceLit(l SliceLit) {
 	code.Write("alignb 8\n")
 	code.Write(l.name + " ")
-	code.Write(" dd " + strconv.Itoa(int(l.count)) + ";   len\n")
+	code.Write(" dd " + strconv.Itoa(l.count) + ";   len\n")
 	code.Write(" dd 0  ; cap\n")
 	sizeName := SizeNames[l.size]
 	for _, v := range l.IntValues {
@@ -1024,7 +1024,7 @@ func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
 		emit("add", "rax", "8", "")
 		emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
 	}
-	EmitLoadIndirectAx("rax", size)
+	_ = EmitLoadIndirectAx("rax", size)
 	code.SetAx()
 }
 
@@ -1070,7 +1070,7 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 		// emit("add", "rax", "rbx", "Calculate address by adding offset 3")
 	}
 	code.SetAx()
-	EmitLoadIndirectAx("rax", size)
+	_ = EmitLoadIndirectAx("rax", size)
 }
 
 func EmitClearErr() {
@@ -1512,7 +1512,7 @@ func EmitLoadIndirectAx(reg string, size int) error {
 	} else if size == 8 {
 		emit("mov", "rax", reg, "")
 	} else {
-		return fmt.Errorf("load not implemented for size %d")
+		return fmt.Errorf("load not implemented for size %d", size)
 	}
 	return nil
 }

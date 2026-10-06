@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -49,24 +48,6 @@ func GetPkgName(name string) string {
 	return w[len(w)-1]
 }
 
-func GetPkgPath(pkgShortName string) (string, error) {
-	longName, ok := ImportedPackages[pkgShortName]
-	if ok {
-		return longName, nil
-	}
-	return "", errors.New("package '" + pkgShortName + "' not found")
-}
-
-// LookupFun will convert a pkg shortname and a function name
-// into a mangled function refrernce. F.ex "iter.next" will convert to "github.com$jkvatne$lib$iter@next"
-func LookupFun(pkgShortName string, funcName string) (string, error) {
-	longName, ok := ImportedPackages[pkgShortName]
-	if !ok {
-		return funcName, fmt.Errorf("Package not found")
-	}
-	return Mangle(longName) + "@" + funcName, nil
-}
-
 func ParseImport(s *State) error {
 	if s.token != TOK_ID && s.token != TOK_STRING {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
@@ -100,7 +81,7 @@ func ParseImport(s *State) error {
 	return nil
 }
 
-// ParseImport parses import statements
+// ParseImports parses import statements
 func ParseImports(s *State) error {
 	var err error
 	if s.token == TOK_LPAR {
@@ -148,7 +129,7 @@ func ParseImports(s *State) error {
 		}
 	}
 	if len(MissingPackages) > 0 {
-		return fmt.Errorf("Missing packages")
+		return fmt.Errorf("missing packages")
 	}
 
 	// Now scan the pkg files for each import
@@ -167,7 +148,7 @@ func ParseImports(s *State) error {
 					if err2 != nil {
 						return err2
 					}
-					return ScanFile(s, fullName, true)
+					return ScanFile(s, fullName)
 				}
 			}
 		}
@@ -176,7 +157,7 @@ func ParseImports(s *State) error {
 	return nil
 }
 
-func ScanFile(s *State, name string, pkg bool) (err error) {
+func ScanFile(s *State, name string) (err error) {
 	s.nextChar()
 	s.next()
 	if s.token == TOK_PACKAGE {
@@ -250,7 +231,9 @@ func OutputPkgFile(path string) error {
 	if err != nil {
 		return err
 	}
-	defer OutputFile.Close()
+	defer func(OutputFile *os.File) {
+		_ = OutputFile.Close()
+	}(OutputFile)
 	for _, t := range TypeDefs {
 		if !t.Basic {
 			if t.Pt == code.TYP_STRUCT {
@@ -323,7 +306,7 @@ func CompileFile(buildDir string, libPath string, fileName string) error {
 	defer func(s *State) {
 		_ = code.CloseAsmFile()
 	}(s)
-	err = ScanFile(s, fileName, false)
+	err = ScanFile(s, fileName)
 	if err != nil {
 		return err
 	}
@@ -367,7 +350,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 					_ = f.Close()
 					return err
 				}
-				err = ScanFile(s, fileName, false)
+				err = ScanFile(s, fileName)
 				_ = f.Close()
 				if err != nil {
 					break
@@ -390,7 +373,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				}
 			}
 			count++
-		} else if err.Error() == "Missing packages" {
+		} else if err.Error() == "missing packages" {
 			_ = code.CloseAsmFile()
 			for _, name := range MissingPackages {
 				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
