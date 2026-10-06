@@ -161,10 +161,10 @@ func Link(workDir string, libPath string, outputName string) error {
 	}
 
 	// Print link command line to console
-	fmt.Printf(LinkerName + " ")
+	/*fmt.Printf(LinkerName + " ")
 	for _, s := range args {
 		fmt.Printf(" %s", s)
-	}
+	}*/
 	fmt.Printf("\n")
 
 	// Now start the linker

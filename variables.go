@@ -141,6 +141,7 @@ func ParseStructType(s *State) (*TypeDef, error) {
 			break
 		}
 	}
+	// Sort fields with largest fields first, to avoid mis-alignment when fields are small.
 	ofs := 0
 	for fn, f := range t.Fields {
 		if f.Pt.Size() == 8 {

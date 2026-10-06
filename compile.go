@@ -88,7 +88,6 @@ func ParseImport(s *State) error {
 		s.next()
 	}
 	// path is now the imported path, like f.ex. "github.com/jkvatne/lib"
-	fmt.Printf("Import: %s\n", path)
 	if s.token == TOK_AS {
 		// Get alternative shortname, if given afte AS
 		s.next()
@@ -119,13 +118,10 @@ func ParseImports(s *State) error {
 
 	// Check that we have cloned all the needed packages into the imports directory
 	MissingPackages = []string{}
-	for shortName, fullName := range ImportedPackages {
+	for _, fullName := range ImportedPackages {
 		info, err2 := os.Stat("./imports/" + Mangle(fullName))
-		if err2 == nil && info.IsDir() {
-			fmt.Printf("Existing %s as %s\n", fullName, shortName)
-		} else {
+		if err2 != nil || !info.IsDir() {
 			MissingPackages = append(MissingPackages, fullName)
-			fmt.Printf("Missing  %s as %s\n", fullName, shortName)
 		}
 	}
 	if len(MissingPackages) > 0 {
@@ -188,7 +184,6 @@ func ScanFile(s *State, name string, pkg bool) (err error) {
 		if s.token != TOK_ID {
 			return fmt.Errorf("%s:%d %v", name, code.LineNum, "package name should be on top line")
 		}
-		fmt.Printf("Package %s\n", s.tokenString)
 		s.next()
 	}
 
@@ -256,10 +251,9 @@ func OutputPkgFile(path string) error {
 		return err
 	}
 	defer OutputFile.Close()
-	for key, t := range TypeDefs {
+	for _, t := range TypeDefs {
 		if !t.Basic {
 			if t.Pt == code.TYP_STRUCT {
-				fmt.Printf("Type definition %s %s\n", key, t.Name())
 				_, _ = OutputFile.WriteString("type " + t.TypeName + " = struct { ")
 				i := 0
 				for _, field := range t.Fields {
@@ -271,7 +265,6 @@ func OutputPkgFile(path string) error {
 				}
 				_, _ = OutputFile.WriteString("}\n")
 			} else {
-				fmt.Printf("Type definition %s %s\n", key, t.Name())
 				_, _ = OutputFile.WriteString("type " + t.TypeName + " = " + t.Pt.Name() + "\n")
 			}
 		}
@@ -400,7 +393,6 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 		} else if err.Error() == "Missing packages" {
 			_ = code.CloseAsmFile()
 			for _, name := range MissingPackages {
-				fmt.Printf(">>> Compiling missing package %s\n", name)
 				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
 			}
 		} else {
