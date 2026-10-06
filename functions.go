@@ -24,7 +24,7 @@ type ParDef struct {
 
 var Externals []string
 
-var funcDefList []*FuncDef
+var FuncDefs []*FuncDef
 
 func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
 	n := FuncCount(id)
@@ -40,12 +40,12 @@ func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, 
 	}
 	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)
-	funcDefList = append(funcDefList, f)
+	FuncDefs = append(FuncDefs, f)
 	return f, nil
 }
 
 func FuncInit() {
-	funcDefList = make([]*FuncDef, 0, 16)
+	FuncDefs = make([]*FuncDef, 0, 16)
 	_, _ = AddFunc("println", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
 	_, _ = AddFunc("printf", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
 	_, _ = AddFunc("print", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
@@ -64,6 +64,7 @@ func FuncInit() {
 	_, _ = AddFunc("len", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("cstrlen", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("get_ticks", nil, nil, true, false)
+	_, _ = AddFunc("get_tick_freq", nil, nil, true, false)
 }
 
 // &VarDef{Name: "err", Typ: &I64Type
@@ -74,10 +75,10 @@ func AddExternal(name string) {
 
 func FuncCount(name string) int {
 	cnt := 0
-	if len(funcDefList) == 0 {
+	if len(FuncDefs) == 0 {
 		return 0
 	}
-	for _, f := range funcDefList {
+	for _, f := range FuncDefs {
 		if f.name == name {
 			cnt++
 		}
@@ -86,7 +87,7 @@ func FuncCount(name string) int {
 }
 
 func FindFuncDef(id string, parameters []*ParDef) *FuncDef {
-	for _, f := range funcDefList {
+	for _, f := range FuncDefs {
 		if f.name == id {
 			if f.VarArg && len(f.parameters) <= len(parameters) || len(f.parameters) == len(parameters) {
 				for i, p := range f.parameters {

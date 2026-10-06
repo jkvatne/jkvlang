@@ -9,6 +9,6 @@ import (
 func main() {
     print_freq()
     ok = call(Sleep, 1)
-    d = date.Date(123)
-    print("Date=%d", d)
+    //d = date.Date(123)
+    //print("Date=%d", d)
 }

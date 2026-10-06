@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -757,7 +758,7 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	path := ImportedPackages[id]
 	if path != "" {
 		s.next()
-		id = Mangle(path) + "@" + s.tokenString
+		id = MangleFun(path, s.tokenString)
 		s.next()
 	}
 	if s.found(TOK_LPAR) {
@@ -1414,7 +1415,7 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
-	if !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
+	if s.PackageName == "" && !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
 	if f.name == "main" {
@@ -1484,20 +1485,26 @@ func ParseTypeDef(s *State) error {
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
-	if s.tokenString[0] > 'Z' {
+	id := s.tokenString
+	if strings.Contains(id, "@") {
+		// Ok
+	} else if s.tokenString[0] > 'Z' {
 		return fmt.Errorf("all types must start with uppercase, got %s", s.tokenString)
 	}
-	id := s.tokenString
 	s.next()
 	if !s.found(TOK_ASSIGN) {
-		return fmt.Errorf("expected \"=\" but got %s", s.tokenString)
+		return fmt.Errorf("expected '=' but got %s", s.tokenString)
 	}
 	typ, err := ParseType(s)
 	if err != nil {
 		return err
 	}
 	t := TypeDef{}
-	t.TypeName = id
+	if s.PackageName != "" && s.PackageName != "main" {
+		t.TypeName = Mangle(s.PackageName) + "@" + id
+	} else {
+		t.TypeName = id
+	}
 	t.Fields = make(map[string]*TypeDef)
 	for k, f := range typ.Fields {
 		t.Fields[k] = f

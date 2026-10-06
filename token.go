@@ -188,7 +188,7 @@ func isHex(ch rune) bool {
 }
 
 func isAlfa(ch rune) bool {
-	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z'
+	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch == '@' || ch == '$'
 }
 
 func (t Token) Name() string {
@@ -515,9 +515,6 @@ func (s *State) next() {
 		case s.ch1 == '?':
 			s.tokenString = "?"
 			s.token = TOK_QMARK
-		case s.ch1 == '@':
-			s.tokenString = "@"
-			s.token = TOK_AT
 		case isAlfa(s.ch1):
 			s.tokenString = string(s.ch1)
 			for isAlfaNum(s.ch2) || s.ch2 == '_' {

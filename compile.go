@@ -23,19 +23,30 @@ func DeMangleFun(mangledName string) (path string, fun string) {
 	w := strings.Split(mangledName, "@")
 	path = w[0]
 	fun = w[1]
-	return strings.Replace(path, "$", "/", -1), fun
+	return DeMangle(path), fun
 }
 
 func MangleFun(path string, fun string) string {
-	return strings.Replace(path, "$", "/", -1) + "@" + fun
+	return Mangle(path) + "@" + fun
 }
 
 func Mangle(path string) string {
-	return strings.Replace(path, "/", "$", -1)
+	path = strings.Replace(path, "/", "$", -1)
+	path = strings.Replace(path, "\\", "$", -1)
+	return strings.Replace(path, ".", "~", -1)
 }
 
 func DeMangle(path string) string {
+	path = strings.Replace(path, "~", ".", -1)
 	return strings.Replace(path, "$", "/", -1)
+}
+
+func GetPkgName(name string) string {
+	w := strings.Split(name, "^")
+	if len(w) == 1 {
+		return name
+	}
+	return w[len(w)-1]
 }
 
 func GetPkgPath(pkgShortName string) (string, error) {
@@ -53,7 +64,7 @@ func LookupFun(pkgShortName string, funcName string) (string, error) {
 	if !ok {
 		return funcName, fmt.Errorf("Package not found")
 	}
-	return longName + "@" + funcName, nil
+	return Mangle(longName) + "@" + funcName, nil
 }
 
 func ParseImport(s *State) error {
@@ -153,10 +164,14 @@ func ParseImports(s *State) error {
 			entries, err = os.ReadDir("./cache/" + Mangle(fullName))
 			for _, entry := range entries {
 				if !entry.IsDir() && strings.Contains(entry.Name(), ".pkg") {
-					txt, err2 := os.ReadFile("./cache/" + Mangle(fullName) + "/" + entry.Name())
-					if err2 != nil || len(txt) == 0 {
-						panic("Missing package")
+					fileName := "./cache/" + Mangle(fullName) + "/" + entry.Name()
+					w := strings.Split(fullName, "/")
+					packageName := w[len(w)-1]
+					s, err2 := NewState(fileName, packageName)
+					if err2 != nil {
+						return err2
 					}
+					return ScanFile(s, fullName, true)
 				}
 			}
 		}
@@ -165,7 +180,7 @@ func ParseImports(s *State) error {
 	return nil
 }
 
-func ScanFile(s *State, name string) (err error) {
+func ScanFile(s *State, name string, pkg bool) (err error) {
 	s.nextChar()
 	s.next()
 	if s.token == TOK_PACKAGE {
@@ -256,7 +271,7 @@ func OutputPkgFile(path string) error {
 			}
 		}
 	}
-	for _, f := range funcDefList {
+	for _, f := range FuncDefs {
 		if !f.builtin {
 			_, _ = OutputFile.WriteString("func " + f.name + "(")
 			for i, a := range f.parameters {
@@ -272,7 +287,7 @@ func OutputPkgFile(path string) error {
 					_, _ = OutputFile.WriteString(", ")
 				}
 			}
-			_, _ = OutputFile.WriteString("{}\n")
+			_, _ = OutputFile.WriteString(" {}\n")
 		}
 	}
 	return nil
@@ -297,20 +312,20 @@ func OutputEpilogue() error {
 }
 
 // CompileFile will compile and run a single file. It must have a main() function.
-func CompileFile(buildDir string, libPath string, name string) error {
-	fmt.Printf(">>> Compiling %s\n", name)
-	err := InitCompile(buildDir, libPath, name)
+func CompileFile(buildDir string, libPath string, fileName string) error {
+	fmt.Printf(">>> Compiling %s\n", fileName)
+	err := InitCompile(buildDir, libPath, fileName)
 	if err != nil {
 		return err
 	}
-	s, err := ResetState(name)
+	s, err := NewState(fileName, "main")
 	if err != nil {
 		return err
 	}
 	defer func(s *State) {
 		_ = code.CloseAsmFile()
 	}(s)
-	err = ScanFile(s, name)
+	err = ScanFile(s, fileName, false)
 	if err != nil {
 		return err
 	}
@@ -324,7 +339,7 @@ func CompileFile(buildDir string, libPath string, name string) error {
 // CompileDir will compile a package in the given directory.
 // The package can consst of several source code files.
 // The output is a single assembly file in the buildDir
-func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) error {
+func CompileDir(packageName string, buildDir string, libPath string, inputPath string) error {
 	var s *State
 	var f *os.File
 	inputFiles, err := os.ReadDir(inputPath)
@@ -335,7 +350,7 @@ func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) 
 	for count == 0 && err == nil {
 		fmt.Printf(">>> Compiling package %s\n", inputPath)
 		err = InitCompile(buildDir, libPath, "main")
-		if isMain {
+		if packageName == "main" {
 			emit("global", "main", "", "")
 		}
 
@@ -344,17 +359,17 @@ func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) 
 		}
 		for _, inputFile := range inputFiles {
 			if !inputFile.IsDir() {
-				name := filepath.Join(inputPath, inputFile.Name())
-				f, err = os.Open(name)
+				fileName := filepath.Join(inputPath, inputFile.Name())
+				f, err = os.Open(fileName)
 				if err != nil {
 					return fmt.Errorf("could not open directory, %v", err.Error())
 				}
-				s, err = ResetState(name)
+				s, err = NewState(fileName, "main")
 				if err != nil {
 					_ = f.Close()
 					return err
 				}
-				err = ScanFile(s, name)
+				err = ScanFile(s, fileName, false)
 				_ = f.Close()
 				if err != nil {
 					break
@@ -370,7 +385,7 @@ func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) 
 			if err != nil {
 				return err
 			}
-			if !isMain {
+			if packageName != "main" {
 				err = OutputPkgFile(buildDir)
 				if err != nil {
 					return err
@@ -381,7 +396,7 @@ func CompileDir(isMain bool, buildDir string, libPath string, inputPath string) 
 			_ = code.CloseAsmFile()
 			for _, name := range MissingPackages {
 				fmt.Printf(">>> Compiling missing package %s\n", name)
-				err = CompileDir(false, "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
+				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
 			}
 		}
 	}

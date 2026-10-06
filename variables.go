@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -196,7 +197,9 @@ func ParseType(s *State) (*TypeDef, error) {
 	}
 	id := s.tokenString
 	s.next()
-	if id[0] > 'Z' {
+	if strings.Contains(id, "@") {
+
+	} else if id[0] > 'Z' {
 		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}
 	typ, ok := TypeDefs[id]

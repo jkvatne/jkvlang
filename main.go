@@ -22,7 +22,7 @@ var (
 	run       = flag.Bool("run", true, "Set true to run after compile")
 	test      = flag.Bool("test", false, "Set true to run after compile")
 	link      = flag.Bool("link", true, "Set true to just do linking")
-	linklib   = flag.Bool("linklib", false, "Set true to just do linking")
+	linklib   = flag.Bool("linklib", true, "Set true to just do linking")
 	sourceDir = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
 	oneFile   = flag.String("file", "", "Compile a single file")
 	clean     = flag.Bool("clean", false, "Set true to recompile all imports")
@@ -133,13 +133,11 @@ func Link(workDir string, libPath string, outputName string) error {
 	}
 
 	// Print link command line to console
-	/*
-		fmt.Printf(LinkerName + " ")
-		for _, s := range args {
-			fmt.Printf(" %s", s)
-		}
-		fmt.Printf("\n")
-	*/
+	fmt.Printf(LinkerName + " ")
+	for _, s := range args {
+		fmt.Printf(" %s", s)
+	}
+	fmt.Printf("\n")
 
 	// Now start the linker
 	output, err := exec.Command(LinkerName, args...).CombinedOutput()
@@ -237,7 +235,7 @@ func main() {
 				panic("Unable to create cache directory")
 			}
 		}
-		err = CompileDir(true, *buildDir, libPath, *sourceDir)
+		err = CompileDir("main", *buildDir, libPath, *sourceDir)
 		if err == nil {
 			err = LinkRun(*buildDir, libPath, "main")
 		}

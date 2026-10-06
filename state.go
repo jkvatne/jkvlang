@@ -27,11 +27,13 @@ type State struct {
 	ParsingReturnValue bool
 	Cleanup            string
 	LoopLevel          int
+	PackageName        string
 }
 
-func ResetState(SourceFile string) (*State, error) {
+func NewState(SourceFile string, PackageName string) (*State, error) {
 	s := new(State)
 	var err error
+	s.PackageName = PackageName
 	s.text, err = os.ReadFile(SourceFile)
 	s.FileName = SourceFile
 	return s, err

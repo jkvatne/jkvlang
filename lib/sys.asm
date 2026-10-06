@@ -55,6 +55,10 @@ global _free_str
 global _print
 global _invert_err
 global _syscall
+global _get_ticks
+global _get_tick_freq
+global time_used_str
+global alloc_size_str
 
 ;-------------
 section .rodata
