@@ -33,6 +33,7 @@ extern time_used_str
 extern alloc_size_str
 
 
+   global main                          ; sp 0->0 
 
 iter@range_1:
    push rbp                             ; sp 0->1 
@@ -62,7 +63,6 @@ iter@range_1:
 
    ; Line 10: r start = start
    mov rax, [rbp-8]                     ; -- 1->1 EmitLoadField: Load local variable r
-   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'start'
    push rax                             ; ax 1->2 Assure pointer is on stack
    movsx rax, dword [rbp+16]            ; -- 2->2 EmitLoad: Load variable start
    pop rdi                              ; ax 2->1 
@@ -70,6 +70,7 @@ iter@range_1:
 
    ; Line 11: r end = end
    mov rax, [rbp-8]                     ; -- 1->1 EmitLoadField: Load local variable r
+   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'end'
    push rax                             ; ax 1->2 Assure pointer is on stack
    movsx rax, dword [rbp+24]            ; -- 2->2 EmitLoad: Load variable end
    pop rdi                              ; ax 2->1 
@@ -87,6 +88,7 @@ iter@range_1:
    ret                                  ; sp 0->0 return from range
    ; --------------------------------------------
    ; External symbols
+   global main                          ; sp 0->0 
 
 iter@range_2:
    push rbp                             ; sp 0->1 
@@ -116,13 +118,13 @@ iter@range_2:
 
    ; Line 17: r start = 0
    mov rax, [rbp-8]                     ; -- 1->1 EmitLoadField: Load local variable r
-   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'start'
    push rax                             ; ax 1->2 Assure pointer is on stack
    pop rdi                              ; -- 2->1 pop EmitAssignIndirectConstInt
    mov dword  [rdi], 0                  ; -- 1->1 
 
    ; Line 18: r end = count-1
    mov rax, [rbp-8]                     ; -- 1->1 EmitLoadField: Load local variable r
+   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'end'
    push rax                             ; ax 1->2 Assure pointer is on stack
    movsx rax, dword [rbp+16]            ; -- 2->2 EmitLoad: Load variable count
    sub rax, 1                           ; ax 2->2 TosOpConst
@@ -141,6 +143,7 @@ iter@range_2:
    ret                                  ; sp 0->0 return from range
    ; --------------------------------------------
    ; External symbols
+   global main                          ; sp 0->0 
 
 iter@next_1:
    push rbp                             ; sp 0->1 
@@ -148,12 +151,12 @@ iter@next_1:
 
    ; Line 23: if r.start>r.end ? fail(1)
    mov rax, [rbp+16]                    ; -- 0->0 EmitLoadField: Load local variable r
-   add rax, 4                           ; -- 0->0 LoadField: Add field offset for field 'start'
    ; EmitLoadTosIndirect
    movsx rax, dword  [rax]              ; ax 0->0 Load value in field 'start'
    ; 
    push rax                             ; ax 0->1 Flush rax before EmitLoadField of end
    mov rax, [rbp+16]                    ; -- 1->1 EmitLoadField: Load local variable r
+   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'end'
    ; EmitLoadTosIndirect
    movsx rax, dword  [rax]              ; ax 1->1 Load value in field 'end'
    ; 
@@ -173,7 +176,6 @@ iter@next_1:
    xor rax, rax                         ; -- 0->0 EmitAllocLocalVar Assign stack space for x
    push rax                             ; -- 0->1 
    mov rax, [rbp+16]                    ; -- 1->1 EmitLoadField: Load local variable r
-   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'start'
    ; EmitLoadTosIndirect
    movsx rax, dword  [rax]              ; ax 1->1 Load value in field 'start'
    ; 
@@ -181,7 +183,6 @@ iter@next_1:
 
    ; Line 25: r start = x+1
    mov rax, [rbp+16]                    ; -- 1->1 EmitLoadField: Load local variable r
-   add rax, 4                           ; -- 1->1 LoadField: Add field offset for field 'start'
    push rax                             ; ax 1->2 Assure pointer is on stack
    movsx rax, dword [rbp-8]             ; -- 2->2 EmitLoad: Load variable x
    add rax, 1                           ; ax 2->2 add TosOpConst

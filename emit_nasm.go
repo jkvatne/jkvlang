@@ -189,6 +189,7 @@ func EmitCall(id string, nPar int, builtin bool) {
 }
 
 func EmitFunction(id string) {
+	emit("global", "main", "", "")
 	EmitTextLabel(id)
 	if code.LocalSp != 0 {
 		panic("LocalSp is not 0")
@@ -196,6 +197,8 @@ func EmitFunction(id string) {
 	// Function prologue. Set up new frame pointer.
 	if id != "main" {
 		emit("push", "rbp", "", "")
+	} else {
+		EmitTextLabel("WinMain")
 	}
 	emit("mov", "rbp", "rsp", "")
 	code.LocalSp = 0
@@ -2136,12 +2139,4 @@ func EmitReturnIfErr2(eixtLbl int) {
 	emit("xor", "r15", "r15", "")
 	emit("jmp", Label(eixtLbl), "", "Return from function")
 	EmitLabel(lbl, "")
-}
-
-func EmitIncrPtr(size int) {
-	emit("add", "rdi", strconv.Itoa(size), "Incr pointer")
-}
-
-func EmitSetupDi() {
-	emit("mov", "rsi", "rsp", "")
 }

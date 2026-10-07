@@ -35,6 +35,7 @@ extern alloc_size_str
 
    ; Global function time@now
 extern time@now_1
+   global main                          ; -- 0->0 
 
 github~com$jkvatne$date@date_1:
    push rbp                             ; -- 0->1 

@@ -33,6 +33,7 @@ extern time_used_str
 extern alloc_size_str
 
 
+   global main                          ; sp 0->0 
 
 time@now_1:
    push rbp                             ; sp 0->1 

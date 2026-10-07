@@ -126,7 +126,7 @@ func Link(workDir string, libPath string, outputName string) error {
 	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
 		if *linklib {
-			args = append(args, "-Wl,--subsystem,console", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+			args = append(args, "-mconsole", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		} else {
 			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		}
