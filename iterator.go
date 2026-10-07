@@ -120,7 +120,11 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
 		}
 		// Now parse the function returning the range
-		id := s.tokenString
+		id, err := HandleImportedName(s, s.tokenString)
+		if err != nil {
+			return err
+		}
+
 		if !s.found(TOK_ID) {
 			return fmt.Errorf("expected function name but got %s", s.tokenString)
 		}
@@ -137,7 +141,12 @@ func ParseFor(s *State) error {
 		}
 		code.OutputArgCode()
 		p := &ParDef{name: "rec", typ: &StructType}
-		f := FindFuncDef("next", []*ParDef{p})
+		pkg, _ := DeMangleFun(id)
+		fun := "next"
+		if pkg != "" {
+			fun = MangleFun(pkg, fun)
+		}
+		f := FindFuncDef(fun, []*ParDef{p})
 		if f == nil {
 			return fmt.Errorf("range must have a next function")
 		}
@@ -145,7 +154,7 @@ func ParseFor(s *State) error {
 		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
 		// Insert call next() before for block
 		EmitLabel(startLabel, "Start of loop")
-		EmitCall("next_1", 1, false)
+		EmitCall(f.label, 1, false)
 		// Assign result to loop variable
 		if !s.found(TOK_LBRACE) {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)

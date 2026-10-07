@@ -1,0 +1,8 @@
+
+import time
+
+type Date = U32
+
+func date(t time.Time) Date {
+    return t/86400
+}

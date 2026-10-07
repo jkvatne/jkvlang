@@ -32,14 +32,14 @@ var (
 	cacheDir  = flag.String("cache", "./cache", "Cache directory")
 )
 
-func LinkRun(workDir string, libPath string, outputName string) error {
+func LinkRun(buildDir string, libPath string, outputName string) error {
 	var err error
 	// Assemble/link the files
-	outputPath := path.Join(workDir, outputName)
+	outputPath := path.Join(buildDir, outputName)
 	if *link {
 		// Assemble library if the linklib argument is given
 		if *linklib {
-			err = Assemble(libPath)
+			err = Assemble(libPath, buildDir)
 			if err != nil {
 				return err
 			}
@@ -52,15 +52,15 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 		for _, entry := range entries {
 			if entry.IsDir() {
 				dir := path.Join(*cacheDir, entry.Name())
-				err = Assemble(dir)
+				err = Assemble(dir, buildDir)
 				if err != nil {
 					return err
 				}
 			}
 		}
-		err = Assemble(workDir)
+		err = Assemble(buildDir, buildDir)
 		if err == nil {
-			err = Link(workDir, libPath, outputName)
+			err = Link(buildDir, libPath, outputName)
 		}
 	}
 	if err == nil && *run {
@@ -72,22 +72,24 @@ func LinkRun(workDir string, libPath string, outputName string) error {
 
 // Assemble wil run the assembler on all *.asm files in the working directory
 // And also the syscall.asm from /tools
-func Assemble(buildDir string) error {
-	entries, err := os.ReadDir(buildDir)
+func Assemble(inputDir string, outputDir string) error {
+	entries, err := os.ReadDir(inputDir)
 	if err != nil {
 		return fmt.Errorf("collecting asm files error,  %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".asm") {
 			var args = []string{"-f", "win64"}
-			name := filepath.Join(buildDir, strings.TrimSuffix(entry.Name(), ".asm"))
-			args = append(args, name+".asm", "-o", name+".obj")
+			asmName := filepath.Join(inputDir, entry.Name())
+			outName := filepath.Join(outputDir,
+				strings.TrimSuffix(entry.Name(), ".asm")+".obj")
+			args = append(args, asmName, "-o", outName)
 			out, err := exec.Command("c:/doc/compiler/tools/nasm.exe", args...).CombinedOutput()
 			if len(out) > 0 {
 				fmt.Println(string(out))
 			}
 			if err != nil {
-				return fmt.Errorf("%s: %s", name, err.Error())
+				return fmt.Errorf("%s: %s", asmName, err.Error())
 			}
 		}
 	}
@@ -112,18 +114,19 @@ func Link(workDir string, libPath string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
-	entries, err = os.ReadDir(libPath)
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
-			args = append(args, path.Join(libPath, entry.Name()))
-		}
-	}
+	/*
+		entries, err = os.ReadDir(libPath)
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
+				args = append(args, path.Join(libPath, entry.Name()))
+			}
+		}*/
 	outputPath := path.Join(workDir, outputName)
 	LinkerName := "c:/doc/compiler/tools/"
 	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
 		if *linklib {
-			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+			args = append(args, "-Wl,--subsystem,console", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		} else {
 			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 		}
@@ -161,10 +164,10 @@ func Link(workDir string, libPath string, outputName string) error {
 	}
 
 	// Print link command line to console
-	/*fmt.Printf(LinkerName + " ")
+	fmt.Printf("Linker command line:\n" + LinkerName + " ")
 	for _, s := range args {
 		fmt.Printf(" %s", s)
-	}*/
+	}
 	fmt.Printf("\n")
 
 	// Now start the linker

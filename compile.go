@@ -144,7 +144,7 @@ func ParseImports(s *State) error {
 					fileName := *cacheDir + "/" + Mangle(fullName) + "/" + entry.Name()
 					w := strings.Split(fullName, "/")
 					packageName := w[len(w)-1]
-					s, err2 := NewState(fileName, packageName)
+					s, err2 := NewState(fileName, packageName, true)
 					if err2 != nil {
 						return err2
 					}
@@ -226,7 +226,7 @@ func InitCompile(buildDir string, libPath string, AsmFileName string) error {
 	return nil
 }
 
-func OutputPkgFile(path string) error {
+func OutputPkgFile(path string, packageName string) error {
 	OutputFile, err := os.Create(path + "/import.pkg")
 	if err != nil {
 		return err
@@ -239,12 +239,9 @@ func OutputPkgFile(path string) error {
 			if t.Pt == code.TYP_STRUCT {
 				_, _ = OutputFile.WriteString("type " + t.TypeName + " = struct { ")
 				i := 0
-				for _, field := range t.Fields {
+				for name, field := range t.Fields {
 					i++
-					_, _ = OutputFile.WriteString(field.Name() + " " + t.Name())
-					if i < len(t.Fields) {
-						_, _ = OutputFile.WriteString(", ")
-					}
+					_, _ = OutputFile.WriteString(name + " " + field.TypeName + " ")
 				}
 				_, _ = OutputFile.WriteString("}\n")
 			} else {
@@ -254,7 +251,8 @@ func OutputPkgFile(path string) error {
 	}
 	for _, f := range FuncDefs {
 		if !f.builtin {
-			_, _ = OutputFile.WriteString("func " + f.name + "(")
+			fn := MangleFun(packageName, f.name)
+			_, _ = OutputFile.WriteString("func " + fn + "(")
 			for i, a := range f.parameters {
 				_, _ = OutputFile.WriteString(a.name + " " + a.typ.Name())
 				if i < len(f.parameters)-1 {
@@ -274,7 +272,7 @@ func OutputPkgFile(path string) error {
 	return nil
 }
 
-func OutputEpilogue() error {
+func OutputEpilogue(s *State) error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
@@ -289,6 +287,13 @@ func OutputEpilogue() error {
 	for _, l := range SliceLiteralDefs {
 		EmitSliceLit(*l)
 	}
+	if s.IsPackage {
+		for _, f := range FuncDefs {
+			if !f.builtin {
+				EmitGlobal(s.PackageName + "@" + f.label)
+			}
+		}
+	}
 	return nil
 }
 
@@ -299,7 +304,7 @@ func CompileFile(buildDir string, libPath string, fileName string) error {
 	if err != nil {
 		return err
 	}
-	s, err := NewState(fileName, "main")
+	s, err := NewState(fileName, "main", false)
 	if err != nil {
 		return err
 	}
@@ -310,7 +315,7 @@ func CompileFile(buildDir string, libPath string, fileName string) error {
 	if err != nil {
 		return err
 	}
-	err = OutputEpilogue()
+	err = OutputEpilogue(s)
 	if err != nil {
 		return err
 	}
@@ -330,10 +335,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 	count := 0
 	for count == 0 && err == nil {
 		fmt.Printf(">>> Compiling package %s\n", inputPath)
-		err = InitCompile(buildDir, libPath, "main")
-		if packageName == "main" {
-			emit("global", "main", "", "")
-		}
+		err = InitCompile(buildDir, libPath, packageName)
 
 		if err != nil {
 			return err
@@ -345,7 +347,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				if err != nil {
 					return fmt.Errorf("could not open directory, %v", err.Error())
 				}
-				s, err = NewState(fileName, "main")
+				s, err = NewState(fileName, packageName, false)
 				if err != nil {
 					_ = f.Close()
 					return err
@@ -358,7 +360,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 			}
 		}
 		if err == nil {
-			err = OutputEpilogue()
+			err = OutputEpilogue(s)
 			if err != nil {
 				return err
 			}
@@ -367,7 +369,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				return err
 			}
 			if packageName != "main" {
-				err = OutputPkgFile(buildDir)
+				err = OutputPkgFile(buildDir, packageName)
 				if err != nil {
 					return err
 				}
@@ -377,6 +379,9 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 			_ = code.CloseAsmFile()
 			for _, name := range MissingPackages {
 				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
+				if err != nil {
+					return err
+				}
 			}
 		} else {
 			return err

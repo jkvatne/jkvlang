@@ -188,7 +188,7 @@ func isHex(ch rune) bool {
 }
 
 func isAlfa(ch rune) bool {
-	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch == '@' || ch == '$'
+	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch == '@' || ch == '$' || ch == '~'
 }
 
 func (t Token) Name() string {

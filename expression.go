@@ -212,7 +212,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				v := &VarDef{}
 				v.Typ, ok = lvalue.Typ.Fields[fieldName]
 				if !ok {
-					return nil, fmt.Errorf("expected field name of the struct %s but was not found", fieldName)
+					return nil, fmt.Errorf("expected field name '%s' of the struct '%s' but it was not found", fieldName, id)
 				}
 				v.Name = fieldName
 				fieldOfs := lvalue.Typ.Offsets[fieldName]
@@ -744,6 +744,21 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 	return []*ValueDef{value}, nil
 }
 
+// HandleImportedName will check if the id is a package short-name
+// If so, it will mangle the name with the package path
+func HandleImportedName(s *State, id string) (string, error) {
+	path, ok := ImportedPackages[id]
+	if ok {
+		s.next()
+		if s.token != TOK_DOT {
+			return "", fmt.Errorf("Expected dot after package")
+		}
+		s.next()
+		id = MangleFun(path, s.tokenString)
+	}
+	return id, nil
+}
+
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when an identifier is encountered in an expression
 // We now have s.token == TOK_ID
@@ -755,11 +770,9 @@ func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
 	if id == "ptr" {
 		return ParsePointer(s, id)
 	}
-	path := ImportedPackages[id]
-	if path != "" {
-		s.next()
-		id = MangleFun(path, s.tokenString)
-		s.next()
+	id, err = HandleImportedName(s, id)
+	if err != nil {
+		return nil, err
 	}
 	if s.found(TOK_LPAR) {
 		// An ID followed by left parantesis can be a type conversion or a function call
@@ -1360,11 +1373,15 @@ func ParseFuncDef(s *State) error {
 	}
 	VarReset(s)
 	fun := s.tokenString
-	if fun[0] != '-' && fun != "main" {
+	if !s.IsPkgFile {
 		n := FuncCount(fun)
-		EmitFunction(fun + "_" + strconv.Itoa(n+1))
-	} else {
-		EmitFunction(fun)
+		if fun == "main" {
+			EmitFunction(fun)
+		} else if fun[0] != '-' && s.PackageName != "main" {
+			EmitFunction(s.PackageName + "@" + fun + "_" + strconv.Itoa(n+1))
+		} else {
+			EmitFunction(fun + "_" + strconv.Itoa(n+1))
+		}
 	}
 	s.next()
 	if s.token != TOK_LPAR {
@@ -1418,6 +1435,16 @@ func ParseFuncDef(s *State) error {
 	if s.PackageName == "" && !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
 	}
+	if s.IsPkgFile {
+		if s.token != TOK_RBRACE {
+			return fmt.Errorf("expected right brace but got %s", s.tokenString)
+		}
+		s.next()
+		EmitComment("Global function " + f.name)
+		EmitExtern(f.label)
+		return nil
+	}
+
 	if f.name == "main" {
 		EmitComment("--------------------------------------------")
 	}
@@ -1508,6 +1535,10 @@ func ParseTypeDef(s *State) error {
 	t.Fields = make(map[string]*TypeDef)
 	for k, f := range typ.Fields {
 		t.Fields[k] = f
+	}
+	t.Offsets = make(map[string]int)
+	for k, o := range typ.Offsets {
+		t.Offsets[k] = o
 	}
 	t.Pt = typ.Pt
 	t.Basic = false

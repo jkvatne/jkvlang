@@ -1,0 +1,2 @@
+type time@Time = U64
+func time@now() I32 {}

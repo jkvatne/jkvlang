@@ -125,6 +125,7 @@ func ParseStructType(s *State) (*TypeDef, error) {
 		fieldName := s.tokenString
 		_, ok := t.Fields[fieldName]
 		if ok {
+			t.Fields = nil
 			return nil, fmt.Errorf("field \"%s\" already defined", fieldName)
 		}
 		s.next()
@@ -197,9 +198,15 @@ func ParseType(s *State) (*TypeDef, error) {
 	}
 	id := s.tokenString
 	s.next()
-	if strings.Contains(id, "@") {
-
-	} else if id[0] > 'Z' {
+	if s.token == TOK_DOT {
+		s.next()
+		n := s.tokenString
+		if n[0] > 'Z' {
+			return nil, fmt.Errorf("imported types must start with a capital letter A..Z: '%s'", id)
+		}
+		id = id + "@" + n
+		s.next()
+	} else if id[0] > 'Z' && !strings.Contains(id, "@") {
 		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}
 	typ, ok := TypeDefs[id]

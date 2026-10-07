@@ -28,12 +28,16 @@ type State struct {
 	Cleanup            string
 	LoopLevel          int
 	PackageName        string
+	IsPackage          bool
+	IsPkgFile          bool
 }
 
-func NewState(SourceFile string, PackageName string) (*State, error) {
+func NewState(SourceFile string, PackageName string, isPkgFile bool) (*State, error) {
 	s := new(State)
 	var err error
 	s.PackageName = PackageName
+	s.IsPackage = PackageName != "main"
+	s.IsPkgFile = isPkgFile
 	s.text, err = os.ReadFile(SourceFile)
 	s.FileName = SourceFile
 	return s, err

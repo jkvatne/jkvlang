@@ -9,7 +9,13 @@ import (
 func main() {
     printf("Hello\n")
     print_freq()
-    ok = call(Sleep, 1)
-    //d = date.Date(123)
-    //print("Date=%d", d)
+    // ok = call(Sleep, 1)
+    // d = date.Date(123)
+    // print("Date=%d", d)
+    sum = 0
+    for i=iter.range(1,10) {
+        sum=sum+i
+        print("i=%d", i)
+    }
+    print("Sum=%d", sum)
 }

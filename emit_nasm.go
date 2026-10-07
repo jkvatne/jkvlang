@@ -110,6 +110,10 @@ func EmitF32Litteral(litName string, litValue float32) {
 	code.Write(litName + " dd " + value + "\n")
 }
 
+func EmitGlobal(name string) {
+	code.Write("global " + name + "\n")
+}
+
 var SizeNames = [...]string{"0", "db", "dw", "3", "dd", "5", "6", "7", "dq"}
 
 func EmitSliceLit(l SliceLit) {
