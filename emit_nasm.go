@@ -189,17 +189,15 @@ func EmitCall(id string, nPar int, builtin bool) {
 }
 
 func EmitFunction(id string) {
-	emit("global", "main", "", "")
+	if id == "main" {
+		EmitGlobal("main")
+	}
 	EmitTextLabel(id)
 	if code.LocalSp != 0 {
 		panic("LocalSp is not 0")
 	}
 	// Function prologue. Set up new frame pointer.
-	if id != "main" {
-		emit("push", "rbp", "", "")
-	} else {
-		EmitTextLabel("WinMain")
-	}
+	emit("push", "rbp", "", "")
 	emit("mov", "rbp", "rsp", "")
 	code.LocalSp = 0
 	if id == "main" {

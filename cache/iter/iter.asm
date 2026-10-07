@@ -33,7 +33,6 @@ extern time_used_str
 extern alloc_size_str
 
 
-   global main                          ; sp 0->0 
 
 iter@range_1:
    push rbp                             ; sp 0->1 
@@ -88,7 +87,6 @@ iter@range_1:
    ret                                  ; sp 0->0 return from range
    ; --------------------------------------------
    ; External symbols
-   global main                          ; sp 0->0 
 
 iter@range_2:
    push rbp                             ; sp 0->1 
@@ -143,7 +141,6 @@ iter@range_2:
    ret                                  ; sp 0->0 return from range
    ; --------------------------------------------
    ; External symbols
-   global main                          ; sp 0->0 
 
 iter@next_1:
    push rbp                             ; sp 0->1 

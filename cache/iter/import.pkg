@@ -1,4 +1,4 @@
-type iter@RangeIterator = struct { start I32 end I32 }
+type iter@RangeIterator = struct { end I32 start I32 }
 func iter@range(start I32, end I32) iter@RangeIterator {}
 func iter@range(count I32) iter@RangeIterator {}
 func iter@next(r iter@RangeIterator) I32 {}
