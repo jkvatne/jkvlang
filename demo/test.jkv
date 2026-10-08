@@ -9,7 +9,8 @@ import (
 func main() {
     printf("Hello\n")
     print_freq()
-    // ok = call(Sleep, 1)
+    // Will sleep for the given number of milliseconds
+    ok = call(Sleep, 2000)
     d = date.Date(123)
     print("Date=%d", d)
     sum = 0

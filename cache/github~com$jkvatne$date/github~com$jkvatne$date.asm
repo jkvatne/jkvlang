@@ -46,8 +46,8 @@ github~com$jkvatne$date@date_1:
    mov rbx, 86400                       ; ax 0->0 Get constant divisor into RBX
    idiv rbx                             ; ax 0->0 RAX = RDX:RAX/RBX; RDX=Reminder
    mov [rbp+24], rax                    ; ax 0->0 Save returned value nr 1
-   jmp .L4                              ; sp 0->0 Return
-.L4:                                    ; Return label for date
+   jmp .L11                             ; sp 0->0 Return
+.L11:                                   ; Return label for date
    push rax                             ; -- 0->1 Save rax before freeing local variables from date
    pop rax                              ; sp 1->0 Restore rax after freeing local variables
    leave                                ; sp 0->0 

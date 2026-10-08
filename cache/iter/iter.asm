@@ -53,10 +53,10 @@ iter@range_1:
    mov rax, rdx                         ; ax 2->2 
    mov rax, [rbp-8]                     ; ax 2->2 EmitAssignVariableExpressionStruct, Get old value
    or rax, rax                          ; ax 2->2 
-   jz .L6                               ; ax 2->2 
+   jz .L3                               ; ax 2->2 
    mov rcx, 0                           ; ax 2->2 Now free the struct iter@RangeIterator itself
    call _free_struct                    ; ax 2->2 
-.L6:                                    ; 
+.L3:                                    ; 
    pop rax                              ; -- 2->1 Get new struct
    mov [rbp-8], rax                     ; -- 1->1 EmitStoreToLocal Assign struct to r
 
@@ -78,8 +78,8 @@ iter@range_1:
    ; Line 12: return r
    mov rax, qword [rbp-8]               ; -- 1->1 EmitLoad: Load struct/string variable r
    mov [rbp+32], rax                    ; ax 1->1 Save returned value nr 1
-   jmp .L5                              ; sp 1->1 Return
-.L5:                                    ; Return label for range
+   jmp .L2                              ; sp 1->1 Return
+.L2:                                    ; Return label for range
    push rax                             ; -- 1->2 Save rax before freeing local variables from range
    pop rax                              ; sp 2->1 Restore rax after freeing local variables
    add rsp, 8                           ; sp 1->0 Delete block vars
@@ -107,10 +107,10 @@ iter@range_2:
    mov rax, rdx                         ; ax 2->2 
    mov rax, [rbp-8]                     ; ax 2->2 EmitAssignVariableExpressionStruct, Get old value
    or rax, rax                          ; ax 2->2 
-   jz .L8                               ; ax 2->2 
+   jz .L5                               ; ax 2->2 
    mov rcx, 0                           ; ax 2->2 Now free the struct iter@RangeIterator itself
    call _free_struct                    ; ax 2->2 
-.L8:                                    ; 
+.L5:                                    ; 
    pop rax                              ; -- 2->1 Get new struct
    mov [rbp-8], rax                     ; -- 1->1 EmitStoreToLocal Assign struct to r
 
@@ -132,8 +132,8 @@ iter@range_2:
    ; Line 19: return r
    mov rax, qword [rbp-8]               ; -- 1->1 EmitLoad: Load struct/string variable r
    mov [rbp+24], rax                    ; ax 1->1 Save returned value nr 1
-   jmp .L7                              ; sp 1->1 Return
-.L7:                                    ; Return label for range
+   jmp .L4                              ; sp 1->1 Return
+.L4:                                    ; Return label for range
    push rax                             ; -- 1->2 Save rax before freeing local variables from range
    pop rax                              ; sp 2->1 Restore rax after freeing local variables
    add rsp, 8                           ; sp 1->0 Delete block vars
@@ -160,14 +160,14 @@ iter@next_1:
    pop rbx                              ; ax 1->0 Pop next on stack into RBX
    cmp rbx, rax                         ; ax 0->0 Compare two ints
    mov rax, 1                           ; ax 0->0 Default to true
-   jg .L10                              ; ax 0->0 
+   jg .L7                               ; ax 0->0 
    mov rax, 0                           ; ax 0->0 Return false if we did not jump
-.L10:                                   ; 
+.L7:                                    ; 
    or al, al                            ; ax 0->0 Skip block 1 if false
-   jz .L11                              ; ax 0->0 
+   jz .L8                               ; ax 0->0 
    mov r15, 1                           ; -- 0->0 Set tos to r15 = error value
-   jmp .L9                              ; -- 0->0 Failed with const
-.L11:                                   ; 
+   jmp .L6                              ; -- 0->0 Failed with const
+.L8:                                    ; 
 
    ; Line 24: x = r.start
    xor rax, rax                         ; -- 0->0 EmitAllocLocalVar Assign stack space for x
@@ -189,8 +189,8 @@ iter@next_1:
    ; Line 26: return x
    movsx rax, dword [rbp-8]             ; -- 1->1 EmitLoad: Load variable x
    mov [rbp+24], rax                    ; ax 1->1 Save returned value nr 1
-   jmp .L9                              ; sp 1->1 Return
-.L9:                                    ; Return label for next
+   jmp .L6                              ; sp 1->1 Return
+.L6:                                    ; Return label for next
    push rax                             ; -- 1->2 Save rax before freeing local variables from next
    pop rax                              ; sp 2->1 Restore rax after freeing local variables
    add rsp, 8                           ; sp 1->0 Delete block vars
