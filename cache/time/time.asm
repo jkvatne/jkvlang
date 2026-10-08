@@ -41,8 +41,8 @@ time@now_1:
    ; Line 9: return 1234
    mov rax, 1234                        ; ax 0->0 PushConst Returned const value number 0
    mov [rbp+16], rax                    ; ax 0->0 Save returned value nr 1
-   jmp .L9                              ; sp 0->0 Return
-.L9:                                    ; Return label for now
+   jmp .L2                              ; sp 0->0 Return
+.L2:                                    ; Return label for now
    push rax                             ; -- 0->1 Save rax before freeing local variables from now
    pop rax                              ; sp 1->0 Restore rax after freeing local variables
    leave                                ; sp 0->0 

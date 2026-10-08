@@ -22,9 +22,11 @@ type ParDef struct {
 	typ  *TypeDef
 }
 
-var Externals []string
-
-var FuncDefs []*FuncDef
+var (
+	Externals []string
+	FuncDefs  []*FuncDef
+	FuncNames []string
+)
 
 func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
 	n := FuncCount(id)
@@ -41,11 +43,13 @@ func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, 
 	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)
 	FuncDefs = append(FuncDefs, f)
+	FuncNames = append(FuncNames, name)
 	return f, nil
 }
 
 func FuncInit() {
-	FuncDefs = make([]*FuncDef, 0, 16)
+	FuncDefs = make([]*FuncDef, 0, 30)
+	FuncNames = make([]string, 0, 30)
 	_, _ = AddFunc("println", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
 	_, _ = AddFunc("printf", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
 	_, _ = AddFunc("print", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)

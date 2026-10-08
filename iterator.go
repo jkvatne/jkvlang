@@ -119,15 +119,15 @@ func ParseFor(s *State) error {
 		if !s.found(TOK_ASSIGN) {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
 		}
-		// Now parse the function returning the range
-		id, err := HandleImportedName(s, s.tokenString)
-		if err != nil {
-			return err
-		}
-
-		if !s.found(TOK_ID) {
+		if s.token != TOK_ID {
 			return fmt.Errorf("expected function name but got %s", s.tokenString)
 		}
+		// Now parse the function returning the range
+		id, err2 := HandleImportedName(s)
+		if err2 != nil {
+			return err2
+		}
+
 		if !s.found(TOK_LPAR) {
 			return fmt.Errorf("expected '(' but got %s", s.tokenString)
 		}

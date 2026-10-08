@@ -746,15 +746,18 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 
 // HandleImportedName will check if the id is a package short-name
 // If so, it will mangle the name with the package path
-func HandleImportedName(s *State, id string) (string, error) {
+// Assumes the id is in s.TokenString
+func HandleImportedName(s *State) (string, error) {
+	id := s.tokenString
+	s.next()
 	path, ok := ImportedPackages[id]
 	if ok {
-		s.next()
 		if s.token != TOK_DOT {
-			return "", fmt.Errorf("Expected dot after package")
+			return "", fmt.Errorf("expected dot after package")
 		}
 		s.next()
 		id = MangleFun(path, s.tokenString)
+		s.next()
 	}
 	return id, nil
 }
@@ -762,17 +765,14 @@ func HandleImportedName(s *State, id string) (string, error) {
 // ParseVarOrFunc is called for a unary function or variable.
 // Called when an identifier is encountered in an expression
 // We now have s.token == TOK_ID
-func ParseVarOrFunc(s *State) (values []*ValueDef, err error) {
-	err = fmt.Errorf("unrecognized variable or function call")
-	id := s.tokenString
-	s.next()
+func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
+	id, err := HandleImportedName(s)
+	if err != nil {
+		return nil, err
+	}
 	// Handle the special keyword ptr used to convert var into pointer
 	if id == "ptr" {
 		return ParsePointer(s, id)
-	}
-	id, err = HandleImportedName(s, id)
-	if err != nil {
-		return nil, err
 	}
 	if s.found(TOK_LPAR) {
 		// An ID followed by left parantesis can be a type conversion or a function call

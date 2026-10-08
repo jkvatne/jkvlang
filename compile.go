@@ -148,7 +148,10 @@ func ParseImports(s *State) error {
 					if err2 != nil {
 						return err2
 					}
-					return ScanFile(s, fullName)
+					err2 = ScanFile(s, fullName)
+					if err2 != nil {
+						return err2
+					}
 				}
 			}
 		}
