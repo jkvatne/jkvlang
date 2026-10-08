@@ -42,6 +42,9 @@ func InitTypes() {
 }
 
 func (t *TypeDef) Size() int {
+	if t == nil {
+		panic("Internal error")
+	}
 	if t.Pt == code.TYP_STRUCT {
 		return t.StructSize
 	}

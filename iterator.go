@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -141,10 +142,12 @@ func ParseFor(s *State) error {
 		}
 		code.OutputArgCode()
 		p := &ParDef{name: "rec", typ: &StructType}
-		pkg, _ := DeMangleFun(id)
 		fun := "next"
-		if pkg != "" {
-			fun = MangleFun(pkg, fun)
+		if strings.Contains(id, "@") {
+			pkg, _ := DeMangleFun(id)
+			if pkg != "" {
+				fun = MangleFun(pkg, fun)
+			}
 		}
 		f := FindFuncDef(fun, []*ParDef{p})
 		if f == nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -32,13 +33,16 @@ type State struct {
 	IsPkgFile          bool
 }
 
-func NewState(SourceFile string, PackageName string, isPkgFile bool) (*State, error) {
+func NewState(SourceFileName string, PackageName string, isPkgFile bool) (*State, error) {
 	s := new(State)
 	var err error
 	s.PackageName = PackageName
 	s.IsPackage = PackageName != "main"
 	s.IsPkgFile = isPkgFile
-	s.text, err = os.ReadFile(SourceFile)
-	s.FileName = SourceFile
+	s.text, err = os.ReadFile(SourceFileName)
+	if err != nil {
+		return nil, fmt.Errorf("could not read source file '%s'", SourceFileName)
+	}
+	s.FileName = SourceFileName
 	return s, err
 }

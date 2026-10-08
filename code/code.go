@@ -1,6 +1,7 @@
 package code
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -138,12 +139,15 @@ func SpIsTos() bool {
 func NewAsmFile(name string, workdir string) (err error) {
 	ArgCode = make([]string, 0, 64)
 	CleanupCode = make([]string, 0, 64)
+	NextLineNum = 1
+	LineNum = 1
 	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
 	fn := filepath.Join(workdir, UnitName+".asm")
 	OutputFile, err = os.Create(fn)
-	NextLineNum = 1
-	LineNum = 1
-	return err
+	if err != nil {
+		return fmt.Errorf("could not create assembly file '%s'", fn)
+	}
+	return nil
 }
 
 func NewLabel() int {

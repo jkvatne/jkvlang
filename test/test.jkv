@@ -1,5 +1,6 @@
 
 func main() {
+    print("Running test.jkv")
     z = -13
     assert(z==-13, "Expected z==-13, got %d", z)
     w = 10-(-z)

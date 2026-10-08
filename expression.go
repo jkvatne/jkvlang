@@ -77,7 +77,10 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 
 func AssignStruct(lvalue *VarDef) (err error) {
 	lbl := EmitCheckForOldStruct(lvalue.Offset)
-	FreeStruct(lvalue.Typ)
+	err = FreeStruct(lvalue.Typ)
+	if err != nil {
+		return err
+	}
 	return EmitAssignVariableExpressionStruct(lbl, lvalue.Offset, "Assign struct to "+lvalue.Name)
 }
 
@@ -1340,7 +1343,7 @@ func ParseIf(s *State) error {
 	return fmt.Errorf("expected {, ? or : but got %s", s.token.Name())
 }
 
-func FreeStruct(t *TypeDef) {
+func FreeStruct(t *TypeDef) error {
 	for i, f := range t.Fields {
 		if f.Pt != code.TYP_STRUCT && f.Pt != code.TYP_SLICE && f.Pt != code.TYP_STRING {
 			continue
@@ -1351,8 +1354,14 @@ func FreeStruct(t *TypeDef) {
 		// Check that pointer is not null
 		EmitJumpFalse("rax", lbl, "")
 		if f.Pt == code.TYP_STRUCT {
-			FreeStruct(f)
+			err := FreeStruct(f)
+			if err != nil {
+				return err
+			}
 		} else if f.Pt == code.TYP_SLICE {
+			if f.Element == nil {
+				return fmt.Errorf("Struct with zero element size for '%s'", f.Name())
+			}
 			EmitFreeSlice(f)
 		} else if f.Pt == code.TYP_STRING {
 			EmitFreeString(i)
@@ -1361,6 +1370,7 @@ func FreeStruct(t *TypeDef) {
 		EmitPopAx("")
 	}
 	EmitFreeStruct(t.StructSize, "Now free the struct "+t.Name()+" itself")
+	return nil
 }
 
 func ParseFuncDef(s *State) error {

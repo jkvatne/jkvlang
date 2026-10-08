@@ -18,21 +18,22 @@ import (
 const Version string = "v0.0.2"
 
 var (
-	buildDir  = flag.String("build", "c:/doc/compiler/build", "Path to intermediate files during build")
-	run       = flag.Bool("run", true, "Set true to run after compile")
-	test      = flag.Bool("test", false, "Set true to run after compile")
-	link      = flag.Bool("link", true, "Set true to just do linking")
-	linklib   = flag.Bool("linklib", true, "Set true to just do linking")
-	sourceDir = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
-	oneFile   = flag.String("file", "", "Compile a single file")
-	clean     = flag.Bool("clean", false, "Set true to recompile all imports")
-	debug     = flag.Bool("debug", false, "Enable debug mode")
-	linker    = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
-	arg       = flag.String("arg", "", "Arguments to the compiled program when it is run")
-	cacheDir  = flag.String("cache", "./cache", "Cache directory")
+	buildDir     = flag.String("build", "c:/doc/compiler/build", "Path to intermediate files during build")
+	run          = flag.Bool("run", true, "Set true to run after compile")
+	test         = flag.Bool("test", false, "Set true to run after compile")
+	link         = flag.Bool("link", true, "Set true to just do linking")
+	linklib      = flag.Bool("linklib", true, "Set true to just do linking")
+	sourceDir    = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
+	oneFile      = flag.String("file", "", "Compile a single file")
+	clean        = flag.Bool("clean", false, "Set true to recompile all imports")
+	debug        = flag.Bool("debug", false, "Enable debug mode")
+	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
+	arg          = flag.String("arg", "", "Arguments to the compiled program when it is run")
+	cacheDir     = flag.String("cache", "./cache", "Cache directory")
+	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
 )
 
-func LinkRun(buildDir string, libPath string, outputName string) error {
+func LinkRun(buildDir string, libPath string, outputName string, usesCache bool) error {
 	var err error
 	// Assemble/link the files
 	outputPath := path.Join(buildDir, outputName)
@@ -45,16 +46,18 @@ func LinkRun(buildDir string, libPath string, outputName string) error {
 			}
 		}
 		// Assemble cached packages (if needed)
-		entries, err2 := os.ReadDir(*cacheDir)
-		if err2 != nil {
-			return err2
-		}
-		for _, entry := range entries {
-			if entry.IsDir() {
-				dir := path.Join(*cacheDir, entry.Name())
-				err = Assemble(dir, buildDir)
-				if err != nil {
-					return err
+		if usesCache {
+			entries, err2 := os.ReadDir(*cacheDir)
+			if err2 != nil {
+				return err2
+			}
+			for _, entry := range entries {
+				if entry.IsDir() {
+					dir := path.Join(*cacheDir, entry.Name())
+					err = Assemble(dir, buildDir)
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -114,22 +117,11 @@ func Link(workDir string, libPath string, outputName string) error {
 			args = append(args, filepath.Join(workDir, entry.Name()))
 		}
 	}
-	/*
-		entries, err = os.ReadDir(libPath)
-		for _, entry := range entries {
-			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
-				args = append(args, path.Join(libPath, entry.Name()))
-			}
-		}*/
 	outputPath := path.Join(workDir, outputName)
 	LinkerName := "c:/doc/compiler/tools/"
 	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
-		if *linklib {
-			args = append(args, "-mconsole", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
-		} else {
-			args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
-		}
+		args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 	} else if *linker == "ucrt" {
 		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
@@ -158,18 +150,19 @@ func Link(workDir string, libPath string, outputName string) error {
 		if *debug {
 			args = append(args, "/debug")
 		}
-		// args = append(args, "kernel32.dll", "msvcrt.dll") //  "legacy_stdio_definitions.lib",
+		// args = append(args, "legacy_stdio_definitions.lib")
 	} else {
 		fmt.Printf("Must specify either gcc, golink or ucrt")
 	}
 
 	// Print link command line to console
-	fmt.Printf("Linker command line:\n" + LinkerName + " ")
-	for _, s := range args {
-		fmt.Printf(" %s", s)
+	if *printLinkCmd {
+		fmt.Printf("Linker command line:\n" + LinkerName + " ")
+		for _, s := range args {
+			fmt.Printf(" %s", s)
+		}
+		fmt.Printf("\n")
 	}
-	fmt.Printf("\n")
-
 	// Now start the linker
 	output, err := exec.Command(LinkerName, args...).CombinedOutput()
 	if err != nil {
@@ -243,7 +236,7 @@ func main() {
 		err = CompileFile(*buildDir, libPath, *oneFile)
 		if err == nil {
 			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv") + ".exe"
-			err = LinkRun(*buildDir, libPath, outputName)
+			err = LinkRun(*buildDir, libPath, outputName, false)
 		}
 	} else if *test {
 		n := 0
@@ -266,7 +259,7 @@ func main() {
 		}
 		err = CompileDir("main", *buildDir, libPath, *sourceDir)
 		if err == nil {
-			err = LinkRun(*buildDir, libPath, "main")
+			err = LinkRun(*buildDir, libPath, "main", true)
 		}
 	}
 	if err != nil {

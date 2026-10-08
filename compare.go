@@ -12,7 +12,7 @@ import (
 func FilesAreEqual(file1Path, file2Path string) error {
 	f1, err := os.Open(file1Path)
 	if err != nil {
-		return err
+		return fmt.Errorf("function FilesAreEqual could not open %s", file1Path)
 	}
 	defer func(f1 *os.File) {
 		_ = f1.Close()
@@ -20,7 +20,7 @@ func FilesAreEqual(file1Path, file2Path string) error {
 
 	f2, err := os.Open(file2Path)
 	if err != nil {
-		return err
+		return fmt.Errorf("function FilesAreEqual could not open %s", file2Path)
 	}
 	defer func(f2 *os.File) {
 		_ = f2.Close()

@@ -155,7 +155,7 @@ _flush:
     mov rbp, rsp          ; Setup new frame pointer
     and rsp, -16          ; Align stack by clearing the 4 lsb
     sub rsp, 96           ; Reserve space for arguments to the called function
-    xor rcx, rcx
+    xor rcx, rcx          ; Clear arg 1 in order to flush all streams
     call fflush
     leave
     ret

@@ -461,6 +461,8 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("argc")
 		EmitExtern("args")
 		EmitExtern("_cstrlen")
+		EmitExtern("envc")
+		EmitExtern("envs")
 		EmitSection("text")
 		EmitExtern("tick_frequency")
 		EmitExtern("_get_ticks")

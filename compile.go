@@ -20,6 +20,9 @@ func ImportInit() {
 
 func DeMangleFun(mangledName string) (path string, fun string) {
 	w := strings.Split(mangledName, "@")
+	if len(w) != 2 {
+		return mangledName, mangledName
+	}
 	path = w[0]
 	fun = w[1]
 	return DeMangle(path), fun
@@ -300,31 +303,6 @@ func OutputEpilogue(s *State) error {
 	return nil
 }
 
-// CompileFile will compile and run a single file. It must have a main() function.
-func CompileFile(buildDir string, libPath string, fileName string) error {
-	fmt.Printf(">>> Compiling %s\n", fileName)
-	err := InitCompile(buildDir, libPath, fileName)
-	if err != nil {
-		return err
-	}
-	s, err := NewState(fileName, "main", false)
-	if err != nil {
-		return err
-	}
-	defer func(s *State) {
-		_ = code.CloseAsmFile()
-	}(s)
-	err = ScanFile(s, fileName)
-	if err != nil {
-		return err
-	}
-	err = OutputEpilogue(s)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // CompileDir will compile a package in the given directory.
 // The package can consst of several source code files.
 // The output is a single assembly file in the buildDir
@@ -417,7 +395,7 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 					fmt.Printf("File %s failed with error %v\n", name, err)
 				} else {
 					if err == nil {
-						err = LinkRun(buildDir, libPath, outputName)
+						err = LinkRun(buildDir, libPath, outputName, false)
 					}
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
@@ -427,4 +405,29 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 		}
 	}
 	return n, err
+}
+
+// CompileFile will compile and run a single file. It must have a main() function.
+func CompileFile(buildDir string, libPath string, fileName string) error {
+	fmt.Printf(">>> Compiling %s\n", fileName)
+	err := InitCompile(buildDir, libPath, strings.TrimSuffix(fileName, ".jkv"))
+	if err != nil {
+		return err
+	}
+	s, err := NewState(fileName, "main", false)
+	if err != nil {
+		return err
+	}
+	defer func(s *State) {
+		_ = code.CloseAsmFile()
+	}(s)
+	err = ScanFile(s, fileName)
+	if err != nil {
+		return err
+	}
+	err = OutputEpilogue(s)
+	if err != nil {
+		return err
+	}
+	return nil
 }
