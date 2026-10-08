@@ -971,9 +971,9 @@ func EmitLoadWithOffset(ofs int, comment string) {
 }
 
 func EmitFreeSlice(t *TypeDef) {
-	emit("mov", "rcx", strconv.Itoa(t.Element.Size()), "Load element size")
+	emit("mov", "rcx", strconv.Itoa(t.Element.Size()), "EmitFreeSlice loads element size")
 	// _free_slice assumes pointer in rax and element size in rcx
-	emit("call", "_free_slice", "", "")
+	emit("call", "_free_slice", "", "EmitFreeSlice")
 	code.SetUndef()
 }
 

@@ -1,9 +1,14 @@
-
-func main() {
-    print("Running test.jkv")
-    z = -13
-    assert(z==-13, "Expected z==-13, got %d", z)
-    w = 10-(-z)
-    assert(w==-3, "Expected w==-3, got %d", w)
+type Rec = struct {
+    intval I32
+    float64val F64
+    float32val F32
 }
 
+func main() {
+    r = new(Rec)
+    r.intval=8
+    r.float64val = 3.0
+    r.float32val = 4.0
+    r.intval = 12
+    assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
+}

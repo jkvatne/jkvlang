@@ -1542,6 +1542,7 @@ func ParseTypeDef(s *State) error {
 	} else {
 		t.TypeName = id
 	}
+	t.Element = typ.Element
 	t.Fields = make(map[string]*TypeDef)
 	for k, f := range typ.Fields {
 		t.Fields[k] = f
@@ -1552,6 +1553,7 @@ func ParseTypeDef(s *State) error {
 	}
 	t.Pt = typ.Pt
 	t.Basic = false
+	t.StructSize = typ.StructSize
 	AddType(id, &t)
 	return nil
 }
