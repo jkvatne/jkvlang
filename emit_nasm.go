@@ -1849,7 +1849,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	// emit("pop", "rsi", "", "")
 }
 
-// =======   APPEND STR-STR ===========
+// =======   APPEND STR-STR ============
 
 // EmitAppendVariableExpressionStrStr appends the string on stack to the variable at adr.
 // Ok
