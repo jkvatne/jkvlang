@@ -1,14 +1,14 @@
-type Rec = struct {
-    intval I32
-    float64val F64
-    float32val F32
+
+type Person = struct {
+  adr String
+  name String
 }
 
 func main() {
-    r = new(Rec)
-    r.intval=8
-    r.float64val = 3.0
-    r.float32val = 4.0
-    r.intval = 12
-    assert(r.intval==12, "Expected r.intval=12, got %d", r.intval)
+    p = new(Person)
+    p.name = "Jan"
+    w = " Vatne"
+    // EmitAppendIndirectExpressionStrStr
+    p.name+=w
+    assert(p.name=="Jan Vatne", "Expected p.name=Jan Vatne, got '%s'", p.name)
 }

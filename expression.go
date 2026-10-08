@@ -132,7 +132,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	EmitAssertTosInRax("")
-	emit("pop", "rdi", "", "")
+	emit("pop", "rdi", "", "Get NOS into rdi")
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
 	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {

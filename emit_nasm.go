@@ -1474,6 +1474,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 }
 
 // EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	// EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
 	if op == TOK_MULT_ASGN {
@@ -1555,6 +1556,7 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 }
 
 // EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionF64(op Token) error {
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1573,6 +1575,8 @@ func EmitAssignIndirectExpressionF64(op Token) error {
 
 }
 
+// EmitAssignIndirectExpressionF32
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionF32(op Token) error {
 	if op == TOK_ASSIGN {
 		code.SetUndef()
@@ -1697,7 +1701,7 @@ func EmitAssignVariableExpressionStruct(lbl int, adr int, comment string) error 
 }
 
 // EmitAssignIndirectExpressionSlice
-// TOS is new slice, NOS is indirect pointer
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionSlice() error {
 	EmitAssertTosInRax("")
 	emit("mov", "qword [rdi]", "rax", "Save new slice")
@@ -1705,7 +1709,7 @@ func EmitAssignIndirectExpressionSlice() error {
 }
 
 // EmitAssignIndirectExpressionStruct
-// TOS is new slice, NOS is indirect pointer
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionStruct() error {
 	EmitAssertTosInRax("")
 	emit("mov", "qword [rdi]", "rax", "Save new struct")
@@ -1790,12 +1794,13 @@ func EmitConcat(free1 bool, free2 bool) {
 // The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
 // * At exit, rdi points to the first empty character of the new string (ready for move)
 // * At exit, rdx points to the extended string's len/cap or the old string's len/cap
+// * At exit, rsi points to the new string's len/cap
 // Uses r12
 func ExtendStringCapacity(bytesExtra int) {
 	lbl1 := code.NewLabel()
 	lbl2 := code.NewLabel()
 	lbl3 := code.NewLabel()
-	emit("push", "rsi", "", "")
+	// emit("push", "rsi", "", "")
 	// Check if old string was nil.
 	emit("mov", "rax", "rbx", "")
 	emit("or", "rsi", "rsi", "")
@@ -1837,11 +1842,11 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "[rdx]", "r12", "Mov new len/cap into string")
 	emit("mov", "rsi", "rdx", "rdx now points to the new string's len/cap")
 	// Free old string
-	emit("mov", "[rsp]", "rdx", "")
+	// emit("mov", "[rsp]", "rdx", "")
 	emit("mov", "rax", "rbx", "rbx points to the old string")
 	emit("call", "_free_str", "", "")
 	EmitLabel(lbl1, "End of ExtendStringCapacity")
-	emit("pop", "rdx", "", "")
+	// emit("pop", "rsi", "", "")
 }
 
 // =======   APPEND STR-STR ===========
@@ -1852,12 +1857,12 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	emit("mov", "rbx", BpRel(adr), "Get pointer to first part")
 	emit("push", "rbx", "", "and save it to stack")
 	emit("mov", "r13", "rax", "Save second part to r13")
-	// Set bx to the appended length (on stack)
 	emit("mov", "rbx", "[r13]", "Get len/cap of second part")
 	emit("mov", "ebx", "ebx", "Clear capacity. ")
 	emit("mov", "r14", "rbx", "Save length of second part")
-	// Set si to point to len/cap of string to be possibly extended
 	emit("mov", "rsi", "[rsp]", "")
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
@@ -1873,31 +1878,34 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	return nil
 }
 
-// EmitAppendIndirectExpressionStrStr appends string in rax (second part) to  [rsp] (first part)
-// OK
+// EmitAppendIndirectExpressionStrStr appends string in rax
+// rax=second part  rdi =first part
 func EmitAppendIndirectExpressionStrStr() error {
-	// Set si to point to len/cap of string to be possibly extended
+	EmitComment(">> EmitAppendIndirectExpressionStrStr  rax=second, rdi=first")
 	EmitAssertTosInRax("")
-	EmitComment(">> EmitAppendIndirectExpressionStrStr")
-	emit("mov", "rsi", "[rsp]", "First part")
-	emit("mov", "rsi", "[rsi]", "Get string len/cap pointer for first part")
+	emit("push", "rdi", "", "")
+	emit("mov", "rdi", "[rdi]", "First part")
+	// Set si to point to len/cap of string to be possibly extended
+	emit("mov", "rsi", "rdi", "First part")
 	emit("mov", "r13", "rax", "Save second part to r13")
 	emit("mov", "rbx", "[r13]", "Get len/cap of second part")
 	emit("mov", "ebx", "ebx", "Clear capacity. Ready to extend.")
 	emit("mov", "r14", "rbx", "Save length of second part")
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
-	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
+	emit("add", "[rdx]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "r13", "Get appended string")
 	emit("add", "rsi", "8", "")
+	emit("cld", "", "", "")
 	emit("rep", "movsb", "", "copy appended string 2")
 	// Now update indirect variable
-	emit("mov", "rdi", "[rsp]", "")
+	emit("pop", "rdi", "", "Update indirect variable")
 	emit("mov", "qword [rdi]", "rdx", "")
-	emit("pop", "rax", "", "")
 	return nil
 }
 
@@ -1909,10 +1917,12 @@ func EmitAppendIndirectConstStrStr(strLitNo int) error {
 	emit("mov", "rbx", "[rax]", "Get part 2 len/cap")
 	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
 	emit("mov", "r14", "rbx", "Save length of second part")
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
-	emit("add", "[rsi]", "r14", "Add length of second part to length/cap of first part")
+	emit("add", "[rdx]", "r14", "Add length of second part to length/cap of first part")
 	emit("mov", "rcx", "r14", "Get length of second part")
 	emit("mov", "ecx", "ecx", "Clear cap, added length in rcx")
 	emit("mov", "rsi", "str"+strconv.Itoa(strLitNo), "")
@@ -1975,6 +1985,7 @@ func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 }
 
 // EmitAssignIndirectExpressionStrStr assigns  string in  [rax] (right side) to string pointed to by [rsp] (left side)
+// rax=second part  rdi =first part
 func EmitAssignIndirectExpressionStrStr() error {
 	// Free old string in [rax] if it exists
 	EmitAssertTosInRax("")
@@ -2042,7 +2053,8 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	emit("mov", "rsi", "[rsp]", "Load indirect pointer (EmitAppendIndirectConstStrChar)")
 	emit("mov", "rsi", "[rsi]", "Load string pointer")
 	emit("mov", "rbx", "1", "Load needed extra space")
-	// Now ebx should contain the required extra length (1) and rsi should point to the old string, so [rsi] is the old len/cap
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
@@ -2055,7 +2067,8 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	return nil
 }
 
-// EmitAppendIndirectExpressionStrChar has NOS=Pointer, TOS=character
+// EmitAppendIndirectExpressionStrChar
+// rax=second part  rdi =first part
 func EmitAppendIndirectExpressionStrChar() error {
 	EmitAssertTosInRax("")
 	emit("mov", "r14", "rax", "")
@@ -2064,7 +2077,8 @@ func EmitAppendIndirectExpressionStrChar() error {
 
 	emit("mov", "rsi", "[rsi]", "Load string pointer")
 	emit("mov", "rbx", "1", "Load needed extra space")
-	// Now ebx should contain the required extra length (1) and rsi should point to the old string, so [rsi] is the old len/cap
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
@@ -2089,7 +2103,8 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
 	emit("mov", "rsi", "rdi", "save copy of pointer")
 	emit("mov", "rbx", "1", "Load needed extra space")
-	// Now ebx should contain the required extra length (1) and rsi should point to the old string, so [rsi] is the old len/cap
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
 	ExtendStringCapacity(4)
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
