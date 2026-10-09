@@ -1800,7 +1800,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	lbl1 := code.NewLabel()
 	lbl2 := code.NewLabel()
 	lbl3 := code.NewLabel()
-	// emit("push", "rsi", "", "")
+	emit("mov", "rdx", "rsi", "Save pointer to string")
 	// Check if old string was nil.
 	emit("mov", "rax", "rbx", "")
 	emit("or", "rsi", "rsi", "")
@@ -2050,7 +2050,7 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character 4")
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
@@ -2075,7 +2075,7 @@ func EmitAppendIndirectExpressionStrChar() error {
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
 	emit("mov", "rax", "r14", "")
-	emit("mov", "byte [rdi]", "al", "Append character")
+	emit("mov", "byte [rdi]", "al", "Append character 3")
 	// Now update indirect variable
 	// emit("mov", "rdi", "rsi", "")  // WRONG
 	emit("pop", "rdi", "", "")
@@ -2100,7 +2100,7 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character 2")
 	// Update variable
 	emit("mov", BpRel(adr), "rdx", "")
 	return nil
@@ -2120,7 +2120,7 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
 	emit("mov", "rax", "r14", "")
-	emit("mov", "byte [rdi]", "al", "Append character")
+	emit("mov", "byte [rdi]", "al", "Append character 1")
 	emit("mov", BpRel(adr), "rdx", "")
 	return nil
 }

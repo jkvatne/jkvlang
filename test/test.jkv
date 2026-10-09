@@ -6,8 +6,14 @@ type Person = struct {
 
 func main() {
     // EmitAppendVariableExpressionStrChar
-     v = "HelloWorld"
-     n = 'A'
-     v += n+1
-     assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
+    v = "Hello"
+    w = "World"
+    v += w
+    s =  "aaa"
+
+    s += "xxx"  // This makes it fail!
+
+    n = 'A'
+    v += n+1
+    assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
 }
