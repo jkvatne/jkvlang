@@ -316,6 +316,7 @@ func parseNumber(s *State) {
 	} else {
 		var i int64
 		var u uint64
+		s.tokenString = "0x" + num
 		i, err = strconv.ParseInt(num, base, 64)
 		s.ConstValue.Bits = uint64(i)
 		s.ConstValue.Pt = TypeFromNumber(i)

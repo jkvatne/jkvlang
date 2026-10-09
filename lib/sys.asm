@@ -53,6 +53,7 @@ global _free_struct
 global _free_slice
 global _free_str
 global _print
+global _low_byte
 global _invert_err
 global _syscall
 global _get_ticks
@@ -125,6 +126,11 @@ _get_tick_freq:
     call QueryPerformanceFrequency
     leave                            ; Epilogue: Restore old frame pointer
     ret                              ; Epilogue: Return
+
+_low_byte:
+    xor rax, rax
+    mov al, byte [rsp+8]
+    ret
 
 _print:
     mov rdi, printf

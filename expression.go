@@ -624,7 +624,7 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 	} else if (t1.Pt == code.TYP_F64 || t1.Pt == code.TYP_F32) && (t2.Pt == code.TYP_F64 || t2.Pt == code.TYP_F32) {
 		value.Typ = t1
 	} else {
-		err = fmt.Errorf("can not convert from %s to %s", t1.Pt.Name(), t2.Pt.Name())
+		err = fmt.Errorf("can not convert from %s to %s", t2.Pt.Name(), t1.Pt.Name())
 	}
 	if !s.found(TOK_RPAR) {
 		return nil, fmt.Errorf("expected right parentheses")
@@ -1260,6 +1260,9 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			}
 			code.NewArgCode()
 			values, err := ParseExpression(s)
+			if err != nil {
+				return err
+			}
 			code.OutputArgCode()
 			if err != nil {
 				return err

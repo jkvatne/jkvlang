@@ -468,6 +468,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_get_ticks")
 		EmitExtern("time_used_str")
 		EmitExtern("alloc_size_str")
+		EmitExtern("_low_byte")
 	}
 
 	code.EmitBlankLine()

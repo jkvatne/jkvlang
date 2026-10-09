@@ -69,6 +69,9 @@ func FuncInit() {
 	_, _ = AddFunc("cstrlen", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("get_ticks", nil, nil, true, false)
 	_, _ = AddFunc("get_tick_freq", nil, nil, true, false)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&U8Type}, true, false)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&U16Type}, true, false)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I16Type}, true, false)
 }
 
 // &VarDef{Name: "err", Typ: &I64Type

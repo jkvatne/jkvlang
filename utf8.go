@@ -134,18 +134,18 @@ const (
 
 func Encode(p []byte, i int, r int32) int {
 	if uint32(r) <= rune1Max {
-		p[i] = byte(r)
+		p[i+0] = byte(r)
 		return i + 1
 	} else if r > 0 && r <= rune2Max {
-		p[i] = t2 | byte(r>>6)
+		p[i+0] = t2 | byte(r>>6)
 		p[i+1] = tx | byte(r)&maskx
 		return i + 2
-	} else if i < surrogateMin || i > surrogateMax && i <= rune3Max {
-		p[0] = t3 | byte(r>>12)
+	} else if r < surrogateMin || r > surrogateMax && r <= rune3Max {
+		p[i+0] = t3 | byte(r>>12)
 		p[i+1] = tx | byte(r>>6)&maskx
 		p[i+2] = tx | byte(r)&maskx
 		return i + 3
-	} else if i > rune3Max && i < MaxRune {
+	} else if r > rune3Max && r < MaxRune {
 		p[i+0] = t4 | byte(r>>18)
 		p[i+1] = tx | byte(r>>12)&maskx
 		p[i+2] = tx | byte(r>>6)&maskx
@@ -189,6 +189,15 @@ func TestDecode() {
 			break
 		}
 	}
+	fmt.Printf("\n")
+
+	p := make([]byte, 10, 10)
+	i = 0
+	i = Encode(p, i, 197)
+	i = Encode(p, i, 26412)
+	i = Encode(p, i, 65)
+	i = Encode(p, i, 128309)
+	fmt.Printf("%v", p)
 	fmt.Printf("\n---------------------------------------\n")
 }
 
