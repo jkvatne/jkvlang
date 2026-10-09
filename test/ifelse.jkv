@@ -4,7 +4,7 @@ type State = struct {
 }
 
 func main() {
-/*
+
     a = 1
     b = 2
     c = 3
@@ -50,7 +50,7 @@ func main() {
     // 5. Single line if
     if b==2 ? c=4
     assert(c==4)
-*/
+
     s = new(State)
     if s.ch1 == 13 {
         assert(s.ch1==0)

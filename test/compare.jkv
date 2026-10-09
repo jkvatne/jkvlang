@@ -2,7 +2,6 @@
 func main() {
     print("Start 'compare.jkv'")
 
-    /*
 	a = 1
 	b = 2
 	c = 2
@@ -81,7 +80,6 @@ func main() {
         assert(false)
     }
 
-
     // ALl the following should compare false
 
 	if a == b {
@@ -105,5 +103,5 @@ func main() {
 	if b != c {
 		assert(false)
 	}
-*/
+
 }
