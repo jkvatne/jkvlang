@@ -1,34 +1,10 @@
-type RangeIterator = struct {
-    start I32
-    end I32
-}
 
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func range(count I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = 0
-    r.end = count-1
-    return r
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
+type State = struct {
+    tokenString String
 }
 
 func main() {
-    codep=I32(0)
-    //codep=0xFFFD
-    for i=range(1,2) {
-        codep=0xFFFD
-    }
-
+    s = new(State)
+    ch = U8(1)
+    s.tokenString+=ch  // Generates Stack error - localstack=-1
 }

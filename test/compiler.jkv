@@ -1,4 +1,4 @@
-/*
+
 const (
     CREATE_NEW     I32 = 1    // Fails if file already exists
     CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
@@ -178,12 +178,12 @@ func read_all(name String) String {
     }
     return buf
 }
-*/
+
 
 func main() {
     print("Compiler")
 
-/*    s = new(State)
+    s = new(State)
     filename="-file=default.jkv"
     for i=range(1, argc-1) {
         if has_prefix(args[i],"-file=") ?  filename=args[i]
@@ -191,7 +191,7 @@ func main() {
     print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
-
+/*
     // Must use explicit filename during tests. Testing self-compile.
     filename = "C:/doc/compiler/test/compiler.jkv"
 

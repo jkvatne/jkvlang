@@ -2064,10 +2064,7 @@ func EmitAppendIndirectConstStrChar(value int) error {
 func EmitAppendIndirectExpressionStrChar() error {
 	EmitAssertTosInRax("")
 	emit("mov", "r14", "rax", "")
-	// emit("pop", "rsi", "", "")
-	emit("mov", "rsi", "[rsp]", "")
-
-	emit("mov", "rsi", "[rsi]", "Load string pointer")
+	emit("mov", "rsi", "[rdi]", "Load string pointer")
 	emit("mov", "rbx", "1", "Load needed extra space")
 	// ebx should contain the length of the appended string. ok
 	// rsi should point to the old string, so [rsi] is the old len/cap
@@ -2078,9 +2075,7 @@ func EmitAppendIndirectExpressionStrChar() error {
 	emit("mov", "rax", "r14", "")
 	emit("mov", "byte [rdi]", "al", "Append character 3")
 	// Now update indirect variable
-	// emit("mov", "rdi", "rsi", "")  // WRONG
-	emit("pop", "rdi", "", "")
-	emit("mov", "qword [rdi]", "rdx", "")
+	emit("mov", "qword [rdx]", "rdx", "")
 	return nil
 }
 

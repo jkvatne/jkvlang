@@ -121,4 +121,7 @@ func main() {
     p.name+=w
     assert(p.name=="JanWorld", "Expected p.name=JanWorld, got '%s'", p.name)
 
+   //
+    //ch = U8(65)
+    //p.name += ch
 }
