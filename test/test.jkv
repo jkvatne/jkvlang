@@ -1,10 +1,7 @@
 
-type State = struct {
-    tokenString String
-}
 
 func main() {
-    s = new(State)
-    ch = U8(1)
-    s.tokenString+=ch  // Generates Stack error - localstack=-1
+    print("Arg%d=%s", 0, args[0])
+    i = 0
+    print("Arg%d=%s", i, args[i])
 }

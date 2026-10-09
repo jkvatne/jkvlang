@@ -1022,7 +1022,14 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 // EmitGlobalIndexedValue TOS is index. Pointer is in global variable <id>
 func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
 	if isConst {
-		emit("lea", "rax", "["+id+"]", "EmitLoadGlobal const")
+		if id == "args" || id == "envs" {
+			// This is ok for argv/test. id="args"
+			// Special handling because args is dynamically allocated on the heap
+			emit("mov", "rax", "["+id+"]", "EmitLoadGlobal const")
+		} else {
+			// This is ok for utf8
+			emit("mov", "rax", id, "EmitLoadGlobal const")
+		}
 		emit("add", "rax", strconv.Itoa(index*size+8), "Index element "+strconv.Itoa(index)+" of string/slice")
 	} else {
 		EmitAssertTosInRax("Assure tos (index) is in rax")
@@ -1030,7 +1037,14 @@ func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "")
-		emit("add", "rax", id, "EmitLoadGlobal str?")
+		if id == "args" || id == "envs" {
+			// This is ok for argv/test. id="args"
+			// Special handling because args is dynamically allocated on the heap
+			emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
+		} else {
+			// This is ok for utf8. id=utf8d
+			emit("add", "rax", id, "EmitLoadGlobal str?")
+		}
 	}
 	_ = EmitLoadIndirectAx("rax", size)
 	code.SetAx()
