@@ -32,6 +32,11 @@ const next_state ByteArr = {
 	1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 }
 
+type Intarr=[]I32
+
+const codepoints Intarr = {
+    197, 26412, 65, 128309,
+}
 
 const UTF8_ACCEPT U8 = 0
 const UTF8_REJECT U8 = 1
@@ -74,10 +79,14 @@ func decode(s String, i I32) I32, I32 {
 }
 
 func main() {
+    s="Å本A🔵"
     print("utf8.jkv")
+
     assert(utf8d[0xF0]==0x0B, "Expected 0x0B; got %X", utf8d[0xF0])
-    //state, codep = decode_byte(0, 0, 'A')
-    //print("state=%X, codep=%X", state, codep)
+    print("codepoints[0]=%d", codepoints[0])
+    print("codepoints[1]=%d", codepoints[1])
+    print("codepoints[2]=%d", codepoints[2])
+    print("codepoints[3]=%d", codepoints[3])
 
     // Test string "Å本A🔵" = [195  133 230 156 172  65  240 159 148 181]
     state, codep = decode_byte(0, 0, 195)
@@ -85,75 +94,14 @@ func main() {
     state, codep = decode_byte(state, codep, 133)
     print("2.Decoding Å: state=%X, codep=%d", state, codep)
 
-    s="Å本A🔵"
-
-    codep, i = decode(s, 0)
-    print("codep %d = %d", i, codep)
-    codep, i = decode(s, i)
-    print("codep %d = %d", i, codep)
-    codep, i = decode(s, i)
-    print("codep %d = %d", i, codep)
-    codep, i = decode(s, i)
-    print("codep %d = %d", i, codep)
-
-}
-
-/*
-
-
-// Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>   See http://bjoern.hoehrmann.de/utf-8/decoder/dfa/ for details.
-
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
-
-static const uint8_t utf8d[] = {
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 20..3f
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 40..5f
-  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 60..7f
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9, // 80..9f
-  7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7, // a0..bf
-  8,8,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, // c0..df
-  0xa,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x3,0x4,0x3,0x3, // e0..ef
-  0xb,0x6,0x6,0x6,0x5,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8,0x8, // f0..ff
-  0x0,0x1,0x2,0x3,0x5,0x8,0x7,0x1,0x1,0x1,0x4,0x6,0x1,0x1,0x1,0x1, // s0..s0
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,1, // s1..s2
-  1,2,1,1,1,1,1,2,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1, // s3..s4
-  1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,3,1,1,1,1,1,1, // s5..s6
-  1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
-};
-
-uint32_t inline decode_byte(uint32_t* state, uint32_t* codep, uint32_t byte) {
-  uint32_t type = utf8d[byte];
-  *codep = (*state != UTF8_ACCEPT) ? (byte & 0x3fu) | (*codep << 6) :  (0xff >> type) & (byte);
-  *state = utf8d[256 + *state*16 + type];
-  return *state;
-}
-
-uint32_t decode(byte* s) {
-  for (; *s; ++s) {
-      uint32_t codep;
-      uint32_t type = utf8d[byte];
-      codep = (*state != UTF8_ACCEPT) ? (byte & 0x3fu) | (codep << 6) :  (0xff >> type) & (byte);
-      *state = utf8d[256 + *state*16 + type];
-      if (!*state) {
-          return codep;
-      }
+    i = I32(0)
+    j = 0
+    loop {
+        codep, i = decode(s, i)
+        print("codep %d = %d", i, codep)
+        if codep==0 { break }
+        assert(codep==codepoints[j], "%d. Expected codepoint %d, got %d", j, codepoints[j], codep)
+        j+=1
     }
-  }
+
 }
-
-
-void print_and_validate_codepoints() {
-  for (; *s; ++s) {
-    if (!decode_byte(&state, &codepoint, *s)) {
-      printf("U+%04X\n", codepoint);
-    }
-  }
-  if (state != UTF8_ACCEPT)
-    printf("The string is not well-formed\n");
-  }
-}
-
-
-*/
