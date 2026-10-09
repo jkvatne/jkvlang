@@ -7,8 +7,9 @@ type Person = struct {
 func main() {
     p = new(Person)
     p.name = "Jan"
-    w = " Vatne"
-    // EmitAppendIndirectExpressionStrStr
-    p.name+=w
-    assert(p.name=="Jan Vatne", "Expected p.name=Jan Vatne, got '%s'", p.name)
+    w = "Vatne"
+    // EmitAssignIndirectExpressionStrStr()
+    p.name = w
+    assert(p.name=="Vatne", "Expected p.name=='Vatne', got '%s'", p.name)
+
 }

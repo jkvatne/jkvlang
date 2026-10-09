@@ -132,10 +132,8 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 
 func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	EmitAssertTosInRax("")
-	emit("pop", "rdi", "", "Get NOS into rdi")
+	emit("pop", "rdi", "", "rdi is now indirect pointer, rax=result of expression")
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
-		return EmitAssignIndirectExpressionStrStr()
-	} else if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING && op == TOK_PLUS_ASGN {
 		return EmitAppendIndirectExpressionStrStr()

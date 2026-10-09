@@ -29,7 +29,6 @@ func main() {
     w = "Vatne"
     p.name+=w
     assert(p.name=="JanVatne", "Expected p.name=JanVatne, got '%s'", p.name)
-/*
     //=============================================
     // Test EmitAppendIndirectConstStrStr
     //=============================================
@@ -44,6 +43,7 @@ func main() {
     //=============================================
     q = w
     assert(q=="Vatne", "Expected q=='Vatne', got '%s'", q)
+/*
 
     //=============================================
     // Test EmitAssignIndirectExpressionStrStr

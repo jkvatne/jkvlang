@@ -1951,7 +1951,6 @@ func EmitAppendVariableConstStrStr(adr int, strLitNo int) error {
 
 // EmitAssignIndirectConstStrStr ok
 func EmitAssignIndirectConstStrStr(strLitNo int) error {
-	// EmitAssertTosInRax("")
 	emit("pop", "rax", "", "")
 	// Free old string in [rax] if it exists
 	lbl := code.NewLabel()
@@ -1985,31 +1984,23 @@ func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 }
 
 // EmitAssignIndirectExpressionStrStr assigns  string in  [rax] (right side) to string pointed to by [rsp] (left side)
-// rax=second part  rdi =first part
+// rax= string to append,  rdi = pointer to string variable
 func EmitAssignIndirectExpressionStrStr() error {
 	// Free old string in [rax] if it exists
-	EmitAssertTosInRax("")
-	emit("mov", "r12", "rax", "")
+	emit("mov", "r12", "rax", "Save pointer to new value")
 	lbl := code.NewLabel()
 	EmitComment("EmitAssignIndirectExpressionStrStr")
-	emit("mov", "rbx", "[rsp]", "Free existing string pointed to by indirect expression if needed.")
+	emit("mov", "rbx", "[rdi]", "Free existing string pointed to by indirect expression if needed.")
 	emit("or", "rbx", "rbx", "")
+	emit("jz", Label(lbl), "", "Skip free if string was nil")
+	emit("mov", "rcx", "[rbx]", "Now rbx should be len/cap")
+	emit("shr", "rcx", "32", "")
+	emit("or", "rcx", "rcx", "")
 	emit("jz", Label(lbl), "", "")
-	emit("mov", "rbx", "[rbx]", "")
-	emit("or", "rbx", "rbx", "")
-	emit("jz", Label(lbl), "", "")
-	emit("mov", "rdi", "rbx", "Save pointer to string that might be freed")
-	emit("mov", "rbx", "[rbx]", "Now rbx should be len/cap")
-	emit("shr", "rbx", "32", "")
-	emit("or", "rbx", "rbx", "")
-	emit("jz", Label(lbl), "", "")
-	emit("mov", "rax", "rdi", "")
+	emit("mov", "rax", "[rdi]", "")
 	emit("call", "_free_str", "", "")
 	EmitLabel(lbl, "")
-
-	emit("mov", "rdi", "[rsp]", "Get indirect pointer")
 	emit("mov", "qword [rdi]", "r12", "Save new string")
-	emit("pop", "rax", "", "")
 	return nil
 }
 
