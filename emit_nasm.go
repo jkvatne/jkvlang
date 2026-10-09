@@ -2106,33 +2106,22 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	return nil
 }
 
-// EmitAppendVariableExpressionStrChar appends a character in rax to the string in the variable at <adr>
+// EmitAppendVariableExpressionStrChar appends a character in rax to the string
+// in the variable at [bp+adr]
 func EmitAppendVariableExpressionStrChar(adr int) error {
+	EmitComment("EmitAppendVariableExpressionStrChar")
 	emit("mov", "r14", "rax", "Save character value")
-	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
-	emit("mov", "rsi", "rdi", "save copy of pointer")
-	emit("mov", "rax", "[rdi]", "Load len/cap")
-	emit("shr", "rax", "32", "Get cap")
-	emit("mov", "rbx", "[rdi]", "Load len/cap")
-	emit("mov", "ebx", "ebx", "Clear upper 32 bits - keep length")
-	emit("cmp", "rbx", "rax", "Compare len to cap")
-	lbl := code.NewLabel()
-	emit("jnz", Label(lbl), "", "jump if we have enought space")
-	// Extend capacity, including 64 extra bytes
-	emit("mov", "r13", "rax", "Old len")
-	emit("add", "rax", "64", "Add 64+8 to include len/cap")
-	emit("mov", "r12", "rax", "")
-	emit("add", "rax", "8", "")
-	emit("call", "_alloc", "", "Allocate new string")
-	// Save new string pointer
-	emit("mov", BpRel(adr), "rax", "")
-	EmitLabel(lbl, "")
-	emit("add", "rdi", "rbx", "Add length to pointer - we will save to end of string")
-	emit("add", "rdi", "8", "Skip len/cap also")
-	// TODO Handle longer characters (UTF)
-	emit("mov", "rax", "r14", "Char to rax")
-	emit("mov", "byte [rdi]", "al", "Add char to string")
-	emit("inc", "qword [rsi]", "", "")
+	emit("mov", "rbx", "1", "Load needed extra space")
+	emit("mov", "rsi", BpRel(adr), "Load pointer to string from local variable")
+	// ebx should contain the length of the appended string. ok
+	// rsi should point to the old string, so [rsi] is the old len/cap
+	ExtendStringCapacity(4)
+	// rdi points to the first empty character of the new string (ready for move)
+	// rdx points to the extended string's len/cap or the old string's len/cap
+	emit("inc", "dword [rdx]", "", "Incr original length by one")
+	emit("mov", "rax", "r14", "")
+	emit("mov", "byte [rdi]", "al", "Append character")
+	emit("mov", BpRel(adr), "rdx", "")
 	return nil
 }
 
