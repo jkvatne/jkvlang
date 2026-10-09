@@ -136,7 +136,7 @@ func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
 	}
 	return dst == code.TYP_U8 && src == code.TYP_U8 ||
 		dst == code.TYP_I16 && (src == code.TYP_I16 || src == code.TYP_U8) ||
-		dst == code.TYP_I32 && (src == code.TYP_I32 || src == code.TYP_I16 || src == code.TYP_U8) ||
+		dst == code.TYP_I32 && (src == code.TYP_I32 || src == code.TYP_I16 || src == code.TYP_U8 || src == code.TYP_U16) ||
 		dst == code.TYP_I64 && (src == code.TYP_I32 || src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_I16 || src == code.TYP_U8) ||
 		dst == code.TYP_U16 && (src == code.TYP_U16 || src == code.TYP_U8) ||
 		dst == code.TYP_U32 && (src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_U8) ||

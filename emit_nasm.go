@@ -1029,7 +1029,7 @@ func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
 			emit("imul", "rax", strconv.Itoa(size), "")
 		}
 		emit("add", "rax", "8", "")
-		emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
+		emit("add", "rax", id, "EmitLoadGlobal str?")
 	}
 	_ = EmitLoadIndirectAx("rax", size)
 	code.SetAx()

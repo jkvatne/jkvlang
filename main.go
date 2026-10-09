@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
-	"math/bits"
 	"os"
 	"os/exec"
 	"path"
@@ -188,26 +186,8 @@ func Run(outputName string) error {
 	return err
 }
 
-// unpack64 returns m, e such that f = m * 2**e.
-// The caller is expected to have handled 0, NaN, and ±Inf already.
-// To unpack a float32 f, use unpack64(float64(f)).
-func unpack64(f float64) (uint64, int) {
-	const shift = 64 - 53
-	const minExp = -(1074 + shift)
-	b := math.Float64bits(f)
-	m := 1<<63 | (b&(1<<52-1))<<shift
-	e := int((b >> 52) & (1<<shift - 1))
-	if e == 0 {
-		m &^= 1 << 63
-		e = minExp
-		s := 64 - bits.Len64(m)
-		return m << s, e - s
-	}
-	return m, (e - 1) + minExp
-}
-
 func main() {
-	// utf8.TestDecode()
+	TestDecode()
 	t := time.Now()
 	fmt.Printf("%v\n", t)
 

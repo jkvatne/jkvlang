@@ -1,12 +1,34 @@
+type RangeIterator = struct {
+    start I32
+    end I32
+}
 
-type Person = struct{
-    id I64
-    name String
-    Age U8
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
 }
 
 func main() {
-    s = "Hello "
-    s[3] = 'x'   // This makes error "Failed access to old s"
-    assert(s=="Helxo ", "Failed, s=", s)
+    codep=I32(0)
+    //codep=0xFFFD
+    for i=range(1,2) {
+        codep=0xFFFD
+    }
+
 }

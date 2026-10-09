@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"math"
+	"math/bits"
 )
 
 var invalidSequenceTests = []string{
@@ -87,11 +88,15 @@ var next_state = [...]byte{
 func decode(s string, i int) (int, int) {
 	codep := 0
 	state := uint8(0)
+	if i >= len(s) {
+		return 0, i + 1
+	}
 	b := s[i]
 	if b <= 0x7F {
 		return int(b), i + 1
 	}
 	for {
+		b = s[i]
 		i++
 		kind := utf8d[b]
 		if state != 0 {
@@ -106,7 +111,6 @@ func decode(s string, i int) (int, int) {
 		if state == 1 {
 			return 0xFFFD, i
 		}
-		b = s[i]
 	}
 }
 
@@ -166,22 +170,42 @@ func TestDecode() {
 		}
 	}
 
-	teststring := "🔵AÅaå本🔵"
-	fmt.Printf("Codepoints: ")
+	teststring := "Å本A🔵"
+	testbytes := []byte(teststring)
+	fmt.Printf("%v\n", testbytes)
+	fmt.Printf("Codepoints using go's utf8 functions: ")
 	for _, runeValue := range teststring {
 		// %U prints the Unicode code point format (e.g., U+0047)
-		fmt.Printf(" %05X", runeValue)
+		fmt.Printf(" %d", runeValue)
 	}
 	fmt.Printf("\n")
 	i = 0
 	codep = 0
-	fmt.Printf("Codepoints: ")
+	fmt.Printf("Codepoints using my own decoder:      ")
 	for {
 		codep, i = decode(teststring, i)
-		fmt.Printf(" %05X", codep)
+		fmt.Printf(" %d", codep)
 		if i >= len(teststring) {
 			break
 		}
 	}
-	os.Exit(0)
+	fmt.Printf("\n---------------------------------------\n")
+}
+
+// unpack64 returns m, e such that f = m * 2**e.
+// The caller is expected to have handled 0, NaN, and ±Inf already.
+// To unpack a float32 f, use unpack64(float64(f)).
+func unpack64(f float64) (uint64, int) {
+	const shift = 64 - 53
+	const minExp = -(1074 + shift)
+	b := math.Float64bits(f)
+	m := 1<<63 | (b&(1<<52-1))<<shift
+	e := int((b >> 52) & (1<<shift - 1))
+	if e == 0 {
+		m &^= 1 << 63
+		e = minExp
+		s := 64 - bits.Len64(m)
+		return m << s, e - s
+	}
+	return m, (e - 1) + minExp
 }

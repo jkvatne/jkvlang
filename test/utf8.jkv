@@ -2,9 +2,6 @@ package utf8
 
 
 type ByteArr = []U8
-type Points = []I16
-
-const pts Points = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06}
 
 const utf8d ByteArr = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f
@@ -23,26 +20,82 @@ const utf8d ByteArr = {
   1,3,1,1,1,1,1,3,1,3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1, // s7..s8
 }
 
+const next_state ByteArr = {
+	0, 1, 2, 3, 5, 8, 7, 1, 1, 1, 4, 6, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1,
+	1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 3, 1, 3, 1, 1, 1, 1, 1, 1,
+	1, 3, 1, 1, 1, 1, 1, 3, 1, 3, 1, 1, 1, 1, 1, 1,
+	1, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+}
+
+
 const UTF8_ACCEPT U8 = 0
 const UTF8_REJECT U8 = 1
 
 func decode_byte(state I32, codep I32, byte U8)  I32, I32 {
     kind = utf8d[byte]
-    if state != UTF8_ACCEPT {
+    //print("kind=%d", kind)
+    if state != 0 {
         codep = (byte & 0x3f) | (codep << 6)
     } else {
         codep = (0xff >> kind) & byte
     }
+    //print("codep=%d", codep)
     state = utf8d[256 + state*16 + kind]
-    return codep, state
+    //print("state=%d", state)
+    return state, codep
+}
+
+func decode(s String, i I32) I32, I32 {
+    codep=I32(0)
+    state=0
+    loop {
+        b=s[i]
+        i+=1
+        kind=utf8d[b]
+        if state != 0 {
+            codep = (codep << 6) | (b & 0x3f)
+        } else {
+            codep = (0xff >> kind) & b
+        }
+        state = next_state[state*16+kind]
+        if state == 1 {
+            codep=0xFFFD
+        }
+        if state==0 {
+            break
+        }
+    }
+    return codep, i
 }
 
 func main() {
-    print("The number of arguments is %d", argc)
-    //print("pts[4]=%x", pts[4])
-    //print("utf8d[0xF0]=0x%X", utf8d[0xF0])
-    //a,b = decode_byte(0, 0, 'A')
-    //print("a=%X, b=%X", a,b)
+    print("utf8.jkv")
+    assert(utf8d[0xF0]==0x0B, "Expected 0x0B; got %X", utf8d[0xF0])
+    //state, codep = decode_byte(0, 0, 'A')
+    //print("state=%X, codep=%X", state, codep)
+
+    // Test string "Å本A🔵" = [195  133 230 156 172  65  240 159 148 181]
+    state, codep = decode_byte(0, 0, 195)
+    print("1.Decoding Å: state=%X, codep=%d", state, codep)
+    state, codep = decode_byte(state, codep, 133)
+    print("2.Decoding Å: state=%X, codep=%d", state, codep)
+
+    s="Å本A🔵"
+
+    codep, i = decode(s, 0)
+    print("codep %d = %d", i, codep)
+    codep, i = decode(s, i)
+    print("codep %d = %d", i, codep)
+    codep, i = decode(s, i)
+    print("codep %d = %d", i, codep)
+    codep, i = decode(s, i)
+    print("codep %d = %d", i, codep)
+
 }
 
 /*
