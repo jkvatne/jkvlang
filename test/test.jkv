@@ -2,7 +2,6 @@
 
 func main() {
     id = ""
-    id +="123456"
     id += '1'
     id += '2'
     id += '3'
@@ -23,6 +22,6 @@ func main() {
     id += '8'
     id += '9'
     id += '0'
-    id += '1'  // Fails nr 21
+    id += '1'  // Fails nr 21. Free string panics.
     print("%s", id)
 }

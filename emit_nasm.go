@@ -1863,12 +1863,16 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("mov", "[rdx]", "r12", "Mov new len/cap into string")
 	emit("mov", "rsi", "rdx", "rdx now points to the new string's len/cap")
 	// Free old string
-	// emit("mov", "[rsp]", "rdx", "")
 	emit("mov", "rax", "rbx", "rbx points to the old string")
+	emit("push", "rdx", "", "")
 	emit("call", "_free_str", "", "")
+	emit("pop", "rdx", "", "")
 	EmitLabel(lbl1, "End of ExtendStringCapacity")
-	// emit("pop", "rsi", "", "")
 }
+
+// * At exit, rdi points to the first empty character of the new string (ready for move)
+// * At exit, rdx points to the extended string's len/cap or the old string's len/cap
+// * At exit, rsi points to the new string's len/cap
 
 // =======   APPEND STR-STR ============
 
