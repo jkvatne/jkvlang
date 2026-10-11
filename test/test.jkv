@@ -1,7 +1,28 @@
 
 
 func main() {
-    print("Arg%d=%s", 0, args[0])
-    i = 0
-    print("Arg%d=%s", i, args[i])
+    id = ""
+    id +="123456"
+    id += '1'
+    id += '2'
+    id += '3'
+    id += '4'
+    id += '5'
+    id += '6'
+    id += '7'
+    id += '8'
+    id += '9'
+    id += '0'
+    id += '1'
+    id += '2'
+    id += '3'
+    id += '4'
+    id += '5'
+    id += '6'
+    id += '7'
+    id += '8'
+    id += '9'
+    id += '0'
+    id += '1'  // Fails nr 21
+    print("%s", id)
 }

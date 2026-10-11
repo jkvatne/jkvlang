@@ -1,13 +1,12 @@
 
 const (
     CREATE_NEW     I32 = 1    // Fails if file already exists
-    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
-    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
-    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
-
     FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
     FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
     FILE_ATTRIBUTE_READONLY  I32 = 0x0001
+    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
+    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
+    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
 )
 
 type State = struct {
@@ -21,25 +20,6 @@ type State = struct {
     NextLineNum I32
 }
 
-
-func nextChar(s State) I32 {
-	n = 0
-	s.ch1 = s.ch2
-	if s.ch1 == '\n' {
-		s.NextLineNum+=1
-	}
-	if s.p >= len(s.text) {
-	    print("End of test")
-		s.ch2 = 0
-		s.token = 0
-	} else {
-		// TODO s.ch2, n = DecodeRune(s.text[s.p:])
-		s.ch2 = s.text[s.p]
-		n = 1
-		s.p += n
-	}
-	return s.ch1
-}
 
 type RangeIterator = struct {
     start I32
@@ -121,14 +101,34 @@ const (
     TOK_ID  I32 = 1
 )
 
+func nextChar(s State) I32 {
+	n = 0
+	s.ch1 = s.ch2
+	if s.ch1 == '\n' {
+		s.NextLineNum+=1
+	}
+	if s.p >= len(s.text) {
+	    print("End of test")
+		s.ch2 = 0
+		s.token = 9999
+	} else {
+		// TODO s.ch2, n = DecodeRune(s.text[s.p:])
+		s.ch2 = s.text[s.p]
+		n = 1
+		s.p += n
+	}
+	return s.ch1
+}
+
 func nextToken(s State) {
-    if s.p>=s.textSize {
-        s.token = TOK_EOF
-    } else {
-        print("1")
+    loop {
+        if s.p>=s.textSize {
+            s.token = TOK_EOF
+            break
+        }
         ch = nextChar(s)
         if ch == 0x22 {  // "
-   			s.tokenString = ">>>>>>>>"
+            s.tokenString = ">>>>>>>>"
             loop {
                 ch = nextChar(s)
                 if ch == '"' || ch == 0 {
@@ -136,30 +136,45 @@ func nextToken(s State) {
                 }
                 s.tokenString+=ch
             }
-        } if ch>='A' && ch<'z' {
-            print("2")
+            s.token=5
+        } if ch>='A' && ch<='z' || ch>='0' && ch<='9'{
             id = ""
+            id += ch
             loop {
                 if ch<'A' || ch>'z' || ch==0 ? break
-                print("ch=0x%2x", ch)
+                //print("ch=0x%2x", ch)
                 ch =nextChar(s)
                 id += ch
             }
-            print("id='%s'", id)
             s.tokenString = id
             s.token = TOK_ID
-        } else if ch == 13 {
-            s.tokenString = "<cr>"
-            s.token = 1
-        } else if ch == 10 {
-            s.tokenString = "<lf>"
-            s.token = 2
-        } else if s.ch1 == 9 {
-            s.tokenString = "<tab>"
-            s.token = 3
+        } else if s.ch1 == '(' {
+            s.token = 4
+            s.tokenString = "("
+        } else if s.ch1 == ')' {
+            s.token = 5
+            s.tokenString = ")"
+        } else if s.ch1 == '=' {
+            s.token = 5
+            s.tokenString = "="
+        } else if s.ch1 == '{' {
+            s.token = 5
+            s.tokenString = "{"
+        } else if s.ch1 == '}' {
+            s.token = 5
+            s.tokenString = "}"
+        } else if s.ch1 == '/' && s.ch2=='/' {
+            loop {
+                ch = nextChar(s)
+                if ch=='\n' || ch==0 ? break
+            }
         } else {
-            s.tokenString = ""
-            s.token = s.ch1
+            s.tokenString = "skip"
+            s.token=0
+            ch =nextChar(s)
+        }
+        if s.token!=0 {
+            break
         }
     }
 }
@@ -191,7 +206,7 @@ func main() {
     print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
-/*
+
     // Must use explicit filename during tests. Testing self-compile.
     filename = "C:/doc/compiler/test/compiler.jkv"
 
@@ -201,9 +216,8 @@ func main() {
     ch = nextChar(s)
     loop{
         nextToken(s)
-        print("Token=%s", s.tokenString)
+        //print("Token='%s'", s.tokenString)
         if s.token == 0 ? break
     }
-    */
 }
 

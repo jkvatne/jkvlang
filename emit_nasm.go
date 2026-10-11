@@ -1100,6 +1100,12 @@ func EmitClearErr() {
 }
 
 func EmitSkipLenCapForPrint() {
+	emit("mov", "rax", "[rsp]", "Check for nil string")
+	emit("or", "rax", "rax", "")
+	lbl := code.NewLabel()
+	emit("jnz", Label(lbl), "", "")
+	emit("mov", "qword [rsp]", "str0", "")
+	EmitLabel(lbl, "")
 	emit("add", "dword [rsp]", "8", "Skip len/cap of print argument literal string")
 }
 
