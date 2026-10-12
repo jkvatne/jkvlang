@@ -1,14 +1,28 @@
-type Person = struct {
-  adr String
-  name String
+type RangeIterator = struct {
+    start I32
+    end I32
 }
 
-// Test EmitAppendIndirectExpressionStrChar
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
 
 func main() {
-    p = new(Person)
-    p.name = "Vatne"
-    ch = U8(0x59)
-    p.name += ch
-    print("%s", p.name)
+    ch = 'A'
+    for i=range(65, 68) {
+        print("i=%d", i)
+        //id = ""
+        // id += i
+    }
 }

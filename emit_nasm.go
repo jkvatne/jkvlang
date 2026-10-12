@@ -189,16 +189,18 @@ func EmitCall(id string, nPar int, builtin bool) {
 }
 
 func EmitFunction(id string) {
-	if id == "main" {
-		EmitGlobal("main")
-	}
 	EmitTextLabel(id)
 	if code.LocalSp != 0 {
 		panic("LocalSp is not 0")
 	}
+	if id == "main" {
+		// Main prologue to satisfy "sasm". Does not matter for normal programs.
+		emit("mov", "rbp", "rsp", "")
+	}
 	// Function prologue. Set up new frame pointer.
 	emit("push", "rbp", "", "")
 	emit("mov", "rbp", "rsp", "")
+
 	code.LocalSp = 0
 	if id == "main" {
 		emit("call", "_sysinit", "", "")
@@ -717,6 +719,7 @@ func EmitEpilogue(name string) {
 	}
 	EmitComment("--------------------------------------------")
 	EmitComment("External symbols")
+	EmitGlobal("main")
 	for _, name = range Externals {
 		EmitExtern(name)
 	}
@@ -1996,8 +1999,9 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	return nil
 }
 
-// EmitAssignVariableConstStrStr will append a litteral string to the tstring in local variabl at adr
-// The old string may be replaced with a bigger string if needed.
+// EmitAssignVariableConstStrStr will assign a litteral string to the string in
+// the local variable at adr. If the variable did contain another string, it
+// must be freed
 func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 	code.SetAx()
 	// Check if we must free old variable

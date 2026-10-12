@@ -93,6 +93,8 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 			break
 		}
 	}
+	// lvalue := AddLocalVar(s, "r", &StructType)
+	// lvalues = append(lvalues, lvalue)
 	return lvalues, nil
 }
 

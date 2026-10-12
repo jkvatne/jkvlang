@@ -87,6 +87,11 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 
 func DeleteLocalVar(s *State, id string) {
 	s.LocalVarCount--
+	v := VarDefs[id]
+	if v != nil && v.Typ.Pt >= code.TYP_STRING {
+		// Free variable
+
+	}
 	delete(VarDefs, id)
 }
 
