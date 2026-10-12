@@ -1,27 +1,14 @@
+type Person = struct {
+  adr String
+  name String
+}
 
+// Test EmitAppendIndirectExpressionStrChar
 
 func main() {
-    id = ""
-    id += '1'
-    id += '2'
-    id += '3'
-    id += '4'
-    id += '5'
-    id += '6'
-    id += '7'
-    id += '8'
-    id += '9'
-    id += '0'
-    id += '1'
-    id += '2'
-    id += '3'
-    id += '4'
-    id += '5'
-    id += '6'
-    id += '7'
-    id += '8'
-    id += '9'
-    id += '0'
-    id += '1'  // Fails nr 21. Free string panics.
-    print("%s", id)
+    p = new(Person)
+    p.name = "Vatne"
+    ch = U8(0x59)
+    p.name += ch
+    print("%s", p.name)
 }

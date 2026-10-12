@@ -1839,7 +1839,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	emit("jb", Label(lbl1), "", "jump if we have enough space")
 	// Extend capacity, including extra bytes.
 	EmitLabel(lbl2, "")
-	emit("add", "rax", strconv.Itoa(bytesExtra+16), "Add extra and space for len/cap")
+	emit("add", "rax", strconv.Itoa(bytesExtra+4), "Add extra and space for len/cap")
 	emit("mov", "r12", "rax", "Save new cap in r12")
 	emit("shl", "r12", "32", "Save new cap in correct half of len/cap")
 	emit("add", "rax", "8", "Allocate 8 bytes more than capacity, to store len/cap")
@@ -2087,7 +2087,8 @@ func EmitAppendIndirectConstStrChar(value int) error {
 // rax=second part  rdi =first part
 func EmitAppendIndirectExpressionStrChar() error {
 	EmitAssertTosInRax("")
-	emit("mov", "r14", "rax", "")
+	emit("mov", "r14", "rax", "EmitAppendIndirectExpressionStrChar")
+	emit("mov", "r13", "rdi", "")
 	emit("mov", "rsi", "[rdi]", "Load string pointer")
 	emit("mov", "rbx", "1", "Load needed extra space")
 	// ebx should contain the length of the appended string. ok
@@ -2099,7 +2100,7 @@ func EmitAppendIndirectExpressionStrChar() error {
 	emit("mov", "rax", "r14", "")
 	emit("mov", "byte [rdi]", "al", "Append character 3")
 	// Now update indirect variable
-	emit("mov", "qword [rdx]", "rdx", "")
+	emit("mov", "qword [r13]", "rdx", "")
 	return nil
 }
 

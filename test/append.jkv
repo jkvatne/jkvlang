@@ -82,9 +82,9 @@ func main() {
     //=============================================
     // Test EmitAppendIndirectExpressionStrChar
     //=============================================
-    p.name = "Vatne"
-    p.name+='X'
-    assert(p.name=="VatneX", "Expected p.name=='VatneX', got '%s'", p.name)
+    ch = U8(0x58)
+    p.name += ch
+    assert(p.name=="Vatne VatneX", "Expected p.name=='VatneX', got '%s'", p.name)
 
     //=============================================
     // EmitAppendIndirectConstStrChar
@@ -121,7 +121,31 @@ func main() {
     p.name+=w
     assert(p.name=="JanWorld", "Expected p.name=JanWorld, got '%s'", p.name)
 
-   //
-    //ch = U8(65)
-    //p.name += ch
+    //=============================================
+    // Retesting code that failed previously because
+    // of corrupted dx in ExtendStringCapacity
+    //=============================================
+    id = ""
+    id += '1'
+    id += '2'
+    id += '3'
+    id += '4'
+    id += '5'
+    id += '6'
+    id += '7'
+    id += '8'
+    id += '9'
+    id += '0'
+    id += '1'
+    id += '2'
+    id += '3'
+    id += '4'
+    id += '5'
+    id += '6'
+    id += '7'
+    id += '8'
+    id += '9'
+    id += '0'
+    id += '1'  // Fails nr 21. Free string panics.
+    assert(id=="123456789012345678901", "Expected 123456789012345678901, got %s", id)
 }
