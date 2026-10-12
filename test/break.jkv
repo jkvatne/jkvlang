@@ -1,59 +1,11 @@
-
-type State = struct {
-    token I32
-    ch1   I32
-    text String
-    p I32
-}
-
-
-
-func nextChar(s State) I32 {
-	if s.p >= len(s.text) {
-		s.ch1 = 0
-		s.token = 999
-	} else {
-		s.ch1 = s.text[s.p]
-		s.p += 1
-	}
-	return s.ch1
-}
-
-func nextToken(s State) {
-    loop {
-        ch = nextChar(s)
-        print("loop %d %02X", s.p, ch)
-        if ch==0 {
-            s.token=0
-            break
-        }
-        if (ch>='A' && ch<='z') || (ch>='0' && ch<='9') {
-            id = ""
-            loop {
-                id += ch
-                ch =nextChar(s)
-                if (ch<'A' || ch>'z') && (ch<'0' || ch>'9') ? break
-            }
-            print("id=%s", id)
-            s.token = 1
-            break
-        }
-    }
-    print("nextToken exit token=%d", s.token)
-}
+// This code was leaking 17 bytes
+// because of id created inside loop
 
 func main() {
-    s = new(State)
-    s.text ="const (\nFILE_ATTRIBUTE_NORMAL    I32 = 0x0080 \n )"
-    print("Text=%s", s.text)
-    print("text len=%d", len(s.text))
-    ch = nextChar(s)
-    loop{
-        nextToken(s)
-        print("%d ", s.token)
-        if s.token == 0 {
-            break
-        }
+    ch = 'A'
+    if true {
+        id = ""
+        id += ch
     }
-}
+  }
 
