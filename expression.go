@@ -1484,9 +1484,9 @@ func ParseFuncDef(s *State) error {
 		EmitPopAx("Restore rax after freeing local variables")
 	}
 	// Delete parameters
-	for _, p := range parList {
-		DeleteLocalVar(s, p.Name)
-	}
+	// for _, p := range parList {
+	//	DeleteLocalVar(s, p.Name)
+	// }
 	// Free local variables on the stack
 	DeleteBlockVars(s)
 	EmitEpilogue(f.name)

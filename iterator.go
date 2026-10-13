@@ -138,6 +138,7 @@ func ParseFor(s *State) error {
 		}
 		code.NewArgCode()
 		results, err := ParseFuncCall(s, id, true)
+		StructType.StructSize = 8
 		AddLocalVar(s, rangeName, &StructType)
 		if err != nil {
 			return err
@@ -183,7 +184,7 @@ func ParseFor(s *State) error {
 		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
 		// TODO: Do this also for returns from inner loops
 		EmitPopAx("Pop address of loop state")
-		EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
+		// EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
 		DeleteLocalVar(s, rangeName)
 		// Remove local loop variables
 		for _, v := range lvalues {
