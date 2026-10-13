@@ -21,8 +21,8 @@ func next(r RangeIterator) I32 {
 func main() {
     ch = 'A'
     for i=range(65, 68) {
-        print("i=%d", i)
-        // id = ""
-        // id += i
+        id = ""
+        id += i
+        print("i=%d  %s", i, id)
     }
 }

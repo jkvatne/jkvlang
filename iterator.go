@@ -134,7 +134,7 @@ func ParseFor(s *State) error {
 		}
 		code.NewArgCode()
 		results, err := ParseFuncCall(s, id, true)
-		// AddLocalVar(s, "r", &StructType)
+		AddLocalVar(s, "r", &StructType)
 		if err != nil {
 			return err
 		}
@@ -180,6 +180,7 @@ func ParseFor(s *State) error {
 		// TODO: Do this also for returns from inner loops
 		EmitPopAx("Pop address of loop state")
 		EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
+		DeleteLocalVar(s, "r")
 		// Remove local loop variables
 		for _, v := range lvalues {
 			EmitPopAx("Pop loop variable")
