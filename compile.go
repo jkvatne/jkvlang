@@ -393,6 +393,7 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
 					}
 					fmt.Printf("File %s failed with error %v\n", name, err)
+					err = nil
 				} else {
 					if err == nil {
 						err = LinkRun(buildDir, libPath, outputName, false)
@@ -401,6 +402,14 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
 				}
+			}
+		} else {
+			// Enter subdirectory
+			m := 0
+			m, err = CompileTests(buildDir, libPath, inputPath+"/"+entry.Name())
+			n += m
+			if err != nil {
+				return n, err
 			}
 		}
 	}

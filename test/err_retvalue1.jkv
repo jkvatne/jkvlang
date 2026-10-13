@@ -1,6 +1,0 @@
-// Should fail because of returning value without declaration of return value
-
-func fi(a Bool, c I32) {
-    if a ? c+=1 : c+=2
-    return c
-}

@@ -1,8 +1,0 @@
-// Sould fail because of mismatched comment
-
-func main() {
-  printf("Ok\n")
-}
-
-/* Comment
- a=f(2)
