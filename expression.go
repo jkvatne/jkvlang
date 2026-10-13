@@ -1479,20 +1479,13 @@ func ParseFuncDef(s *State) error {
 				continue
 			}
 			code.SetSp()
-			if v.Typ.Pt == code.TYP_STRING {
-				EmitLoad(8, v.Offset, "Free local variable string '"+v.Name+"'")
-				EmitFreeString("")
-			} else if v.Typ.Pt == code.TYP_STRUCT {
-				// Load local var pointer into rax
-				EmitLoad(8, v.Offset, "Free local struct "+v.Name)
-				FreeStruct(v.Typ)
-			} else if v.Typ.Pt == code.TYP_SLICE && !v.IsGlobal {
-				// Load local var pointer into rax
-				EmitLoad(8, v.Offset, "Free local slice "+v.Name)
-				EmitFreeSlice(v.Typ)
-			}
+			// DeleteLocalVar(s, v.Name)
 		}
 		EmitPopAx("Restore rax after freeing local variables")
+	}
+	// Delete parameters
+	for _, p := range parList {
+		DeleteLocalVar(s, p.Name)
 	}
 	// Free local variables on the stack
 	DeleteBlockVars(s)
@@ -1504,10 +1497,7 @@ func ParseFuncDef(s *State) error {
 	}
 	code.OutputArgCode()
 	s.next()
-	// Delete parameters
-	for _, p := range parList {
-		DeleteLocalVar(s, p.Name)
-	}
+
 	if s.CommentLevel > 0 {
 		return fmt.Errorf("missing end of comment")
 	}

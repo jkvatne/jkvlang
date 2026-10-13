@@ -88,9 +88,20 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 func DeleteLocalVar(s *State, id string) {
 	s.LocalVarCount--
 	v := VarDefs[id]
-	if v != nil && v.Typ.Pt >= code.TYP_STRING {
+	if v != nil && v.Typ.Pt >= code.TYP_STRING && !v.Destroyed {
 		// Free variable
-
+		if v.Typ.Pt == code.TYP_STRING {
+			EmitLoad(8, v.Offset, "DeleteLocalVar string '"+v.Name+"'")
+			EmitFreeString("")
+		} else if v.Typ.Pt == code.TYP_STRUCT {
+			// Load local var pointer into rax
+			EmitLoad(8, v.Offset, "DeleteLocalVar struct "+v.Name)
+			FreeStruct(v.Typ)
+		} else if v.Typ.Pt == code.TYP_SLICE && !v.IsGlobal {
+			// Load local var pointer into rax
+			EmitLoad(8, v.Offset, "DeleteLocalVar slice "+v.Name)
+			EmitFreeSlice(v.Typ)
+		}
 	}
 	delete(VarDefs, id)
 }

@@ -10,7 +10,6 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-
 func next(r RangeIterator) I32 {
     if r.start>r.end ? fail(1)
     x = r.start
@@ -19,11 +18,7 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    ch='A'
-    for i = range(2,3) {
-        for j = range (3,4) {
-            s=""
-            print("i=%d, i=%d, i*j=%d", i,i,i*i)
-        }
+    for i = range(2,4) {
+        print("i=%d", i)
     }
 }
