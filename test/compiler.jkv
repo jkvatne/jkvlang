@@ -120,15 +120,37 @@ func nextChar(s State) I32 {
 	return s.ch1
 }
 
+func is_alfa(ch U8) Bool {
+    return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch>='0' && ch<='9' || ch == '@' || ch == '$' || ch == '~' || ch=='_'
+}
+
 func nextToken(s State) {
+    s.token=0
     loop {
         if s.p>=s.textSize {
             s.token = TOK_EOF
             break
         }
         ch = nextChar(s)
-        if ch == 0x22 {  // "
-            s.tokenString = ">>>>>>>>"
+        s.tokenString = ""
+        s.tokenString +=ch
+        if ch == '\r' || ch == '\n' || ch == ' ' || ch == '\t' {
+            // continue
+        } else if is_alfa(ch) {
+            id = ""
+            id += ch
+            loop {
+                ok = is_alfa(s.ch2)
+                if !ok {
+                    break
+                }
+                ch = nextChar(s)
+                id += ch
+            }
+            s.tokenString = id
+            s.token = 1
+        } else if ch == 0x22 {  // This is a quote, "
+            s.tokenString = ""
             loop {
                 ch = nextChar(s)
                 if ch == '"' || ch == 0 {
@@ -136,34 +158,20 @@ func nextToken(s State) {
                 }
                 s.tokenString+=ch
             }
-            s.token=5
-        } if ch>='A' && ch<='z' || ch>='0' && ch<='9'{
-            id = ""
-            id += ch
-            loop {
-                if ch<'A' || ch>'z' || ch==0 ? break
-                //print("ch=0x%2x", ch)
-                ch =nextChar(s)
-                id += ch
-            }
-            s.tokenString = id
-            s.token = TOK_ID
-        } else if s.ch1 == '(' {
+            s.token=2
+        } else if ch == '(' {
             s.token = 4
-            s.tokenString = "("
-        } else if s.ch1 == ')' {
+        } else if ch == ')' {
             s.token = 5
-            s.tokenString = ")"
-        } else if s.ch1 == '=' {
-            s.token = 5
-            s.tokenString = "="
-        } else if s.ch1 == '{' {
-            s.token = 5
-            s.tokenString = "{"
-        } else if s.ch1 == '}' {
-            s.token = 5
-            s.tokenString = "}"
-        } else if s.ch1 == '/' && s.ch2=='/' {
+        } else if ch == '=' {
+            s.token = 6
+        } else if ch == '{' {
+            s.token = 7
+        } else if ch == '}' {
+            s.token = 8
+        } else if ch == '}' {
+            s.token = 9
+        } else if ch == '/' && s.ch2=='/' {
             loop {
                 ch = nextChar(s)
                 if ch=='\n' || ch==0 ? break
@@ -207,8 +215,8 @@ func main() {
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
 
-    // Must use explicit filename during tests. Testing self-compile.
-    filename = "C:/doc/compiler/test/compiler.jkv"
+    // Must use explicit filename during tests.
+    filename = "C:/doc/compiler/test/test.jkv"
 
     s.text = read_all(filename)
     s.textSize = len(s.text)
@@ -216,7 +224,7 @@ func main() {
     ch = nextChar(s)
     loop{
         nextToken(s)
-        //print("Token='%s'", s.tokenString)
+        print("Token %d = '%s'", s.token, s.tokenString)
         if s.token == 0 ? break
     }
 }

@@ -1,24 +1,22 @@
-type RangeIterator = struct {
-    start I32
-    end I32
+
+
+func is_alfa(ch U8) Bool {
+    return false
 }
 
-func range(count I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = 0
-    r.end = count-1
-    return r
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
-
-func main() {
-    for i = range(4) {
-        print("i=%d", i)
+func nextToken() {
+    loop {
+        ch = 13
+        if ch == '\r'  {
+            // continue
+        } else if  is_alfa(ch) {
+            id = ""
+        }
     }
 }
+
+
+func main() {
+   nextToken()
+}
+

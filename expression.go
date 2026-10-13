@@ -519,7 +519,10 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	code.OutputCleanupCode(len(values))
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
-	if !returnSomething || len(f.returnTypes) == 0 {
+	if !returnSomething && len(f.returnTypes) > 0 {
+		return nil, fmt.Errorf("Funcion returns values that are not handled")
+	}
+	if !returnSomething && len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
 		s.currentFuncCall = ""
 		return nil, nil
@@ -1242,6 +1245,11 @@ func ParseIfElse(s *State, value *ValueDef) error {
 	}
 
 	for s.found(TOK_ELSE) {
+		s.tokenString = "else " + s.tokenString
+		s.CollectNextLine()
+		code.LineNum = code.NextLineNum
+		code.EmitLineNo(s.currentLine)
+
 		if !s.HasReturned && !value.HasValue() {
 			L2 = code.NewLabel()
 			EmitJump(L2, "Skip else block")

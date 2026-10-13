@@ -232,7 +232,7 @@ func (s *State) nextChar() {
 }
 
 func (s *State) CollectNextLine() {
-	s.currentLine = s.tokenString + " "
+	s.currentLine = s.tokenString + string(s.ch2)
 	i := s.p
 	for {
 		ch, n := utf8.DecodeRune(s.text[i:])
@@ -244,7 +244,6 @@ func (s *State) CollectNextLine() {
 			break
 		}
 	}
-	// fmt.Printf("Line: %d = '%s'\n", code.NextLineNum, s.currentLine)
 }
 
 func eof(s *State) bool {
