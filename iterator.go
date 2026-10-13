@@ -101,12 +101,16 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	return lvalues, nil
 }
 
+var rangeCount = 1
+
 func ParseFor(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
 	PushLabel(startLabel, endLabel)
 	var lvalues []*VarDef
 	var err error
+	rangeName := "___range" + strconv.Itoa(rangeCount)
+	rangeCount++
 	if !s.found(TOK_LBRACE) {
 		s.BlockLevel++
 		s.LoopLevel++
@@ -134,7 +138,7 @@ func ParseFor(s *State) error {
 		}
 		code.NewArgCode()
 		results, err := ParseFuncCall(s, id, true)
-		AddLocalVar(s, "r", &StructType)
+		AddLocalVar(s, rangeName, &StructType)
 		if err != nil {
 			return err
 		}
@@ -180,7 +184,7 @@ func ParseFor(s *State) error {
 		// TODO: Do this also for returns from inner loops
 		EmitPopAx("Pop address of loop state")
 		EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
-		DeleteLocalVar(s, "r")
+		DeleteLocalVar(s, rangeName)
 		// Remove local loop variables
 		for _, v := range lvalues {
 			EmitPopAx("Pop loop variable")

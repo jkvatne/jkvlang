@@ -36,14 +36,12 @@ func main() {
     for i = range(2,5) {
         sum+=i
     }
-/*
-
     assert(sum==14)
 
-    r = range(10, 15)
+    ra = range(10, 15)
     sum = 0
     loop {
-        i = next(r) else break
+        i = next(ra) else break
         sum+=i
     }
     assert(sum==75)
@@ -80,10 +78,10 @@ func main() {
     }
     assert(sum==68)
 
-    r = range(10, 15)
+    ra = range(10, 15)
     sum = 0
     loop {
-        i = next(r) else break
+        i = next(ra) else break
         sum+=i
         fflush()
     }
@@ -102,9 +100,9 @@ func main() {
     sum=0
     for i=range(1,3) {
         for k=range(1,4) {
+            ch = "asd"
             sum=sum+i*k
         }
     }
     assert(sum==60, "Failed sum")
-    */
 }

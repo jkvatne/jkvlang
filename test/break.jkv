@@ -3,9 +3,11 @@
 
 func main() {
     ch = 'A'
+    /*
     if true {
         id = ""
         id += ch
     }
+    */
   }
 
