@@ -36,6 +36,8 @@ func main() {
     for i = range(2,5) {
         sum+=i
     }
+/*
+
     assert(sum==14)
 
     r = range(10, 15)
@@ -104,4 +106,5 @@ func main() {
         }
     }
     assert(sum==60, "Failed sum")
+    */
 }

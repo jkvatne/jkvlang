@@ -77,6 +77,9 @@ func ParseHash(s *State) error {
 	return err
 }
 
+// ParseLoopVars will parse the variables receiveng values from next(r).
+// Theese variables are f.ex. "i" in " i=range(1,2)"
+// They are returned in the lvalues[] array.
 func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	for {
 		if s.token != TOK_ID {
@@ -88,13 +91,13 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 			return nil, fmt.Errorf("loop variable shadowing " + id)
 		}
 		lvalue = AddLocalVar(s, id, nil)
+		lvalue.Offset = EmitAllocLocalVar("Allocate loop variable " + lvalue.Name)
 		lvalues = append(lvalues, lvalue)
+		s.next()
 		if !s.found(TOK_COMMA) {
 			break
 		}
 	}
-	// lvalue := AddLocalVar(s, "r", &StructType)
-	// lvalues = append(lvalues, lvalue)
 	return lvalues, nil
 }
 
@@ -114,11 +117,6 @@ func ParseFor(s *State) error {
 		if len(lvalues) == 0 {
 			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
 		}
-		for _, l := range lvalues {
-			ofs := EmitAllocLocalVar("Allocate loop variable " + l.Name)
-			l.Offset = ofs
-		}
-		s.next()
 		if !s.found(TOK_ASSIGN) {
 			return fmt.Errorf("expected '=' but got %s", s.tokenString)
 		}
@@ -136,6 +134,7 @@ func ParseFor(s *State) error {
 		}
 		code.NewArgCode()
 		results, err := ParseFuncCall(s, id, true)
+		// AddLocalVar(s, "r", &StructType)
 		if err != nil {
 			return err
 		}
@@ -165,7 +164,9 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected '{' but got %s", s.tokenString)
 		}
 		EmitJumpTrue("r15", endLabel, "")
+
 		err = ParseBlock(s, false)
+
 		if err != nil {
 			return err
 		}
@@ -184,7 +185,7 @@ func ParseFor(s *State) error {
 			EmitPopAx("Pop loop variable")
 			DeleteLocalVar(s, v.Name)
 		}
-		DeleteBlockVars(s)
+		// DeleteBlockVars(s)
 		EmitReturnIfErr2(s.returnLbl)
 		// Clear err if it is 1 as this is used to signal break using pull iterators
 		EmitClearBreakErr()
