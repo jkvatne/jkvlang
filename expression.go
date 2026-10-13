@@ -15,12 +15,7 @@ import (
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		// if value.Typ.Pt == code.TYP_U8 || value.Typ.Pt == code.TYP_U16 || value.Typ.Pt == code.TYP_I16 {
-		// Default to I32 when assigning smaller types to a local variable
-		// lvalue.Typ = &I32Type
-		// } else {
 		lvalue.Typ = value.Typ
-		// }
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -1483,10 +1478,6 @@ func ParseFuncDef(s *State) error {
 		}
 		EmitPopAx("Restore rax after freeing local variables")
 	}
-	// Delete parameters
-	// for _, p := range parList {
-	//	DeleteLocalVar(s, p.Name)
-	// }
 	// Free local variables on the stack
 	DeleteBlockVars(s)
 	EmitEpilogue(f.name)
@@ -1704,7 +1695,6 @@ func ParseAppend(s *State) error {
 		return fmt.Errorf("first argument to append must be a slice")
 	}
 	if !v.IsIndirect {
-		// return fmt.Errorf("expected indirect value")
 		emit("lea", "rax", BpRel(v.Offset), "")
 	}
 	if !s.found(TOK_COMMA) {

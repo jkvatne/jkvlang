@@ -3,10 +3,10 @@ type RangeIterator = struct {
     end I32
 }
 
-func range(start I32, end I32) RangeIterator {
+func range(count I32) RangeIterator {
     r = new(RangeIterator)
-    r.start = start
-    r.end = end
+    r.start = 0
+    r.end = count-1
     return r
 }
 
@@ -18,7 +18,7 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    for i = range(2,4) {
+    for i = range(4) {
         print("i=%d", i)
     }
 }

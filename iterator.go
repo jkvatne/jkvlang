@@ -181,10 +181,7 @@ func ParseFor(s *State) error {
 		EmitJump(GetTopStartLabel(), "Jump to start of loop")
 		EmitLabel(endLabel, "Exit from loop")
 		PopLabels()
-		// EmitFreeStruct assumes the full address exists in rax. So just pop it as the state is now TOS.
-		// TODO: Do this also for returns from inner loops
 		EmitPopAx("Pop address of loop state")
-		// EmitFreeStruct(results[0].Typ.Size(), "Free loop state")
 		DeleteLocalVar(s, rangeName)
 		// Remove local loop variables
 		for _, v := range lvalues {
