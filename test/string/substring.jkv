@@ -1,0 +1,46 @@
+
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+func substring(s String, start I32, end I32) String {
+    t=new(String, end-start+1)
+    // print("start=%d, end=%d, s=%s", start, end, s)
+    for i=range(start, end) {
+        // print("i=%d  i-start=%d, s[i]=0x%x", i, i-start, s[i])
+        t[i-start] = s[i]
+    }
+    // print("returns t=%s", t)
+    return t
+}
+
+func main() {
+    s = "-file=test"
+
+    // Test substring
+    u=substring(s, 6, len(s)-1)
+    assert(u=="test", "Failed u==test, got u=%s", u)
+
+    s[5]='-'
+    assert(substring(s, 0, 5)=="-file-", "Failed substring -file-")
+
+    u=substring(s, 0, 5)
+    assert(u=="test", "Intentionaly failed, got %s", u)
+    invert_err()
+}
+

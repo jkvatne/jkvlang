@@ -1,0 +1,41 @@
+
+func main() {
+  x=1
+  y=2
+  z=3
+
+  w1 = x+y
+  assert(w1==3)
+
+  w2 = x+y*z
+  assert(w2==7)
+
+  w3 = x+y+z
+  assert(w3==6)
+
+  w4 = (x+y)*z
+  assert(w4==9)
+
+  w5 = (y*(z+1))
+  assert(w5==8)
+
+  w6=z*4
+  assert(w6==12)
+
+  w7 = (x*(z+1))>=4 && x+z*4<=13
+  assert(w7)
+
+  w8=false
+  assert(!w8)
+
+  w9 = true
+  assert(!w8&&w9)
+  assert(w9||w8)
+
+  w10 = true
+  assert(w9&&w10||w8)
+
+  assert(w2==7 && w3==6)
+  assert((w2==7)&&(w3==16||w6==12))
+
+}
