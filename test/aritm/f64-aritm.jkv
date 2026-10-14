@@ -1,4 +1,7 @@
 
+type Farr = []F64
+const floats Farr = {6.1, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+
 func main() {
 
     x = 13.0
@@ -44,4 +47,12 @@ func main() {
     assert(13.0*3.0==39.0, "Failed 13.0*3.0, got %f", 13.0*3.0)
     assert(x*y==39.0, "Failed x*y, got %f", x*y)
 
+    //  Array
+    assert(floats[0]==6.1)
+    assert(floats[1]==6.25)
+    assert(floats[2]==6.5)
+    assert(floats[3]==6.75)
+    assert(floats[4]==7.0)
+    assert(floats[5]==7.5)
+    assert(floats[6]==8.5)
 }

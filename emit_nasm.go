@@ -132,8 +132,10 @@ func EmitSliceLit(l SliceLit) {
 		}
 	} else if len(l.FloatValues) > 0 {
 		for _, v := range l.FloatValues {
-			code.Write(sizeName + " " + strconv.FormatFloat(v, 'f', -1, 64) + "\n")
+			code.Write(sizeName + " " + strconv.FormatFloat(v, 'e', -1, 64) + "\n")
 		}
+	} else {
+		panic("EmitSliceLit failed")
 	}
 }
 

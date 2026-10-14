@@ -128,7 +128,8 @@ func main() {
     assert(uu==0xabcdefab, "Failed, uu=0x%x", uu)
     assert(ul==0x12345678, "Failed, ul=0x%x", ul)
 
-    print("floats[0]=%f", floats[1])
+    print("floats[4]=%f", floats[4])
+    print("floats[6]=%f", floats[6])
 
     print("\n\n     x    floor  round½↓   round    round½↑    ceil\n")
     j = 0
@@ -136,7 +137,7 @@ func main() {
         f = floats[j]
         u = unround(floats[j])
         print("%9.3f %9d, %9d, %9d, %9d", f, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
-        if j==7 {break}
+        if j==6 {break}
         j+=1
     }
 }

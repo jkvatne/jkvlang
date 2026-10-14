@@ -835,6 +835,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		value = &ValueDef{IsConst: true}
 		value.IntValue = int64(s.ConstValue.Bits)
 		value.UintValue = s.ConstValue.Bits
+		value.FloatValue = float64(s.ConstValue.Bits)
 		value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
 		if hasUnaryMinus {
 			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
