@@ -207,10 +207,11 @@ func EmitFunction(id string) {
 		emit("mov", "rbp", "rsp", "")
 	}
 	// Function prologue. Set up new frame pointer.
-	emit("push", "rbp", "", "")
-	emit("mov", "rbp", "rsp", "")
-
+	emit("push", "rbp", "", "Function prologue")
 	code.LocalSp = 0
+	emit("mov", "rbp", "rsp", "Function prologue")
+	code.LocalSp = 0
+
 	if id == "main" {
 		emit("call", "_sysinit", "", "")
 	}
@@ -2085,7 +2086,7 @@ func EmitAppendIndirectConstStrChar(value int) error {
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character 4")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character in EmitAppendIndirectConstStrChar")
 	// Now update indirect variable
 	emit("mov", "rdi", "[rsp]", "")
 	emit("mov", "qword [rdi]", "rdx", "")
@@ -2108,7 +2109,7 @@ func EmitAppendIndirectExpressionStrChar() error {
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
 	emit("mov", "rax", "r14", "")
-	emit("mov", "byte [rdi]", "al", "Append character 3")
+	emit("mov", "byte [rdi]", "al", "Append character in EmitAppendIndirectExpressionStrChar")
 	// Now update indirect variable
 	emit("mov", "qword [r13]", "rdx", "")
 	return nil
@@ -2131,7 +2132,7 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	// rdi points to the first empty character of the new string (ready for move)
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
-	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character 2")
+	emit("mov", "byte [rdi]", strconv.Itoa(value), "Append character in EmitAssignVariableConstStrChar")
 	// Update variable
 	emit("mov", BpRel(adr), "rdx", "")
 	return nil
@@ -2141,6 +2142,7 @@ func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 // in the variable at [bp+adr]
 func EmitAppendVariableExpressionStrChar(adr int) error {
 	EmitComment("EmitAppendVariableExpressionStrChar")
+	EmitAssertTosInRax("")
 	emit("mov", "r14", "rax", "Save character value")
 	emit("mov", "rbx", "1", "Load needed extra space")
 	emit("mov", "rsi", BpRel(adr), "Load pointer to string from local variable")
@@ -2151,7 +2153,7 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	// rdx points to the extended string's len/cap or the old string's len/cap
 	emit("inc", "dword [rdx]", "", "Incr original length by one")
 	emit("mov", "rax", "r14", "")
-	emit("mov", "byte [rdi]", "al", "Append character 1")
+	emit("mov", "byte [rdi]", "al", "Append character in EmitAppendVariableExpressionStrChar")
 	emit("mov", BpRel(adr), "rdx", "")
 	return nil
 }

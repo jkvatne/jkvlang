@@ -17,7 +17,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
 		// If the value is a integer constant and value is a new variable, we default
 		// to I32 instead of U8 for small constants.
-		if value.Typ.Basic && value.Typ.Size() < 4 {
+		if value.Typ.Pt.IsInteger() && value.Typ.Basic && value.Typ.Size() < 4 {
 			lvalue.Typ = &I32Type
 		} else {
 			lvalue.Typ = value.Typ

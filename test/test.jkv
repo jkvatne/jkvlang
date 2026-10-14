@@ -1,17 +1,5 @@
 
-
-func encode(p String, i I32, r I32) I32 {
-	p[i+1] = low_byte(r)
-}
-
 func main() {
-    newstr = ""
-    newstr +="01234567890123456789"
-    newstr[1]='A'
-    print("%s", newstr)
-    i=3
-    i=encode(newstr, i, 68)
-    print("%s", newstr)
-
+  x=1
+  w = x>9
 }
-
