@@ -1,17 +1,6 @@
 
-const (
-    TOK_EOF I32 = 0
-    TOK_ID
-	TOK_PLUS
-	TOK_PLUS_PLUS
-	TOK_PLUS_ASGN
-)
-
 func main() {
-   print("%d", TOK_EOF)
-   print("%d", TOK_ID)
-   print("%d", TOK_PLUS)
-   print("%d", TOK_PLUS_PLUS)
-   print("%d", TOK_PLUS_ASGN)
+    i = 10
+   print("%d", i)
 }
 

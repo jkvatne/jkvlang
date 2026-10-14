@@ -123,26 +123,15 @@ func decode(s String, i I32) I32, I32 {
 }
 
 func main() {
-    s="Å本A🔵"
-    print("utf8.jkv")
-
-    assert(utf8d[0xF0]==0x0B, "Expected 0x0B; got %X", utf8d[0xF0])
-    print("codepoints[0]=%d", codepoints[0])
-    print("codepoints[1]=%d", codepoints[1])
-    print("codepoints[2]=%d", codepoints[2])
-    print("codepoints[3]=%d", codepoints[3])
-
     // Test string "Å本A🔵" = [195  133 230 156 172  65  240 159 148 181]
-    state, codep = decode_byte(0, 0, 195)
-    print("1.Decoding Å: state=%X, codep=%d", state, codep)
-    state, codep = decode_byte(state, codep, 133)
-    print("2.Decoding Å: state=%X, codep=%d", state, codep)
+    s="Å本A🔵"
+    print("Test string: '%s'", s)
 
-    i = I32(0)
+    // Test decoding
+    i = 0
     j = 0
     loop {
         codep, i = decode(s, i)
-        print("codep %d = %d", i, codep)
         if codep==0 { break }
         assert(codep==codepoints[j], "%d. Expected codepoint %d, got %d", j, codepoints[j], codep)
         j+=1

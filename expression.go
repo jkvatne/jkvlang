@@ -15,7 +15,13 @@ import (
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		lvalue.Typ = value.Typ
+		// If the value is a integer constant and value is a new variable, we default
+		// to I32 instead of U8 for small constants.
+		if value.Typ.Basic && value.Typ.Size() < 4 {
+			lvalue.Typ = &I32Type
+		} else {
+			lvalue.Typ = value.Typ
+		}
 	}
 	if lvalue.Typ == nil {
 		return fmt.Errorf("new variable not allowed before op-assignment")
@@ -546,20 +552,8 @@ func ParseAssign(s *State, id string) error {
 	if err != nil {
 		return err
 	}
-
 	op := s.token
-
 	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
-		if op == TOK_ASSIGN {
-			// If there is an old object, we must free it first.
-			for _, lv := range lvalues {
-				if lv.Typ != nil && lv.Typ.Pt == code.TYP_STRING {
-					if !lv.IsIndirect {
-						// TODO  Move free to after expression evaluation.
-					}
-				}
-			}
-		}
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
