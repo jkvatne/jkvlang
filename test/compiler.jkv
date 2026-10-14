@@ -1,5 +1,86 @@
 
 const (
+    TOK_EOF I32 = 0
+    TOK_ID
+	TOK_PLUS
+	TOK_PLUS_PLUS
+	TOK_PLUS_ASGN
+	TOK_MINUS
+	TOK_MINUS_MINUS
+	TOK_MINUS_ASGN
+	TOK_MULT
+	TOK_DIV
+	TOK_MOD
+	TOK_FLOAT
+	TOK_INT
+	TOK_STRING
+	TOK_LBRACE
+	TOK_RBRACE
+	TOK_LPAR
+	TOK_RPAR
+	TOK_LBRACK
+	TOK_RBRACK
+	TOK_COMMA
+	TOK_ASSIGN
+	TOK_GE
+	TOK_GT
+	TOK_LE
+	TOK_LT
+	TOK_EQ
+	TOK_NE
+	TOK_OR
+	TOK_OR_ASGN
+	TOK_LOG_OR
+	TOK_AND
+	TOK_AND_ASGN
+	TOK_LOG_AND
+	TOK_VAR
+	TOK_FUNC
+	TOK_CONST
+	TOK_IF
+	TOK_ELSE
+	TOK_FOR
+	TOK_RETURN
+	TOK_DIV_ASGN
+	TOK_MULT_ASGN
+	TOK_SEMICOLON
+	TOK_COLON
+	TOK_STRUCT
+	TOK_QMARK
+	TOK_DOT
+	TOK_AT
+	TOK_MAX
+	TOK_MIN
+	TOK_ABS
+	TOK_TYPE
+	TOK_TRUE
+	TOK_FALSE
+	TOK_INVALID
+	TOK_INV_MINUS
+	TOK_INV_DIV
+	TOK_INV_MOD
+	TOK_NEW
+	TOK_NOT
+	TOK_LOOP
+	TOK_BREAK
+	TOK_CONTINUE
+	TOK_FAIL
+	TOK_XOR
+	TOK_SHL
+	TOK_SHR
+	TOK_AND_NOT
+	TOK_CHAR
+	TOK_APPEND
+	TOK_INV_SHL
+	TOK_INV_SHR
+	TOK_SYSCALL
+	TOK_HASH
+	TOK_IMPORT
+	TOK_PACKAGE
+	TOK_AS
+)
+
+const (
     CREATE_NEW     I32 = 1    // Fails if file already exists
     FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
     FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
@@ -96,11 +177,6 @@ func substring(s String, start I32, end I32) String {
     return t
 }
 
-const (
-    TOK_EOF I32 = 0
-    TOK_ID  I32 = 1
-)
-
 func next_char(s State) I32 {
 	n = 0
 	s.ch1 = s.ch2
@@ -163,23 +239,37 @@ func nextToken(s State) {
                 s.tokenString+=ch
             }
             s.token=2
-        } else if ch == '''' {
+        } else if ch == 0x27 {
             s.token = 3
             ch = next_char(s)
             s.tokenString = ""
             s.tokenString += ch
             ch = next_char(s)
-            if ch!='''' {
-                err = 201
+            if ch!=0x27 {
+                fail(201)
             }
         } else if ch == '>' && s.ch2=='=' {
             ch = next_char(s)
-            s.token = 4
+            s.tokenString = ">="
+            s.token = 14
         } else if ch == '>' {
-            s.token = 4
+            s.token = 13
         } else if ch == '<' && s.ch2=='=' {
             ch = next_char(s)
-            s.token = 4
+            s.tokenString = "<="
+            s.token = 12
+        } else if ch == '&' && s.ch2=='&' {
+            s.tokenString = "&&"
+            ch = next_char(s)
+            s.token = 11
+        } else if ch == '|' && s.ch2=='|' {
+            s.tokenString = "||"
+            ch = next_char(s)
+            s.token = 15
+        } else if ch == '=' && s.ch2=='=' {
+            s.tokenString = "=="
+            ch = next_char(s)
+            s.token = 16
         } else if ch == '>' {
             s.token = 4
         } else if ch == '>' {

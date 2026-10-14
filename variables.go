@@ -22,6 +22,8 @@ type VarDef struct {
 }
 
 var VarDefs map[string]*VarDef
+var LastGlobalConstValue string
+var LastGlobalConstType *TypeDef
 
 func InitVardefs() {
 	VarDefs = make(map[string]*VarDef)

@@ -1,7 +1,17 @@
 
+const (
+    TOK_EOF I32 = 0
+    TOK_ID
+	TOK_PLUS
+	TOK_PLUS_PLUS
+	TOK_PLUS_ASGN
+)
+
 func main() {
-   ch = '4'
-   b = ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch>='0' && ch<='9' || ch == '@' || ch == '$' || ch == '~' || ch=='_'
-   print("%d", b)
+   print("%d", TOK_EOF)
+   print("%d", TOK_ID)
+   print("%d", TOK_PLUS)
+   print("%d", TOK_PLUS_PLUS)
+   print("%d", TOK_PLUS_ASGN)
 }
 

@@ -1603,14 +1603,14 @@ func ParseVars(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, false)
+			err = ParseVar(s)
 			if err != nil {
 				return err
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, false)
+		err = ParseVar(s)
 	}
 	return err
 }
@@ -1620,20 +1620,20 @@ func ParseConsts(s *State) error {
 	if s.token == TOK_LPAR {
 		s.next()
 		for s.token != TOK_RPAR {
-			err = ParseVar(s, true)
+			err = ParseConst(s)
 			if err != nil {
 				break
 			}
 		}
 		s.next()
 	} else {
-		err = ParseVar(s, true)
+		err = ParseConst(s)
 	}
 	return err
 }
 
 // ParseVar will parse a variable or constant declaration
-func ParseVar(s *State, isGlobal bool) error {
+func ParseVar(s *State) error {
 	var err error
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
@@ -1653,15 +1653,8 @@ func ParseVar(s *State, isGlobal bool) error {
 		return err
 	}
 	var v *VarDef
-	if isGlobal {
-		v, err = AddGlobalConst(id, typ)
-		if err != nil {
-			return err
-		}
-	} else {
-		v = AddLocalVar(s, id, typ)
-		v.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
-	}
+	v = AddLocalVar(s, id, typ)
+	v.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
 	if s.token == TOK_ASSIGN {
 		s.next()
 		val := ""
@@ -1723,6 +1716,68 @@ func ParseVar(s *State, isGlobal bool) error {
 	return nil
 }
 
+func ParseConst(s *State) error {
+	if s.token != TOK_ID {
+		return fmt.Errorf("expected id but got %s", s.tokenString)
+	}
+	id := s.tokenString
+	s.next()
+	// Now we should either have a type name or the next constant name
+	if s.token != TOK_ID && s.token != TOK_RPAR {
+		return fmt.Errorf("expected type name or constant name, but got %s", s.tokenString)
+	}
+	_, ok := TypeDefs[s.tokenString]
+	if ok {
+		typ, err1 := ParseType(s)
+		LastGlobalConstType = typ
+		if err1 != nil {
+			return err1
+		}
+		v, err2 := AddGlobalConst(id, typ)
+		if err2 != nil {
+			return err2
+		}
+		if s.token == TOK_ASSIGN {
+			s.next()
+			val := ""
+			if s.token == TOK_MINUS {
+				s.next()
+				if s.token != TOK_INT && s.token != TOK_FLOAT {
+					return fmt.Errorf("expected int or float, got %s", s.tokenString)
+				}
+				val = "-" + s.tokenString
+				if s.ConstValue.Pt.IsFloat() {
+					f := -math.Float64frombits(s.ConstValue.Bits)
+					s.ConstValue.Bits = math.Float64bits(f)
+				} else {
+					s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+				}
+			} else {
+				val = s.tokenString
+			}
+			if v == nil {
+				return fmt.Errorf("internal error in ParseVar")
+			}
+			v.constValue = val
+			LastGlobalConstValue = val
+			s.next()
+		}
+	} else if LastGlobalConstType != nil && LastGlobalConstType.Pt.IsInteger() {
+		// It was a const name without type. Treat it as a iota const if it was an integer
+		v, err2 := AddGlobalConst(id, LastGlobalConstType)
+		if err2 != nil {
+			return err2
+		}
+		x, err3 := strconv.Atoi(LastGlobalConstValue)
+		if err3 != nil {
+			return err3
+		}
+		x = x + 1
+		LastGlobalConstValue = strconv.Itoa(x)
+		v.constValue = LastGlobalConstValue
+	}
+	return nil
+}
 func ParseAppend(s *State) error {
 	if !s.found(TOK_LPAR) {
 		return fmt.Errorf("expected left parenthesis")
