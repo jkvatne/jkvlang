@@ -1,7 +1,0 @@
-
-func main() {
-    print("Tick frequency=%d",tick_frequency)
-    ok = call(Sleep, 1)
-    print("Goodby")
-}
-

@@ -3,6 +3,10 @@ type State = struct {
     ch2  I32
 }
 
+func is_alfa(ch U8) Bool {
+    return ch==2
+}
+
 func main() {
 
     a = 1
@@ -54,6 +58,20 @@ func main() {
     s = new(State)
     if s.ch1 == 13 {
         assert(s.ch1==0)
+    }
+
+    i=3
+    if i==1  {
+        id = "Case1"
+        print("%s", id)
+        assert(false, "Should not happen")
+    } else if is_alfa(2) {
+        id = "Case2"
+        assert(true, "Ok")
+    } else if is_alfa(1) {
+        id = "Case3"
+        print("%s", id)
+        assert(false, "Should not happen")
     }
 
  }

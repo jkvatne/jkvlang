@@ -193,7 +193,7 @@ func ScanFile(s *State, name string) (err error) {
 			s.next()
 			err = ParseTypeDefs(s)
 		} else {
-			err = fmt.Errorf("unexpected token \"%s\"", s.tokenString)
+			err = fmt.Errorf("unexpected top level token \"%s\"", s.tokenString)
 		}
 		if err != nil {
 			return fmt.Errorf("%s:%d %v", name, code.LineNum, err)

@@ -48,8 +48,7 @@ func main() {
 
     sum = 0
     for i = range(2,5) {
-        sum+=i
-    }
+        sum+=i    }
     assert(sum==14)
 
     sum=0
@@ -105,4 +104,13 @@ func main() {
         }
     }
     assert(sum==60, "Failed sum")
+
+    // This code was leaking 17 bytes
+    // because of id created inside loop
+    ch = 'A'
+    if true {
+        id = ""
+        id += ch
+    }
+
 }

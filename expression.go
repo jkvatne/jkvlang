@@ -972,7 +972,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		// Syscall allways retunes a single value
 		value.Typ = &I32Type
 	} else {
-		return nil, fmt.Errorf("unexpected token %s", s.tokenString)
+		return nil, fmt.Errorf("unexpected unary token %s", s.tokenString)
 	}
 	return []*ValueDef{value}, err
 }
@@ -1632,6 +1632,42 @@ func ParseConsts(s *State) error {
 	return err
 }
 
+func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
+	s.next()
+	lit := new(SliceLit)
+	lit.name = id
+	for {
+		if s.token == TOK_RBRACE {
+			break
+		}
+		hasUnaryMinus := false
+		if s.token == TOK_MINUS {
+			hasUnaryMinus = true
+			s.next()
+		}
+		constVal, err := ParseUnary(s, hasUnaryMinus)
+		if err != nil {
+			return err
+		}
+		if typ.Element.Pt.IsInteger() {
+			lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
+		} else {
+			return fmt.Errorf("wrong type")
+		}
+		if !s.found(TOK_COMMA) {
+			break
+		}
+	}
+	if typ.Element.Pt.IsInteger() {
+		lit.count = len(lit.IntValues)
+	} else {
+		return fmt.Errorf("wrong type")
+	}
+	lit.size = typ.Element.Pt.Size()
+	SliceLiteralDefs = append(SliceLiteralDefs, lit)
+	return nil
+}
+
 // ParseVar will parse a variable or constant declaration
 func ParseVar(s *State) error {
 	var err error
@@ -1671,39 +1707,7 @@ func ParseVar(s *State) error {
 				s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
 			}
 		} else if s.token == TOK_LBRACE {
-			// EmitSetupDi()
-			s.next()
-			lit := new(SliceLit)
-			lit.name = id
-			for {
-				if s.token == TOK_RBRACE {
-					break
-				}
-				hasUnaryMinus := false
-				if s.token == TOK_MINUS {
-					hasUnaryMinus = true
-					s.next()
-				}
-				constVal, err := ParseUnary(s, hasUnaryMinus)
-				if err != nil {
-					return err
-				}
-				if v.Typ.Element.Pt.IsInteger() {
-					lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
-				} else {
-					return fmt.Errorf("wrong type")
-				}
-				if !s.found(TOK_COMMA) {
-					break
-				}
-			}
-			if v.Typ.Element.Pt.IsInteger() {
-				lit.count = len(lit.IntValues)
-			} else {
-				return fmt.Errorf("wrong type")
-			}
-			lit.size = v.Typ.Element.Pt.Size()
-			SliceLiteralDefs = append(SliceLiteralDefs, lit)
+			err = ParseSliceLitteral(s, id, v.Typ)
 		} else {
 			val = s.tokenString
 		}
@@ -1751,6 +1755,11 @@ func ParseConst(s *State) error {
 					s.ConstValue.Bits = math.Float64bits(f)
 				} else {
 					s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+				}
+			} else if s.token == TOK_LBRACE {
+				err := ParseSliceLitteral(s, id, typ)
+				if err != nil {
+					return err
 				}
 			} else {
 				val = s.tokenString
