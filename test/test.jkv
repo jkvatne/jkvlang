@@ -1,22 +1,7 @@
 
-
-func is_alfa(ch U8) Bool {
-    return false
-}
-
-func nextToken() {
-    loop {
-        ch = 13
-        if ch == '\r'  {
-            // continue
-        } else if  is_alfa(ch) {
-            id = ""
-        }
-    }
-}
-
-
 func main() {
-   nextToken()
+   ch = '4'
+   b = ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch>='0' && ch<='9' || ch == '@' || ch == '$' || ch == '~' || ch=='_'
+   print("%d", b)
 }
 

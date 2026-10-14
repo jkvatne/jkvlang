@@ -101,7 +101,7 @@ const (
     TOK_ID  I32 = 1
 )
 
-func nextChar(s State) I32 {
+func next_char(s State) I32 {
 	n = 0
 	s.ch1 = s.ch2
 	if s.ch1 == '\n' {
@@ -124,6 +124,10 @@ func is_alfa(ch U8) Bool {
     return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch>='0' && ch<='9' || ch == '@' || ch == '$' || ch == '~' || ch=='_'
 }
 
+func is_whitespace(ch U8) Bool {
+    return ch == '\r' || ch == '\n' || ch == ' ' || ch == '\t'
+}
+
 func nextToken(s State) {
     s.token=0
     loop {
@@ -131,10 +135,10 @@ func nextToken(s State) {
             s.token = TOK_EOF
             break
         }
-        ch = nextChar(s)
+        ch = next_char(s)
         s.tokenString = ""
         s.tokenString +=ch
-        if ch == '\r' || ch == '\n' || ch == ' ' || ch == '\t' {
+        if is_whitespace(ch) {
             // continue
         } else if is_alfa(ch) {
             id = ""
@@ -144,7 +148,7 @@ func nextToken(s State) {
                 if !ok {
                     break
                 }
-                ch = nextChar(s)
+                ch = next_char(s)
                 id += ch
             }
             s.tokenString = id
@@ -152,13 +156,34 @@ func nextToken(s State) {
         } else if ch == 0x22 {  // This is a quote, "
             s.tokenString = ""
             loop {
-                ch = nextChar(s)
+                ch = next_char(s)
                 if ch == '"' || ch == 0 {
                     break
                 }
                 s.tokenString+=ch
             }
             s.token=2
+        } else if ch == '''' {
+            s.token = 3
+            ch = next_char(s)
+            s.tokenString = ""
+            s.tokenString += ch
+            ch = next_char(s)
+            if ch!='''' {
+                err = 201
+            }
+        } else if ch == '>' && s.ch2=='=' {
+            ch = next_char(s)
+            s.token = 4
+        } else if ch == '>' {
+            s.token = 4
+        } else if ch == '<' && s.ch2=='=' {
+            ch = next_char(s)
+            s.token = 4
+        } else if ch == '>' {
+            s.token = 4
+        } else if ch == '>' {
+            s.token = 4
         } else if ch == '(' {
             s.token = 4
         } else if ch == ')' {
@@ -173,13 +198,13 @@ func nextToken(s State) {
             s.token = 9
         } else if ch == '/' && s.ch2=='/' {
             loop {
-                ch = nextChar(s)
+                ch = next_char(s)
                 if ch=='\n' || ch==0 ? break
             }
         } else {
             s.tokenString = "skip"
             s.token=0
-            ch =nextChar(s)
+            ch =next_char(s)
         }
         if s.token!=0 {
             break
@@ -221,7 +246,7 @@ func main() {
     s.text = read_all(filename)
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
-    ch = nextChar(s)
+    ch = next_char(s)
     loop{
         nextToken(s)
         print("Token %d = '%s'", s.token, s.tokenString)

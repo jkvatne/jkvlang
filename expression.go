@@ -1093,13 +1093,13 @@ func ParseCompareTerm(s *State) ([]*ValueDef, error) {
 	return values1, err
 }
 
-func ParseExpression(s *State) ([]*ValueDef, error) {
+func ParseLogAnd(s *State) ([]*ValueDef, error) {
 	results, err := ParseCompareTerm(s)
 	if err != nil {
 		return nil, err
 	}
 	endLabel := 0
-	for s.token == TOK_LOG_AND || s.token == TOK_LOG_OR {
+	for s.token == TOK_LOG_AND {
 		if len(results) != 1 {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
 		}
@@ -1110,19 +1110,51 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		if endLabel == 0 {
 			endLabel = code.NewLabel()
 		}
-		op := s.token
 		if results[0].Typ.Pt != code.TYP_BOOL {
 			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
 		}
 		s.next()
-
-		if op == TOK_LOG_OR {
-			EmitJumpTrue("al", endLabel, "")
-		} else if op == TOK_LOG_AND {
-			EmitJumpFalse("al", endLabel, "")
-		}
-
+		EmitJumpFalse("al", endLabel, "")
 		values2, err2 := ParseCompareTerm(s)
+		if err2 != nil {
+			return nil, err2
+		}
+		if values2[0].Typ.Pt != code.TYP_BOOL {
+			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		}
+	}
+	if endLabel != 0 {
+		EmitLabel(endLabel, "")
+	}
+	if results[0].Typ == nil {
+		return nil, fmt.Errorf("value.type is nil - internal error")
+	}
+	return results, nil
+}
+
+func ParseExpression(s *State) ([]*ValueDef, error) {
+	results, err := ParseLogAnd(s)
+	if err != nil {
+		return nil, err
+	}
+	endLabel := 0
+	for s.token == TOK_LOG_OR {
+		if len(results) != 1 {
+			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
+		}
+		if results[0].IsConst {
+			EmitLoadBool(results[0].BoolValue)
+		}
+		results[0].IsReturned = false
+		if endLabel == 0 {
+			endLabel = code.NewLabel()
+		}
+		if results[0].Typ.Pt != code.TYP_BOOL {
+			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		}
+		s.next()
+		EmitJumpTrue("al", endLabel, "")
+		values2, err2 := ParseLogAnd(s)
 		if err2 != nil {
 			return nil, err2
 		}
