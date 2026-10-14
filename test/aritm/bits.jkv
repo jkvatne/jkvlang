@@ -46,7 +46,7 @@ func roundHalfUp(u Unrounded) U64   { return U64((u + 2) >> 2) }
 func ceil(u Unrounded) U64          { return U64((u + 3) >> 2) }
 
 type Farr = []F64
-const floats Farr = {6.1, 6.25, 6.5, 6.75, 7, 7.5, 8.5}
+const floats Farr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
 
@@ -131,13 +131,13 @@ func main() {
     print("floats[4]=%f", floats[4])
     print("floats[6]=%f", floats[6])
 
-    print("\n\n     x    floor  round½↓   round    round½↑    ceil\n")
+    print("\n       x         u      floor    round½↓    round    round½↑     ceil")
     j = 0
     loop {
         f = floats[j]
         u = unround(floats[j])
-        print("%9.3f %9d, %9d, %9d, %9d", f, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
-        if j==6 {break}
+        print("%9.3f %9d %9d %9d %9d %9d %9d", f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
         j+=1
+        if j>=7 {break}
     }
 }
