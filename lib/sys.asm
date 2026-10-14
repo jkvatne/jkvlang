@@ -130,6 +130,7 @@ _get_tick_freq:
 _low_byte:
     xor rax, rax
     mov al, byte [rsp+8]
+    mov [rsp+16], rax
     ret
 
 _print:

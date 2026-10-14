@@ -58,7 +58,7 @@ const (
     max_rune I32 = 0x0010FFFF
 )
 
-func encode(p ByteArr, i I32, r I32) I32 {
+func encode(p String, i I32, r I32) I32 {
 	if r <= rune1Max {
 		p[i+0] = low_byte(r)
 		return i + 1
@@ -137,4 +137,20 @@ func main() {
         j+=1
     }
 
+    newstr = ""
+    newstr +="01234567890123456789"
+    newstr[1]='A'
+    newstr[10]='B'
+    print("%s", newstr)
+
+    i = 0
+    i = encode(newstr, i, codepoints[0])
+    print("%d", i)
+    i = encode(newstr, i, codepoints[1])
+    print("%d", i)
+    i = encode(newstr, i, codepoints[2])
+    print("%d", i)
+    i = encode(newstr, i, codepoints[3])
+    print("%d", i)
+    print("%s", newstr)
 }
