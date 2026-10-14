@@ -110,6 +110,10 @@ func EmitF32Litteral(litName string, litValue float32) {
 	code.Write(litName + " dd " + value + "\n")
 }
 
+func EmitBlank() {
+	code.Write("\n")
+}
+
 func EmitGlobal(name string) {
 	code.Write("global " + name + "\n")
 }
@@ -138,7 +142,12 @@ func EmitSection(section string) {
 
 func EmitTextLabel(text string) {
 	text = strings.Trim(text, ":\n ")
-	code.Write("\n" + text + ":\n")
+	if text == "main" {
+		code.Write("\n\nglobal main\n")
+		code.Write(text + ":\n")
+	} else {
+		code.Write("\n" + text + ":\n")
+	}
 }
 
 func EmitComment(comment string) {
@@ -717,9 +726,6 @@ func EmitEpilogue(name string) {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)
 	}
-	EmitComment("--------------------------------------------")
-	EmitComment("External symbols")
-	EmitGlobal("main")
 	for _, name = range Externals {
 		EmitExtern(name)
 	}

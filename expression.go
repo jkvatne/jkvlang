@@ -1279,6 +1279,8 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			if value.Typ.Pt != code.TYP_BOOL {
 				return fmt.Errorf("expected boolean but got %s", code.PrimaryTypeNames[value.Typ.Pt])
 			}
+			// Remove returned value from stack
+			EmitAssertTosInRax("")
 			L1 = code.NewLabel()
 			EmitJumpFalse("al", L1, "jump if condition was false")
 			if !s.found(TOK_LBRACE) {
