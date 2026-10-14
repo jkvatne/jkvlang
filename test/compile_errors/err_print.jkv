@@ -1,0 +1,6 @@
+// Should fail because print needs fixed string in par 1
+
+func main() {
+    s="Should fail"
+    print(s)
+}

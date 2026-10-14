@@ -1,0 +1,88 @@
+
+const (
+    // dwCreationDisposition.
+    CREATE_NEW     I32 = 1    // Fails if file already exists
+    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
+    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
+    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
+
+    FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
+    FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
+    FILE_ATTRIBUTE_READONLY  I32 = 0x0001
+)
+
+//  open_file calls the Windows CreateFileA function
+//  lpFileName              File name as a C string. must be Ansi
+//  dwDesiredAccess         For normal read/write, use GENERIC_READ|GENERIC_WRITE=0xC0000000
+//  dwShareMode             Should be 0 to open exclusively.
+//  lpSecurityAttributes    Typically null.
+//  dwCreationDisposition   OpenAllways=4. Will create file if it does not exist. Use OPEN_EXISTING=3 if needed.
+//  dwFlagsAndAttributes    Usually FILE_ATTRIBUTE_NORMAL=0x80. Can be Hidden,System..
+//  hTemplateFile           should be 0. Never used
+
+func open_file(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func create_file(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, CREATE_ALLWAYS, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func close_file(f I32) {
+    e = call(CloseHandle, f)
+    e = e+1
+    return
+}
+
+func read_string(f I32, cnt I32) String {
+    buf=new(String,cnt)
+    ok = call(ReadFile, f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
+}
+
+func write_file(f I32, txt String) I32 {
+    n = 0
+    ok = call(WriteFile, f, cptr(txt), len(txt), ptr(n), 0)
+    return n
+}
+
+func read_all(name String) String {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    n = call(GetFileSize, f, 0)
+    // if n>=0 ? fail(123)
+    buf = new(String, n)
+    ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
+    close_file(f)
+    return buf
+}
+
+func main() {
+    // Test write to file
+    fn = "./test.txt"
+    n = I32(0)
+    text = "Hello World!"
+    f = create_file(fn)
+    assert(I64(f)!=-1, "Wanted handle>0, got %d", f)
+    n = write_file(f, text)
+    assert(n==12, "Wanted n=12, got n=%d", n)
+    close_file(f)
+
+    //  Test read back file using read_string
+    f2 = open_file(fn)
+    buffer = read_string(f2, 12)
+
+    assert(buffer=="Hello World!", "Failed, got buffer=%s", buffer)
+    close_file(f2)
+
+    // Read back using read_all()
+    txt = read_all(fn)
+    assert(txt=="Hello World!", "Failed read_all, got : '%s'", txt)
+
+    // Test open invalid name
+    fn2 = ":::"
+    f3 = open_file(fn2)
+    assert(I64(f3)==-1)
+
+}
