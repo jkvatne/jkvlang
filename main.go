@@ -186,9 +186,9 @@ func Run(outputName string) error {
 }
 
 func main() {
+
 	// TestDecode()
-	// t := time.Now()
-	// fmt.Printf("%v\n", t)
+	// TestUnrounded()
 
 	flag.Parse()
 	// Set logger to not prepend any time/date

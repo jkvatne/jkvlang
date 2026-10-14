@@ -1210,6 +1210,7 @@ func ParseBlock(s *State, isTrue bool) error {
 	}
 	DeleteBlockVars(s)
 	s.BlockLevel--
+	s.HasReturned = false
 	return nil
 }
 
@@ -1645,18 +1646,16 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 		}
 		if typ.Element.Pt.IsInteger() {
 			lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
+		} else if typ.Element.Pt.IsFloat() {
+			lit.FloatValues = append(lit.FloatValues, constVal[0].FloatValue)
 		} else {
-			return fmt.Errorf("wrong type")
+			return fmt.Errorf("slice lteral with wrong element type")
 		}
 		if !s.found(TOK_COMMA) {
 			break
 		}
 	}
-	if typ.Element.Pt.IsInteger() {
-		lit.count = len(lit.IntValues)
-	} else {
-		return fmt.Errorf("wrong type")
-	}
+	lit.count = len(lit.IntValues) + len(lit.FloatValues)
 	lit.size = typ.Element.Pt.Size()
 	SliceLiteralDefs = append(SliceLiteralDefs, lit)
 	return nil

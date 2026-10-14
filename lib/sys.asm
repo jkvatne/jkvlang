@@ -54,6 +54,9 @@ global _free_slice
 global _free_str
 global _print
 global _low_byte
+global _floor
+global _int32
+global _int64
 global _invert_err
 global _syscall
 global _get_ticks
@@ -303,6 +306,28 @@ _bitlen:
     mov rax, -1
 .L1:
     inc rax
+    mov [rsp+16], rax
+    ret
+
+_floor:
+    mov rax, [rsp+8]
+    movq xmm0, rax
+    roundsd xmm0, xmm0, 1
+    movq rax, xmm0
+    mov [rsp+16], rax
+    ret
+
+_int64:
+    mov rax, [rsp+8]
+    movq xmm0, rax
+    cvtsd2si rax, xmm0
+    mov [rsp+16], rax
+    ret
+
+_int32:
+    mov rax, [rsp+8]
+    movq xmm0, rax
+    cvttss2si  rax, xmm0
     mov [rsp+16], rax
     ret
 

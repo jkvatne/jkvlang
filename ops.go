@@ -146,7 +146,7 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 			return nil, fmt.Errorf("compare with invalid operands: %s", TokenNames[op])
 		}
 	} else if op.IsAritmetic() {
-		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
+		if val1.Typ.Pt.IsInteger() && (val2.Typ.Pt.IsInteger() || val2.Typ.Pt == code.TYP_BOOL) {
 			EmitIntegerOp(op)
 			return val1, nil
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING && op == TOK_PLUS {
@@ -156,8 +156,16 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		var err error
 		if val1.Typ.Pt == code.TYP_F64 || val2.Typ.Pt == code.TYP_F64 {
 			err = EmitF64Op(op, val1.Typ.Pt, val2.Typ.Pt)
-		} else {
+			if err != nil {
+				return nil, err
+			}
+		} else if val1.Typ.Pt == code.TYP_F32 || val2.Typ.Pt == code.TYP_F32 {
 			err = EmitF32Op(op, val1.Typ.Pt, val2.Typ.Pt)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("invalid operation: %s", TokenNames[op])
 		}
 		if val1.Typ.Pt == code.TYP_F64 {
 			return val1, nil

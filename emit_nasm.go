@@ -126,8 +126,14 @@ func EmitSliceLit(l SliceLit) {
 	code.Write(" dd " + strconv.Itoa(l.count) + ";   len\n")
 	code.Write(" dd 0  ; cap\n")
 	sizeName := SizeNames[l.size]
-	for _, v := range l.IntValues {
-		code.Write(sizeName + " " + strconv.Itoa(int(v)) + "\n")
+	if len(l.IntValues) > 0 {
+		for _, v := range l.IntValues {
+			code.Write(sizeName + " " + strconv.Itoa(int(v)) + "\n")
+		}
+	} else if len(l.FloatValues) > 0 {
+		for _, v := range l.FloatValues {
+			code.Write(sizeName + " " + strconv.FormatFloat(v, 'f', -1, 64) + "\n")
+		}
 	}
 }
 
@@ -481,6 +487,9 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("time_used_str")
 		EmitExtern("alloc_size_str")
 		EmitExtern("_low_byte")
+		EmitExtern("_floor")
+		EmitExtern("_int64")
+		EmitExtern("_int32")
 	}
 
 	code.EmitBlankLine()
@@ -1147,6 +1156,10 @@ func EmitIntegerOp(op Token) {
 	if !code.AxIsTos() {
 		panic("emitIntegerOp assumes RaxIsTOS=true")
 	}
+	instruction := TokenOp[op]
+	if instruction == "" {
+		panic("EmitIntegerOp called with invalid token " + op.Name())
+	}
 	if op == TOK_DIV {
 		emit("pop", "rcx", "", "")
 		emit("xchg", "rax", "rcx", "")
@@ -1166,22 +1179,16 @@ func EmitIntegerOp(op Token) {
 		emit("pop", "rcx", "", "")
 		emit("not", "rax", "", "")
 		emit("and", "rax", "rcx", "AndNot")
+	} else if op == TOK_MULT {
+		emit("pop", "rcx", "", "")
+		emit("mul", "rcx", "", "Integer op mul")
+	} else if op == TOK_SHL || op == TOK_SHR {
+		emit("mov", "rcx", "rax", "Integer op shift")
+		emit("pop", "rax", "", "")
+		emit(instruction, "rax", "cl", "Integer op shift")
 	} else {
-		instruction := TokenOp[op]
-		if instruction == "" {
-			panic("EmitIntegerOp called with invalid token " + op.Name())
-		}
-		if op == TOK_MULT {
-			emit("pop", "rcx", "", "")
-			emit("mul", "rcx", "", "Integer op mul")
-		} else if op == TOK_SHL || op == TOK_SHR {
-			emit("mov", "rcx", "rax", "Integer op shift")
-			emit("pop", "rax", "", "")
-			emit(instruction, "rax", "cl", "Integer op shift")
-		} else {
-			emit("pop", "rcx", "", "")
-			emit(instruction, "rax", "rcx", "Integer op other")
-		}
+		emit("pop", "rcx", "", "")
+		emit(instruction, "rax", "rcx", "Integer op other")
 	}
 }
 
@@ -1310,7 +1317,7 @@ func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	} else if typ2 == code.TYP_F64 {
 		emit("movq", xmm(2), "rax", "EmitFloatOp mov nos to xmm2")
 	} else {
-		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		return fmt.Errorf("EmitF64Op not implemented for " + op.Name())
 	}
 	// Load NOS into xmm2 and convert to F64 if necessary
 	emit("pop", "rax", "", "EmitFloatOp pop nos")
@@ -1321,7 +1328,7 @@ func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	} else if typ1 == code.TYP_F64 {
 		emit("movq", xmm(1), "rax", "EmitFloatOp mov nos to xmm1")
 	} else {
-		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		return fmt.Errorf("EmitF64Op not implemented for " + op.Name())
 	}
 	// Do F64 opertion
 	err := emitFloatOp(op, 64)
@@ -1337,7 +1344,7 @@ func EmitF32Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	} else if typ1 == code.TYP_F32 {
 		emit("movd", xmm(2), "eax", "EmitFloatOp mov nos to xmm2")
 	} else {
-		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		return fmt.Errorf("EmitF32Op not implemented for " + op.Name())
 	}
 	// Load NOS into xmm2 and convert to F32 if necessary
 	emit("pop", "rax", "", "EmitFloatOp pop nos")
@@ -1346,7 +1353,7 @@ func EmitF32Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	} else if typ2 == code.TYP_F32 {
 		emit("movd", xmm(1), "eax", "EmitFloatOp mov nos to xmm1")
 	} else {
-		return fmt.Errorf("EmitFloatOp not implemented for " + op.Name())
+		return fmt.Errorf("EmitF32Op not implemented for " + op.Name())
 	}
 	err := emitFloatOp(op, 32)
 	emit("movq", "rax", xmm(1), "EmitF32Op: Move float result into rax")

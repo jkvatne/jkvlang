@@ -72,6 +72,9 @@ func FuncInit() {
 	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&U8Type}, true, false)
 	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&U16Type}, true, false)
 	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I16Type}, true, false)
+	_, _ = AddFunc("floor", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&F64Type}, true, false)
+	_, _ = AddFunc("int64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I64Type}, true, false)
+	_, _ = AddFunc("int32", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I32Type}, true, false)
 }
 
 // &VarDef{Name: "err", Typ: &I64Type
