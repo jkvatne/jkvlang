@@ -835,10 +835,10 @@ func FixedWidth(f F64, n I32) U64, I32 {
 }
 
 const pow10Tests U64arr = {
-  0,  0x8000000000000000, 0,                              1,
- 25,  0x84595161401484a0, 0,                              84,
- 72,  0x90e40fbeea1d3a4b, -0x3c8955e946fe31ce,  240,
--44,  0xe45c10c42a2b3b06, 0x734765824883af95, -146,
+  0,  0x8000000000000000, 0,                    1,
+ 25,  0x84595161401484a0, 0,                    84,
+ 72,  0x90e40fbeea1d3a4b, 0x4376AA16B901CE32,  240,
+-44,  0xe45c10c42a2b3b06, 0x734765824883af95,  -146,
 }
 
 type Farr = []F64
@@ -887,20 +887,19 @@ func main() {
     i = 0
 	loop {
 	    p = pow10Tests[i*4]
-/*	    pmhi = pow10Tests[i*4+1]
+	    pmhi = pow10Tests[i*4+1]
 	    pmlo = pow10Tests[i*4+2]
 	    pe = pow10Tests[i*4+3]
-	    print("p=%d, pmhi=0x%016lx, pmlo=0x%016lx, pe=%d", p, pmhi, pmlo, pe)
-*/
+	    print("i=%d p=%lld, pmhi=0x%016llx, pmlo=0x%016llx, pe=%d", i, p, pmhi, pmlo, pe)
+
 	    l = log2Pow10(p)
 	    c = prescale(0, p, l)
-/*
+
 		px = -(c.s + 2)
 		if pmhi != c.hi || pmlo != c.lo || px != pe {
-		    print("Error  pow10(%d) = %x, %d, %d want %x, %d, %d", p, pmhi, pmlo, px, c.hi, c.lo)
+		    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
 		}
 		i+=1
-*/
-		break
+        if i>3 {break}
 	}
 }

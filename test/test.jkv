@@ -1,17 +1,8 @@
 
-type Unrounded = U64
-type Scaler = struct {
-	s  I32
-}
+type U64arr = []U64
 
-func prescale(e I32, p I32, lp I32) Scaler {
-    sc=new(Scaler)
-    return sc
-}
+const x U64arr = {-1,  2}
 
 func main() {
-    loop {
-        c = prescale(1, 2, 3)
-        break
-    }
+    print("%llx", x[0])
 }

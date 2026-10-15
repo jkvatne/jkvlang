@@ -839,6 +839,9 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
 		if hasUnaryMinus {
 			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+			value.IntValue = int64(s.ConstValue.Bits)
+			value.FloatValue = float64(s.ConstValue.Bits)
+			value.UintValue = s.ConstValue.Bits
 			if value.Typ.Pt == code.TYP_U8 {
 				value.Typ = TypeDefs["I16"]
 			} else if value.Typ.Pt == code.TYP_U16 {
