@@ -3,6 +3,7 @@
 type Stru = struct {
     x I32
     y I32
+    z I32
 }
 
 func get() Stru {

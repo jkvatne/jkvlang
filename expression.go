@@ -473,9 +473,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 			// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
 			// If it was a local variable or a constant, we should not free it.
 			// TODO: FInd a better way than checking for names
-			if value.IsTempObj && id != "cptr" && id != "lptr" {
+			if value.Typ.Pt == code.TYP_STRING && value.IsTempObj && id != "cptr" && id != "lptr" {
 				lbl := code.NewLabel()
-				str := "   mov rax, rsp   ; Cleanup\n"
+				str := "   mov rax, rsp   ; Cleanup args\n"
 				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
 				str += "   mov rax, [rax]  ; Get pointer to content (string cap/len) on stack\n"
 				str += "   mov rbx, [rax]  ; Get len/cap\n"
@@ -484,6 +484,13 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 				str += "   jz .L" + strconv.Itoa(lbl) + "\n"
 				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
 				str += ".L" + strconv.Itoa(lbl) + ":\n"
+				code.SetCleanupCode(str)
+			} else if value.Typ.Pt == code.TYP_STRUCT {
+				str := "   mov rax, rsp   ; Cleanup struct args\n"
+				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
+				str += "   mov rax, [rax]  ; Get pointer to struct content\n"
+				str += "   mov rcx, " + strconv.Itoa(value.Typ.StructSize) + "\n"
+				str += fmt.Sprintf("   call _free_struct   ; Call free arg %d of %s\n", parNo+1, id)
 				code.SetCleanupCode(str)
 			}
 			// }
