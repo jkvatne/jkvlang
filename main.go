@@ -189,6 +189,7 @@ func main() {
 
 	// TestDecode()
 	// TestUnrounded()
+	fmt.Printf("0x%x\n", 0x8000000000000000-0xbc8955e946fe31ce)
 
 	flag.Parse()
 	// Set logger to not prepend any time/date

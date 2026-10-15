@@ -45,6 +45,22 @@ func round(u Unrounded) U64         { return U64((u + 1 + (u>>2)&1) >> 2) }
 func roundHalfUp(u Unrounded) U64   { return U64((u + 2) >> 2) }
 func ceil(u Unrounded) U64          { return U64((u + 3) >> 2) }
 
+func div(u Unrounded, d U64) Unrounded {
+	x = U64(u)
+	b = x%d != 0
+	return Unrounded(x/d) | (u&1) | b
+}
+
+func rsh(u Unrounded, s I32) Unrounded {
+    b = u&((1<<s)-1) != 0
+	r = u>>s | (u&1) | b
+	return r
+}
+
+func nudge(u Unrounded, delta I32) Unrounded {
+    return u + Unrounded(delta)
+}
+
 type Farr = []F64
 const floats Farr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
@@ -131,13 +147,14 @@ func main() {
     print("floats[4]=%f", floats[4])
     print("floats[6]=%f", floats[6])
 
-    print("\n       x         u      floor    round½↓    round    round½↑     ceil")
+    print("\n    x           u    floor   round½↓  round round½↑  ceil")
     j = 0
     loop {
         f = floats[j]
         u = unround(floats[j])
-        print("%9.3f %9d %9d %9d %9d %9d %9d", f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
+        print("%9.3f %7d %7d %7d %7d %7d %7d", f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
         j+=1
         if j>=7 {break}
     }
+
 }

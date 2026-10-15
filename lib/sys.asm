@@ -55,6 +55,7 @@ global _free_str
 global _print
 global _low_byte
 global _floor
+global _mul64
 global _int32
 global _int64
 global _invert_err
@@ -315,6 +316,14 @@ _floor:
     roundsd xmm0, xmm0, 1
     movq rax, xmm0
     mov [rsp+16], rax
+    ret
+
+_mul64:
+    mov rax, [rsp+8]    ; Load the first operand into RAX
+    mov rsi, [rsp+16]   ; Lo the second operand into si
+    mul rsi             ; Multiply unsigned RAX by RSI. Now rdx is upper, rax is lower 64 bits
+    mov [rsp+24], rdx
+    mov [rsp+32], rax
     ret
 
 _int64:

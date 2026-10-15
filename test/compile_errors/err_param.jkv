@@ -1,0 +1,7 @@
+type Unrounded = U64
+
+func main() {
+    // This should fail with "wrong parameters"
+    u = Unrounded(16)
+    w=floor(u)
+}

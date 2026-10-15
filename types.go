@@ -26,10 +26,12 @@ var BoolType = TypeDef{Pt: code.TYP_BOOL, TypeName: "Bool", Basic: true}
 var NoneType = TypeDef{Pt: code.TYP_NONE, TypeName: "None", Basic: true}
 var PtrType = TypeDef{Pt: code.TYP_PTR, TypeName: "Ptr", Basic: true}
 var I32Type = TypeDef{Pt: code.TYP_I32, TypeName: "I32", Basic: true}
+var U32Type = TypeDef{Pt: code.TYP_U32, TypeName: "U32", Basic: true}
 var I16Type = TypeDef{Pt: code.TYP_I16, TypeName: "I16", Basic: true}
 var U16Type = TypeDef{Pt: code.TYP_U16, TypeName: "U16", Basic: true}
 var U8Type = TypeDef{Pt: code.TYP_U8, TypeName: "U8", Basic: true}
 var I64Type = TypeDef{Pt: code.TYP_I64, TypeName: "I64", Basic: true}
+var U64Type = TypeDef{Pt: code.TYP_U64, TypeName: "U64", Basic: true}
 var F64Type = TypeDef{Pt: code.TYP_F64, TypeName: "F64", Basic: true}
 var F32Type = TypeDef{Pt: code.TYP_F32, TypeName: "F32", Basic: true}
 var AnyType = TypeDef{Pt: code.TYP_NONE, TypeName: "Any", Basic: true}
@@ -129,10 +131,10 @@ func CanAssignToVar(dstVar *VarDef, src code.PrimaryType) bool {
 
 // CanAssign is true if we can assign type "src" to "dst"
 func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
-	if src.IsInteger() && dst == code.TYP_STRING {
+	if src == dst {
 		return true
 	}
-	if src == dst {
+	if src.IsInteger() && dst == code.TYP_STRING {
 		return true
 	}
 	if src == code.TYP_PTR && dst == code.TYP_I64 {

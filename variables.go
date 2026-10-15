@@ -220,7 +220,7 @@ func ParseType(s *State) (*TypeDef, error) {
 		s.next()
 		n := s.tokenString
 		if n[0] > 'Z' {
-			return nil, fmt.Errorf("imported types must start with a capital letter A..Z: '%s'", id)
+			return nil, fmt.Errorf("imported types must start with a capital letter: '%s'", id)
 		}
 		id = id + "@" + n
 		s.next()

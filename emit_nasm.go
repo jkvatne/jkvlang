@@ -244,6 +244,7 @@ var TokenOp = map[Token]string{
 	TOK_SHL:        "shl",
 	TOK_SHR:        "shr",
 	TOK_AND_NOT:    "andnot",
+	TOK_MOD:        "mod",
 }
 
 func xmm(sp int) string {
@@ -492,6 +493,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_floor")
 		EmitExtern("_int64")
 		EmitExtern("_int32")
+		EmitExtern("_mul64")
 	}
 
 	code.EmitBlankLine()

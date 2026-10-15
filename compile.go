@@ -185,11 +185,17 @@ func ScanFile(s *State, name string) (err error) {
 
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
+			s.CollectNextLine()
+			code.LineNum = code.NextLineNum
 			err = ParseFuncDef(s)
 		} else if s.token == TOK_CONST {
+			s.CollectNextLine()
+			code.LineNum = code.NextLineNum
 			s.next()
 			err = ParseConsts(s)
 		} else if s.token == TOK_TYPE {
+			s.CollectNextLine()
+			code.LineNum = code.NextLineNum
 			s.next()
 			err = ParseTypeDefs(s)
 		} else {

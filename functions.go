@@ -65,6 +65,10 @@ func FuncInit() {
 	_, _ = AddFunc("cptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("lptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false)
 	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U32Type}}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U8Type}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("len", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("cstrlen", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
 	_, _ = AddFunc("get_ticks", nil, nil, true, false)
@@ -75,6 +79,8 @@ func FuncInit() {
 	_, _ = AddFunc("floor", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&F64Type}, true, false)
 	_, _ = AddFunc("int64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I64Type}, true, false)
 	_, _ = AddFunc("int32", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I32Type}, true, false)
+	_, _ = AddFunc("mul64", []*ParDef{{name: "arg1", typ: &U64Type}, {name: "arg21", typ: &U64Type}},
+		[]*TypeDef{&U64Type, &U64Type}, true, false)
 }
 
 // &VarDef{Name: "err", Typ: &I64Type
@@ -100,12 +106,16 @@ func FindFuncDef(id string, parameters []*ParDef) *FuncDef {
 	for _, f := range FuncDefs {
 		if f.name == id {
 			if f.VarArg && len(f.parameters) <= len(parameters) || len(f.parameters) == len(parameters) {
+				ok := true
 				for i, p := range f.parameters {
-					if p.typ != f.parameters[i].typ {
-						continue
+					if !CanAssign(p.typ.Pt, parameters[i].typ.Pt) {
+						ok = false
+						break
 					}
 				}
-				return f
+				if ok {
+					return f
+				}
 			}
 		}
 	}
