@@ -911,7 +911,8 @@ func main() {
 */
 
     // Test FixedWidth
-    m,e = FixedWidth(1.234, 4)
-    //assert(m==1234 && e==-3, "Error formating 1.234")
+    m,e = FixedWidth(1.234, 6)
+    print("m=%lld, e=%ld", m, e)
+    assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
 
 }

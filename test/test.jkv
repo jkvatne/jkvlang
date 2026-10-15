@@ -1,22 +1,15 @@
 
-
-type Stru = struct {
-    x I32
-    y I32
-}
-
-func get() Stru {
-    s = new(Stru)
-    s.x=1
-    s.y=2
-    return s
-}
-
-func do(m I32, s Stru) I32 {
-    return s.x+s.y+m
+func foo(a I32) U64, I32 {
+    return 1, -a
 }
 
 func main() {
-    a = do(3, get())
-    print("%d", a)
+    a, x = foo(4)
+    y=1
+
+    if y==1 && x == -4 {
+        print("ok")
+    } else {
+        print("Error, x=%d", x)
+    }
 }

@@ -1,0 +1,9 @@
+
+func foo(a I32) U64, I32 {
+    return 1, -a
+}
+
+func main() {
+    a, x = foo(4)
+    assert(x == -4, "Error, x=%d", x)
+}
