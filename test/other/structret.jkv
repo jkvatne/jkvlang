@@ -1,0 +1,22 @@
+// This is giveing leaked memory=-2
+
+type Stru = struct {
+    x I32
+    y I32
+}
+
+func get() Stru {
+    s = new(Stru)
+    s.x=1
+    s.y=2
+    return s
+}
+
+func do(m I32, s Stru) I32 {
+    return s.x+s.y+m
+}
+
+func main() {
+    a = do(3, get())
+    print("%d", a)
+}

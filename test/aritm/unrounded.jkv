@@ -825,7 +825,8 @@ func FixedWidth(f F64, n I32) U64, I32 {
 	}
 	m, e = unpack64(f)
 	p = n - 1 - log10Pow2(e+63)
-	u = uscale(m, prescale(e, p, log2Pow10(p)))
+	l = log2Pow10(p)
+	u = uscale(m, prescale(e, p, l))
 	d = round(u)
 	if d >= uint64pow10[n] {
 		d = round(div(u, 10))
@@ -841,8 +842,13 @@ const pow10Tests U64arr = {
 -44,  0xe45c10c42a2b3b06, 0x734765824883af95,  -146,
 }
 
-type Farr = []F64
-const floats Farr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+type F64arr = []F64
+
+const FixedWidthTests F64arr = {
+    1.2345, 12e3, 123e-6,
+}
+
+const floats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
 /*
@@ -882,7 +888,7 @@ func main() {
     print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(16.0)
     print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
-*/
+
     // Test Pow10
     i = 0
 	loop {
@@ -902,4 +908,10 @@ func main() {
 		i+=1
         if i>3 {break}
 	}
+*/
+
+    // Test FixedWidth
+    m,e = FixedWidth(1.234, 4)
+    //assert(m==1234 && e==-3, "Error formating 1.234")
+
 }
