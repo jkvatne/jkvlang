@@ -170,7 +170,7 @@ func ParseFor(s *State) error {
 		}
 		EmitJumpTrue("r15", endLabel, "")
 
-		err = ParseBlock(s, false)
+		err = ParseBlock(s, false, false)
 
 		if err != nil {
 			return err
@@ -208,7 +208,7 @@ func ParseLoop(s *State) error {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
 	s.LoopLevel++
-	err := ParseBlock(s, false)
+	err := ParseBlock(s, false, true)
 	if err != nil {
 		return err
 	}
@@ -217,6 +217,10 @@ func ParseLoop(s *State) error {
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
+	s.BlockLevel++
+	// Remove local loop variables
+	DeleteBlockVars(s)
+	s.BlockLevel--
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
