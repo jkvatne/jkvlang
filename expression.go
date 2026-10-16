@@ -961,7 +961,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("unary minus on invalid value")
 		}
 		if v[0].IsConst {
-			v[0].IntValue = -v[0].IntValue
+			// v[0].IntValue = -v[0].IntValue
 			// v[0].FloatValue = -v[0].FloatValue
 		} else if v[0].Typ.Pt == code.TYP_F64 {
 			EmitNegateF64()

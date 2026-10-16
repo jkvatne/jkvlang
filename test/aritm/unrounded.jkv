@@ -911,8 +911,22 @@ func main() {
 */
 
     // Test FixedWidth
-    m,e = FixedWidth(1.234, 6)
-    print("m=%lld, e=%ld", m, e)
+    f = 1.234
+    m,e = FixedWidth(f, 6)
+    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
     assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
+
+    f = 1.234E14
+    m,e = FixedWidth(f, 6)
+    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
+    //assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
+
+    f = 1.234E-14
+    m,e = FixedWidth(f, 6)
+    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
+
+    f = 1.234E-99
+    m,e = FixedWidth(f, 6)
+    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
 
 }
