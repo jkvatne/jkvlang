@@ -118,43 +118,59 @@ func (t *TypeDef) Name() string {
 	return t.TypeName
 }
 
-func CanAssignToVar(dstVar *VarDef, src code.PrimaryType) bool {
-	dst := dstVar.Typ.Pt
-	if dst == src {
-		// if dstVar.FieldType != nil {
-		//	dst = dstVar.FieldType.Pt
-		// }
-		return true
-	}
-	return CanAssign(dst, src)
-}
-
-// CanAssign is true if we can assign type "src" to "dst"
-func CanAssign(dst code.PrimaryType, src code.PrimaryType) bool {
-	if src == dst {
-		return true
-	}
-	if src.IsInteger() && dst == code.TYP_STRING {
-		return true
-	}
-	if src == code.TYP_PTR && dst == code.TYP_I64 {
-		return true
-	}
-	return dst == code.TYP_U8 && src == code.TYP_U8 ||
-		dst == code.TYP_I16 && (src == code.TYP_I16 || src == code.TYP_U8) ||
-		dst == code.TYP_I32 && (src == code.TYP_I32 || src == code.TYP_I16 || src == code.TYP_U8 || src == code.TYP_U16) ||
-		dst == code.TYP_I64 && (src == code.TYP_I32 || src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_I16 || src == code.TYP_U8) ||
-		dst == code.TYP_U16 && (src == code.TYP_U16 || src == code.TYP_U8) ||
-		dst == code.TYP_U32 && (src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_U8) ||
-		dst == code.TYP_F64 || dst == code.TYP_F32 ||
-		src == code.TYP_I64 || dst == code.TYP_U64 ||
-		src == code.TYP_U64 || dst == code.TYP_I64
+func AddType(name string, typ *TypeDef) {
+	TypeDefs[name] = typ
 }
 
 // CanAssignConst : Given a constant value, can we assign it to the dst variable?
-// A F64 can accept anything. An F32 value can accept everything except F64.
-// For integers, it depends on the value.
-func CanAssignConst(dst code.PrimaryType, value *ValueDef) bool {
+func CanAssign(dst code.PrimaryType, value *ValueDef) bool {
+	src := value.Typ.Pt
+	if src == dst {
+		return true
+	}
+	if value.IsConst {
+		f, err := StrToConst(value.StringValue)
+		if err != nil {
+			return false
+		}
+		return dst == code.TYP_U8 && f >= 0 && f <= 255 ||
+			dst == code.TYP_I16 && f >= -32768 && f <= 32767 ||
+			dst == code.TYP_U16 && f >= -65535 && f <= 65535 ||
+			dst == code.TYP_I32 && f >= -2147483648 && f <= 2147483647 ||
+			dst == code.TYP_U32 && f >= 0 && f <= 4294967296 ||
+			dst == code.TYP_I64 && f >= -9223372036854775808 && f <= 9223372036854775807 ||
+			dst == code.TYP_U64 && f >= 0 && f <= 18446744073709551615
+	}
+
+	if value.Typ.Pt.IsInteger() && dst == code.TYP_STRING {
+		return true
+	}
+	if value.Typ.Pt == code.TYP_PTR && dst == code.TYP_I64 {
+		return true
+	}
+	if dst == code.TYP_I16 && (src == code.TYP_I16 || src == code.TYP_U8) {
+		return true
+	}
+	if dst == code.TYP_I32 && (src == code.TYP_I16 || src == code.TYP_U8 || src == code.TYP_U16) {
+		return true
+	}
+	if dst == code.TYP_I64 && (src == code.TYP_I32 || src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_I16 || src == code.TYP_U8) {
+		return true
+	}
+	if dst == code.TYP_U16 && src == code.TYP_U8 {
+		return true
+	}
+	if dst == code.TYP_U32 && (src == code.TYP_U16 || src == code.TYP_U8) {
+		return true
+	}
+	if dst == code.TYP_U64 && (src == code.TYP_U32 || src == code.TYP_U16 || src == code.TYP_U8) {
+		return true
+	}
+	if dst == code.TYP_F64 && src == code.TYP_F32 {
+		return true
+	}
+
+	f, _ := StrToConst(value.StringValue)
 	if value.Typ.Pt == code.TYP_U8 && dst == code.TYP_STRING {
 		return true
 	}
@@ -164,20 +180,17 @@ func CanAssignConst(dst code.PrimaryType, value *ValueDef) bool {
 	if dst == code.TYP_F64 {
 		return true
 	}
-	if dst == code.TYP_F32 && value.Typ.Pt != code.TYP_F64 {
+	// TODO Check range if F64
+	if dst == code.TYP_F32 {
 		return true
 	}
-	if dst < code.TYP_U8 || dst > code.TYP_I64 {
+	if dst < code.TYP_U8 || dst > code.TYP_F64 {
 		return false
 	}
 	return dst == code.TYP_I64 ||
-		dst == code.TYP_U8 && value.IntValue >= 0 && value.IntValue <= 255 ||
-		dst == code.TYP_I16 && value.IntValue >= -32768 && value.IntValue <= 32767 ||
-		dst == code.TYP_U16 && value.IntValue >= -65535 && value.IntValue <= 65535 ||
-		dst == code.TYP_I32 && value.IntValue >= -2147483648 && value.IntValue <= 2147483647 ||
-		dst == code.TYP_U32 && value.IntValue >= 0 && value.IntValue <= 4294967296
-}
-
-func AddType(name string, typ *TypeDef) {
-	TypeDefs[name] = typ
+		dst == code.TYP_U8 && f >= 0 && f <= 255 ||
+		dst == code.TYP_I16 && f >= -32768 && f <= 32767 ||
+		dst == code.TYP_U16 && f >= -65535 && f <= 65535 ||
+		dst == code.TYP_I32 && f >= -2147483648 && f <= 2147483647 ||
+		dst == code.TYP_U32 && f >= 0 && f <= 4294967296
 }

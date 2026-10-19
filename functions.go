@@ -31,7 +31,7 @@ var (
 func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
 	n := FuncCount(id)
 	if n > 0 {
-		f := FindFuncDef(id, parList)
+		f := FindFuncDefFromParList(id, parList)
 		if f != nil {
 			return nil, fmt.Errorf("function %s already exists", id)
 		}
@@ -102,13 +102,34 @@ func FuncCount(name string) int {
 	return cnt
 }
 
-func FindFuncDef(id string, parameters []*ParDef) *FuncDef {
+func FindFuncDef(id string, values []*ValueDef) *FuncDef {
+	for _, f := range FuncDefs {
+		if f.name == id {
+			if f.VarArg && len(f.parameters) <= len(values) || len(f.parameters) == len(values) {
+				ok := true
+				for i, p := range f.parameters {
+					if !CanAssign(p.typ.Pt, values[i]) {
+						ok = false
+						break
+					}
+				}
+				if ok {
+					return f
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func FindFuncDefFromParList(id string, parameters []*ParDef) *FuncDef {
 	for _, f := range FuncDefs {
 		if f.name == id {
 			if f.VarArg && len(f.parameters) <= len(parameters) || len(f.parameters) == len(parameters) {
 				ok := true
 				for i, p := range f.parameters {
-					if !CanAssign(p.typ.Pt, parameters[i].typ.Pt) {
+					v := &ValueDef{Typ: parameters[i].typ}
+					if !CanAssign(p.typ.Pt, v) {
 						ok = false
 						break
 					}

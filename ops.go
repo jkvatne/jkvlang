@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/jkvatne/jkv/code"
 )
@@ -12,12 +13,22 @@ import (
 // F.ex. I16 op U16 results in an I32
 // There are 4 different cases: const op const, tos op const, const op tos, tos op nos
 func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
-	// Convert int values to float in case of mixed types.
-	if val1.Typ.Pt != code.TYP_F64 && val1.Typ.Pt != code.TYP_F32 {
-		val1.FloatValue = float64(val1.IntValue)
+	if val1.Typ == nil {
+		var err error
+		val1.Typ, err = TypeFromConstValue(val1)
+		if err != nil {
+			return &NoValue, fmt.Errorf("first operand is nil")
+		}
 	}
-	if val2.Typ.Pt != code.TYP_F64 && val2.Typ.Pt != code.TYP_F32 {
-		val2.FloatValue = float64(val2.IntValue)
+	if val2.Typ == nil {
+		var err error
+		val2.Typ, err = TypeFromConstValue(val2)
+		if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F64 {
+			val2.Typ = &F32Type
+		}
+		if err != nil {
+			return &NoValue, fmt.Errorf("second operand is nil")
+		}
 	}
 	// For user defined types, both must be identical, or one operand must be a basic type.
 	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
@@ -42,81 +53,76 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 // The operations are : + - * / & |  %% == != < <= > >=
 func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *ValueDef, err error) {
 	result = new(ValueDef)
-	result.Typ = widest(val1, val2).Typ
 	result.IsConst = true
+	f1, err := StrToConst(val1.StringValue)
+	if err != nil {
+		return nil, err
+	}
+	f2, err := StrToConst(val2.StringValue)
+
+	val1.Typ, err = TypeFromConstValue(val1)
+	val2.Typ, err = TypeFromConstValue(val2)
+
+	result.Typ = widest(val1, val2).Typ
+
+	if err != nil {
+		return nil, err
+	}
 	switch op {
 	case TOK_PLUS:
-		result.IntValue = val1.IntValue + val2.IntValue
-		result.FloatValue = val1.FloatValue + val2.FloatValue
+		result.StringValue = strconv.FormatFloat(f1+f2, 'f', -1, 64)
 	case TOK_MINUS:
-		result.IntValue = val1.IntValue - val2.IntValue
-		result.FloatValue = val1.FloatValue - val2.FloatValue
+		result.StringValue = strconv.FormatFloat(f1-f2, 'f', -1, 64)
 	case TOK_MULT:
-		result.IntValue = val1.IntValue * val2.IntValue
-		result.FloatValue = val1.FloatValue * val2.FloatValue
+		result.StringValue = strconv.FormatFloat(f1*f2, 'f', -1, 64)
 	case TOK_DIV:
-		if val2.Typ.Pt.IsInteger() {
-			if val2.IntValue == 0 {
-				return &NoValue, fmt.Errorf("can not divide by zero")
-			}
-			result.IntValue = val1.IntValue / val2.IntValue
-		} else if val2.Typ.Pt.IsFloat() {
-			result.FloatValue = val1.FloatValue / val2.FloatValue
+		// TODO Check for f2=0
+		if result.Typ.Pt.IsInteger() {
+			result.StringValue = strconv.FormatInt(int64(f1)/int64(f2), 10)
+		} else {
+			result.StringValue = strconv.FormatFloat(f1/f2, 'f', -1, 64)
 		}
 	case TOK_MOD:
-		if val2.Typ.Pt.IsInteger() {
-			if val2.IntValue == 0 {
-				return &NoValue, fmt.Errorf("can not divide by zero")
-			}
-			result.IntValue = val1.IntValue % val2.IntValue
-		} else {
-			return &NoValue, fmt.Errorf("mod needs integer arguments")
-		}
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)%int64(f2)), 'f', -1, 64)
 	case TOK_AND:
-		result.IntValue = val1.IntValue & val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)&int64(f2)), 'f', -1, 64)
 	case TOK_AND_NOT:
-		result.IntValue = val1.IntValue &^ val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)&^int64(f2)), 'f', -1, 64)
 	case TOK_OR:
-		result.IntValue = val1.IntValue | val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)|int64(f2)), 'f', -1, 64)
 	case TOK_XOR:
-		result.IntValue = val1.IntValue ^ val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)^int64(f2)), 'f', -1, 64)
 	case TOK_SHL:
-		if val2.IntValue > 64 {
-			return nil, fmt.Errorf("can not shift by more than 64 bits")
-		}
-		result.IntValue = val1.IntValue << val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)<<int64(f2)), 'f', -1, 64)
 	case TOK_SHR:
-		if val2.IntValue > 64 {
-			return nil, fmt.Errorf("can not shift by more than 64 bits")
-		}
-		result.IntValue = val1.IntValue >> val2.IntValue
+		result.StringValue = strconv.FormatFloat(float64(int64(f1)>>int64(f2)), 'f', -1, 64)
 	case TOK_LOG_OR:
 		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue || val2.BoolValue
+		result.SetBoolValue(val1.BoolValue() || val2.BoolValue())
 	case TOK_LOG_AND:
 		result.Typ = &BoolType
-		result.BoolValue = val1.BoolValue && val2.BoolValue
+		result.SetBoolValue(val1.BoolValue() && val2.BoolValue())
 	case TOK_EQ:
 		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) < 1e-7
+		result.SetBoolValue(math.Abs(f1-f2)/max(f1, f2, 1e-30) < 1e-7)
 	case TOK_NE:
 		result.Typ = &BoolType
-		result.BoolValue = math.Abs(val1.FloatValue-val2.FloatValue)/max(val1.FloatValue, val2.FloatValue, 1e-30) >= 1e-7
+		result.SetBoolValue(math.Abs(f1-f2)/max(f1, f2, 1e-30) > 1e-7)
 	case TOK_LT:
 		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue < val2.FloatValue
+		result.SetBoolValue(f1 < f2)
 	case TOK_LE:
 		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue <= val2.FloatValue
+		result.SetBoolValue(f1 <= f2)
 	case TOK_GT:
 		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue > val2.FloatValue
+		result.SetBoolValue(f1 > f2)
 	case TOK_GE:
 		result.Typ = &BoolType
-		result.BoolValue = val1.FloatValue >= val2.FloatValue
+		result.SetBoolValue(f1 >= f2)
 	default:
 		// Invalid operand
-		return &NoValue, fmt.Errorf("invalid operation: %s", TokenNames[op])
+		return &NoValue, fmt.Errorf("const op const, invalid operation: %s", TokenNames[op])
 	}
 	return result, nil
 }
@@ -124,6 +130,20 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 // generateTosOpNos will generate code for the operation op on the two top entries on the stack.
 func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS befor TosOpNos")
+	if val1.Typ == nil {
+		var err error
+		val1.Typ, err = TypeFromConstValue(val1)
+		if err != nil {
+			return &NoValue, fmt.Errorf("first operand is nil")
+		}
+	}
+	if val2.Typ == nil {
+		var err error
+		val2.Typ, err = TypeFromConstValue(val2)
+		if err != nil {
+			return &NoValue, fmt.Errorf("first operand is nil")
+		}
+	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err := EmitCompareIntegers(op, false)
@@ -188,29 +208,46 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 	if val1.IsConst {
 		op = Inverse(op)
 	}
+	var f1, f2 float64
+	f1, _ = StrToConst(val1.StringValue)
+	f2, _ = StrToConst(val2.StringValue)
+	if val1.Typ == nil {
+		var err error
+		val1.Typ, err = TypeFromConstValue(val1)
+		if err != nil {
+			return &NoValue, fmt.Errorf("first operand is nil")
+		}
+	}
+	if val2.Typ == nil {
+		var err error
+		val2.Typ, err = TypeFromConstValue(val2)
+		if err != nil {
+			return &NoValue, fmt.Errorf("first operand is nil")
+		}
+	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			err = EmitCompareIntConst(op, val2.IntValue, false)
+			err = EmitCompareIntConst(op, int64(f2), false)
 		} else if val1.Typ.Pt == code.TYP_F64 && val2.Typ.Pt == code.TYP_F64 {
 			EmitAssertTosInRax("Get TOS before compare float const")
-			err = EmitCompareF64Const(op, val2.FloatValue)
+			err = EmitCompareF64Const(op, f2)
 		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F32 {
 			EmitAssertTosInRax("Get TOS before compare float const")
-			err = EmitCompareF32Const(op, float32(val2.FloatValue))
+			err = EmitCompareF32Const(op, float32(f2))
 		} else if val1.Typ.Pt == code.TYP_F32 && val2.Typ.Pt == code.TYP_F64 {
 			EmitAssertTosInRax("Get TOS before compare float const")
-			err = EmitCompareF32Const(op, float32(val2.FloatValue))
+			err = EmitCompareF32Const(op, float32(f2))
 		} else if val1.Typ.Pt == code.TYP_STRING && val2.Typ.Pt == code.TYP_STRING {
 			err = EmitCompareStrToLit(op, val2.StringValue, val2.StringLitNo, val1.IsTempObj)
 		} else if val1.Typ.Pt == code.TYP_BOOL && val2.Typ.Pt == code.TYP_BOOL {
-			err = EmitCompareIntConst(op, val2.IntValue, false)
+			err = EmitCompareIntConst(op, int64(f2), false)
 		} else {
 			err = fmt.Errorf("unknown type combination for compare %s with %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 		}
 		return &ValueDef{Typ: &BoolType}, err
 	} else if op.IsAritmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
-			x := val2.IntValue + val1.IntValue
+			x := int64(f2) + int64(f1)
 			if x > 0x7FFFFFFF || x < -0x7FFFFFFF {
 				// err = fmt.Errorf("invalid integer combination for arithmetic")
 				EmitPushConst(x, "")
@@ -221,9 +258,9 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is allways zero
 			if val1.Typ.Pt == code.TYP_F64 {
-				EmitOpF64Const(op, val1.FloatValue+val2.FloatValue)
+				EmitOpF64Const(op, f1+f2)
 			} else if val1.Typ.Pt == code.TYP_F32 {
-				EmitOpF32Const(op, float32(val1.FloatValue+val2.FloatValue))
+				EmitOpF32Const(op, float32(f1+f2))
 			}
 			return &ValueDef{Typ: val1.Typ}, nil
 		} else {

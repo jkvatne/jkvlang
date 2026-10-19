@@ -1,0 +1,19 @@
+type U64arr = []U64
+type F64arr = []F64
+
+const fnum F64arr = {
+     1.234e4, 1e-22, 1e-5,   -1e+3,
+}
+
+const inum U64arr = {
+	1e2 , 1e6 , 1e18,
+}
+
+func main() {
+    print("inum[0]=%lld", inum[1])
+    print("inum[1]=%lld", inum[0])
+    print("inum[2]=%lld", inum[2])
+    print("fnum[0]=%e", fnum[0])
+    print("fnum[1]=%e", fnum[1])
+    print("fnum[2]=%e", fnum[2])
+}

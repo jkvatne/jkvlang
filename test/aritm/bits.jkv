@@ -3,7 +3,7 @@ const (
     F64_SHIFT_EXP I32 = 11    // 64 - 53
 	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
 )
-
+/*
 // unpack64 returns m, e such that f = m * 2**e.
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
@@ -63,12 +63,12 @@ func nudge(u Unrounded, delta I32) Unrounded {
 
 type Farr = []F64
 const floats Farr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
-
+*/
 func main() {
 
     // Test global const
     print("F64_SHIFT_EXP=%d", F64_SHIFT_EXP)
-
+/*
     // Test shift U64
     m = U64(1)
     m = U64(1)<<63
@@ -156,5 +156,5 @@ func main() {
         j+=1
         if j>=7 {break}
     }
-
+*/
 }

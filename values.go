@@ -12,11 +12,7 @@ type ConstValue struct {
 
 type ValueDef struct {
 	Typ         *TypeDef
-	IntValue    int64
-	UintValue   uint64
-	FloatValue  float64
 	Unsigned    bool
-	BoolValue   bool
 	StringValue string
 	StringLitNo int
 	IsReturned  bool
@@ -39,9 +35,9 @@ type SliceLit struct {
 }
 
 var (
-	False             = ValueDef{Typ: &BoolType, IsConst: true, BoolValue: false}
-	True              = ValueDef{Typ: &BoolType, IsConst: true, IntValue: 1, BoolValue: true}
-	NoValue           = ValueDef{Typ: &NoneType, IsConst: false, BoolValue: false}
+	False             = ValueDef{Typ: &BoolType, IsConst: true, StringValue: "0"}
+	True              = ValueDef{Typ: &BoolType, IsConst: true, StringValue: "1"}
+	NoValue           = ValueDef{Typ: &NoneType, IsConst: false, StringValue: "0"}
 	PtrValue          = ValueDef{Typ: &PtrType}
 	StringLiteralDefs []string
 	F64LiteralDefs    []float64
@@ -49,16 +45,28 @@ var (
 	SliceLiteralDefs  []*SliceLit
 )
 
+func (v *ValueDef) BoolValue() bool {
+	return v.StringValue != "0"
+}
+
+func (v *ValueDef) SetBoolValue(x bool) {
+	if x {
+		v.StringValue = "1"
+	} else {
+		v.StringValue = "0"
+	}
+}
+
 func (v *ValueDef) HasValue() bool {
 	return v.IsConst
 }
 
 func (v *ValueDef) IsTrue() bool {
-	return v.IsConst && v.BoolValue
+	return v.IsConst && v.BoolValue()
 }
 
 func (v *ValueDef) IsFalse() bool {
-	return v.IsConst && !v.BoolValue
+	return v.IsConst && !v.BoolValue()
 }
 
 func LiteralInit() {

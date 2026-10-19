@@ -5,31 +5,31 @@ func main() {
   z=3
 
   w1 = x+y
-  assert(w1==3)
+  assert(w1==3, "Expected w1=3, got %d", w1)
 
   w2 = x+y*z
-  assert(w2==7)
+  assert(w2==7, "Expected w2=7, got %d", w2)
 
   w3 = x+y+z
-  assert(w3==6)
+  assert(w3==6, "Expected w3=6, got %d", w3)
 
   w4 = (x+y)*z
-  assert(w4==9)
+  assert(w4==9, "Expected w4=9, got %d", w4)
 
   w5 = (y*(z+1))
-  assert(w5==8)
+  assert(w5==8, "Expected w5=8, got %d", w5)
 
   w6=z*4
-  assert(w6==12)
+  assert(w6==12, "Expected w6=12, got %d", w6)
 
   w7 = (x*(z+1))>=4 && x+z*4<=13
-  assert(w7)
+  assert(w7, "Expected w7=treu, got %d", w7)
 
   w8=false
-  assert(!w8)
+  assert(!w8, "Expected true, got %d", !w8)
 
   w9 = true
-  assert(!w8&&w9)
+  assert(!w8&&w9, "Expected true, got %d", !w8&&w9)
   assert(w9||w8)
 
   w10 = true

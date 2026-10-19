@@ -91,8 +91,8 @@ processHeap     resq 1
 ;-------------
 section .data
 ;-------------
-f64sign_mask: dq 0x8000000000000000
-f32sign_mask: dq 0x80000000
+f64sign_mask: dq 0x8000_0000_0000_0000
+f32sign_mask: dq 0x8_000_0000
 argc: dq 0
 argv: dq 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 args: dq 0   ; Slice for arguments

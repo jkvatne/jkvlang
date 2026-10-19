@@ -22,16 +22,30 @@ func ParseReturn(s *State) error {
 				return err
 			}
 			for _, v := range values {
-				if !CanAssign(f.returnTypes[i].Pt, v.Typ.Pt) {
+				if !CanAssign(f.returnTypes[i].Pt, v) {
 					return fmt.Errorf("returns wrong type")
 				}
 				if v.IsConst {
-					if v.Typ.Pt.IsInteger() {
-						EmitPushConst(v.IntValue, "Returned const value number "+strconv.Itoa(i))
+					if v.Typ.Pt.IsFloat() {
+						fv, err2 := StrToConst(v.StringValue)
+						if err2 != nil {
+							return err2
+						}
+						EmitPushConst(int64(fv), "Returned const value number "+strconv.Itoa(i))
+					} else if v.Typ.Pt.IsInteger() {
+						fv, err2 := StrToConst(v.StringValue)
+						if err2 != nil {
+							return err2
+						}
+						EmitPushConst(int64(fv), "Returned const value number "+strconv.Itoa(i))
 					} else if v.Typ.Pt == code.TYP_STRING {
 						EmitPushStringLit(v.StringLitNo, "Returned string lit number "+strconv.Itoa(i))
 					} else if v.Typ.Pt == code.TYP_BOOL {
-						EmitPushConst(v.IntValue, "Bool const")
+						b := 0
+						if v.StringValue == "true" || v.StringValue != "false" && v.StringValue != "0" {
+							b = 1
+						}
+						EmitPushConst(int64(b), "Bool const")
 					} else {
 						panic("Not implemented")
 					}

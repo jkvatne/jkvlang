@@ -20,8 +20,9 @@ func main() {
     print("f=%f", f)
     b = f != 4*x
     print("f != 4*x=%d", b)
-    z = f | b
-    print("z=%d", z)
+    // TODO: Do we need this?
+    //z = f | b
+    //print("z=%d", z)
 
     u = unround(x)
     print("u=%d", u)

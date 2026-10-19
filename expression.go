@@ -2,34 +2,67 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"strings"
 
 	"github.com/jkvatne/jkv/code"
 )
 
+// TypeFromConstValue generates a type from a constant value.
+// If the value is a integer constant and value is a new variable, we default
+// to I32 instead of U8 for small constants.
+func TypeFromConstValue(value *ValueDef) (*TypeDef, error) {
+	if value.StringValue != "" {
+		if strings.Contains(value.StringValue, ".") {
+			return &F64Type, nil
+		} else if value.StringValue[0] >= '0' && value.StringValue[0] <= '9' {
+			x, err := strconv.ParseUint(value.StringValue, 0, 64)
+			if err != nil {
+				return nil, err
+			}
+			if x > 0x7FFFFFFFFFFFFFFF {
+				return &U64Type, nil
+			} else if x > 0xFFFFFFFF {
+				return &I64Type, nil
+			} else {
+				return &I32Type, nil
+			}
+		} else {
+			return &StringType, nil
+		}
+	} else if value.Typ.Pt == code.TYP_BOOL {
+		return &BoolType, nil
+	} else {
+		return nil, fmt.Errorf("no type for variable")
+	}
+}
+
+func UpdateType(value *ValueDef) error {
+	if value.Typ == nil {
+		var err error
+		value.Typ, err = TypeFromConstValue(value)
+		if err != nil {
+			return fmt.Errorf("type conversion with unknown type")
+		}
+	}
+	return nil
+}
+
 // GenerateAssignment generates code for generic assignments, including +=, -= etc.
 // lvalue is the left side, and value the right side of the equal sign.
 // The op is already verified to be one of the assignment operators.
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	// Set lvalue type if not already set. Needed for new variables.
-	if lvalue.Typ == nil && op == TOK_ASSIGN {
-		// If the value is a integer constant and value is a new variable, we default
-		// to I32 instead of U8 for small constants.
-		if value.Typ.Pt.IsInteger() && value.Typ.Basic && value.Typ.Size() < 4 {
-			lvalue.Typ = &I32Type
-		} else {
-			lvalue.Typ = value.Typ
-		}
+	if lvalue.Typ == nil && value.Typ == nil && op == TOK_ASSIGN {
+		value.Typ, err = TypeFromConstValue(value)
 	}
 	if lvalue.Typ == nil {
-		return fmt.Errorf("new variable not allowed before op-assignment")
+		lvalue.Typ = value.Typ
 	}
 
 	// Check types to see if the value can be assigned to the lvalue
-	if !CanAssignToVar(lvalue, value.Typ.Pt) {
-		return fmt.Errorf("assignment expected type %s but got %s", lvalue.Typ.Pt.Name(), value.Typ.Name())
+	if !CanAssign(lvalue.Typ.Pt, value) {
+		return fmt.Errorf(" could not assign const %s to type %s", value.StringValue, lvalue.Typ.Pt.Name())
 	}
 
 	// Check type of left and right side and handle indirect, local, const, var
@@ -49,6 +82,22 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	return err
 }
 
+func StrToConst(s string) (float64, error) {
+	if strings.Contains(s, "0x") {
+		v, err := strconv.ParseUint(s, 0, 64)
+		if err != nil {
+			return 0, fmt.Errorf("invalid integer value: %s", s)
+		}
+		return float64(v), nil
+	}
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid integer value: %s", s)
+	}
+	// TODO: Check range
+	return f, nil
+}
+
 func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Offset == 0 {
 		return fmt.Errorf("local variable adr is zero")
@@ -61,17 +110,42 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 			// Handle appending a const string to a string variable
 			return EmitAppendVariableConstStrStr(lvalue.Offset, value.StringLitNo)
 		}
+	} else if lvalue.Typ.Pt == code.TYP_U64 {
+		val, err := strconv.ParseUint(value.StringValue, 0, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+		}
+		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), val, "")
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
 		// Handle appending a single character to a string
-		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(value.IntValue))
+		val, err := strconv.ParseInt(value.StringValue, 0, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+		}
+		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(val))
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
-		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+		val, err := strconv.ParseInt(value.StringValue, 0, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+		}
+		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), uint64(val), "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
-		return EmitAssignVariableConstF64(op, lvalue.Offset, value.FloatValue, "")
+		f, err := strconv.ParseFloat(value.StringValue, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid float: %s", value.StringValue)
+		}
+		return EmitAssignVariableConstF64(op, lvalue.Offset, f, "")
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
-		return EmitAssignVariableConstF32(op, lvalue.Offset, float32(value.FloatValue), "")
+		f, err := strconv.ParseFloat(value.StringValue, 64)
+		if err != nil {
+			return fmt.Errorf("Invalid float: %s", value.StringValue)
+		}
+		return EmitAssignVariableConstF32(op, lvalue.Offset, float32(f), "")
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
-		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), value.IntValue, "")
+		if value.StringValue == "false" || value.StringValue == "0" || value.StringValue == "nil" {
+			return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), 0, "")
+		}
+		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), 1, "")
 	}
 	return fmt.Errorf("4 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
@@ -119,14 +193,20 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 		} else if op == TOK_PLUS_ASGN {
 			return EmitAppendIndirectConstStrStr(value.StringLitNo)
 		}
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
-		return EmitAppendIndirectConstStrChar(int(value.IntValue))
-	} else if lvalue.Typ.Pt.IsInteger() {
-		return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), value.IntValue, "")
-	} else if lvalue.Typ.Pt == code.TYP_F64 {
-		return EmitOpAssignIndirectConstF64(op, value.FloatValue)
-	} else if lvalue.Typ.Pt == code.TYP_F32 {
-		return EmitOpAssignIndirectConstF32(op, float32(value.FloatValue))
+	} else {
+		f, err := StrToConst(value.StringValue)
+		if err != nil {
+			return fmt.Errorf("AssignIndirectConst: invalid constant %s", value.StringValue)
+		}
+		if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+			return EmitAppendIndirectConstStrChar(int(f))
+		} else if lvalue.Typ.Pt.IsInteger() {
+			return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), int64(f), "")
+		} else if lvalue.Typ.Pt == code.TYP_F64 {
+			return EmitOpAssignIndirectConstF64(op, f)
+		} else if lvalue.Typ.Pt == code.TYP_F32 {
+			return EmitOpAssignIndirectConstF32(op, float32(f))
+		}
 	}
 	return fmt.Errorf("2 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
@@ -237,14 +317,14 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			if !lvalue.IsIndirect && lvalue.Offset == 0 {
 				return nil, fmt.Errorf("local var address is 0")
 			}
-
+			intValue, err := StrToConst(index.StringValue)
 			if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
-				EmitModifyConstIndexedCharIndirect(int(index.IntValue))
+				EmitModifyConstIndexedCharIndirect(int(intValue))
 			} else if lvalue.Typ.Pt == code.TYP_STRING && index.IsConst {
 				if lvalue.Offset == 0 {
 					return nil, fmt.Errorf("local var address is 0")
 				}
-				EmitModifyConstIndexedChar(lvalue.Offset, int(index.IntValue))
+				EmitModifyConstIndexedChar(lvalue.Offset, int(intValue))
 			} else if lvalue.IsIndirect && lvalue.Typ.Pt == code.TYP_STRING {
 				EmitModifyIndexedCharIndirect()
 			} else if lvalue.Typ.Pt == code.TYP_STRING {
@@ -254,7 +334,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 				if !lvalue.IsIndirect {
 					EmitLea(lvalue.Offset, "Load indirect var address")
 				}
-				EmitModifyConstIndexedSlice(int(index.IntValue), lvalue.Typ.Element.Size(), s.returnLbl)
+				EmitModifyConstIndexedSlice(int(intValue), lvalue.Typ.Element.Size(), s.returnLbl)
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
 				if !lvalue.IsIndirect {
 					EmitLea(lvalue.Offset, "Load indirect var address")
@@ -355,6 +435,13 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 		code.PushCleanupCode()
 		value := values[0]
 		if value.HasValue() {
+			f := 0.0
+			if value.Typ.Pt.IsInteger() || value.Typ.Pt.IsFloat() {
+				f, err = StrToConst(value.StringValue)
+				if err != nil && value.Typ.Pt != code.TYP_STRING && value.Typ.Pt != code.TYP_BOOL {
+					return nil, fmt.Errorf("ParseActualArgList: invalid constant %s", value.StringValue)
+				}
+			}
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == code.TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
@@ -363,23 +450,23 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 					EmitSkipLenCapForPrint()
 				}
 			} else if value.Typ.Pt.IsInteger() {
-				EmitPushConst(value.IntValue, "")
+				EmitPushConst(int64(f), "")
 				EmitPushTos(parNo, funcname)
 			} else if value.Typ.Pt == code.TYP_BOOL {
-				if value.BoolValue {
-					EmitPushConst(1, "")
-				} else {
+				if value.StringValue == "0" {
 					EmitPushConst(0, "")
+				} else {
+					EmitPushConst(1, "")
 				}
 				EmitPushTos(parNo, funcname)
 			} else if value.Typ.Pt == code.TYP_F64 {
-				EmitPushF64Lit(value.FloatValue)
+				EmitPushF64Lit(f)
 			} else if value.Typ.Pt == code.TYP_F32 {
 				if funcname == "printf" || funcname == "print" {
 					// Must convert to F64 for print/fprint
-					EmitPushF64Lit(value.FloatValue)
+					EmitPushF64Lit(f)
 				} else {
-					EmitPushF32Lit(float32(value.FloatValue))
+					EmitPushF32Lit(float32(f))
 				}
 			} else {
 				// TODO: Handle other types
@@ -461,39 +548,36 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		s.currentFuncCall = ""
 		return nil, err
 	}
-	f := FindFuncDef(id, TypeListVal(values))
+	f := FindFuncDefFromParList(id, TypeListVal(values))
 	if f == nil {
 		return nil, fmt.Errorf("function %s with wrong parameters", id)
 	}
 
 	for parNo, value := range values {
-		if value.Typ.Pt.IsObject() {
-			// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
-			// and it is the result of a function call, then we have to free it after the call.
-			// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
-			// If it was a local variable or a constant, we should not free it.
-			// TODO: FInd a better way than checking for names
-			if value.Typ.Pt == code.TYP_STRING && value.IsTempObj && id != "cptr" && id != "lptr" {
-				lbl := code.NewLabel()
-				str := "   mov rax, rsp   ; Cleanup args\n"
-				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
-				str += "   mov rax, [rax]  ; Get pointer to content (string cap/len) on stack\n"
-				str += "   mov rbx, [rax]  ; Get len/cap\n"
-				str += "   shr rbx, 32\n"
-				str += "   or rbx, rbx\n"
-				str += "   jz .L" + strconv.Itoa(lbl) + "\n"
-				str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
-				str += ".L" + strconv.Itoa(lbl) + ":\n"
-				code.SetCleanupCode(str)
-			} else if value.Typ.Pt == code.TYP_STRUCT {
-				str := "   mov rax, rsp   ; Cleanup struct args\n"
-				str += fmt.Sprintf("   add rax,%d\n", parNo*8)
-				str += "   mov rax, [rax]  ; Get pointer to struct content\n"
-				str += "   mov rcx, " + strconv.Itoa(value.Typ.StructSize) + "\n"
-				str += fmt.Sprintf("   call _free_struct   ; Call free arg %d of %s\n", parNo+1, id)
-				code.SetCleanupCode(str)
-			}
-			// }
+		// We have a heap object pointer on top of the stack. If the formal parameter is not "var",
+		// and it is the result of a function call, then we have to free it after the call.
+		// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
+		// If it was a local variable or a constant, we should not free it.
+		// TODO: FInd a better way than checking for the names cptr and lptr
+		if value.Typ.Pt == code.TYP_STRING && value.IsTempObj && id != "cptr" && id != "lptr" {
+			lbl := code.NewLabel()
+			str := "   mov rax, rsp   ; Cleanup args\n"
+			str += fmt.Sprintf("   add rax,%d\n", parNo*8)
+			str += "   mov rax, [rax]  ; Get pointer to content (string cap/len) on stack\n"
+			str += "   mov rbx, [rax]  ; Get len/cap\n"
+			str += "   shr rbx, 32\n"
+			str += "   or rbx, rbx\n"
+			str += "   jz .L" + strconv.Itoa(lbl) + "\n"
+			str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
+			str += ".L" + strconv.Itoa(lbl) + ":\n"
+			code.SetCleanupCode(str)
+		} else if value.Typ.Pt == code.TYP_STRUCT && value.IsTempObj {
+			str := "   mov rax, rsp   ; Cleanup struct args\n"
+			str += fmt.Sprintf("   add rax,%d\n", parNo*8)
+			str += "   mov rax, [rax]  ; Get pointer to struct content\n"
+			str += "   mov rcx, " + strconv.Itoa(value.Typ.StructSize) + "\n"
+			str += fmt.Sprintf("   call _free_struct   ; Call free arg %d of %s\n", parNo+1, id)
+			code.SetCleanupCode(str)
 		}
 	}
 
@@ -579,7 +663,7 @@ func ParseAssign(s *State, id string) error {
 		// Check that all values have a type.
 		for _, value := range values {
 			if value.Typ == nil {
-				return fmt.Errorf("no type for \"%s\"", id)
+				// return fmt.Errorf("no type for \"%s\"", id)
 			}
 		}
 		// Assign values to lvalues
@@ -603,7 +687,7 @@ func ParseAssign(s *State, id string) error {
 	return nil
 }
 
-func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) {
+func ParseTypeConversion(s *State, typ1 *TypeDef) (values []*ValueDef, err error) {
 	// This is a type conversion. First parse value to convert
 	if code.AxIsTos() {
 		EmitPushAx("ParseTypeConversion")
@@ -614,16 +698,18 @@ func ParseTypeConversion(s *State, t1 *TypeDef) (values []*ValueDef, err error) 
 		return nil, err
 	}
 	value := values[0]
-	// t2 is the type we convert from
-	t2 := value.Typ
-	if CanAssign(t1.Pt, t2.Pt) {
-		value.Typ = t1
-	} else if t1.Pt == code.TYP_I64 && t2.Pt == code.TYP_F64 {
-		value.Typ = t1
-	} else if (t1.Pt == code.TYP_F64 || t1.Pt == code.TYP_F32) && (t2.Pt == code.TYP_F64 || t2.Pt == code.TYP_F32) {
-		value.Typ = t1
+	if value.Typ == nil {
+		var err error
+		value.Typ, err = TypeFromConstValue(value)
+		if err != nil {
+			return nil, fmt.Errorf("type conversion with unknown type")
+		}
+	}
+
+	if CanAssign(typ1.Pt, value) {
+		value.Typ = typ1
 	} else {
-		err = fmt.Errorf("can not convert from %s to %s", t2.Pt.Name(), t1.Pt.Name())
+		err = fmt.Errorf("can not convert from %s to %s", value.Typ.Pt.Name(), typ1.Pt.Name())
 	}
 	if !s.found(TOK_RPAR) {
 		return nil, fmt.Errorf("expected right parentheses")
@@ -678,6 +764,7 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 // Current token is either TOK_DOT or TOK_LBRACK when this function is called
 func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 	var isIndirect bool
+	var f float64
 	vp, ok := VarDefs[id]
 	if vp == nil {
 		return nil, fmt.Errorf("variable %s does not exist", id)
@@ -725,10 +812,11 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			} else if v.Typ.Pt == code.TYP_SLICE {
 				size = v.Typ.Element.Size()
 			}
+			f, err = StrToConst(index.StringValue)
 			if vp.IsGlobal {
-				EmitGlobalIndexedValue(id, size, int(index.IntValue), index.IsConst)
+				EmitGlobalIndexedByConstValue(id, size, int(f))
 			} else {
-				LoadIndexedValue(isIndirect, index.IsConst, v.Offset, index.IntValue, size)
+				LoadIndexedValue(isIndirect, index.IsConst, v.Offset, int64(f), size)
 			}
 			if size == 1 {
 				v.Typ = &U8Type
@@ -838,42 +926,50 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		}
 		// EmitFlushRax("End parenthesis term")
 		return values, Expect(s, TOK_RPAR)
-	} else if s.token == TOK_INT {
+	} else if s.token == TOK_NUM {
 		value = &ValueDef{IsConst: true}
-		value.IntValue = int64(s.ConstValue.Bits)
-		value.UintValue = s.ConstValue.Bits
-		value.FloatValue = float64(s.ConstValue.Bits)
-		value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
-		if hasUnaryMinus {
-			s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
-			value.IntValue = int64(s.ConstValue.Bits)
-			value.FloatValue = float64(s.ConstValue.Bits)
-			value.UintValue = s.ConstValue.Bits
-			if value.Typ.Pt == code.TYP_U8 {
-				value.Typ = TypeDefs["I16"]
-			} else if value.Typ.Pt == code.TYP_U16 {
-				value.Typ = TypeDefs["I32"]
-			} else if value.Typ.Pt == code.TYP_U32 {
-				value.Typ = TypeDefs["I64"]
-			}
-		}
-		if value.Typ == nil {
-			return nil, fmt.Errorf("missing integer type")
+		value.StringValue = s.tokenString
+		err = UpdateType(value)
+		if err != nil {
+			return nil, err
 		}
 		s.next()
-	} else if s.token == TOK_FLOAT {
-		if hasUnaryMinus {
-			v := -math.Float64frombits(s.ConstValue.Bits)
-			s.ConstValue.Bits = math.Float64bits(v)
-		}
-		value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
-		value.Typ = TypeDefs["F64"]
-		value.IsConst = true
-		s.next()
+		/*
+					value.IntValue = int64(s.ConstValue.Bits)
+					value.UintValue = s.ConstValue.Bits
+					value.FloatValue = float64(s.ConstValue.Bits)
+					value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
+					if hasUnaryMinus {
+						s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
+						value.IntValue = int64(s.ConstValue.Bits)
+						value.FloatValue = float64(s.ConstValue.Bits)
+						value.UintValue = s.ConstValue.Bits
+						if value.Typ.Pt == code.TYP_U8 {
+							value.Typ = TypeDefs["I16"]
+						} else if value.Typ.Pt == code.TYP_U16 {
+							value.Typ = TypeDefs["I32"]
+						} else if value.Typ.Pt == code.TYP_U32 {
+							value.Typ = TypeDefs["I64"]
+						}
+					}
+					if value.Typ == nil {
+						return nil, fmt.Errorf("missing integer type")
+					}
+			} else if s.token == TOK_FLOAT {
+				if hasUnaryMinus {
+					v := -math.Float64frombits(s.ConstValue.Bits)
+					s.ConstValue.Bits = math.Float64bits(v)
+				}
+				value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
+				value.Typ = TypeDefs["F64"]
+				value.IsConst = true
+				s.next()*/
 	} else if s.token == TOK_CHAR {
 		value = &ValueDef{IsConst: true}
-		value.IntValue = int64(s.ConstValue.Bits)
-		value.UintValue = s.ConstValue.Bits
+		var num int64
+		num, err = strconv.ParseInt(s.tokenString, 10, 64)
+		// TODO Check range
+		value.StringValue = strconv.Itoa(int(num))
 		value.Typ = TypeDefs["U8"]
 		s.next()
 	} else if s.token == TOK_STRING {
@@ -940,7 +1036,11 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, err
 		}
 		if v[0].IsConst {
-			EmitPushConst(v[0].IntValue, "")
+			f, err2 := StrToConst(value.StringValue)
+			if err2 != nil {
+				return nil, fmt.Errorf("invalid integer value: %s", value.StringValue)
+			}
+			EmitPushConst(int64(f), "")
 		}
 		if t.Pt == code.TYP_STRING {
 			EmitNewString()
@@ -961,8 +1061,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("unary minus on invalid value")
 		}
 		if v[0].IsConst {
-			// v[0].IntValue = -v[0].IntValue
-			// v[0].FloatValue = -v[0].FloatValue
+			v[0].StringValue = "-" + v[0].StringValue
 		} else if v[0].Typ.Pt == code.TYP_F64 {
 			EmitNegateF64()
 		} else if v[0].Typ.Pt == code.TYP_F32 {
@@ -1019,6 +1118,7 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
+	UpdateType(values1[0])
 	var values2 []*ValueDef
 	if s.token == TOK_PLUS && values1[0].Typ.Pt == code.TYP_STRING {
 		if len(values1) != 1 {
@@ -1109,7 +1209,7 @@ func ParseLogAnd(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
 		}
 		if results[0].IsConst {
-			EmitLoadBool(results[0].BoolValue)
+			EmitLoadBool(results[0].StringValue)
 		}
 		results[0].IsReturned = false
 		if endLabel == 0 {
@@ -1131,9 +1231,6 @@ func ParseLogAnd(s *State) ([]*ValueDef, error) {
 	if endLabel != 0 {
 		EmitLabel(endLabel, "")
 	}
-	if results[0].Typ == nil {
-		return nil, fmt.Errorf("value.type is nil - internal error")
-	}
 	return results, nil
 }
 
@@ -1148,7 +1245,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
 		}
 		if results[0].IsConst {
-			EmitLoadBool(results[0].BoolValue)
+			EmitLoadBool(results[0].StringValue)
 		}
 		results[0].IsReturned = false
 		if endLabel == 0 {
@@ -1171,7 +1268,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		EmitLabel(endLabel, "")
 	}
 	if results[0].Typ == nil {
-		return nil, fmt.Errorf("value.type is nil - internal error")
+		// TODO return nil, fmt.Errorf("value.type is nil - internal error 2")
 	}
 	return results, nil
 }
@@ -1653,17 +1750,47 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 			hasUnaryMinus = true
 			s.next()
 		}
-		constVal, err := ParseUnary(s, hasUnaryMinus)
-		if err != nil {
-			return err
+		if typ.Element == nil {
+			return fmt.Errorf("element type of slice litteral is nil")
 		}
 		if typ.Element.Pt.IsInteger() {
-			lit.IntValues = append(lit.IntValues, constVal[0].IntValue)
+			if typ.Element.Pt == code.TYP_U64 {
+				if hasUnaryMinus {
+					return fmt.Errorf("unsigned integer can not have minus sign")
+				}
+				num, err := strconv.ParseUint(s.tokenString, 0, 64)
+				if err != nil {
+					x, err2 := strconv.ParseFloat(s.tokenString, 64)
+					if err2 != nil || strings.Contains(s.tokenString, ".") {
+						return fmt.Errorf("failed to parse integer value: %s", s.tokenString)
+					}
+					num = uint64(x)
+				}
+				lit.UintValues = append(lit.UintValues, num)
+			} else {
+				num, err := strconv.ParseInt(s.tokenString, 0, 64)
+				if err != nil {
+					return fmt.Errorf("Invalid integer: %s", s.tokenString)
+				}
+				if hasUnaryMinus {
+					num = -num
+				}
+				lit.IntValues = append(lit.IntValues, num)
+			}
 		} else if typ.Element.Pt.IsFloat() {
-			lit.FloatValues = append(lit.FloatValues, constVal[0].FloatValue)
+			num, err := strconv.ParseFloat(s.tokenString, 64)
+			if err != nil {
+				return fmt.Errorf("failed to parse float value: %s", s.tokenString)
+			}
+			if hasUnaryMinus {
+				lit.FloatValues = append(lit.FloatValues, -num)
+			} else {
+				lit.FloatValues = append(lit.FloatValues, num)
+			}
 		} else {
 			return fmt.Errorf("slice lteral with wrong element type")
 		}
+		s.next()
 		if !s.found(TOK_COMMA) {
 			break
 		}
@@ -1702,16 +1829,10 @@ func ParseVar(s *State) error {
 		val := ""
 		if s.token == TOK_MINUS {
 			s.next()
-			if s.token != TOK_INT && s.token != TOK_FLOAT {
+			if s.token != TOK_NUM {
 				return fmt.Errorf("expected int or float, got %s", s.tokenString)
 			}
 			val = "-" + s.tokenString
-			if s.ConstValue.Pt.IsFloat() {
-				f := -math.Float64frombits(s.ConstValue.Bits)
-				s.ConstValue.Bits = math.Float64bits(f)
-			} else {
-				s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
-			}
 		} else if s.token == TOK_LBRACE {
 			err = ParseSliceLitteral(s, id, v.Typ)
 		} else {
@@ -1752,16 +1873,10 @@ func ParseConst(s *State) error {
 			val := ""
 			if s.token == TOK_MINUS {
 				s.next()
-				if s.token != TOK_INT && s.token != TOK_FLOAT {
+				if s.token != TOK_NUM {
 					return fmt.Errorf("expected int or float, got %s", s.tokenString)
 				}
 				val = "-" + s.tokenString
-				if s.ConstValue.Pt.IsFloat() {
-					f := -math.Float64frombits(s.ConstValue.Bits)
-					s.ConstValue.Bits = math.Float64bits(f)
-				} else {
-					s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
-				}
 			} else if s.token == TOK_LBRACE {
 				err := ParseSliceLitteral(s, id, typ)
 				if err != nil {
@@ -1823,7 +1938,11 @@ func ParseAppend(s *State) error {
 			return err
 		}
 		if value[0].IsConst {
-			EmitPushConst(value[0].IntValue, "")
+			intValue, err2 := StrToConst(value[0].StringValue)
+			if err2 != nil {
+				return fmt.Errorf("invalid integer value: %s", value[0].StringValue)
+			}
+			EmitPushConst(int64(intValue), "")
 		} else {
 			EmitAssertTosInRax("")
 		}

@@ -1,15 +1,10 @@
 
-func foo(a I32) U64, I32 {
-    return 1, -a
+type Unrounded = U64
+
+func unround(x F64) Unrounded {
+	return Unrounded(floor(4*x)) | (floor(4*x) != 4*x)
 }
 
 func main() {
-    a, x = foo(4)
-    y=1
-
-    if y==1 && x == -4 {
-        print("ok")
-    } else {
-        print("Error, x=%d", x)
-    }
+    y=unround(1.1)
 }

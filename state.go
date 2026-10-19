@@ -13,7 +13,7 @@ type State struct {
 	currentLine        string // The content of the current source code text line
 	token              Token  // The current token as a number
 	tokenString        string // The current token as a string
-	ConstValue         ConstValue
+	ConstValue         float64
 	noCode             int      // Used to skip code generation in constant if/else statements.
 	LocalVarCount      int      // The number of local variables in each level.
 	HasReturned        bool     // Used to avoid jumps after return statement and checking for dead code

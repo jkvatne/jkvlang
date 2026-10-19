@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strconv"
 	"unicode/utf8"
 
@@ -23,8 +22,7 @@ const (
 	TOK_MULT
 	TOK_DIV
 	TOK_MOD
-	TOK_FLOAT
-	TOK_INT
+	TOK_NUM
 	TOK_STRING
 	TOK_ID
 	TOK_EOF
@@ -107,8 +105,7 @@ var TokenNames = [...]string{
 	TOK_MULT:        "*",
 	TOK_DIV:         "/",
 	TOK_MOD:         "%",
-	TOK_FLOAT:       "float",
-	TOK_INT:         "int",
+	TOK_NUM:         "int",
 	TOK_STRING:      "string",
 	TOK_ID:          "ID",
 	TOK_EOF:         "EOF",
@@ -270,14 +267,11 @@ func TypeFromNumber(x int64) code.PrimaryType {
 }
 
 func parseNumber(s *State) {
-	var err error
 	var hasDp bool
 	var hasExp bool
 	var hasExpSgn bool
 	var hex bool
-	var base = 10
 	if s.ch1 == '0' && (s.ch2 == 'x' || s.ch2 == 'X') {
-		base = 16
 		s.nextChar()
 		s.nextChar()
 		hex = true
@@ -291,9 +285,7 @@ func parseNumber(s *State) {
 			hasDp = true
 		} else if s.ch2 == 'e' || s.ch2 == 'E' {
 			num = num + string(s.ch2)
-			s.nextChar()
 			hasExp = true
-			hasExpSgn = s.ch1 == '-' || s.ch2 == '+'
 		} else if ((s.ch2 == '+') || (s.ch2 == '-')) && hasExp && !hasExpSgn {
 			num = num + string(s.ch2)
 			hasExpSgn = true
@@ -303,36 +295,8 @@ func parseNumber(s *State) {
 		s.nextChar()
 	}
 	s.tokenString = num
-	if hasExp || hasDp {
-		var f float64
-		f, err = strconv.ParseFloat(num, 64)
-		if err != nil {
-			s.token = TOK_INVALID
-		}
-		s.token = TOK_FLOAT
-		s.ConstValue.Bits = math.Float64bits(f)
-		s.ConstValue.Pt = code.TYP_F64
-	} else {
-		var i int64
-		var u uint64
-		if base == 16 {
-			s.tokenString = "0x" + num
-		}
-		i, err = strconv.ParseInt(num, base, 64)
-		s.ConstValue.Bits = uint64(i)
-		s.ConstValue.Pt = TypeFromNumber(i)
-		s.token = TOK_INT
-		// If conversion failed, try parsing it as an unsigned number
-		if err != nil {
-			u, err = strconv.ParseUint(num, 16, 64)
-			if err != nil {
-				fmt.Printf("Error parsing %s as integer: %s\n", num, err)
-				s.token = TOK_INVALID
-			}
-			// We have a constant that is out of range for I64.
-			s.ConstValue.Bits = u
-			s.ConstValue.Pt = code.TYP_U64
-		}
+	if hex {
+		s.tokenString = "0x" + s.tokenString
 	}
 }
 
@@ -432,21 +396,21 @@ func (s *State) next() {
 				s.nextChar()
 				if s.ch1 == 'n' {
 					s.ch1 = 0x0A
-					s.tokenString = "<LF>"
+					s.tokenString = "10"
 				} else if s.ch1 == 'r' {
 					s.ch1 = 0x0D
-					s.tokenString = "<CR>"
+					s.tokenString = "13"
 				} else if s.ch1 == 't' {
 					s.ch1 = 0x09
-					s.tokenString = "<TAB>"
+					s.tokenString = "9"
 				} else {
 					panic("Invalid escaped character, only \\n, \\r and \\t are allowed")
 				}
 			} else {
-				s.tokenString = string(s.ch1)
+				s.tokenString = strconv.Itoa(int(s.ch1))
 			}
-			s.ConstValue.Bits = uint64(s.ch1)
-			s.ConstValue.Pt = code.TYP_RUNE
+			// s.ConstValue.Bits = uint64(s.ch1)
+			// s.ConstValue.Pt = code.TYP_RUNE
 			s.nextChar()
 		case s.ch1 == '.':
 			s.token = TOK_DOT
@@ -478,6 +442,7 @@ func (s *State) next() {
 			s.token = TOK_DIV
 		case isNum(s.ch1):
 			parseNumber(s)
+			s.token = TOK_NUM
 		case s.ch1 == ':':
 			s.tokenString = ":"
 			s.token = TOK_COLON

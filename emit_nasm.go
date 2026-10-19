@@ -130,6 +130,11 @@ func EmitSliceLit(l SliceLit) {
 		for _, v := range l.IntValues {
 			code.Write(sizeName + " " + strconv.Itoa(int(v)) + "\n")
 		}
+	} else if len(l.UintValues) > 0 {
+		for _, v := range l.UintValues {
+			s := strconv.FormatUint(v, 16)
+			code.Write(sizeName + " 0x" + s + "\n")
+		}
 	} else if len(l.FloatValues) > 0 {
 		for _, v := range l.FloatValues {
 			code.Write(sizeName + " " + strconv.FormatFloat(v, 'e', -1, 64) + "\n")
@@ -851,7 +856,7 @@ func EmitNegateF64() {
 
 func EmitNegateF32() {
 	emit("mov", "rcx", "[f32sign_mask]", "")
-	emit("xor", "rax", "rcx", "")
+	emit("xor", "rax", "rcx", "Negate rax")
 }
 
 func EmitNegate() {
@@ -1042,32 +1047,34 @@ func EmitLoadTosIndirect(size int, fieldName string) {
 	EmitComment("")
 }
 
-// EmitGlobalIndexedValue TOS is index. Pointer is in global variable <id>
-func EmitGlobalIndexedValue(id string, size int, index int, isConst bool) {
-	if isConst {
-		if id == "args" || id == "envs" {
-			// This is ok for argv/test. id="args"
-			// Special handling because args is dynamically allocated on the heap
-			emit("mov", "rax", "["+id+"]", "EmitLoadGlobal const")
-		} else {
-			// This is ok for utf8
-			emit("mov", "rax", id, "EmitLoadGlobal const")
-		}
-		emit("add", "rax", strconv.Itoa(index*size+8), "Index element "+strconv.Itoa(index)+" of string/slice")
+func EmitGlobalIndexedByConstValue(id string, size int, index int) {
+	if id == "args" || id == "envs" {
+		// This is ok for argv/test. id="args"
+		// Special handling because args is dynamically allocated on the heap
+		emit("mov", "rax", "["+id+"]", "EmitLoadGlobal const")
 	} else {
-		EmitAssertTosInRax("Assure tos (index) is in rax")
-		if size > 1 {
-			emit("imul", "rax", strconv.Itoa(size), "")
-		}
-		emit("add", "rax", "8", "")
-		if id == "args" || id == "envs" {
-			// This is ok for argv/test. id="args"
-			// Special handling because args is dynamically allocated on the heap
-			emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
-		} else {
-			// This is ok for utf8. id=utf8d
-			emit("add", "rax", id, "EmitLoadGlobal str?")
-		}
+		// This is ok for utf8
+		emit("mov", "rax", id, "EmitLoadGlobal const")
+	}
+	emit("add", "rax", strconv.Itoa(index*size+8), "Index element "+strconv.Itoa(index)+" of string/slice")
+	_ = EmitLoadIndirectAx("rax", size)
+	code.SetAx()
+}
+
+// EmitGlobalIndexedValue TOS is index. Pointer is in global variable <id>
+func EmitGlobalIndexedTosValue(id string, size int) {
+	EmitAssertTosInRax("Assure tos (index) is in rax")
+	if size > 1 {
+		emit("imul", "rax", strconv.Itoa(size), "")
+	}
+	emit("add", "rax", "8", "")
+	if id == "args" || id == "envs" {
+		// This is ok for argv/test. id="args"
+		// Special handling because args is dynamically allocated on the heap
+		emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
+	} else {
+		// This is ok for utf8. id=utf8d
+		emit("add", "rax", id, "EmitLoadGlobal str?")
 	}
 	_ = EmitLoadIndirectAx("rax", size)
 	code.SetAx()
@@ -1405,11 +1412,11 @@ func EmitCompareF32(op Token) (err error) {
 	return err
 }
 
-func EmitLoadBool(value bool) {
-	if value {
-		emit("mov", "rax", "1", "")
-	} else {
+func EmitLoadBool(value string) {
+	if value == "0" {
 		emit("xor", "rax", "rax", "")
+	} else {
+		emit("mov", "rax", "1", "")
 	}
 	code.SetAx()
 }
@@ -1685,13 +1692,13 @@ func EmitAssignVariableConstF32(op Token, adr int, x float32, comment string) er
 }
 
 // EmitAssignVariableConstInt will set variable at <adr> to <adr> op <value>
-func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, comment string) error {
+func EmitAssignVariableConstInt(op Token, adr int, size int, value uint64, comment string) error {
 	instr := TokenOp[op]
 	if instr == "" {
 		return fmt.Errorf("EmitOpAssign called with invalid token %s", op.Name())
 	}
 	if instr == "idiv" {
-		emit("mov", "rcx", strconv.FormatInt(value, 10), "idiv load divisor")
+		emit("mov", "rcx", strconv.FormatUint(value, 10), "idiv load divisor")
 		if size < 4 {
 			emit("xor", "rax", "rax", "Clear rax before moving short int")
 		}
@@ -1701,7 +1708,7 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of /= to local variable")
 	} else if instr == "imul" {
-		emit("mov", "rbx", strconv.FormatInt(value, 10), "OpAssign imul")
+		emit("mov", "rbx", strconv.FormatUint(value, 10), "OpAssign imul")
 		if size < 4 {
 			emit("xor", "rax", "rax", "Clear rax before moving short int")
 		}
@@ -1710,15 +1717,15 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value int64, commen
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of *= to local variable")
 	} else {
-		if value > 0x7FFFFFFF || value < -0x7FFFFFFF {
+		if value > 0x7FFFFFFF {
 			if instr == "mov" {
-				emit(instr, DataType(4)+BpRel(adr), strconv.FormatInt(value&0xFFFFFFFF, 10), comment)
-				emit(instr, DataType(4)+BpRel(adr+4), strconv.FormatInt((value>>32)&0xFFFFFFFF, 10), comment)
+				emit(instr, DataType(4)+BpRel(adr), strconv.FormatUint(value&0xFFFFFFFF, 10), comment)
+				emit(instr, DataType(4)+BpRel(adr+4), strconv.FormatUint((value>>32)&0xFFFFFFFF, 10), comment)
 			} else {
 				return fmt.Errorf("value out of range")
 			}
 		} else {
-			emit(instr, DataType(size)+BpRel(adr), strconv.FormatInt(value, 10), comment)
+			emit(instr, DataType(size)+BpRel(adr), strconv.FormatUint(value, 10), comment)
 		}
 	}
 	return nil

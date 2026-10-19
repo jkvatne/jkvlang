@@ -59,8 +59,9 @@ func ParseFail(s *State) error {
 		} else {
 			return fmt.Errorf("fail() needs an integer argument")
 		}
-	} else if s.token == TOK_INT {
-		EmitStoreErr(int(s.ConstValue.Bits))
+	} else if s.token == TOK_NUM {
+		e, _ := strconv.Atoi(s.tokenString)
+		EmitStoreErr(e)
 		EmitJump(s.returnLbl, "Failed with const")
 		s.next()
 	}
@@ -155,7 +156,7 @@ func ParseFor(s *State) error {
 				fun = MangleFun(pkg, fun)
 			}
 		}
-		f := FindFuncDef(fun, []*ParDef{p})
+		f := FindFuncDefFromParList(fun, []*ParDef{p})
 		if f == nil {
 			return fmt.Errorf("range must have a next function")
 		}
