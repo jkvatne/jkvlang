@@ -93,7 +93,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 	case TOK_XOR:
 		result.StringValue = strconv.FormatFloat(float64(int64(f1)^int64(f2)), 'f', -1, 64)
 	case TOK_SHL:
-		result.StringValue = strconv.FormatFloat(float64(int64(f1)<<int64(f2)), 'f', -1, 64)
+		result.StringValue = strconv.FormatFloat(float64(uint64(f1)<<int(f2)), 'f', -1, 64)
 	case TOK_SHR:
 		result.StringValue = strconv.FormatFloat(float64(int64(f1)>>int64(f2)), 'f', -1, 64)
 	case TOK_LOG_OR:

@@ -814,7 +814,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			}
 			f, err = StrToConst(index.StringValue)
 			if vp.IsGlobal {
-				EmitGlobalIndexedByConstValue(id, size, int(f))
+				EmitGlobalIndexedTosValue(id, size)
 			} else {
 				LoadIndexedValue(isIndirect, index.IsConst, v.Offset, int64(f), size)
 			}

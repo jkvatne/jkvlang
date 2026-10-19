@@ -58,6 +58,7 @@ global _floor
 global _mul64
 global _int32
 global _int64
+global _uint64
 global _invert_err
 global _syscall
 global _get_ticks
@@ -327,6 +328,14 @@ _mul64:
     ret
 
 _int64:
+    mov rax, [rsp+8]
+    movq xmm0, rax
+    cvtsd2si rax, xmm0
+    mov [rsp+16], rax
+    ret
+
+; NB: Will not convert correctly for values >= 0x8000000000000000
+_uint64:
     mov rax, [rsp+8]
     movq xmm0, rax
     cvtsd2si rax, xmm0

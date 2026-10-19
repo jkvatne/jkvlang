@@ -716,7 +716,7 @@ const pow10Tab U64arr = {
 type Unrounded = U64
 
 func unround(x F64) Unrounded {
-	return Unrounded(floor(4*x)) | (floor(4*x) != 4*x)
+	return Unrounded(uint64(floor(4*x))) | (floor(4*x) != 4*x)
 }
 
 func ufloor(u Unrounded) U64         { return U64((u + 0) >> 2) }
@@ -738,7 +738,7 @@ func rsh(u Unrounded, s I32) Unrounded {
 }
 
 func nudge(u Unrounded, delta I32) Unrounded {
-    return u + Unrounded(delta)
+    return u + Unrounded(U32(delta))
 }
 
 // A scaler holds derived scaling constants for a given e, p pair.
@@ -768,7 +768,7 @@ func uscale(x U64, c Scaler) Unrounded {
 	sticky = U64(1)
 	if hi&(1<<(c.s&63)-1) == 0 {
 		mid2, unused = mul64(x, c.lo)
-		sticky = mid-mid2 > 1
+		sticky =(mid-mid2) > 1
 		b = mid < mid2
 		hi -= b
 	}
@@ -791,11 +791,11 @@ const (
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
 func unpack64(f F64) (U64, I32) {
-    m = U64(1)<<63 | (U64(f)&(1<<52-1))<<F64_SHIFT_EXP
-	e = I32((U64(f) >> 52) & (1<<11 - 1))
+    m = 0x8000000000000000 | (uint64(f)&(1<<52-1))<<F64_SHIFT_EXP
+	e = I32((uint64(f) >> 52) & (1<<11 - 1))
 	if e == 0 {
-		m = m &^ (1 << 63)
-    	e = I32((U64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
+		m = m &^ 0x8000000000000000
+    	e = I32((uint64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
 		s = 0
 		//s = 64 - bits.Len64(m)
 		m = m << s
@@ -833,7 +833,7 @@ func FixedWidth(f F64, n I32) U64, I32 {
 	d = round(u)
 	print("FixedWidth f=%f, n=%d, u=%llu, d=%llu >= pow10[n]=%llu", f, n, u, d, uint64pow10[n])
 	if d >= uint64pow10[n] {
-		d = round(div(u, 10))
+		d = round(div(u, U64(10)))
 		p = p-1
 	}
 	print("f=%f, u=%llu, d=%llu", f, u, d)
@@ -863,16 +863,19 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-/*
     print("\n    x           u    floor   round½↓  round round½↑  ceil")
     j = 0
     loop {
         f = testFloats[j]
-        u = unround(testFloats[j])
-        print("%9.3f %7d %7d %7d %7d %7d %7d", f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
+        print("%d %f", j, f)
+/*        u = unround(testFloats[j])
+        print("%d %9.3f %7d %7d %7d %7d %7d %7d", j, f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
+*/
         j+=1
         if j>=7 {break}
     }
+
+/*
 
     // Test div
     print("\nTesting division")
@@ -923,12 +926,11 @@ func main() {
 	u = Unrounded(493599)
 	v = round(u)
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)
-*/
 
     // Test FixedWidth
     f = 1.234
     m,e = FixedWidth(f, 6)
-/*
+
     print("f=%0.6e, m=%lld, e=%ld", f, m, e)
     //assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
     f = 1.234E14

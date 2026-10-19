@@ -497,6 +497,7 @@ func EmitPrologue(libPath string, inc bool) {
 		EmitExtern("_low_byte")
 		EmitExtern("_floor")
 		EmitExtern("_int64")
+		EmitExtern("_uint64")
 		EmitExtern("_int32")
 		EmitExtern("_mul64")
 	}

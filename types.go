@@ -187,6 +187,9 @@ func CanAssign(dst code.PrimaryType, value *ValueDef) bool {
 	if dst < code.TYP_U8 || dst > code.TYP_F64 {
 		return false
 	}
+	if src == code.TYP_BOOL {
+		return true
+	}
 	return dst == code.TYP_I64 ||
 		dst == code.TYP_U8 && f >= 0 && f <= 255 ||
 		dst == code.TYP_I16 && f >= -32768 && f <= 32767 ||

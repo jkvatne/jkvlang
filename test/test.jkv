@@ -1,10 +1,10 @@
 
-type Unrounded = U64
+type F64arr = []F64
 
-func unround(x F64) Unrounded {
-	return Unrounded(floor(4*x)) | (floor(4*x) != 4*x)
-}
+const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-    y=unround(1.1)
+   i=2
+   f = testFloats[i]
+   print("%f", f)
 }
