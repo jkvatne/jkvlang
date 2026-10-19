@@ -48,11 +48,11 @@ func main() {
     assert(x*y==39.0, "Failed x*y, got %f", x*y)
 
     //  Array
-    assert(floats[0]==6.1)
-    assert(floats[1]==6.25)
-    assert(floats[2]==6.5)
-    assert(floats[3]==6.75)
-    assert(floats[4]==7.0)
-    assert(floats[5]==7.5)
-    assert(floats[6]==8.5)
+    assert(floats[0]==6.1, "floats[0] expected 6.1, got %f", floats[0])
+    assert(floats[1]==6.25, "floats12] expected 6.35, got %f", floats[1])
+    assert(floats[2]==6.5, "floats[2] expected 6.5, got %f", floats[2])
+    assert(floats[3]==6.75, "floats[3] expected 6.75, got %f", floats[3])
+    assert(floats[4]==7.0, "floats[4] expected 7.0, got %f", floats[4])
+    assert(floats[5]==7.5, "floats[5] expected 7.5, got %f", floats[5])
+    assert(floats[6]==8.5, "floats[6] expected 8.5, got %f", floats[6])
 }

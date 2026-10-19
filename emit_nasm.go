@@ -1066,7 +1066,7 @@ func EmitGlobalIndexedByConstValue(id string, size int, index int) {
 func EmitGlobalIndexedTosValue(id string, size int) {
 	EmitAssertTosInRax("Assure tos (index) is in rax")
 	if size > 1 {
-		emit("imul", "rax", strconv.Itoa(size), "")
+		emit("imul", "rax", strconv.Itoa(size), "EmitGlobalIndexedTosValue")
 	}
 	emit("add", "rax", "8", "")
 	if id == "args" || id == "envs" {

@@ -1,10 +1,58 @@
 
-type F64arr = []F64
-
-const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+type Farr = []F64
+const floats Farr = {6.1, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-   i=2
-   f = testFloats[i]
-   print("%f", f)
+/*
+
+    x = 13.0
+    y = 3.0
+    z = -13.0
+    // Division (Three different combinations of const and var)
+    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
+    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
+    assert(13.0/y>4.333 && 13.0/y<4.334, "Failed  13.0/y, got %f", 13.0/y)
+    assert(x/3.0>4.333 && x/3<4.334, "Failed x/3.0, got %f", x/3.0)
+    assert(x/y>4.333 && x/y<4.334, "Failed x/y, got %f", x/y)
+
+    // Unary minus
+    w = 10.0-(-z)
+    assert(w==-3.0, "Failed w==-3.0, got %f", w)
+    assert(-z==13.0, "Failed -z==13.0")
+    assert(z==-13.0, "Failed z==-13.0")
+    assert(z-3==-16.0, "Failed z-3==-16.0")
+    w=-z
+    assert(-z==w)
+    assert(w==-z)
+    assert(w==13.0, "Failed w==13.0")
+    assert(-z==13.0, "Failed z==13.0")
+    assert(z-3==-16.0, "Failed z-3==-16.0")
+    assert(-z==13.0, "Failed -z==13.0")
+
+    // Difference
+    assert(13.0-y==10.0, "Failed 13-y")
+    assert(x-3.0==10.0, "Failed x-3")
+    assert(13.0-3==10.0, "Failed 13-3")
+    assert(x-y==10.0, "Failed x-y")
+
+    // Sum
+    assert(13.0+y==16.0, "Failed 13+y, got %f", 13.0+y)
+    assert(x+3.0==16.0, "Failed x+3, got %f", x+3.0)
+    assert(13.0+3.0==16.0, "Failed 13.0+3.0, got %f", 13.0+3.0)
+    assert(x+y==16.0, "Failed x+y, got %f", x+y)
+
+    // Multiply
+    assert(13.0*y==39.0, "Failed 13.0*y, got %f", 13.0*y)
+    assert(x*3.0==39.0, "Failed x*3, got %f", x*3.0)
+    assert(13.0*3.0==39.0, "Failed 13.0*3.0, got %f", 13.0*3.0)
+    assert(x*y==39.0, "Failed x*y, got %f", x*y)
+*/
+    //  Array
+    assert(floats[0]==6.1, "floats[0] expected 6.1, got %f", floats[0])
+    assert(floats[1]==6.25, "floats12] expected 6.35, got %f", floats[1])
+    assert(floats[2]==6.5, "floats[2] expected 6.5, got %f", floats[2])
+    assert(floats[3]==6.75, "floats[3] expected 6.75, got %f", floats[3])
+    assert(floats[4]==7.0, "floats[4] expected 7.0, got %f", floats[4])
+    assert(floats[5]==7.5, "floats[5] expected 7.5, got %f", floats[5])
+    assert(floats[6]==8.5, "floats[6] expected 8.5, got %f", floats[6])
 }

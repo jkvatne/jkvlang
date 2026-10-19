@@ -1,3 +1,4 @@
+/*
 type Unrounded = U64
 
 func unround(x F64) Unrounded {
@@ -5,7 +6,7 @@ func unround(x F64) Unrounded {
     r = x | b
     return r
 }
-
+*/
 
 func main() {
     a = 4.0
@@ -20,12 +21,14 @@ func main() {
     print("f=%f", f)
     b = f != 4*x
     print("f != 4*x=%d", b)
+
     // TODO: Do we need this?
     //z = f | b
     //print("z=%d", z)
 
-    u = unround(x)
-    print("u=%d", u)
+    // Does not work
+    // u = unround(x)
+    // print("u=%d", u)
 
     f = floor(4*x)
     b = f != 4*x

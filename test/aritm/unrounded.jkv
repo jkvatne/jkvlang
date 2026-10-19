@@ -826,7 +826,7 @@ func FixedWidth(f F64, n I32) U64, I32 {
 		fail(202) // "too many digits"
 	}
 	m, e = unpack64(f)
-	print("FixedWidth f=%f, m=%llu e=%ld", f, m, e)
+	print(\n"FixedWidth f=%f, m=%llu e=%ld", f, m, e)
 	p = n - 1 - log10Pow2(e+63)
 	l = log2Pow10(p)
 	u = uscale(m, prescale(e, p, l))
@@ -841,16 +841,16 @@ func FixedWidth(f F64, n I32) U64, I32 {
 }
 
 /*
-const pow10Tests U64arr = {
-  0,  0x8000000000000000, 0,                    1,
- 25,  0x84595161401484a0, 0,                    84,
- 72,  0x84595161401484a0, 0x4376AA16B901CE32,  240,
--44,  0xe45c10c42a2b3b06, 0x734765824883af95,  -146,
+var pow10Tests = []struct {p  int, pm pmHiLo, pe int}{
+	{0, pmHiLo{1 << 63, 0}, 1},
+	{25, pmHiLo{0x84595161401484a0, 0}, -44 + 128},
+	{72, pmHiLo{0x90e40fbeea1d3a4a + 1, (1 << 64) - 0xbc8955e946fe31ce}, 112 + 128},
+	{-44, pmHiLo{0xe45c10c42a2b3b05 + 1, (1 << 64) - 0x8cb89a7db77c506b}, -274 + 128},
 }
 */
 
 const pow10TestsP I32arr = {0, 25, 72, -44}
-const pow10TestsHi U64arr = {0x8000000000000000, 0x84595161401484a0, 0x84595161401484a0, 0xe45c10c42a2b3b06}
+const pow10TestsHi U64arr = {0x8000000000000000, 0x84595161401484a0, 0x90e40fbeea1d3a4b, 0xe45c10c42a2b3b06}
 const pow10TestsLo U64arr = {                 0,                  0, 0x4376AA16B901CE32, 0x734765824883af95}
 const pow10TestsPe I32arr = {                 1,                 84,                240,               -146}
 
@@ -863,48 +863,56 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-    print("\n    x           u    floor   round½↓  round round½↑  ceil")
+    // print("\n    x           u    floor   round½↓  round round½↑  ceil")
     j = 0
     loop {
         f = testFloats[j]
-        print("%d %f", j, f)
-/*        u = unround(testFloats[j])
-        print("%d %9.3f %7d %7d %7d %7d %7d %7d", j, f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
-*/
+        u = unround(testFloats[j])
+        // print("%d %9.3f %7d %7d %7d %7d %7d %7d", j, f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
         j+=1
         if j>=7 {break}
     }
-
-/*
+    assert(unround(6.0)==24, "Expected 24, got %d")
+    assert(unround(6.25)==25, "Expected 25, got %d")
+    assert(unround(6.50)==26, "Expected 26, got %d")
+    assert(unround(6.75)==27, "Expected 27, got %d")
+    assert(ufloor(unround(6.75))==6, "Expected 6")
+    assert(roundHalfDown(unround(6.5))==6, "Expected 6")
+    assert(round(unround(6.5))==6, "Expected 6")
+    assert(roundHalfUp(unround(6.5))==7, "Expected 7")
 
     // Test div
-    print("\nTesting division")
     u = div(unround(15.1),U64(6))
-    print("15.1/6 = <%d>  %d", u, round(u))
     assert(u==11, "Expected u==11, got %d", u)
     assert(round(u)==3, "Expected round(u)==3, got %d", round(u))
 
     // Test right shift
-    print("\nTesting right shift")
     u = rsh(unround(15.1), 1)
-    print("15.1>>1 = <%d>  %d", u, round(u))
+    assert(u==31, "rsh(15.1)=%d", u)
     u = rsh(unround(15.1), 2)
-    print("15.1>>1 = <%d>  %d", u, round(u))
+    assert(u==15, "rsh(15.1)=%d", u)
+
 
     // Test nudge
     print("\nTesting nudge")
-    print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
+    // print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
     // for _, x := range []F64{15, 15.1, 15.9, 16} {
     u = unround(15.0)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(ufloor(nudge(u,-1))==14)
+    // print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.1)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(ufloor(nudge(u,-1))==15)
+    assert(ceil(nudge(u, 1))==16)
+    // print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.9)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(ufloor(nudge(u,-1))==15)
+    // print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(16.0)
-    print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(ufloor(nudge(u,-1))==15)
+    assert(ceil(nudge(u, 1))==17)
+    // print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
 
-    // Test Pow10
+    // Test prescale
     i = 0
 	loop {
 	    p = pow10TestsP[i]
@@ -915,7 +923,6 @@ func main() {
 
 	    l = log2Pow10(p)
 	    c = prescale(0, p, l)
-
 		px = -(c.s + 2)
 		if pmhi != c.hi || pmlo != c.lo || px != pe {
 		    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
@@ -928,21 +935,20 @@ func main() {
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)
 
     // Test FixedWidth
+    print("")
     f = 1.234
     m,e = FixedWidth(f, 6)
-
-    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
+    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     //assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
     f = 1.234E14
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
+    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
 
     f = 1.234E-14
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
+    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
 
     f = 1.234E-99
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%lld, e=%ld", f, m, e)
-*/
+    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
 }

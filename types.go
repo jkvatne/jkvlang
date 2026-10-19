@@ -134,6 +134,7 @@ func CanAssign(dst code.PrimaryType, value *ValueDef) bool {
 			return false
 		}
 		return dst == code.TYP_U8 && f >= 0 && f <= 255 ||
+			dst == code.TYP_F32 && value.Typ.Pt == code.TYP_F64 ||
 			dst == code.TYP_I16 && f >= -32768 && f <= 32767 ||
 			dst == code.TYP_U16 && f >= -65535 && f <= 65535 ||
 			dst == code.TYP_I32 && f >= -2147483648 && f <= 2147483647 ||
