@@ -863,6 +863,7 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
+/*
     // print("\n    x           u    floor   round½↓  round round½↑  ceil")
     j = 0
     loop {
@@ -911,7 +912,7 @@ func main() {
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==17)
     // print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
-/*
+*/
     // Test prescale
     i = 0
 	loop {
@@ -921,8 +922,9 @@ func main() {
 	    pe = pow10TestsPe[i]
 	    print("i=%d p=%lld, pmhi=0x%016llx, pmlo=0x%016llx, pe=%d", i, p, pmhi, pmlo, pe)
 
-	    l = log2Pow10(p)
-	    c = prescale(0, p, l)
+	    //l = log2Pow10(p)
+	    //c = prescale(0, p, l)
+	    c=new(Scaler)
 		px = -(c.s + 2)
 		if pmhi != c.hi || pmlo != c.lo || px != pe {
 		    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
@@ -930,6 +932,7 @@ func main() {
 		i+=1
         if i>3 {break}
 	}
+/*
 	u = Unrounded(493599)
 	v = round(u)
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)

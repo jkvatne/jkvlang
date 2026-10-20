@@ -1,12 +1,12 @@
-
-type Name = struct {
-    id String
-    first String
-    last String
+type Scaler = struct {
+	hi U64
 }
 
+
 func main() {
-    n = new(Name)
-    n.last = "Vatne"
-    c = n.last[2]
+    // Test prescale
+	loop {
+	    c=new(Scaler)
+		break
+	}
 }
