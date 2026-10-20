@@ -1,12 +1,81 @@
-type Scaler = struct {
-	hi U64
+type RangeIterator = struct {
+    start I32
+    end I32
 }
 
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
 
 func main() {
-    // Test prescale
-	loop {
-	    c=new(Scaler)
-		break
-	}
+
+    r = new(RangeIterator)
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+
+    ra = range(10, 15)
+    sum = 0
+    loop {
+        i = next(ra) else break
+        sum+=i
+    }
+
+    sum=0
+    for i = range(2,5) {
+        sum+=i
+    }
+    assert(sum==14)
+
+    j=0
+    sum=0
+    loop {
+       j=j+1
+       sum+=j
+       if j>5 : break
+    }
+
+
+    ra = range(10, 15)
+    sum = 0
+    loop {
+        i = next(ra) else break
+        sum+=i
+        fflush()
+    }
+
+    sum=0
+    for i=range(5) {
+        sum+=i
+    }
+
+    // Testing nested iterations
+    sub = "-file="
+    filename=""
+    ok = true
+    sum=0
+    for i=range(1,3) {
+        for k=range(1,4) {
+            ch = "asd"
+            sum=sum+i*k
+        }
+    }
+
 }

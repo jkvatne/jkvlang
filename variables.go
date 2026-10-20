@@ -108,9 +108,8 @@ func DeleteLocalVar(s *State, id string) {
 func FreeBlockVars(s *State) {
 	for _, v := range VarDefs {
 		if v.BlockLevel == s.BlockLevel {
+			DeleteLocalVar(s, v.Name)
 			EmitPopAx("FreeBlockVars:  " + v.Name)
-			// Hack to avoid double free:
-			code.LocalSp++
 		}
 	}
 }

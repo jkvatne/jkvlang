@@ -34,7 +34,6 @@ func GetTopEndLabel() int {
 }
 
 func ParseBreak(s *State) error {
-	FreeBlockVars(s)
 	EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
 	return nil
 }
@@ -187,6 +186,7 @@ func ParseFor(s *State) error {
 		EmitLabel(endLabel, "Exit from loop")
 		PopLabels()
 		EmitPopAx("Pop address of loop state")
+
 		DeleteLocalVar(s, rangeName)
 		// Remove local loop variables
 		for _, v := range lvalues {
@@ -213,7 +213,7 @@ func ParseLoop(s *State) error {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
 	s.LoopLevel++
-	err := ParseBlock(s, false, false)
+	err := ParseBlock(s, false, true)
 	if err != nil {
 		return err
 	}
@@ -224,6 +224,10 @@ func ParseLoop(s *State) error {
 	// DeleteBlockVars(s)
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
+	s.BlockLevel++
+	FreeBlockVars(s)
+	s.BlockLevel--
+	// FreeBlockVars(s)
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
