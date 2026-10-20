@@ -27,23 +27,26 @@ func next(r RangeIterator) I32 {
 func main() {
     sum = 0
     for i = range(2,5) {
+        print("sum=%d i=%d", sum, i)
         sum+=i
     }
-    assert(sum==14, "4 Expected sum==14, got %d", sum)
+    assert(sum==14, "1 Expected sum==14, got %d", sum)
 
-/*
     ra = range(10, 15)
     sum = 0
+    k=0
     loop {
-        i = next(ra) else break
-        sum+=i
+        k = next(ra) else break
+        print("sum=%d k=%d", sum, k)
+        sum+=k
     }
     assert(sum==75, "3 Expected sum==75, got %d", sum)
 
-    sum = 0
-    for i = range(2,5) {
-        sum+=i
+    ss = 0
+    for j = range(3,6) {
+        print("ss=%d j=%d", ss, j)
+        ss+=j
     }
-    assert(sum==14, "4 Expected sum==14, got %d", sum)
-*/
+    assert(ss==18, "4 Expected ss==18, got %d", ss)
+
 }
