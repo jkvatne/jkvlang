@@ -601,7 +601,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	code.NewArgCode()
 	EmitFlushRax("Flush rax before function call")
-	EmitAddToSp(len(f.returnTypes), "** Make space for return values from "+f.name)
+	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
 
 	if len(values) == 0 {
 		code.ConsArgCode(2, true)

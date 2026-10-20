@@ -826,7 +826,7 @@ func FixedWidth(f F64, n I32) U64, I32 {
 		fail(202) // "too many digits"
 	}
 	m, e = unpack64(f)
-	print(\n"FixedWidth f=%f, m=%llu e=%ld", f, m, e)
+	print("\nFixedWidth f=%f, m=%llu e=%ld", f, m, e)
 	p = n - 1 - log10Pow2(e+63)
 	l = log2Pow10(p)
 	u = uscale(m, prescale(e, p, l))

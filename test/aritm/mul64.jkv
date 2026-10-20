@@ -6,8 +6,8 @@ const pow U64arr = {
 }
 
 func main() {
-    x = 0x700000002
-    y = 0x600000003
+    x = U64(0x700000002)
+    y = U64(0x600000003)
     hi,lo = mul64(x,y)
     assert(hi==0x2a,"Expected hi==0x2a, got %d", hi)
     assert(lo==0x2100000006,"Expected lo==0x2100000006, got 0x%llx", lo)

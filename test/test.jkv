@@ -1,58 +1,49 @@
+type RangeIterator = struct {
+    start I32
+    end I32
+}
 
-type Farr = []F64
-const floats Farr = {6.1, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func range(count I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = 0
+    r.end = count-1
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
 
 func main() {
+    sum = 0
+    for i = range(2,5) {
+        sum+=i
+    }
+    assert(sum==14, "4 Expected sum==14, got %d", sum)
+
 /*
+    ra = range(10, 15)
+    sum = 0
+    loop {
+        i = next(ra) else break
+        sum+=i
+    }
+    assert(sum==75, "3 Expected sum==75, got %d", sum)
 
-    x = 13.0
-    y = 3.0
-    z = -13.0
-    // Division (Three different combinations of const and var)
-    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
-    assert(13.0/3.0>4.333 && 13.0/3.0<4.334, "Failed 13.0/3.0, got %f", 13.0/3.0)
-    assert(13.0/y>4.333 && 13.0/y<4.334, "Failed  13.0/y, got %f", 13.0/y)
-    assert(x/3.0>4.333 && x/3<4.334, "Failed x/3.0, got %f", x/3.0)
-    assert(x/y>4.333 && x/y<4.334, "Failed x/y, got %f", x/y)
-
-    // Unary minus
-    w = 10.0-(-z)
-    assert(w==-3.0, "Failed w==-3.0, got %f", w)
-    assert(-z==13.0, "Failed -z==13.0")
-    assert(z==-13.0, "Failed z==-13.0")
-    assert(z-3==-16.0, "Failed z-3==-16.0")
-    w=-z
-    assert(-z==w)
-    assert(w==-z)
-    assert(w==13.0, "Failed w==13.0")
-    assert(-z==13.0, "Failed z==13.0")
-    assert(z-3==-16.0, "Failed z-3==-16.0")
-    assert(-z==13.0, "Failed -z==13.0")
-
-    // Difference
-    assert(13.0-y==10.0, "Failed 13-y")
-    assert(x-3.0==10.0, "Failed x-3")
-    assert(13.0-3==10.0, "Failed 13-3")
-    assert(x-y==10.0, "Failed x-y")
-
-    // Sum
-    assert(13.0+y==16.0, "Failed 13+y, got %f", 13.0+y)
-    assert(x+3.0==16.0, "Failed x+3, got %f", x+3.0)
-    assert(13.0+3.0==16.0, "Failed 13.0+3.0, got %f", 13.0+3.0)
-    assert(x+y==16.0, "Failed x+y, got %f", x+y)
-
-    // Multiply
-    assert(13.0*y==39.0, "Failed 13.0*y, got %f", 13.0*y)
-    assert(x*3.0==39.0, "Failed x*3, got %f", x*3.0)
-    assert(13.0*3.0==39.0, "Failed 13.0*3.0, got %f", 13.0*3.0)
-    assert(x*y==39.0, "Failed x*y, got %f", x*y)
+    sum = 0
+    for i = range(2,5) {
+        sum+=i
+    }
+    assert(sum==14, "4 Expected sum==14, got %d", sum)
 */
-    //  Array
-    assert(floats[0]==6.1, "floats[0] expected 6.1, got %f", floats[0])
-    assert(floats[1]==6.25, "floats12] expected 6.35, got %f", floats[1])
-    assert(floats[2]==6.5, "floats[2] expected 6.5, got %f", floats[2])
-    assert(floats[3]==6.75, "floats[3] expected 6.75, got %f", floats[3])
-    assert(floats[4]==7.0, "floats[4] expected 7.0, got %f", floats[4])
-    assert(floats[5]==7.5, "floats[5] expected 7.5, got %f", floats[5])
-    assert(floats[6]==8.5, "floats[6] expected 8.5, got %f", floats[6])
 }

@@ -138,6 +138,7 @@ func ParseFor(s *State) error {
 			return fmt.Errorf("expected '(' but got %s", s.tokenString)
 		}
 		code.NewArgCode()
+		// Call the range function
 		results, err := ParseFuncCall(s, id, true)
 		StructType.StructSize = 8
 		AddLocalVar(s, rangeName, &StructType)
@@ -162,8 +163,10 @@ func ParseFor(s *State) error {
 		}
 		lvalues[0].Typ = f.returnTypes[0]
 		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
-		// Insert call next() before for block
+
 		EmitLabel(startLabel, "Start of loop")
+
+		// Call the next function
 		EmitCall(f.label, 1, false)
 		// Assign result to loop variable
 		if !s.found(TOK_LBRACE) {
