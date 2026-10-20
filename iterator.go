@@ -139,9 +139,10 @@ func ParseFor(s *State) error {
 		}
 		code.NewArgCode()
 		// Call the range function
+		AddLocalVar(s, rangeName, &StructType)
 		results, err := ParseFuncCall(s, id, true)
 		StructType.StructSize = 8
-		AddLocalVar(s, rangeName, &StructType)
+
 		if err != nil {
 			return err
 		}

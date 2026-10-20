@@ -15,7 +15,6 @@ type State struct {
 	tokenString        string // The current token as a string
 	ConstValue         float64
 	noCode             int      // Used to skip code generation in constant if/else statements.
-	LocalVarCount      int      // The number of local variables in each level.
 	HasReturned        bool     // Used to avoid jumps after return statement and checking for dead code
 	currentFuncDef     *FuncDef // The current function being compiled. Nested function definitions is not allowed.
 	currentFuncCall    string

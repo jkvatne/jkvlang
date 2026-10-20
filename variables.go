@@ -49,7 +49,6 @@ func VarReset(s *State) {
 			delete(VarDefs, v.Name)
 		}
 	}
-	s.LocalVarCount = 0
 }
 
 func (v *VarDef) Size() int {
@@ -81,14 +80,12 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	if v == nil {
 		v = &VarDef{Name: id, Typ: typ, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
-		s.LocalVarCount++
-		v.Offset = -s.LocalVarCount * 8 // First local variable is at rbp-16, the next at rpb-24
+		v.Offset = -code.LocalSp*8 - 8
 	}
 	return v
 }
 
 func DeleteLocalVar(s *State, id string) {
-	s.LocalVarCount--
 	v := VarDefs[id]
 	if v != nil && v.Typ.Pt >= code.TYP_STRING && !v.Destroyed {
 		// Free variable

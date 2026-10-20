@@ -34,7 +34,6 @@ func main() {
 
     ra = range(10, 15)
     sum = 0
-    k=0
     loop {
         k = next(ra) else break
         print("sum=%d k=%d", sum, k)
@@ -42,11 +41,11 @@ func main() {
     }
     assert(sum==75, "3 Expected sum==75, got %d", sum)
 
-    ss = 0
+    sum = 0
     for j = range(3,6) {
-        print("ss=%d j=%d", ss, j)
-        ss+=j
+        print("sum=%d j=%d", sum, j)
+        sum+=j
     }
-    assert(ss==18, "4 Expected ss==18, got %d", ss)
+    assert(sum==18, "4 Expected sum==18, got %d", sum)
 
 }

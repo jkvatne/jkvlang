@@ -1544,7 +1544,6 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
 	}
 	s.next()
-	s.LocalVarCount = 0
 	parList, err := ParseFormalArgList(s)
 	if err != nil {
 		return err
