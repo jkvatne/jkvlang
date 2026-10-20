@@ -416,10 +416,9 @@ func EmitJumpTrue(reg string, lbl int, comment string) {
 
 // EmitAllocLocalVar will allocate a local variable
 // TODO Allow for types larger than 8 byte. For now, use 8 bytes for all local variables
-func EmitAllocLocalVar(comment string) int {
+func EmitAllocLocalVar(comment string) {
 	emit("xor", "rax", "rax", "EmitAllocLocalVar "+comment)
 	emit("push", "rax", "", "")
-	return -8 * code.LocalSp
 }
 
 func EmitPushStringLit(lit int, comment string) {

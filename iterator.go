@@ -92,7 +92,7 @@ func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 			return nil, fmt.Errorf("loop variable shadowing " + id)
 		}
 		lvalue = AddLocalVar(s, id, nil)
-		lvalue.Offset = EmitAllocLocalVar("Allocate loop variable " + lvalue.Name)
+		EmitAllocLocalVar("Allocate loop variable " + lvalue.Name)
 		lvalues = append(lvalues, lvalue)
 		s.next()
 		if !s.found(TOK_COMMA) {

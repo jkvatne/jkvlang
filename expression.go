@@ -1826,7 +1826,7 @@ func ParseVar(s *State) error {
 	}
 	var v *VarDef
 	v = AddLocalVar(s, id, typ)
-	v.Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
+	EmitAllocLocalVar("Allocate local variable " + v.Name)
 	if s.token == TOK_ASSIGN {
 		s.next()
 		val := ""
