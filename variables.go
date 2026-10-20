@@ -81,7 +81,6 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 		v = &VarDef{Name: id, Typ: typ, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		v.Offset = -code.LocalSp*8 - 8
-		fmt.Printf("Offset for %s is %d\n", id, v.Offset)
 	}
 	return v
 }

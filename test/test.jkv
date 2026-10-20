@@ -29,23 +29,22 @@ func main() {
     sum = 0
     for i = range(2,5) {
         sum+=i
-        print("sum=%d i=%d", sum, i)
+        //print("sum=%d i=%d", sum, i)
     }
-    //assert(sum==14, "1 Expected sum==14, got %d", sum)
+    assert(sum==14, "1 Expected sum==14, got %d", sum)
 
     sum = 0
     loop {
         k = next(ra) else break
-        print("sum=%d k=%d", sum, k)
+        //print("sum=%d k=%d", sum, k)
         sum+=k
     }
-    //assert(sum==75, "3 Expected sum==75, got %d", sum)
+    assert(sum==75, "3 Expected sum==75, got %d", sum)
 
     sum = 0
     for j = range(3,6) {
         sum+=j
-        print("sum=%d j=%d", sum, j)
+        //print("sum=%d j=%d", sum, j)
     }
-    //assert(sum==18, "4 Expected sum==18, got %d", sum)
-
+    assert(sum==18, "4 Expected sum==18, got %d", sum)
 }
