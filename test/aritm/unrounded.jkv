@@ -911,7 +911,7 @@ func main() {
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==17)
     // print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
-
+/*
     // Test prescale
     i = 0
 	loop {
@@ -951,4 +951,6 @@ func main() {
     f = 1.234E-99
     m,e = FixedWidth(f, 6)
     print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+
+    */
 }

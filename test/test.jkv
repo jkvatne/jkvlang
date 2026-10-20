@@ -1,50 +1,12 @@
-type RangeIterator = struct {
-    start I32
-    end I32
-}
 
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func range(count I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = 0
-    r.end = count-1
-    return r
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
+type Name = struct {
+    id String
+    first String
+    last String
 }
 
 func main() {
-    ra = range(10, 15)
-    sum = 0
-    for i = range(2,5) {
-        sum+=i
-        //print("sum=%d i=%d", sum, i)
-    }
-    assert(sum==14, "1 Expected sum==14, got %d", sum)
-
-    sum = 0
-    loop {
-        k = next(ra) else break
-        //print("sum=%d k=%d", sum, k)
-        sum+=k
-    }
-    assert(sum==75, "3 Expected sum==75, got %d", sum)
-
-    sum = 0
-    for j = range(3,6) {
-        sum+=j
-        //print("sum=%d j=%d", sum, j)
-    }
-    assert(sum==18, "4 Expected sum==18, got %d", sum)
+    n = new(Name)
+    n.last = "Vatne"
+    c = n.last[2]
 }

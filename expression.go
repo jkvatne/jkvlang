@@ -813,8 +813,7 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 				size = v.Typ.Element.Size()
 			}
 			f, err = StrToConst(index.StringValue)
-			if index.IsConst {
-				f, _ := StrToConst(index.StringValue)
+			if index.IsConst && v.IsGlobal {
 				EmitGlobalIndexedByConstValue(id, size, int(f))
 			} else if vp.IsGlobal {
 				EmitGlobalIndexedTosValue(id, size)
@@ -1039,7 +1038,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, err
 		}
 		if v[0].IsConst {
-			f, err2 := StrToConst(value.StringValue)
+			f, err2 := StrToConst(v[0].StringValue)
 			if err2 != nil {
 				return nil, fmt.Errorf("invalid integer value: %s", value.StringValue)
 			}
