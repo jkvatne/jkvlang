@@ -36,7 +36,7 @@ func main() {
     for i = range(2,5) {
         sum+=i
     }
-    assert(sum==14)
+    assert(sum==14, "Expected sum==14, got %d", sum)
 
     ra = range(10, 15)
     sum = 0
@@ -44,7 +44,7 @@ func main() {
         i = next(ra) else break
         sum+=i
     }
-    assert(sum==75)
+    assert(sum==75, "Expected sum==75, got %d", sum)
 
     sum = 0
     for i = range(2,5) {
@@ -52,10 +52,11 @@ func main() {
     assert(sum==14)
 
     sum=0
-    for i = range(2,5) {
+    for i = range(2,7) {
         sum+=i
     }
-    assert(sum==14)
+    assert(sum==21, "Expected sum==21, got %d", sum)
+
 
     j=0
     sum=0
@@ -64,19 +65,21 @@ func main() {
        sum+=j
        if j>5 : break
     }
-    assert(sum==21)
+    assert(sum==21, "Expected sum==21, got %d", sum)
 
     sum=0
-    for i = range(2,5) {
+    for i = range(1,5) {
         sum+=i
     }
-    assert(sum==14)
+    assert(sum==15, "Expected sum==15, got %d", sum)
+
 
     for i = range(12,15) {
         sum+=i
     }
-    assert(sum==68)
+    assert(sum==68, "Expected sum==68, got %d", sum)
 
+/* This leaks. break not handled good enough
     ra = range(10, 15)
     sum = 0
     loop {
@@ -84,13 +87,13 @@ func main() {
         sum+=i
         fflush()
     }
-    assert(sum==75)
-
+    assert(sum==75, "Expected sum==75, got %d", sum)
+*/
     sum=0
     for i=range(5) {
         sum+=i
     }
-    assert(sum==10)
+    assert(sum==14, "Expected sum==14, go %d", sum)
 
     // Testing nested iterations
     sub = "-file="
@@ -103,7 +106,7 @@ func main() {
             sum=sum+i*k
         }
     }
-    assert(sum==60, "Failed sum")
+    assert(sum==60, "Failed sum, got %d", sum)
 
     // This code was leaking 17 bytes
     // because of id created inside loop

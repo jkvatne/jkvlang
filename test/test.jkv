@@ -10,13 +10,6 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-func range(count I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = 0
-    r.end = count-1
-    return r
-}
-
 func next(r RangeIterator) I32 {
     if r.start>r.end ? fail(1)
     x = r.start
@@ -26,56 +19,19 @@ func next(r RangeIterator) I32 {
 
 func main() {
 
-    r = new(RangeIterator)
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-
-    ra = range(10, 15)
     sum = 0
-    loop {
-        i = next(ra) else break
-        sum+=i
-    }
-
-    sum=0
-    for i = range(2,5) {
-        sum+=i
-    }
-    assert(sum==14)
-
-    j=0
-    sum=0
-    loop {
-       j=j+1
-       sum+=j
-       if j>5 : break
-    }
-
-
-    ra = range(10, 15)
-    sum = 0
-    loop {
-        i = next(ra) else break
-        sum+=i
+    for j = range(2,5) {
+        sum+=j
+        print("j=%d  sum=%d", j, sum)
         fflush()
-    }
+     }
+    assert(sum==14, "Expected sum=14, go %d", sum)
 
-    sum=0
-    for i=range(5) {
+    ra = range(10, 15)
+    sum = 10
+    loop {
+        i = next(ra) else break
         sum+=i
     }
-
-    // Testing nested iterations
-    sub = "-file="
-    filename=""
-    ok = true
-    sum=0
-    for i=range(1,3) {
-        for k=range(1,4) {
-            ch = "asd"
-            sum=sum+i*k
-        }
-    }
-
+    assert(sum==85, "Expected sum==85, got %d", sum)
 }

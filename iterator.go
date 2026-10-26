@@ -139,6 +139,7 @@ func ParseFor(s *State) error {
 		code.NewArgCode()
 		// Call the range function
 		AddLocalVar(s, rangeName, &StructType)
+		EmitAllocLocalVar("Assign stack space for " + rangeName)
 		results, err := ParseFuncCall(s, id, true)
 		StructType.StructSize = 8
 
@@ -174,7 +175,7 @@ func ParseFor(s *State) error {
 		}
 		EmitJumpTrue("r15", endLabel, "")
 
-		err = ParseBlock(s, false, false)
+		err = ParseBlock(s, false)
 
 		if err != nil {
 			return err
@@ -188,16 +189,10 @@ func ParseFor(s *State) error {
 		EmitPopAx("Pop address of loop state")
 
 		DeleteLocalVar(s, rangeName)
-		// Remove local loop variables
-		for _, v := range lvalues {
-			EmitPopAx("Pop loop variable")
-			DeleteLocalVar(s, v.Name)
-		}
-		// DeleteBlockVars(s)
+		s.BlockLevel--
 		EmitReturnIfErr2(s.returnLbl)
 		// Clear err if it is 1 as this is used to signal break using pull iterators
 		EmitClearBreakErr()
-		s.BlockLevel--
 		s.LoopLevel--
 	}
 	return err
@@ -213,21 +208,15 @@ func ParseLoop(s *State) error {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
 	s.LoopLevel++
-	err := ParseBlock(s, false, true)
+	err := ParseBlock(s, false)
 	if err != nil {
 		return err
 	}
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
-	// Remove local loop variables
-	// DeleteBlockVars(s)
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
 	EmitLabel(endLabel, "Exit from loop")
-	s.BlockLevel++
-	FreeBlockVars(s)
-	s.BlockLevel--
-	// FreeBlockVars(s)
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()

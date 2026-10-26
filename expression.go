@@ -1300,7 +1300,7 @@ func ParseExpressions(s *State) ([]*ValueDef, error) {
 }
 
 // ParseBlock assumes that { has been consumed (by s.found())
-func ParseBlock(s *State, isTrue bool, noFree bool) error {
+func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
 		s.noCode++
 	}
@@ -1312,17 +1312,15 @@ func ParseBlock(s *State, isTrue bool, noFree bool) error {
 	if err != nil {
 		return err
 	}
+	DeleteBlockVars(s)
+	s.BlockLevel--
+	s.HasReturned = false
 	if isTrue {
 		s.noCode--
 		if s.noCode < 0 {
 			panic("negative noCode")
 		}
 	}
-	if !noFree {
-		DeleteBlockVars(s)
-	}
-	s.BlockLevel--
-	s.HasReturned = false
 	return nil
 }
 
@@ -1374,7 +1372,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 	}
 
 	// Parse stm1 in "if cond { stm1 } ..."
-	err := ParseBlock(s, value.IsTrue(), false)
+	err := ParseBlock(s, value.IsTrue())
 	if err != nil {
 		return err
 	}
@@ -1426,7 +1424,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				return fmt.Errorf("expected { after if but got %s", s.tokenString)
 			}
 			// Parsing 'else if' statements
-			err = ParseBlock(s, value.IsFalse(), false)
+			err = ParseBlock(s, value.IsFalse())
 			if err != nil {
 				return err
 			}
@@ -1443,7 +1441,7 @@ func ParseIfElse(s *State, value *ValueDef) error {
 			s.next()
 		} else if s.found(TOK_LBRACE) {
 			// Else without if
-			err = ParseBlock(s, value.IsFalse(), false)
+			err = ParseBlock(s, value.IsFalse())
 			if err != nil {
 				return err
 			}
