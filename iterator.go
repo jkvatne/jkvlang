@@ -135,10 +135,12 @@ func ParseFor(s *State) error {
 	if !s.found(TOK_LPAR) {
 		return fmt.Errorf("expected '(' but got %s", s.tokenString)
 	}
+	// Adjust local sp so variable get correct offset
+	// code.LocalSp += 1
+	AddLocalVar(s, rangeName, &StructType)
+	// code.LocalSp -= 1
 	code.NewArgCode()
 	// Call the range function
-	AddLocalVar(s, rangeName, &StructType)
-	// EmitAllocLocalVar("Assign stack space for " + rangeName)
 	results, err := ParseFuncCall(s, id, true)
 	StructType.StructSize = 8
 
@@ -174,19 +176,20 @@ func ParseFor(s *State) error {
 	}
 	EmitJumpTrue("r15", endLabel, "")
 
-	err = ParseBlock(s, false)
-
+	err = ParseStatements(s)
 	if err != nil {
 		return err
 	}
+
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
+	EmitComment("End of loop")
+	EmitLabel(endLabel, "")
 	PopLabels()
 	DeleteBlockVars(s)
-	// DeleteLocalVar(s, rangeName)
+	DeleteLocalVar(s, rangeName)
 	s.BlockLevel--
 	EmitReturnIfErr2(s.returnLbl)
 	// Clear err if it is 1 as this is used to signal break using pull iterators
@@ -199,13 +202,14 @@ func ParseFor(s *State) error {
 func ParseLoop(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
+	s.BlockLevel++
 	EmitLabel(startLabel, "Start of loop")
 	PushLabel(startLabel, endLabel)
 	if !s.found(TOK_LBRACE) {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
 	}
 	s.LoopLevel++
-	err := ParseBlock(s, false)
+	err := ParseStatements(s)
 	if err != nil {
 		return err
 	}
@@ -213,10 +217,14 @@ func ParseLoop(s *State) error {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
-	EmitLabel(endLabel, "Exit from loop")
+	EmitComment("End of loop")
+	EmitLabel(endLabel, "")
+
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
 	s.LoopLevel--
+	DeleteBlockVars(s)
+	s.BlockLevel--
 	return err
 }

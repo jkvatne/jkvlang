@@ -52,6 +52,7 @@ func UpdateType(value *ValueDef) error {
 // lvalue is the left side, and value the right side of the equal sign.
 // The op is already verified to be one of the assignment operators.
 func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
+	isNew := lvalue.Typ == nil
 	// Set lvalue type if not already set. Needed for new variables.
 	if lvalue.Typ == nil && value.Typ == nil && op == TOK_ASSIGN {
 		value.Typ, err = TypeFromConstValue(value)
@@ -77,7 +78,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 		return AssignVariableConst(op, lvalue, value)
 	}
 	// Assign evaluated value to local variable
-	err = AssignVariableExpression(op, lvalue, value)
+	err = AssignVariableExpression(op, lvalue, value, isNew)
 	code.SetSp()
 	return err
 }
@@ -150,16 +151,19 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	return fmt.Errorf("4 %s not implemented for %s", op.Name(), value.Typ.Name())
 }
 
-func AssignStruct(lvalue *VarDef) (err error) {
-	lbl := EmitCheckForOldStruct(lvalue.Offset)
-	err = FreeStruct(lvalue.Typ)
-	if err != nil {
-		return err
+func AssignStruct(lvalue *VarDef, isNew bool) (err error) {
+	if !isNew {
+		lbl := EmitCheckForOldStruct(lvalue.Offset)
+		err = FreeStruct(lvalue.Typ)
+		if err != nil {
+			return err
+		}
+		EmitLabel(lbl, "")
 	}
-	return EmitAssignVariableExpressionStruct(lbl, lvalue.Offset, "Assign struct to "+lvalue.Name)
+	return EmitAssignVariableExpressionStruct(lvalue.Offset, "Assign struct to "+lvalue.Name)
 }
 
-func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
+func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef, isNew bool) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
 			// Handle assigning a string expression to a string variable
@@ -177,7 +181,7 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		return EmitAssignVariableExpressionF32(op, lvalue.Offset, "Assign F32 to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_STRUCT && value.Typ.Pt == code.TYP_STRUCT && op == TOK_ASSIGN {
-		return AssignStruct(lvalue)
+		return AssignStruct(lvalue, isNew)
 	} else if lvalue.Typ.Pt == code.TYP_SLICE && value.Typ.Pt == code.TYP_SLICE && op == TOK_ASSIGN {
 		return EmitAssignVariableExpressionSlice(lvalue.Offset, "Assign struct to "+lvalue.Name)
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {

@@ -1741,8 +1741,7 @@ func EmitCheckForOldStruct(adr int) int {
 }
 
 // EmitAssignVariableExpressionStruct assigns rax to the variable given and frees old variable contents.
-func EmitAssignVariableExpressionStruct(lbl int, adr int, comment string) error {
-	EmitLabel(lbl, "")
+func EmitAssignVariableExpressionStruct(adr int, comment string) error {
 	emit("pop", "rax", "", "Get new struct")
 	emit("mov", BpRel(adr), "rax", "EmitStoreToLocal "+comment)
 	code.SetUndef()
