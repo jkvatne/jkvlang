@@ -20,12 +20,16 @@ func next(r RangeIterator) I32 {
 func main() {
 
     sum = 0
-    for j = range(2,5) {
-        sum+=j
-        print("j=%d  sum=%d", j, sum)
-        fflush()
+    for i = range(2,5) {
+        sum+=i
      }
     assert(sum==14, "Expected sum=14, go %d", sum)
+
+    sum = 0
+    for i = range(3,6) {
+        sum+=i
+     }
+    assert(sum==18, "Expected sum=18, go %d", sum)
 
     ra = range(10, 15)
     sum = 10

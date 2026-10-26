@@ -111,90 +111,87 @@ func ParseFor(s *State) error {
 	var err error
 	rangeName := "___range" + strconv.Itoa(rangeCount)
 	rangeCount++
-	if !s.found(TOK_LBRACE) {
-		s.BlockLevel++
-		s.LoopLevel++
-		lvalues, err = ParseLoopVars(s)
-		if err != nil {
-			return err
-		}
-		if len(lvalues) == 0 {
-			return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
-		}
-		if !s.found(TOK_ASSIGN) {
-			return fmt.Errorf("expected '=' but got %s", s.tokenString)
-		}
-		if s.token != TOK_ID {
-			return fmt.Errorf("expected function name but got %s", s.tokenString)
-		}
-		// Now parse the function returning the range
-		id, err2 := HandleImportedName(s)
-		if err2 != nil {
-			return err2
-		}
-
-		if !s.found(TOK_LPAR) {
-			return fmt.Errorf("expected '(' but got %s", s.tokenString)
-		}
-		code.NewArgCode()
-		// Call the range function
-		AddLocalVar(s, rangeName, &StructType)
-		EmitAllocLocalVar("Assign stack space for " + rangeName)
-		results, err := ParseFuncCall(s, id, true)
-		StructType.StructSize = 8
-
-		if err != nil {
-			return err
-		}
-		if len(results) != 1 {
-			return fmt.Errorf("expected a single state in for-loop")
-		}
-		code.OutputArgCode()
-		p := &ParDef{name: "rec", typ: &StructType}
-		fun := "next"
-		if strings.Contains(id, "@") {
-			pkg, _ := DeMangleFun(id)
-			if pkg != "" {
-				fun = MangleFun(pkg, fun)
-			}
-		}
-		f := FindFuncDefFromParList(fun, []*ParDef{p})
-		if f == nil {
-			return fmt.Errorf("range must have a next function")
-		}
-		lvalues[0].Typ = f.returnTypes[0]
-		VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
-
-		EmitLabel(startLabel, "Start of loop")
-
-		// Call the next function
-		EmitCall(f.label, 1, false)
-		// Assign result to loop variable
-		if !s.found(TOK_LBRACE) {
-			return fmt.Errorf("expected '{' but got %s", s.tokenString)
-		}
-		EmitJumpTrue("r15", endLabel, "")
-
-		err = ParseBlock(s, false)
-
-		if err != nil {
-			return err
-		}
-		if !s.found(TOK_RBRACE) {
-			return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
-		}
-		EmitJump(GetTopStartLabel(), "Jump to start of loop")
-		EmitLabel(endLabel, "Exit from loop")
-		PopLabels()
-		EmitPopAx("Pop address of loop state")
-
-		DeleteLocalVar(s, rangeName)
-		s.BlockLevel--
-		EmitReturnIfErr2(s.returnLbl)
-		// Clear err if it is 1 as this is used to signal break using pull iterators
-		EmitClearBreakErr()
-		s.LoopLevel--
+	s.BlockLevel++
+	s.LoopLevel++
+	lvalues, err = ParseLoopVars(s)
+	if err != nil {
+		return err
 	}
+	if len(lvalues) == 0 {
+		return fmt.Errorf("expected at least one variable in for loop, but got %s", s.tokenString)
+	}
+	if !s.found(TOK_ASSIGN) {
+		return fmt.Errorf("expected '=' but got %s", s.tokenString)
+	}
+	if s.token != TOK_ID {
+		return fmt.Errorf("expected function name but got %s", s.tokenString)
+	}
+	// Now parse the function returning the range
+	id, err2 := HandleImportedName(s)
+	if err2 != nil {
+		return err2
+	}
+
+	if !s.found(TOK_LPAR) {
+		return fmt.Errorf("expected '(' but got %s", s.tokenString)
+	}
+	code.NewArgCode()
+	// Call the range function
+	AddLocalVar(s, rangeName, &StructType)
+	// EmitAllocLocalVar("Assign stack space for " + rangeName)
+	results, err := ParseFuncCall(s, id, true)
+	StructType.StructSize = 8
+
+	if err != nil {
+		return err
+	}
+	if len(results) != 1 {
+		return fmt.Errorf("expected a single state in for-loop")
+	}
+	code.OutputArgCode()
+	p := &ParDef{name: "rec", typ: &StructType}
+	fun := "next"
+	if strings.Contains(id, "@") {
+		pkg, _ := DeMangleFun(id)
+		if pkg != "" {
+			fun = MangleFun(pkg, fun)
+		}
+	}
+	f := FindFuncDefFromParList(fun, []*ParDef{p})
+	if f == nil {
+		return fmt.Errorf("range must have a next function")
+	}
+	lvalues[0].Typ = f.returnTypes[0]
+	VarDefs[lvalues[0].Name].Typ = f.returnTypes[0]
+
+	EmitLabel(startLabel, "Start of loop")
+
+	// Call the next function
+	EmitCall(f.label, 1, false)
+	// Assign result to loop variable
+	if !s.found(TOK_LBRACE) {
+		return fmt.Errorf("expected '{' but got %s", s.tokenString)
+	}
+	EmitJumpTrue("r15", endLabel, "")
+
+	err = ParseBlock(s, false)
+
+	if err != nil {
+		return err
+	}
+	if !s.found(TOK_RBRACE) {
+		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
+	}
+	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+	EmitLabel(endLabel, "Exit from loop")
+	PopLabels()
+	DeleteBlockVars(s)
+	// DeleteLocalVar(s, rangeName)
+	s.BlockLevel--
+	EmitReturnIfErr2(s.returnLbl)
+	// Clear err if it is 1 as this is used to signal break using pull iterators
+	EmitClearBreakErr()
+	s.LoopLevel--
 	return err
 }
 

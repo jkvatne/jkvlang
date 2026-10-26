@@ -101,7 +101,6 @@ func DeleteLocalVar(s *State, id string) {
 			EmitLoad(8, v.Offset, "DeleteLocalVar slice "+v.Name)
 			EmitFreeSlice(v.Typ)
 		}
-		EmitPopAx("DeleteLocalVar:  " + v.Name)
 	}
 	delete(VarDefs, id)
 }
