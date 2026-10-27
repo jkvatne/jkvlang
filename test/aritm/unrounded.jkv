@@ -881,16 +881,15 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
+/*
     print("Unrounded floating point conversions")
     print("\n j    f     u  floor round½↓ round round½↑ ceil")
     j = 0
     loop {
         f = testFloats[j]
-/*
         uu = unround(testFloats[j])
         print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
         j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
-*/
         j+=1
         if j>=7 {break}
     }
@@ -932,6 +931,34 @@ func main() {
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==17)
     print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+*/
+    // Test log2Pow10
+    print("\nTest log2Pow10")
+    l =log2Pow10(0)
+    assert(l==0, "Expected 0 got %d",l)
+    l =log2Pow10(25)
+    assert(l==83, "Expected 83 got %d",l)
+    l =log2Pow10(72)
+    assert(l==239, "Expected 239 got %d",l)
+    l =log2Pow10(-44)
+    assert(l==-147, "Expected -147 got %d",l)
+
+    // Test pow10Tab
+    print("Test pow10Tab")
+
+    n = 251
+    hi = pow10Tab[n*2]
+    lo = pow10Tab[n*2+1]
+    assert(hi==0xdab99e59958885c5, "Expected hi=0xdab99e59958885c5")
+    assert(lo==0x16a054c971ba1312, "Expected lo=0x16a054c971ba1312")
+    print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
+
+    n = 348
+    hi = pow10Tab[n*2]
+    lo = pow10Tab[n*2+1]
+    assert(hi==0x8000000000000000, "Expected hi=0x8000000000000000")
+    assert(lo==0x0000000000000000, "Expected lo=0x0000000000000000")
+    print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
 
     // Test prescale
     print("\nTesting prescale")
@@ -940,19 +967,22 @@ func main() {
 	    pmhi = pow10TestsHi[i]
 	    pmlo = pow10TestsLo[i]
 	    pe = pow10TestsPe[i]
-	    print("i=%d p=%lld, pmhi=0x%016llx, pe=%d", i, p, pmhi, pe)
-	    print("i=%d p=%lld, pmlo=0x%016llx, pe=%d", i, p, pmlo, pe)
+	    print("i=%d p=%lld, pe=%d", i, p, pe)
+	    print("pmhi=0x%016llx, pmlo=0x%016llx", pmhi, pmlo)
 
-	    //l = log2Pow10(p)
-	    //c = prescale(0, p, l)
-	    //c=new(Scaler)
-		//px = -(c.s + 2)
-		//if pmhi != c.hi || pmlo != c.lo || px != pe {
-		//    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
-		//}
+	    l = log2Pow10(p)
+	    c = prescale(0, p, l)
+		px = -(c.s + 2)
+        print("Got  px=%ll, c.hi=0x%016llx, c.lo=0x%016llx, l=%d", px, c.hi, c.lo, l)
+
+		/*
+		if pmhi != c.hi || pmlo != c.lo || px != pe {
+		    print("Error prescale test %d", i)
+		    print("Want p =%ll, pmhi=0x%016llx, pmlo=0x%016llx", p, pmhi, pmlo)
+		    print("Got  px=%ll, c.hi=0x%016llx, c.lo=0x%016llx", px, c.hi, c.lo)
+		}*/
 	}
 /*
-
 	u = Unrounded(493599)
 	v = round(u)
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)

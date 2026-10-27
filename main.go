@@ -189,21 +189,19 @@ func main() {
 
 	// TestDecode()
 	// TestUnrounded()
-	fmt.Printf("0x%x\n", 0x8000000000000000-0xbc8955e946fe31ce)
 
 	flag.Parse()
 	// Set logger to not prepend any time/date
 	log.SetFlags(0)
 
 	wd, err := os.Getwd()
-	fmt.Printf("Starting jkv compiler version %s, in \"%s\"\n", Version, wd)
+	fmt.Printf("Starting jkv compiler %s, in '%s'\n", Version, wd)
 	if *sourceDir == "" {
 		*sourceDir = wd
 	}
 
 	exePath, _ := os.Executable()
 	exePath = filepath.ToSlash(exePath)
-	fmt.Printf("Executable path : %s\n", exePath)
 
 	libPath := path.Dir(exePath)
 	libPath = path.Join(libPath, "lib")

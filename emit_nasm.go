@@ -1146,6 +1146,12 @@ func EmitCompareIntegers(op Token, unsigned bool) (err error) {
 	return EmitJumpCond(op, unsigned)
 }
 
+func EmitCompareIntConst64(op Token, value string, unsigned bool) error {
+	emit("mov", "rbx", value, "")
+	emit("cmp", "rax", "rbx", "Compare int with 64bit const")
+	return EmitJumpCond(op, unsigned)
+}
+
 // EmitCompareIntConst will compare top of stack with a constant
 func EmitCompareIntConst(op Token, value int64, unsigned bool) error {
 	sval := strconv.FormatInt(value, 10)
