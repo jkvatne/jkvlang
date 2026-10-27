@@ -915,6 +915,7 @@ func main() {
 */
     // Test prescale
     i = 0
+/*
 	loop {
 	    p = pow10TestsP[i]
 	    pmhi = pow10TestsHi[i]
@@ -932,7 +933,6 @@ func main() {
 		i+=1
         if i>3 {break}
 	}
-/*
 	u = Unrounded(493599)
 	v = round(u)
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)
