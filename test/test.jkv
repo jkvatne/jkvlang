@@ -1,5 +1,83 @@
-// 0xdab99e59958885c5
+
+
+func len64(x U64) I32 {
+    n = 0
+    if x>=0x100000000 {
+        x = x >> 32
+        n+=32
+    }
+    if x>=0x10000 {
+        x = x>>16
+        n+=16
+    }
+    if x>=0x100 {
+        x = x>>8
+        n+=8
+    }
+    if x>= 0x10 {
+        x = x>>4
+        n+=4
+    }
+    if x>= 0x4 {
+        x = x>>2
+        n+=2
+    }
+    if x>=0x2 {
+        x = x>>1
+        n+=1
+    }
+    if x>=1 {
+        n+=1
+    }
+    return n
+}
+
+// unpack64 returns m, e such that f = m * 2**e.
+// The caller is expected to have handled 0, NaN, and ±Inf already.
+// To unpack a F32 f, use unpack64(F64(f)).
+func unpack64(f F64) (U64, I32) {
+    b = U64(f)
+    m = 0x8000000000000000 | (b&(1<<52-1))<<11
+	e = I32((b >> 52) & (1<<11 - 1))
+	if e == 0 {
+		m = m &^ 0x8000000000000000
+    	e = -1085
+		s = 64-len64(m)
+		m = m << s
+		e = e - s
+	} else {
+	    e = (e - 1) - 1085
+	}
+	return m,e
+}
+
+
 func main() {
-    hi = U64(0xdab99e59958885c5)
-    assert(hi==0xdab99e59958885c5, "Expected hi=0xdab99e59958885c5")
+    m = U64(0)
+    assert(len64(m)==0,"len(%d) was %d", m, len64(m))
+    m = U64(1)
+    assert(len64(m)==1,"len(%d) was %d", m, len64(m))
+    m = U64(3)
+    assert(len64(m)==2,"len(%d) was %d", m, len64(m))
+    m = U64(0xFF)
+    assert(len64(m)==8,"len(%d) was %d", m, len64(m))
+    m = U64(0x7FFF)
+    assert(len64(m)==15,"len(%d) was %d", m, len64(m))
+    m = U64(0xFFFFFFFFFFFFFFFF)
+    assert(len64(m)==64,"len(%d) was %d", m, len64(m))
+
+    /*
+    assert(len64(2)==2,"len(2)")
+    assert(len64(3)==2,"len(3)")
+
+    x = 1.75   // = 0x3ffc000000000000
+    m,e = unpack64(x)
+    assert(m==0xe000000000000000, "Error, got m=0x%016llx", m)
+    assert(e==-63, "Error, got e=%d", e)
+
+    x = 1.234
+    m,e = unpack64(x)
+    assert(m==9df3b645a1cac000, "Error, got m=0x%016llx", m)
+    assert(e==-63, "Error, got e=%d", e)
+*/
 }

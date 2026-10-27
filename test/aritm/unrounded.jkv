@@ -805,21 +805,54 @@ const (
 	F64_MIN_EXP I32 = -1085   // -(1074 + F64_SHIFT_EXP)
 )
 
+
+func len64(x U64) I32 {
+    n = 0
+    if x>=0x100000000 {
+        x = x >> 32
+        n+=32
+    }
+    if x>=0x10000 {
+        x = x>>16
+        n+=16
+    }
+    if x>=0x100 {
+        x = x>>8
+        n+=8
+    }
+    if x>= 0x10 {
+        x = x>>4
+        n+=4
+    }
+    if x>= 0x4 {
+        x = x>>2
+        n+=2
+    }
+    if x>=0x2 {
+        x = x>>1
+        n+=1
+    }
+    if x>=1 {
+        n+=1
+    }
+    return n
+}
+
 // unpack64 returns m, e such that f = m * 2**e.
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
 func unpack64(f F64) (U64, I32) {
-    m = 0x8000000000000000 | (uint64(f)&(1<<52-1))<<F64_SHIFT_EXP
-	e = I32((uint64(f) >> 52) & (1<<11 - 1))
+    b = U64(f)
+    m = 0x8000000000000000 | (b&(1<<52-1))<<11
+	e = I32((b >> 52) & (1<<11 - 1))
 	if e == 0 {
 		m = m &^ 0x8000000000000000
-    	e = I32((uint64(f) >> 52) & (1<<F64_SHIFT_EXP - 1))
-		s = 0
-		//s = 64 - bits.Len64(m)
+    	e = -1085
+		s = 64-len64(m)
 		m = m << s
 		e = e - s
 	} else {
-	    e = (e - 1) -1085
+	    e = (e - 1) - 1085
 	}
 	return m,e
 }
@@ -844,17 +877,17 @@ func FixedWidth(f F64, n I32) U64, I32 {
 		fail(202) // "too many digits"
 	}
 	m, e = unpack64(f)
-	print("\nFixedWidth f=%f, m=%llu e=%ld", f, m, e)
+	//print("\nFixedWidth f=%f, m=%llu e=%ld", f, m, e)
 	p = n - 1 - log10Pow2(e+63)
 	l = log2Pow10(p)
 	u = uscale(m, prescale(e, p, l))
 	d = round(u)
-	print("FixedWidth f=%f, n=%d, u=%llu, d=%llu >= pow10[n]=%llu", f, n, u, d, uint64pow10[n])
+	//print("FixedWidth f=%f, n=%d, u=%llu, d=%llu >= pow10[n]=%llu", f, n, u, d, uint64pow10[n])
 	if d >= uint64pow10[n] {
 		d = round(div(u, U64(10)))
 		p = p-1
 	}
-	print("f=%f, u=%llu, d=%llu", f, u, d)
+	//print("FixedWidth f=%f, u=%llu, d=%llu", f, u, d)
 	return d, -p
 }
 
@@ -881,15 +914,14 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-/*
-    print("Unrounded floating point conversions")
-    print("\n j    f     u  floor round½↓ round round½↑ ceil")
+    //print("Unrounded floating point conversions")
+    //print("\n j    f     u  floor round½↓ round round½↑ ceil")
     j = 0
     loop {
         f = testFloats[j]
         uu = unround(testFloats[j])
-        print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
-        j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
+        //print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
+        //j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
         j+=1
         if j>=7 {break}
     }
@@ -915,25 +947,23 @@ func main() {
     assert(u==15, "rsh(15.1)=%d", u)
 
     // Test nudge
-    print("\nTesting nudge")
-    print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
+    //print("\nTesting nudge")
+    //print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
     u = unround(15.0)
     assert(ufloor(nudge(u,-1))==14)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.1)
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==16)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.9)
     assert(ufloor(nudge(u,-1))==15)
-    print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(16.0)
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==17)
-    print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
-*/
-    // Test log2Pow10
-    print("\nTest log2Pow10")
+    //print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    // print("\nTest log2Pow10")
     l =log2Pow10(0)
     assert(l==0, "Expected 0 got %d",l)
     l =log2Pow10(25)
@@ -944,66 +974,88 @@ func main() {
     assert(l==-147, "Expected -147 got %d",l)
 
     // Test pow10Tab
-    print("Test pow10Tab")
-
     n = 251
     hi = pow10Tab[n*2]
     lo = pow10Tab[n*2+1]
     assert(hi==0xdab99e59958885c5, "Expected hi=0xdab99e59958885c5")
     assert(lo==0x16a054c971ba1312, "Expected lo=0x16a054c971ba1312")
-    print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
+    //print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
 
     n = 348
     hi = pow10Tab[n*2]
     lo = pow10Tab[n*2+1]
     assert(hi==0x8000000000000000, "Expected hi=0x8000000000000000")
     assert(lo==0x0000000000000000, "Expected lo=0x0000000000000000")
-    print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
+    //print("n=%d, hi=0x%016llx, lo=0x%016llx", n, hi, lo)
 
-    // Test prescale
-    print("\nTesting prescale")
+    // print("Testing prescale")
 	for i=range(0,3) {
 	    p = pow10TestsP[i]
 	    pmhi = pow10TestsHi[i]
 	    pmlo = pow10TestsLo[i]
 	    pe = pow10TestsPe[i]
-	    print("i=%d p=%lld, pe=%d", i, p, pe)
-	    print("pmhi=0x%016llx, pmlo=0x%016llx", pmhi, pmlo)
-
+	    // print("i=%d p=%lld, pe=%d", i, p, pe)
+	    // print("pmhi=0x%016llx, pmlo=0x%016llx", pmhi, pmlo)
 	    l = log2Pow10(p)
 	    c = prescale(0, p, l)
 		px = -(c.s + 2)
-        print("Got  px=%ll, c.hi=0x%016llx, c.lo=0x%016llx, l=%d", px, c.hi, c.lo, l)
-
-		/*
-		if pmhi != c.hi || pmlo != c.lo || px != pe {
-		    print("Error prescale test %d", i)
-		    print("Want p =%ll, pmhi=0x%016llx, pmlo=0x%016llx", p, pmhi, pmlo)
-		    print("Got  px=%ll, c.hi=0x%016llx, c.lo=0x%016llx", px, c.hi, c.lo)
-		}*/
+        //print("Got  px=%ll, c.hi=0x%016llx, c.lo=0x%016llx, l=%d", px, c.hi, c.lo, l)
+        assert(pmhi==c.hi, "Expected pmhi==c.hi")
+        assert(pmlo==c.lo, "Expected pmlo==c.lo")
+        assert(px==pe, "Expected px==pe")
 	}
-/*
+
 	u = Unrounded(493599)
 	v = round(u)
-	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)
+	assert(v==123400, "Expected round(493599)==123400, got %d", v)
+	// print("Unrounded(493599)=%d, round(u)=%d", u, v)
+
+    // Test len64()
+    m = U64(0)
+    assert(len64(m)==0,"len(%d) was %d", m, len64(m))
+    m = U64(1)
+    assert(len64(m)==1,"len(%d) was %d", m, len64(m))
+    m = U64(3)
+    assert(len64(m)==2,"len(%d) was %d", m, len64(m))
+    m = U64(0xFF)
+    assert(len64(m)==8,"len(%d) was %d", m, len64(m))
+    m = U64(0x7FFF)
+    assert(len64(m)==15,"len(%d) was %d", m, len64(m))
+    m = U64(0xFFFFFFFFFFFFFFFF)
+    assert(len64(m)==64,"len(%d) was %d", m, len64(m))
+
+    // Test unpack(f)
+    x = 1.75
+    m,e = unpack64(x)
+    assert(m==0xe000000000000000)
+    assert(e==-63)
+
+    f = 1.234
+  	m, e = unpack64(f)
+    assert(m==0x9df3b645a1cac000)
+    assert(e==-63)
 
     // Test FixedWidth
     print("")
     f = 1.234
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
-    //assert(m == 12340 && e == -4, "Error formating 1.234, m=%llu, e=%d", m, e)
+    //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    assert(m == 123400 && e == -5, "Error formating 1.234, m=%llu, e=%d", m, e)
+
     f = 1.234E14
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    assert(m == 123400 && e == 9, "Error formating 1.234E14, m=%llu, e=%d", m, e)
 
     f = 1.234E-14
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    assert(m == 123400 && e == -19, "Error formating 1.234E-14, m=%llu, e=%d", m, e)
 
     f = 1.234E-99
     m,e = FixedWidth(f, 6)
-    print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
+    assert(m == 123400 && e == -104, "Error formating 1.234E-99, m=%llu, e=%d", m, e)
 
-    */
+
 }

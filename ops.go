@@ -226,7 +226,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 		}
 	}
 	if op.IsCompare() {
-		if val1.Typ.Pt == code.TYP_U64 && val2.Typ.Pt == code.TYP_U64 {
+		if val1.Typ.Pt == code.TYP_U64 && val2.Typ.Pt == code.TYP_U64 || val2.Typ.Pt == code.TYP_I64 {
 			err = EmitCompareIntConst64(op, val2.StringValue, true)
 		} else if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			err = EmitCompareIntConst(op, int64(f2), false)

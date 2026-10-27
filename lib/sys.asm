@@ -334,6 +334,7 @@ _int64:
     mov [rsp+16], rax
     ret
 
+; uint64 will convert from a 64 bit float to a 64 bit signed integer.
 ; NB: Will not convert correctly for values >= 0x8000000000000000
 _uint64:
     mov rax, [rsp+8]

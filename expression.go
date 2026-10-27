@@ -710,7 +710,9 @@ func ParseTypeConversion(s *State, typ1 *TypeDef) (values []*ValueDef, err error
 		}
 	}
 
-	if CanAssign(typ1.Pt, value) {
+	if typ1.Pt.Size() == 8 && value.Typ.Pt == code.TYP_F64 {
+		value.Typ = typ1
+	} else if CanAssign(typ1.Pt, value) {
 		value.Typ = typ1
 	} else {
 		err = fmt.Errorf("can not convert from %s to %s", value.Typ.Pt.Name(), typ1.Pt.Name())
