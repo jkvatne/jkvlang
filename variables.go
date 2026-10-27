@@ -85,8 +85,11 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func DeleteLocalVar(s *State, id string) {
-	v := VarDefs[id]
+func DeleteLocalVar(s *State, id string) (err error) {
+	v, ok := VarDefs[id]
+	if !ok {
+		return fmt.Errorf("local variable '%s' is not defined", id)
+	}
 	if v != nil && v.Typ.Pt >= code.TYP_STRING && !v.Destroyed {
 		// Free variable
 		if v.Typ.Pt == code.TYP_STRING {
@@ -95,7 +98,7 @@ func DeleteLocalVar(s *State, id string) {
 		} else if v.Typ.Pt == code.TYP_STRUCT {
 			// Load local var pointer into rax
 			EmitLoad(8, v.Offset, "DeleteLocalVar struct "+v.Name)
-			FreeStruct(v.Typ)
+			err = FreeStruct(v.Typ)
 		} else if v.Typ.Pt == code.TYP_SLICE && !v.IsGlobal {
 			// Load local var pointer into rax
 			EmitLoad(8, v.Offset, "DeleteLocalVar slice "+v.Name)
@@ -103,15 +106,27 @@ func DeleteLocalVar(s *State, id string) {
 		}
 	}
 	delete(VarDefs, id)
+	return err
 }
 
-func FreeBlockVars(s *State) {
+func FreeBlockVars(s *State, keep bool) (err error) {
 	for _, v := range VarDefs {
 		if v.BlockLevel == s.BlockLevel {
-			DeleteLocalVar(s, v.Name)
+			if !keep {
+				err = DeleteLocalVar(s, v.Name)
+				if err != nil {
+					return err
+				}
+			}
 			EmitPopAx("FreeBlockVars:  " + v.Name)
+			if keep {
+				// This is a special case, used in break.
+				// We pop the stack but continue using the same LocalSp
+				code.LocalSp++
+			}
 		}
 	}
+	return err
 }
 
 func DeleteBlockVars(s *State) {

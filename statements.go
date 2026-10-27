@@ -69,9 +69,12 @@ func ParseReturn(s *State) error {
 	s.HasReturned = true
 	s.ParsingReturnValue = false
 	if s.LoopLevel >= 1 {
-		FreeBlockVars(s)
+		err := FreeBlockVars(s, false)
+		if err != nil {
+			return err
+		}
 		emit("mov", "r15", "2", "ParseReturn signal exit from function")
-		EmitJump(GetTopEndLabel(), "Break: Jump to end of loop")
+		EmitJump(GetTopEndLabel(), "Return: Jump to end of loop")
 	}
 	EmitJump(s.returnLbl, "Return")
 	return nil

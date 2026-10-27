@@ -18,18 +18,19 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-
     ra = range(10, 15)
     sum = 0
     loop {
         i = next(ra) else break
         sum+=i
+        print("i=%d sum=%d", i, sum)
     }
     assert(sum==75, "Expected sum==75, got %d", sum)
-
+    print("\nfor i=range(2,5)")
     sum = 0
     for i = range(2,5) {
         sum+=i
+        print("i=%d sum=%d", i, sum)
     }
     assert(sum==14, "Expected sum==14, got %d", sum)
 
