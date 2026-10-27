@@ -30,6 +30,25 @@ type State struct {
 	PackageName        string
 	IsPackage          bool
 	IsPkgFile          bool
+	LoopStack          []int
+}
+
+func (s *State) PushLoopBlock(n int) {
+	s.LoopStack = append(s.LoopStack, n)
+}
+
+func (s *State) PopLoopBlock() {
+	if len(s.LoopStack) == 0 {
+		panic("loop stack underflow")
+	}
+	s.LoopStack = s.LoopStack[:len(s.LoopStack)-1]
+}
+
+func (s *State) LoopBlock() int {
+	if len(s.LoopStack) == 0 {
+		return 0
+	}
+	return s.LoopStack[len(s.LoopStack)-1]
 }
 
 func NewState(SourceFileName string, PackageName string, isPkgFile bool) (*State, error) {
@@ -38,6 +57,7 @@ func NewState(SourceFileName string, PackageName string, isPkgFile bool) (*State
 	s.PackageName = PackageName
 	s.IsPackage = PackageName != "main"
 	s.IsPkgFile = isPkgFile
+	s.BlockLevel = 0
 	s.text, err = os.ReadFile(SourceFileName)
 	if err != nil {
 		return nil, fmt.Errorf("could not read source file '%s'", SourceFileName)

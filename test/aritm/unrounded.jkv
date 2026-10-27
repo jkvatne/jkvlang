@@ -1,3 +1,21 @@
+type RangeIterator = struct {
+    start I32
+    end I32
+}
+
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
 
 const (
 	pow10Min I32 = -348
@@ -840,7 +858,7 @@ func FixedWidth(f F64, n I32) U64, I32 {
 	return d, -p
 }
 
-/*
+/* This is the original go code. We translate that below into four separate arrays.
 var pow10Tests = []struct {p  int, pm pmHiLo, pe int}{
 	{0, pmHiLo{1 << 63, 0}, 1},
 	{25, pmHiLo{0x84595161401484a0, 0}, -44 + 128},
@@ -863,16 +881,20 @@ const FixedWidthTests F64arr = {
 const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
-/*
-    // print("\n    x           u    floor   round½↓  round round½↑  ceil")
+    print("Unrounded floating point conversions")
+    print("\n j    f     u  floor round½↓ round round½↑ ceil")
     j = 0
     loop {
         f = testFloats[j]
-        u = unround(testFloats[j])
-        // print("%d %9.3f %7d %7d %7d %7d %7d %7d", j, f, u, ufloor(u), roundHalfDown(u), round(u), roundHalfUp(u), ceil(u))
+/*
+        uu = unround(testFloats[j])
+        print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
+        j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
+*/
         j+=1
         if j>=7 {break}
     }
+
     assert(unround(6.0)==24, "Expected 24, got %d")
     assert(unround(6.25)==25, "Expected 25, got %d")
     assert(unround(6.50)==26, "Expected 26, got %d")
@@ -893,46 +915,44 @@ func main() {
     u = rsh(unround(15.1), 2)
     assert(u==15, "rsh(15.1)=%d", u)
 
-
     // Test nudge
     print("\nTesting nudge")
-    // print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
-    // for _, x := range []F64{15, 15.1, 15.9, 16} {
+    print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
     u = unround(15.0)
     assert(ufloor(nudge(u,-1))==14)
-    // print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.1)
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==16)
-    // print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(15.9)
     assert(ufloor(nudge(u,-1))==15)
-    // print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
     u = unround(16.0)
     assert(ufloor(nudge(u,-1))==15)
     assert(ceil(nudge(u, 1))==17)
-    // print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
-*/
+    print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+
     // Test prescale
-    i = 0
-/*
-	loop {
+    print("\nTesting prescale")
+	for i=range(0,3) {
 	    p = pow10TestsP[i]
 	    pmhi = pow10TestsHi[i]
 	    pmlo = pow10TestsLo[i]
 	    pe = pow10TestsPe[i]
-	    print("i=%d p=%lld, pmhi=0x%016llx, pmlo=0x%016llx, pe=%d", i, p, pmhi, pmlo, pe)
+	    print("i=%d p=%lld, pmhi=0x%016llx, pe=%d", i, p, pmhi, pe)
+	    print("i=%d p=%lld, pmlo=0x%016llx, pe=%d", i, p, pmlo, pe)
 
 	    //l = log2Pow10(p)
 	    //c = prescale(0, p, l)
-	    c=new(Scaler)
-		px = -(c.s + 2)
-		if pmhi != c.hi || pmlo != c.lo || px != pe {
-		    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
-		}
-		i+=1
-        if i>3 {break}
+	    //c=new(Scaler)
+		//px = -(c.s + 2)
+		//if pmhi != c.hi || pmlo != c.lo || px != pe {
+		//    print("Error i=%d \npow10(%d) = %llx, %llx, %llx \nwant         %llx, %llx, %llx", i,px, c.hi, c.lo, p, pmhi, pmlo)
+		//}
 	}
+/*
+
 	u = Unrounded(493599)
 	v = round(u)
 	print("Unrounded(493599)=%d, round(u)=%d\n", u, v)

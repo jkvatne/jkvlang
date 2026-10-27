@@ -355,7 +355,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			// New local variable,we don't yet know the type, so just use nil
 			lvalue = AddLocalVar(s, id, nil)
 			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
-			EmitAllocLocalVar("Assign stack space for " + id)
+			EmitAllocLocalVar("Assign stack space for " + id + " level=" + strconv.Itoa(s.BlockLevel))
 		} else {
 			break
 		}
@@ -1316,7 +1316,10 @@ func ParseBlock(s *State, isTrue bool) error {
 	if err != nil {
 		return err
 	}
-	DeleteBlockVars(s)
+	err = FreeBlockVars(s.BlockLevel)
+	if err != nil {
+		return err
+	}
 	s.BlockLevel--
 	s.HasReturned = false
 	if isTrue {
@@ -1629,7 +1632,10 @@ func ParseFuncDef(s *State) error {
 		EmitPopAx("Restore rax after freeing local variables")
 	}
 	// Free local variables on the stack
-	DeleteBlockVars(s)
+	err = FreeBlockVars(1)
+	if err != nil {
+		return err
+	}
 	EmitEpilogue(f.name)
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)

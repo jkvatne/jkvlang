@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jkvatne/jkv/code"
@@ -85,7 +86,7 @@ func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	return v
 }
 
-func DeleteLocalVar(s *State, id string) (err error) {
+func DeleteLocalVar(id string) (err error) {
 	v, ok := VarDefs[id]
 	if !ok {
 		return fmt.Errorf("local variable '%s' is not defined", id)
@@ -109,37 +110,41 @@ func DeleteLocalVar(s *State, id string) (err error) {
 	return err
 }
 
-func FreeBlockVars(s *State, keep bool) (err error) {
+// FreeBlockVarsNodelete frees all local variables with level higher or equal to the given level
+func FreeBlockVarsNodelete(level int) (err error) {
+	n := 0
 	for _, v := range VarDefs {
-		if v.BlockLevel == s.BlockLevel {
-			if !keep {
-				err = DeleteLocalVar(s, v.Name)
-				if err != nil {
-					return err
-				}
-			}
-			EmitPopAx("FreeBlockVars:  " + v.Name)
-			if keep {
-				// This is a special case, used in break.
-				// We pop the stack but continue using the same LocalSp
-				code.LocalSp++
+		if v.BlockLevel >= level {
+			// err = DeleteLocalVar(v.Name)
+			n++
+			if err != nil {
+				return err
 			}
 		}
+	}
+	if n > 0 {
+		EmitAddToSp(-n, "Free block vars for level "+strconv.Itoa(level))
+		code.LocalSp += n
 	}
 	return err
 }
 
-func DeleteBlockVars(s *State) {
+// FreeBlockVars frees all local variables with level higher or equal to the given level
+func FreeBlockVars(level int) (err error) {
 	n := 0
 	for _, v := range VarDefs {
-		if v.BlockLevel == s.BlockLevel {
-			DeleteLocalVar(s, v.Name)
+		if v.BlockLevel >= level {
+			err = DeleteLocalVar(v.Name)
 			n++
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if n > 0 {
-		EmitAddToSp(-n, "Delete block vars")
+		EmitAddToSp(-n, "Free block vars for level "+strconv.Itoa(level))
 	}
+	return err
 }
 
 func ParseStructType(s *State) (*TypeDef, error) {

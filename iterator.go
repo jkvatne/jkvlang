@@ -34,7 +34,8 @@ func GetTopEndLabel() int {
 }
 
 func ParseBreak(s *State) error {
-	err := FreeBlockVars(s, true)
+	b := s.LoopBlock()
+	err := FreeBlockVarsNodelete(b)
 	if err != nil {
 		return err
 	}
@@ -117,6 +118,7 @@ func ParseFor(s *State) error {
 	rangeCount++
 	s.BlockLevel++
 	s.LoopLevel++
+	s.PushLoopBlock(s.BlockLevel)
 	lvalues, err = ParseLoopVars(s)
 	if err != nil {
 		return err
@@ -182,7 +184,7 @@ func ParseFor(s *State) error {
 	if err != nil {
 		return err
 	}
-	err = FreeBlockVars(s, false)
+	err = FreeBlockVars(s.BlockLevel)
 	if err != nil {
 		return err
 	}
@@ -196,11 +198,12 @@ func ParseFor(s *State) error {
 	EmitComment("End of loop")
 	EmitLabel(endLabel, "")
 	PopLabels()
-	err = FreeBlockVars(s, false)
+	err = FreeBlockVars(s.BlockLevel)
 	if err != nil {
 		return err
 	}
 	s.BlockLevel--
+	s.PopLoopBlock()
 	EmitReturnIfErr2(s.returnLbl)
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
@@ -213,6 +216,7 @@ func ParseLoop(s *State) error {
 	startLabel := code.NewLabel()
 	endLabel := code.NewLabel()
 	s.BlockLevel++
+	s.PushLoopBlock(s.BlockLevel)
 	EmitLabel(startLabel, "Start of loop")
 	PushLabel(startLabel, endLabel)
 	if !s.found(TOK_LBRACE) {
@@ -226,21 +230,24 @@ func ParseLoop(s *State) error {
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
-	err = FreeBlockVars(s, false)
+	err = FreeBlockVars(s.BlockLevel)
 	if err != nil {
 		return err
 	}
 	EmitJump(GetTopStartLabel(), "Jump to start of loop")
+
+	// Note that we come here only from a break.
 	EmitComment("End of loop")
 	EmitLabel(endLabel, "")
 
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
 	PopLabels()
-	err = FreeBlockVars(s, false)
+	err = FreeBlockVars(s.BlockLevel)
 	if err != nil {
 		return err
 	}
+	s.PopLoopBlock()
 	s.LoopLevel--
 	s.BlockLevel--
 	return err
