@@ -64,10 +64,10 @@ func TestUnrounded() {
 	os.Exit(0)
 }
 
-var values = []float64{1.234e1, 1.9999e-44, 2e123}
+var values = []float64{1.234e1, 1.9999e-44, 2e123, 1e99, 1e-99, 1e100, 1e-100, 1.99e-99}
 
 func TestFormat() {
 	for i := 0; i < len(values); i++ {
-		fmt.Printf("%e\n", values[i])
+		fmt.Printf("%0.16e\n", values[i])
 	}
 }
