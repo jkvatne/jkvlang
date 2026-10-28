@@ -25,7 +25,7 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-/*
+
     r = new(RangeIterator)
     if r.start>r.end ? fail(1)
     x = r.start
@@ -36,7 +36,7 @@ func main() {
         sum+=i
     }
     assert(sum==14, "Expected sum==14, got %d", sum)
-*/
+
     ra = range(10, 15)
     sum = 0
     loop {
@@ -50,14 +50,12 @@ func main() {
         sum+=i
     }
     assert(sum==14, "Expected sum==14, got %d", sum)
-/*
 
     sum=0
     for i = range(2,7) {
         sum+=i
     }
-    assert(sum==21, "Expected sum==21, got %d", sum)
-
+    assert(sum==27, "Expected sum==27, got %d", sum)
 
     j=0
     sum=0
@@ -78,7 +76,7 @@ func main() {
     for i = range(12,15) {
         sum+=i
     }
-    assert(sum==68, "Expected sum==68, got %d", sum)
+    assert(sum==69, "Expected sum==69, got %d", sum)
 
 // This leaks. break not handled good enough
     ra = range(10, 15)
@@ -94,7 +92,7 @@ func main() {
     for i=range(5) {
         sum+=i
     }
-    assert(sum==14, "Expected sum==14, go %d", sum)
+    assert(sum==10, "Expected sum==10, go %d", sum)
 
     // Testing nested iterations
     sub = "-file="
@@ -116,6 +114,23 @@ func main() {
         id = ""
         id += ch
     }
-    */
 
+    for i=range(0, 1) {
+        for k=range(0, 3) {
+            print("i=%d, k=%d", i, k)
+            break
+        }
+        print("i=%d", i)
+    }
+
+    arg = "-file=asdfasdf"
+    ok = true
+    sub="-file="
+    for k=range(0, len(sub)-1) {
+        if arg[k]!=sub[k] {
+            ok = false
+            break
+        }
+    }
+    print("ok=%d", ok)
 }

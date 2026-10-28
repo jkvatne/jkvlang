@@ -18,10 +18,29 @@ func range(start I32, end I32) RangeIterator {
     return r
 }
 
-func main() {
-    for i=range(0, 1) {
-        for j=range(0, 3) {
+func has_prefix(s String, sub String) Bool {
+    ok = true
+    for j=range(0, len(sub)-1) {
+        if s[j]!=sub[j] {
+            ok = false
             break
         }
     }
+    return ok
+}
+
+func main() {
+    arg = "-file=asdfasdf"
+    ok = true
+    sub="-file="
+    for j=range(0, len(sub)-1) {
+        if arg[j]!=sub[j] {
+            ok = false
+            break
+        }
+    }
+    print("ok=%d", ok)
+    ok = has_prefix(arg, sub)
+    print("ok=%d", ok)
+
 }

@@ -118,7 +118,6 @@ func ParseFor(s *State) error {
 	rangeCount++
 	s.BlockLevel++
 	s.LoopLevel++
-	s.PushLoopBlock(s.BlockLevel)
 	lvalues, err = ParseLoopVars(s)
 	if err != nil {
 		return err
@@ -180,6 +179,8 @@ func ParseFor(s *State) error {
 	EmitJumpTrue("r15", endLabel, "")
 
 	s.BlockLevel++
+	s.PushLoopBlock(s.BlockLevel)
+
 	err = ParseStatements(s)
 	if err != nil {
 		return err
