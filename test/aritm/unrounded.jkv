@@ -911,14 +911,14 @@ func format_base10(u U64, w I32) String {
 func fmt(d U64, p I32, nd I32) String {
 	// Put digits into s
 	s = format_base10(d, nd)
-	print("s=%s", s)
+	print("1 s=%s", s)
 	// Move first digit up and insert decimal point.
 	s +='a'
-	print("s=%s", s)
+	print("2 s=%s", s)
 	for i=range(2,nd) {
 	    s[i]=s[i-1]
 	}
-	print("s=%s", s)
+	print("3 s=%s", s)
 	s[1]='.'
 	return s
 	/*

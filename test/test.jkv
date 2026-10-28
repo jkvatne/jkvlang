@@ -1,12 +1,12 @@
 
 func main() {
-    // EmitAppendVariableExpressionStrChar
-    v = "Hello"
-
-    v+='X'
-    assert(v=="HelloX", "Expected HelloX, got '%s'", v)
-
-    n = 'A'
-    v += n+1
-    assert(v=="HelloXB", "Expected HelloXB, got '%s'", v)
+    w = 5
+    a = new(String, w, w)
+	nd = w-1
+	loop {
+		a[nd] = 'X'
+		nd -= 1
+		if nd<0 ? break
+	}
+	print("a=%s", a)
 }

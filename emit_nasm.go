@@ -773,6 +773,14 @@ func EmitGetAddrOfLocal(ofs int) {
 	emit("push", "rax", "", "b")
 }
 
+func EmitSetStringLen() {
+	EmitAssertTosInRax("Before NewString")
+	emit("mov", "rbx", "rax", "SetStringLen() new str len from rax")
+	emit("mov", "rax", "[rsp]", "SetStringLen() get pointer to new string")
+	emit("add", "rbx", "[rax]", "SetStringLen()")
+	emit("mov", "[rax]", "rbx", "")
+}
+
 func EmitNewString() {
 	// Allocate string
 	EmitAssertTosInRax("Before NewString")

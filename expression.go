@@ -1041,7 +1041,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 		}
 		v, err1 := ParseExpression(s)
 		if err1 != nil {
-			return nil, err
+			return nil, err1
 		}
 		if v[0].IsConst {
 			f, err2 := StrToConst(v[0].StringValue)
@@ -1051,7 +1051,22 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			EmitPushConst(int64(f), "")
 		}
 		if t.Pt == code.TYP_STRING {
-			EmitNewString()
+			EmitNewString() // Leaves pointer in rax
+			if s.found(TOK_COMMA) {
+				v, err = ParseExpression(s)
+				if err != nil {
+					return nil, err
+				}
+				if v[0].IsConst {
+					f, err2 := StrToConst(v[0].StringValue)
+					if err2 != nil {
+						return nil, fmt.Errorf("invalid integer value: %s", value.StringValue)
+					}
+					EmitPushConst(int64(f), "Push size of string")
+				}
+				EmitSetStringLen()
+				EmitPopAx("Pop string length")
+			}
 		} else if t.Pt == code.TYP_SLICE {
 			EmitNewSlice(t.Element.Size())
 		}
