@@ -25,7 +25,7 @@ var (
 	clean        = flag.Bool("clean", false, "Set true to recompile all imports")
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
-	arg          = flag.String("arg", "", "Arguments to the compiled program when it is run")
+	arg          = flag.String("arg", "dummyarg", "Arguments to the compiled program when it is run")
 	cacheDir     = flag.String("cache", "./cache", "Cache directory")
 	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
 )

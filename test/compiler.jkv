@@ -169,6 +169,7 @@ func has_prefix(s String, sub String) Bool {
     }
     return ok
 }
+
 func substring(s String, start I32, end I32) String {
     t=new(String, end-start+1)
     for i=range(start, end) {
@@ -321,9 +322,12 @@ func main() {
 
     s = new(State)
     filename="-file=default.jkv"
-    for i=range(1, argc-1) {
+    print("argc=%d", argc)
+    for i=range(0, argc-1) {
+        print("arg %d is '%s'", i, args[i])
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
+/*
     print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
@@ -334,7 +338,6 @@ func main() {
     s.textSize = len(s.text)
     print("File size is %d bytes", s.textSize)
     ch = next_char(s)
-/*
     loop{
         nextToken(s)
         print("Token %d = '%s'", s.token, s.tokenString)
