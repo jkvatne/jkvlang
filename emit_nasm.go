@@ -773,12 +773,28 @@ func EmitGetAddrOfLocal(ofs int) {
 	emit("push", "rax", "", "b")
 }
 
+// EmitSetStringLen expects rax (or TOS) to be the new length.
+// NOS or [rsp] must point to the string.
 func EmitSetStringLen() {
 	EmitAssertTosInRax("Before NewString")
-	emit("mov", "rbx", "rax", "SetStringLen() new str len from rax")
-	emit("mov", "rax", "[rsp]", "SetStringLen() get pointer to new string")
-	emit("add", "rbx", "[rax]", "SetStringLen()")
-	emit("mov", "[rax]", "rbx", "")
+	// * ebx should contain the required extra length, f.ex. the length of the appended string
+	emit("mov", "rbx", "rax", "SetStringLen: New length into rbx")
+	emit("mov", "r14", "rax", "SetStringLen: New length into r14")
+	// * rsi should point to the old string, so [rsi] is the old len/cap
+	emit("mov", "rsi", "[rsp]", "SetStringLen() get pointer to existing string")
+	// Set old length to 0
+	emit("mov", "rax", "[rsi]", "")
+	emit("xor", "eax", "eax", "")
+	emit("mov", "[rsi]", "rax", "")
+	// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32
+	// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
+	ExtendStringCapacity(8)
+	// * At exit, rdi points to the first empty character of the new string (ready for move)
+	// * At exit, rdx points to the extended string's len/cap or the old string's len/cap
+	// * At exit, rsi points to the new string's len/cap
+	emit("mov", "rax", "[rsi]", "SetStringLen()")
+	emit("add", "rax", "r14", "")
+	emit("mov", "[rsi]", "rax", "")
 }
 
 func EmitNewString() {

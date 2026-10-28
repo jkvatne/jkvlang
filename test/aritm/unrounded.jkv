@@ -894,7 +894,7 @@ func fixed_width(f F64, n I32) U64, I32 {
 
 // format_base10 will return a string with length w
 func format_base10(u U64, w I32) String {
-    a = new(String, w, w+1)
+    a = new(String, w+8, w)
 	nd = w-1
 	loop {
 		a[nd] = U8(u%10 + '0')
@@ -1124,10 +1124,10 @@ func main() {
         f = values[i]
         n = 16
         m,e = fixed_width(f, n)
-        print("m=%lld, e=%d", m, e)
+        print("i=%d m=%lld, e=%d", i, m, e)
         s = fmt(m, e, n)
         t = format(f, n-1)  // 17 digts -> 16 decimals
-        print("i=%d, f=%0.15e, fmt=%s  format=%s", i, f, s, t)
+        print("i=%d, f=%0.15e, format=%s", i, f, t)
     }
 
 }

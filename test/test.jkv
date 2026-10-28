@@ -1,13 +1,83 @@
+type RangeIterator = struct {
+    start I32
+    end I32
+}
 
-func main() {
-    w = 5
-    a = new(String, w, w)
+func range(start I32, end I32) RangeIterator {
+    r = new(RangeIterator)
+    r.start = start
+    r.end = end
+    return r
+}
+
+func next(r RangeIterator) I32 {
+    if r.start>r.end ? fail(1)
+    x = r.start
+    r.start = x+1
+    return x
+}
+
+// format_base10 will return a string with length w
+func format_base10(u U64, w I32) String {
+    a = new(String, w, w+64)
 	nd = w-1
 	loop {
-		a[nd] = 'X'
+		a[nd] = U8(u%10 + '0')
+		u = u/10
 		nd -= 1
 		if nd<0 ? break
+    }
+	return a
+}
+
+func fmt(d U64, p I32, nd I32) String {
+	// Put digits into s
+	s = format_base10(d, nd)
+	p += nd - 1
+	// Move first digit up and insert decimal point.
+	i = nd
+	loop {
+	    s[i+1]=s[i]
+	    i-=1
+	    if i<0 ? break
 	}
-	print("a=%s", a)
+	s[1]='.'
+	// Add 2- or 3-digit exponent.
+	s += 'e'
+	if p < 0 {
+		s +='-'
+		p = -p
+	} else {
+		s+= '+'
+	}
+	// Allways three digts exponent
+    s+="   "
+    j=len(s)-1
+    s[j] = U8(p%10 + '0')
+    j-=1
+    p = p/10
+    s[j] = U8(p%10 + '0')
+    j-=1
+    p = p/10
+    s[j] = U8(p%10 + '0')
+	return s
+}
+
+
+func format(f F64, dp I32) String {
+    dp+=1
+    //m,e = fixed_width(f, dp)
+    m = U64(1234)
+    e = 44
+    s = fmt(m, e, dp)
+    return s
+}
+
+func main() {
+    for i=range(0, 15) {
+        f = 1.2345
+        t = format(f, 14)
+        print("i=%d, f=%0.15e, format=%s", i, f, t)
+    }
 }
 
