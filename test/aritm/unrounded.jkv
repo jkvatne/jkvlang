@@ -870,26 +870,45 @@ func log10Pow2(x I32) I32 {
 	return (x * 78913) >> 18
 }
 
-// FixedWidth returns the n-digit decimal form of f as d * 10**p.
+// fixed_width returns the n-digit decimal form of f as d * 10**p.
 // n can be at most 18.
-func FixedWidth(f F64, n I32) U64, I32 {
+func fixed_width(f F64, n I32) U64, I32 {
 	if n > 18 {
 		fail(202) // "too many digits"
 	}
 	m, e = unpack64(f)
-	//print("\nFixedWidth f=%f, m=%llu e=%ld", f, m, e)
+	//print("\nfixed_width f=%f, m=%llu e=%ld", f, m, e)
 	p = n - 1 - log10Pow2(e+63)
 	l = log2Pow10(p)
 	u = uscale(m, prescale(e, p, l))
 	d = round(u)
-	//print("FixedWidth f=%f, n=%d, u=%llu, d=%llu >= pow10[n]=%llu", f, n, u, d, uint64pow10[n])
+	//print("fixed_width f=%f, n=%d, u=%llu, d=%llu >= pow10[n]=%llu", f, n, u, d, uint64pow10[n])
 	if d >= uint64pow10[n] {
 		d = round(div(u, U64(10)))
 		p = p-1
 	}
-	//print("FixedWidth f=%f, u=%llu, d=%llu", f, u, d)
+	//print("fixed_width f=%f, u=%llu, d=%llu", f, u, d)
 	return d, -p
 }
+
+// format_base10 will return a string with length w
+func format_base10(u U64, w I32) String {
+    a = new(String, w)
+	//for nd := len(a) - 1; nd >= 0; nd-- {
+	nd = w-1
+	loop {
+		a[nd] = U8(u%10 + '0')
+		u = u/10
+		nd -= 1
+		if nd<0 {
+		    break
+		}
+	}
+	return a
+}
+
+
+//========================  TESTS ====================================================================
 
 /* This is the original go code. We translate that below into four separate arrays.
 var pow10Tests = []struct {p  int, pm pmHiLo, pe int}{
@@ -907,19 +926,15 @@ const pow10TestsPe I32arr = {                 1,                 84,            
 
 type F64arr = []F64
 
-const FixedWidthTests F64arr = {
-    1.2345, 12e3, 123e-6,
-}
-
-const testFloats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+const test_floats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 
 func main() {
     //print("Unrounded floating point conversions")
     //print("\n j    f     u  floor round½↓ round round½↑ ceil")
     j = 0
     loop {
-        f = testFloats[j]
-        uu = unround(testFloats[j])
+        f = test_floats[j]
+        uu = unround(test_floats[j])
         //print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
         //j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
         j+=1
@@ -1035,27 +1050,29 @@ func main() {
     assert(m==0x9df3b645a1cac000)
     assert(e==-63)
 
-    // Test FixedWidth
+    // Test fixed_width
     print("")
     f = 1.234
-    m,e = FixedWidth(f, 6)
+    m,e = fixed_width(f, 6)
     //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     assert(m == 123400 && e == -5, "Error formating 1.234, m=%llu, e=%d", m, e)
 
     f = 1.234E14
-    m,e = FixedWidth(f, 6)
+    m,e = fixed_width(f, 6)
     //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     assert(m == 123400 && e == 9, "Error formating 1.234E14, m=%llu, e=%d", m, e)
 
     f = 1.234E-14
-    m,e = FixedWidth(f, 6)
+    m,e = fixed_width(f, 6)
     //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     assert(m == 123400 && e == -19, "Error formating 1.234E-14, m=%llu, e=%d", m, e)
 
     f = 1.234E-99
-    m,e = FixedWidth(f, 6)
+    m,e = fixed_width(f, 6)
     //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     assert(m == 123400 && e == -104, "Error formating 1.234E-99, m=%llu, e=%d", m, e)
 
 
+    s = format_base10(U64(12345), 5)
+    print("format_base10(12345, 5)=%s", s)
 }
