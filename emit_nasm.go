@@ -784,7 +784,8 @@ func EmitSetStringLen() {
 	emit("mov", "rsi", "[rsp]", "SetStringLen() get pointer to existing string")
 	// Set old length to 0
 	emit("mov", "rax", "[rsi]", "")
-	emit("xor", "eax", "eax", "")
+	emit("shr", "rax", "32", "")
+	emit("shl", "rax", "32", "")
 	emit("mov", "[rsi]", "rax", "")
 	// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32
 	// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
@@ -1878,7 +1879,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	lbl1 := code.NewLabel()
 	lbl2 := code.NewLabel()
 	lbl3 := code.NewLabel()
-	emit("mov", "rdx", "rsi", "Save pointer to string")
+	emit("mov", "rdx", "rsi", "ExtendStringCapacity: Save pointer to string")
 	// Check if old string was nil.
 	emit("mov", "rax", "rbx", "")
 	emit("or", "rsi", "rsi", "")

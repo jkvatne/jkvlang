@@ -1065,7 +1065,8 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 					EmitPushConst(int64(f), "Push size of string")
 				}
 				EmitSetStringLen()
-				EmitPopAx("Pop string length")
+				EmitPopAx("")
+				emit("mov", "rax", "rsi", "")
 			}
 		} else if t.Pt == code.TYP_SLICE {
 			EmitNewSlice(t.Element.Size())

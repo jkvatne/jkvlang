@@ -189,7 +189,7 @@ func main() {
 
 	// TestDecode()
 	// TestUnrounded()
-	TestFormat()
+	// TestFormat()
 
 	flag.Parse()
 	// Set logger to not prepend any time/date
