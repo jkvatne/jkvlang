@@ -893,8 +893,7 @@ func fixed_width(f F64, n I32) U64, I32 {
 
 // format_base10 will return a string with length w
 func format_base10(u U64, w I32) String {
-    a = new(String, w)
-	//for nd := len(a) - 1; nd >= 0; nd-- {
+    a = new(String, w, w+1)
 	nd = w-1
 	loop {
 		a[nd] = U8(u%10 + '0')
@@ -911,35 +910,34 @@ func format_base10(u U64, w I32) String {
 func fmt(d U64, p I32, nd I32) String {
 	// Put digits into s
 	s = format_base10(d, nd)
-	print("1 s=%s", s)
+	p += nd - 1
 	// Move first digit up and insert decimal point.
-	s +='a'
-	print("2 s=%s", s)
-	for i=range(2,nd) {
-	    s[i]=s[i-1]
+	i = nd
+	loop {
+	    s[i+1]=s[i]
+	    i-=1
+	    if i<0 ? break
 	}
-	print("3 s=%s", s)
 	s[1]='.'
-	return s
-	/*
 	// Add 2- or 3-digit exponent.
 	s += 'e'
 	if p < 0 {
-		s[n+1] = '-'
+		s +='-'
 		p = -p
 	} else {
-		s[n+1] = '+'
+		s+= '+'
 	}
-	if p < 100 {
-		s[n+2] = i2a[p*2]
-		s[n+3] = i2a[p*2+1]
-		return n + 4
-	}
-	s[n+2] = byte('0' + p/100)
-	s[n+3] = i2a[(p%100)*2]
-	s[n+4] = i2a[(p%100)*2+1]
-	return n + 5
-	*/
+	// Allways three digts exponent
+    s+="   "
+    j=len(s)-1
+    s[j] = U8(p%10 + '0')
+    j-=1
+    p = p/10
+    s[j] = U8(p%10 + '0')
+    j-=1
+    p = p/10
+    s[j] = U8(p%10 + '0')
+	return s
 }
 
 //========================  TESTS ====================================================================
@@ -961,6 +959,7 @@ const pow10TestsPe I32arr = {                 1,                 84,            
 type F64arr = []F64
 
 const test_floats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
+const values F64arr = {1.234e1, 1.9999e-44, 2e123, 1e99, 1e-99, 1e100, 1e-100, 1.99e-99}
 
 func main() {
     //print("Unrounded floating point conversions")
@@ -1109,9 +1108,12 @@ func main() {
     s = format_base10(U64(12345), 5)
     print("format_base10(12345, 5)=%s", s)
 
-    f = 1.234E14
-    m,e = fixed_width(f, 6)
-    s = fmt(m, e, 6)
-    print("fmt=%s", s)
+    print("----------")
+    for i=range(0, 7) {
+        f = values[i]
+        m,e = fixed_width(f, 5)
+        s = fmt(m, e, 5)
+        print("i=%d, f=%0.4e, fmt=%s", i, f, s)
+    }
 
 }
