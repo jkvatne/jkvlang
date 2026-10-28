@@ -1814,6 +1814,10 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 			} else {
 				lit.FloatValues = append(lit.FloatValues, num)
 			}
+		} else if typ.Element.Pt == code.TYP_STRING {
+			str := s.tokenString
+			n := AddLiteral(str)
+			lit.StringValues = append(lit.StringValues, n)
 		} else {
 			return fmt.Errorf("slice lteral with wrong element type")
 		}

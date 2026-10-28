@@ -31,7 +31,7 @@ type SliceLit struct {
 	UintValues   []uint64
 	FloatValues  []float64
 	BoolValues   []bool
-	StringValues []string
+	StringValues []int
 }
 
 var (

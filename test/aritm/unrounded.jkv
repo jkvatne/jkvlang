@@ -967,9 +967,13 @@ const pow10TestsLo U64arr = {                 0,                  0, 0x4376AA16B
 const pow10TestsPe I32arr = {                 1,                 84,                240,               -146}
 
 type F64arr = []F64
+type StringArr = []String
 
 const test_floats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 const values F64arr = {1.234e1, 1.9999e-44, 2e123, 1e99, 1e-99, 1e100, 1e-100, 1.99e-99}
+const results StringArr = {"1.234000000000000e+001", "1.999900000000000e-044", "2.000000000000000e+123",
+ "9.999999999999999e+098", "1.000000000000000e-099", "1.000000000000000e+100", "1.000000000000000e-100",
+  "1.989999999999999e-099"}
 
 func main() {
     //print("Unrounded floating point conversions")
@@ -1121,13 +1125,9 @@ func main() {
     print("----------")
     // In general, 17 digits are always enough to uniquely identify a float64
     for i=range(0, 7) {
-        f = values[i]
-        n = 16
-        m,e = fixed_width(f, n)
-        print("i=%d m=%lld, e=%d", i, m, e)
-        s = fmt(m, e, n)
-        t = format(f, n-1)  // 17 digts -> 16 decimals
-        print("i=%d, f=%0.15e, format=%s", i, f, t)
+        s = format(values[i], 16)  // 17 digts -> 16 decimals
+        print("i=%d, format=%s", i, s)
+        assert(s==results[i], "Expected %s, got %s", results[i], s)
     }
 
 }

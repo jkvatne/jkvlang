@@ -139,6 +139,10 @@ func EmitSliceLit(l SliceLit) {
 		for _, v := range l.FloatValues {
 			code.Write(sizeName + " " + strconv.FormatFloat(v, 'e', -1, 64) + "\n")
 		}
+	} else if len(l.StringValues) > 0 {
+		for _, v := range l.StringValues {
+			code.Write("dq str" + strconv.Itoa(v) + "\n")
+		}
 	} else {
 		panic("EmitSliceLit failed")
 	}
