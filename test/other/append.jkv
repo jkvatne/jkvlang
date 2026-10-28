@@ -14,14 +14,14 @@ func main() {
     w = "World"
     v += w
     assert(v=="HelloWorld", "Expected v=HelloWorld, got '%s'", v)
-/*
+
     //=============================================
     // Test EmitAppendVariableConstStrStr
     //=============================================
     s =  "aaa"
     s += "xxx"
-
     assert(s=="aaaxxx", "Expected 'sssxxx', got %s", s)
+
     //=============================================
     // Test EmitAppendIndirectExpressionStrStr
     //=============================================
@@ -29,6 +29,7 @@ func main() {
     w = "Vatne"
     p.name+=w
     assert(p.name=="JanVatne", "Expected p.name=JanVatne, got '%s'", p.name)
+
     //=============================================
     // Test EmitAppendIndirectConstStrStr
     //=============================================
@@ -63,28 +64,18 @@ func main() {
     v += n+1
     assert(v=="HelloWorldB", "Expected p.name=HelloWorldB, got '%s'", v)
 
-
     b = ""
     b += 'H'
     assert(b=="H", "Expected b='H', got '%s'", b)
     b += 'G'
     assert(b=="HG", "Expected b='HG', got '%s'", b)
 
-
     v += 'e'
     assert(v=="HelloWorldBe", "Expected v='HelloWorldBe', got '%s'", v)
-
 
     ch = 'e'
     v += ch
     assert(v=="HelloWorldBee", "Expected v='HelloWorldBee', got '%s'", v)
-
-    //=============================================
-    // Test EmitAppendIndirectExpressionStrChar
-    //=============================================
-    ch = U8(0x58)
-    p.name += ch
-    assert(p.name=="Vatne VatneX", "Expected p.name=='VatneX', got '%s'", p.name)
 
     //=============================================
     // EmitAppendIndirectConstStrChar
@@ -101,6 +92,12 @@ func main() {
     p.name += 'X'
     assert(p.name=="JanXXXXXXX", "Expected p.name='JanXXXXXXX', got '%s'", p.name)
 
+    //=============================================
+    // Test EmitAppendIndirectExpressionStrChar
+    //=============================================
+    ch = U8(0x58)
+    p.name += ch
+    assert(p.name=="JanXXXXXXXX", "Expected p.name=='JanXXXXXXXX', got '%s'", p.name)
 
     //=============================================
     // Concatenate two literals
@@ -148,5 +145,5 @@ func main() {
     id += '0'
     id += '1'  // Fails nr 21. Free string panics.
     assert(id=="123456789012345678901", "Expected 123456789012345678901, got %s", id)
-    */
+
 }

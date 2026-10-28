@@ -140,7 +140,8 @@ func CanAssign(dst code.PrimaryType, value *ValueDef) bool {
 			dst == code.TYP_I32 && f >= -2147483648 && f <= 2147483647 ||
 			dst == code.TYP_U32 && f >= 0 && f <= 4294967296 ||
 			dst == code.TYP_I64 && f >= -9223372036854775808 && f <= 9223372036854775807 ||
-			dst == code.TYP_U64 && f >= 0 && f <= 18446744073709551615
+			dst == code.TYP_U64 && f >= 0 && f <= 18446744073709551615 ||
+			dst == code.TYP_STRING && f >= 0 && f <= 255
 	}
 
 	if value.Typ.Pt.IsInteger() && dst == code.TYP_STRING {

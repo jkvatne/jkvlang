@@ -1,46 +1,12 @@
 
-type RangeIterator = struct {
-    start I32
-    end I32
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func has_prefix(s String, sub String) Bool {
-    ok = true
-    for j=range(0, len(sub)-1) {
-        if s[j]!=sub[j] {
-            ok = false
-            break
-        }
-    }
-    return ok
-}
-
 func main() {
-    arg = "-file=asdfasdf"
-    ok = true
-    sub="-file="
-    for j=range(0, len(sub)-1) {
-        if arg[j]!=sub[j] {
-            ok = false
-            break
-        }
-    }
-    print("ok=%d", ok)
-    ok = has_prefix(arg, sub)
-    print("ok=%d", ok)
+    // EmitAppendVariableExpressionStrChar
+    v = "Hello"
 
+    v+='X'
+    assert(v=="HelloX", "Expected HelloX, got '%s'", v)
+
+    n = 'A'
+    v += n+1
+    assert(v=="HelloXB", "Expected HelloXB, got '%s'", v)
 }

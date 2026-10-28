@@ -900,13 +900,47 @@ func format_base10(u U64, w I32) String {
 		a[nd] = U8(u%10 + '0')
 		u = u/10
 		nd -= 1
-		if nd<0 {
-		    break
-		}
+		if nd<0 ? break
 	}
 	return a
 }
 
+// fmt() formats d, p into s in exponential notation.
+// The caller must pass nd set to the number of digits in d.
+// It returns the number of bytes written to s.
+func fmt(d U64, p I32, nd I32) String {
+	// Put digits into s
+	s = format_base10(d, nd)
+	print("s=%s", s)
+	// Move first digit up and insert decimal point.
+	s +='a'
+	print("s=%s", s)
+	for i=range(2,nd) {
+	    s[i]=s[i-1]
+	}
+	print("s=%s", s)
+	s[1]='.'
+	return s
+	/*
+	// Add 2- or 3-digit exponent.
+	s += 'e'
+	if p < 0 {
+		s[n+1] = '-'
+		p = -p
+	} else {
+		s[n+1] = '+'
+	}
+	if p < 100 {
+		s[n+2] = i2a[p*2]
+		s[n+3] = i2a[p*2+1]
+		return n + 4
+	}
+	s[n+2] = byte('0' + p/100)
+	s[n+3] = i2a[(p%100)*2]
+	s[n+4] = i2a[(p%100)*2+1]
+	return n + 5
+	*/
+}
 
 //========================  TESTS ====================================================================
 
@@ -1072,7 +1106,12 @@ func main() {
     //print("f=%0.6e, m=%5lld, e=%ld", f, m, e)
     assert(m == 123400 && e == -104, "Error formating 1.234E-99, m=%llu, e=%d", m, e)
 
-
     s = format_base10(U64(12345), 5)
     print("format_base10(12345, 5)=%s", s)
+
+    f = 1.234E14
+    m,e = fixed_width(f, 6)
+    s = fmt(m, e, 6)
+    print("fmt=%s", s)
+
 }
