@@ -74,6 +74,9 @@ func LiteralInit() {
 	// Str0 should allways be the empty string
 	AddLiteral("")
 	F64LiteralDefs = make([]float64, 0, 20)
+	F32LiteralDefs = make([]float32, 0, 20)
+	StringLiteralDefs = make([]string, 0, 20)
+	SliceLiteralDefs = make([]*SliceLit, 0, 20)
 }
 
 func AddF64Lit(value float64) int {
