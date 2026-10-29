@@ -314,6 +314,19 @@ func OutputEpilogue(s *State) error {
 	return nil
 }
 
+func doCompileDir(cfg *Config, name string, inp string) error {
+	inputFiles, err := os.ReadDir(inp)
+	if err == nil && len(inputFiles) != 0 {
+		outp := cfg.CachePath + "/" + Mangle(name)
+		err = os.MkdirAll(outp, os.ModePerm)
+		if err != nil {
+			return err
+		}
+		err = CompileDir(cfg, inp, outp, GetPkgName(name))
+	}
+	return err
+}
+
 // CompileDir will compile a package in the given directory.
 // The package can consist of several source code files.
 // The output is a single assembly file in the buildDir
@@ -336,9 +349,6 @@ func CompileDir(cfg *Config, ip string, op string, pn string) error {
 		for _, inputFile := range inputFiles {
 			if !inputFile.IsDir() {
 				fileName := filepath.Join(inputPath, inputFile.Name())
-				if err != nil {
-					return fmt.Errorf("could not open directory, %v", err.Error())
-				}
 				s, err = NewState(cfg, fileName, packageName, false)
 				if err != nil {
 					return err
@@ -367,33 +377,11 @@ func CompileDir(cfg *Config, ip string, op string, pn string) error {
 			// First compile system packages
 			for _, name := range MissingPackages {
 				inp := cfg.LibPath + "/imports/" + Mangle(name)
-				inputFiles, err = os.ReadDir(inp)
-				if err == nil && len(inputFiles) != 0 {
-					outp := cfg.CachePath + "/" + Mangle(name)
-					err = os.MkdirAll(outp, os.ModePerm)
-					if err != nil {
-						return err
-					}
-					err = CompileDir(cfg, inp, outp, GetPkgName(name))
-					if err != nil {
-						return err
-					}
-				}
+				err = doCompileDir(cfg, name, inp)
 			}
 			for _, name := range MissingPackages {
 				inp := cfg.ImportPath + "/" + Mangle(name)
-				inputFiles, err = os.ReadDir(inp)
-				if err == nil && len(inputFiles) != 0 {
-					outp := cfg.CachePath + "/" + Mangle(name)
-					err = os.MkdirAll(outp, os.ModePerm)
-					if err != nil {
-						return err
-					}
-					err = CompileDir(cfg, inp, outp, GetPkgName(name))
-					if err != nil {
-						return err
-					}
-				}
+				err = doCompileDir(cfg, name, inp)
 			}
 			err = nil
 		} else {
@@ -433,7 +421,7 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
-					Run(outputName)
+					err = Run(outputName)
 				}
 			}
 		} else {
@@ -482,22 +470,3 @@ func CompileFile(cfg *Config, fileName string) error {
 	}
 	return nil
 }
-
-/*
-func CompileLib(cfg *Config) error {
-	entries, err := os.ReadDir(cfg.LibPath)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			name := entry.Name()
-			err = CompileDir(cfg, cfg.LibPath+"/"+name, name)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-*/
