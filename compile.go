@@ -100,9 +100,6 @@ func ParseImports(s *State) error {
 		err = ParseImport(s)
 	}
 
-	cwd, _ := os.Getwd()
-	fmt.Println(cwd)
-
 	// Check that we have cloned all the needed packages into the imports directory
 	MissingPackages = []string{}
 	for _, fullName := range ImportedPackages {
@@ -320,84 +317,79 @@ func OutputEpilogue(s *State) error {
 // CompileDir will compile a package in the given directory.
 // The package can consist of several source code files.
 // The output is a single assembly file in the buildDir
-func CompileDir(cfg *Config, inputPath string, outputPath string, packageName string) error {
+func CompileDir(cfg *Config, ip string, op string, pn string) error {
 	var s *State
-	var f *os.File
-	inputFiles, err := os.ReadDir(inputPath)
-	if err != nil {
-		return fmt.Errorf("CompileDir() could not open source directory, %v", err.Error())
-	}
-	count := 0
-	for count == 0 && err == nil {
+	inputPath := ip
+	outputPath := op
+	packageName := pn
+	// Repeat if some imports were missing
+	for {
 		fmt.Printf(">>> Compiling package %s\n", inputPath)
+		inputFiles, err := os.ReadDir(inputPath)
+		if err != nil {
+			return fmt.Errorf("CompileDir() could not open source directory, %v", err.Error())
+		}
 		err = InitCompile(outputPath, packageName)
-
 		if err != nil {
 			return err
 		}
 		for _, inputFile := range inputFiles {
 			if !inputFile.IsDir() {
 				fileName := filepath.Join(inputPath, inputFile.Name())
-				f, err = os.Open(fileName)
 				if err != nil {
 					return fmt.Errorf("could not open directory, %v", err.Error())
 				}
 				s, err = NewState(cfg, fileName, packageName, false)
 				if err != nil {
-					_ = f.Close()
 					return err
 				}
 				err = ScanFile(s, fileName)
-				_ = f.Close()
 				if err != nil {
 					break
 				}
 			}
 		}
 		if err == nil {
-			err = OutputEpilogue(s)
-			if err != nil {
-				return err
-			}
-			err = code.CloseAsmFile()
-			if err != nil {
-				return err
-			}
 			if packageName != "main" {
 				err = OutputPkgFile(outputPath, packageName)
 				if err != nil {
 					return err
 				}
 			}
-			count++
+			err = OutputEpilogue(s)
+			if err != nil {
+				return err
+			}
+			err = code.CloseAsmFile()
+			break
 		} else if err.Error() == "missing packages" {
 			_ = code.CloseAsmFile()
 			// First compile system packages
 			for _, name := range MissingPackages {
-				inputPath = cfg.LibPath + "/imports/" + Mangle(name)
-				inputFiles, err = os.ReadDir(inputPath)
+				inp := cfg.LibPath + "/imports/" + Mangle(name)
+				inputFiles, err = os.ReadDir(inp)
 				if err == nil && len(inputFiles) != 0 {
-					outputPath = cfg.CachePath + "/" + Mangle(name)
-					err = os.MkdirAll(outputPath, os.ModePerm)
+					outp := cfg.CachePath + "/" + Mangle(name)
+					err = os.MkdirAll(outp, os.ModePerm)
 					if err != nil {
 						return err
 					}
-					err = CompileDir(cfg, inputPath, outputPath, GetPkgName(name))
+					err = CompileDir(cfg, inp, outp, GetPkgName(name))
 					if err != nil {
 						return err
 					}
 				}
 			}
 			for _, name := range MissingPackages {
-				inputPath = cfg.ImportPath + "/" + Mangle(name)
-				inputFiles, err = os.ReadDir(inputPath)
+				inp := cfg.ImportPath + "/" + Mangle(name)
+				inputFiles, err = os.ReadDir(inp)
 				if err == nil && len(inputFiles) != 0 {
-					outputPath = cfg.CachePath + "/" + Mangle(name)
-					err = os.MkdirAll(outputPath, os.ModePerm)
+					outp := cfg.CachePath + "/" + Mangle(name)
+					err = os.MkdirAll(outp, os.ModePerm)
 					if err != nil {
 						return err
 					}
-					err = CompileDir(cfg, inputPath, outputPath, GetPkgName(name))
+					err = CompileDir(cfg, inp, outp, GetPkgName(name))
 					if err != nil {
 						return err
 					}
@@ -408,7 +400,7 @@ func CompileDir(cfg *Config, inputPath string, outputPath string, packageName st
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 // CompileTests will compile all files in the test directory

@@ -149,7 +149,12 @@ func NewLabel() int {
 	return LabelNo
 }
 func CloseAsmFile() error {
-	return OutputFile.Close()
+	if OutputFile != nil {
+		err := OutputFile.Close()
+		OutputFile = nil
+		return err
+	}
+	return nil
 }
 
 func NewArgCode() {
