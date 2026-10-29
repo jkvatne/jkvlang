@@ -320,7 +320,7 @@ func OutputEpilogue(s *State) error {
 // CompileDir will compile a package in the given directory.
 // The package can consist of several source code files.
 // The output is a single assembly file in the buildDir
-func CompileDir(cfg *Config, inputPath string, packageName string) error {
+func CompileDir(cfg *Config, inputPath string, outputPath string, packageName string) error {
 	var s *State
 	var f *os.File
 	inputFiles, err := os.ReadDir(inputPath)
@@ -330,7 +330,7 @@ func CompileDir(cfg *Config, inputPath string, packageName string) error {
 	count := 0
 	for count == 0 && err == nil {
 		fmt.Printf(">>> Compiling package %s\n", inputPath)
-		err = InitCompile(cfg.BuildPath, packageName)
+		err = InitCompile(outputPath, packageName)
 
 		if err != nil {
 			return err
@@ -364,7 +364,7 @@ func CompileDir(cfg *Config, inputPath string, packageName string) error {
 				return err
 			}
 			if packageName != "main" {
-				err = OutputPkgFile(cfg.BuildPath, packageName)
+				err = OutputPkgFile(outputPath, packageName)
 				if err != nil {
 					return err
 				}
@@ -372,17 +372,38 @@ func CompileDir(cfg *Config, inputPath string, packageName string) error {
 			count++
 		} else if err.Error() == "missing packages" {
 			_ = code.CloseAsmFile()
+			// First compile system packages
+			for _, name := range MissingPackages {
+				inputPath = cfg.LibPath + "/imports/" + Mangle(name)
+				inputFiles, err = os.ReadDir(inputPath)
+				if err == nil && len(inputFiles) != 0 {
+					outputPath = cfg.CachePath + "/" + Mangle(name)
+					err = os.MkdirAll(outputPath, os.ModePerm)
+					if err != nil {
+						return err
+					}
+					err = CompileDir(cfg, inputPath, outputPath, GetPkgName(name))
+					if err != nil {
+						return err
+					}
+				}
+			}
 			for _, name := range MissingPackages {
 				inputPath = cfg.ImportPath + "/" + Mangle(name)
 				inputFiles, err = os.ReadDir(inputPath)
-				if err != nil || len(inputFiles) == 0 {
-					inputPath = cfg.LibPath + "/imports/" + Mangle(name)
-				}
-				err = CompileDir(cfg, inputPath, GetPkgName(name))
-				if err != nil {
-					return err
+				if err == nil && len(inputFiles) != 0 {
+					outputPath = cfg.CachePath + "/" + Mangle(name)
+					err = os.MkdirAll(outputPath, os.ModePerm)
+					if err != nil {
+						return err
+					}
+					err = CompileDir(cfg, inputPath, outputPath, GetPkgName(name))
+					if err != nil {
+						return err
+					}
 				}
 			}
+			err = nil
 		} else {
 			return err
 		}
@@ -454,7 +475,7 @@ func CompileFile(cfg *Config, fileName string) error {
 	if err.Error() == "missing packages" {
 		_ = code.CloseAsmFile()
 		for _, name := range MissingPackages {
-			err = CompileDir(cfg, "imports/"+Mangle(name), GetPkgName(name))
+			err = CompileDir(cfg, cfg.ImportPath+"/"+Mangle(name), cfg.CachePath+"/"+Mangle(name), GetPkgName(name))
 			if err != nil {
 				return err
 			}
@@ -470,6 +491,7 @@ func CompileFile(cfg *Config, fileName string) error {
 	return nil
 }
 
+/*
 func CompileLib(cfg *Config) error {
 	entries, err := os.ReadDir(cfg.LibPath)
 	if err != nil {
@@ -486,3 +508,4 @@ func CompileLib(cfg *Config) error {
 	}
 	return nil
 }
+*/

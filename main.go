@@ -271,7 +271,7 @@ func main() {
 
 	} else if *sourceDir != "" {
 		// Compile and run all files in the source directory
-		err = CompileDir(cfg, *sourceDir, "main")
+		err = CompileDir(cfg, *sourceDir, cfg.BuildPath, "main")
 		if err == nil {
 			err = Build(cfg, *sourceDir)
 		}
