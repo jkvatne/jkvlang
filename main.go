@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -16,75 +17,78 @@ const Version string = "v0.0.2"
 
 var (
 	buildDir     = flag.String("build", "c:/doc/compiler/build", "Path to intermediate files during build")
+	cacheDir     = flag.String("cache", "", "Cache directory")
+	sourceDir    = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
+	importDir    = flag.String("import", "", "Path to imported non-system code")
+	oneFile      = flag.String("file", "", "Compile a single file")
 	run          = flag.Bool("run", true, "Set true to run after compile")
 	test         = flag.Bool("test", false, "Set true to run after compile")
-	link         = flag.Bool("link", true, "Set true to just do linking")
-	linklib      = flag.Bool("linklib", true, "Set true to just do linking")
-	sourceDir    = flag.String("dir", ".", "Source directory where code is found. Defaults to current directory.")
-	oneFile      = flag.String("file", "", "Compile a single file")
 	clean        = flag.Bool("clean", false, "Set true to recompile all imports")
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
 	arg          = flag.String("arg", "dummyarg", "Arguments to the compiled program when it is run")
-	cacheDir     = flag.String("cache", "./cache", "Cache directory")
-	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
+	printLinkCmd = flag.Bool("printlinkcmd", true, "Print link command")
 )
 
-func LinkRun(buildDir string, libPath string, outputName string, usesCache bool) error {
-	var err error
-	// Assemble/link the files
-	outputPath := path.Join(buildDir, outputName)
-	if *link {
-		// Assemble library if the linklib argument is given
-		if *linklib {
-			err = Assemble(libPath, buildDir)
+type Config struct {
+	ExePath    string // Where the compiler is found
+	LibPath    string // The sys.asm and system packages, typically a subdirectory to ExePath
+	CachePath  string // Cache directory, a temporary location. Where all obj, pkg and asm files are found
+	BuildPath  string // Build directory, cleared for each run
+	ImportPath string // Where imported non-system code is found
+	Run        bool   // Set true to run after build
+}
+
+func CopyFile(src string, dst string) error {
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+	_, err = io.Copy(destination, source)
+	return err
+}
+
+func Build(cfg *Config, inputDir string) error {
+	// Assemble cached packages (if needed)
+	entries, err := os.ReadDir(cfg.CachePath)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dir := path.Join(cfg.CachePath, entry.Name())
+			err = AssembleFiles(cfg, dir, cfg.BuildPath)
 			if err != nil {
 				return err
 			}
 		}
-		// Assemble cached packages (if needed)
-		if usesCache {
-			entries, err2 := os.ReadDir(*cacheDir)
-			if err2 != nil {
-				return err2
-			}
-			for _, entry := range entries {
-				if entry.IsDir() {
-					dir := path.Join(*cacheDir, entry.Name())
-					err = Assemble(dir, buildDir)
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-		err = Assemble(buildDir, buildDir)
-		if err == nil {
-			err = Link(buildDir, libPath, outputName)
-		}
 	}
-	if err == nil && *run {
-		// Run the exe file if -run is present and linking is ok
-		err = Run(outputPath)
-	}
+	// Assemble program
+	err = AssembleFiles(cfg, cfg.BuildPath, cfg.BuildPath)
 	return err
 }
 
-// Assemble wil run the assembler on all *.asm files in the working directory
+// AssembleFiles wil run the assembler on all *.asm files in the input directory
 // And also the syscall.asm from /tools
-func Assemble(inputDir string, outputDir string) error {
+func AssembleFiles(cfg *Config, inputDir string, outputDir string) error {
 	entries, err := os.ReadDir(inputDir)
 	if err != nil {
-		return fmt.Errorf("collecting asm files error,  %s", err.Error())
+		return fmt.Errorf("collecting asm files error, could not read  %s", inputDir)
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".asm") {
 			var args = []string{"-f", "win64"}
 			asmName := filepath.Join(inputDir, entry.Name())
-			outName := filepath.Join(outputDir,
-				strings.TrimSuffix(entry.Name(), ".asm")+".obj")
+			// outName := filepath.Join(outputDir,	strings.TrimSuffix(entry.Name(), ".asm")+".obj")
+			outName := outputDir + "/" + strings.TrimSuffix(entry.Name(), ".asm") + ".obj"
 			args = append(args, asmName, "-o", outName)
-			out, err := exec.Command("c:/doc/compiler/tools/nasm.exe", args...).CombinedOutput()
+			out, err := exec.Command(cfg.ExePath+"/tools/nasm.exe", args...).CombinedOutput()
 			if len(out) > 0 {
 				fmt.Println(string(out))
 			}
@@ -96,8 +100,8 @@ func Assemble(inputDir string, outputDir string) error {
 	return nil
 }
 
-// Link will link all obj files and generate an exe file
-func Link(workDir string, libPath string, outputName string) error {
+// Link will link all obj files in the build directory and generate an exe file
+func Link(cfg *Config, outputName string) error {
 	// Make sure the output name includes .exe
 	if !strings.HasSuffix(outputName, ".exe") {
 		outputName += ".exe"
@@ -105,20 +109,20 @@ func Link(workDir string, libPath string, outputName string) error {
 
 	// Add all object files to argument list
 	var args []string
-	entries, err := os.ReadDir(workDir)
+	entries, err := os.ReadDir(cfg.BuildPath)
 	if err != nil {
 		return fmt.Errorf("collecting obj files error %s", err.Error())
 	}
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
-			args = append(args, filepath.Join(workDir, entry.Name()))
+			args = append(args, filepath.Join(cfg.BuildPath, entry.Name()))
 		}
 	}
-	outputPath := path.Join(workDir, outputName)
+	outputPath := path.Join(cfg.BuildPath, outputName)
 	LinkerName := "c:/doc/compiler/tools/"
 	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
-		args = append(args, "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+		args = append(args, "-mconsole", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
 	} else if *linker == "ucrt" {
 		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
@@ -133,10 +137,10 @@ func Link(workDir string, libPath string, outputName string) error {
 
 	} else if *linker == "msvc" {
 		LinkerName = "C:/Program Files (x86)/Microsoft Visual Studio/18/BuildTools/VC/Tools/MSVC/14.51.36231/bin/Hostx86/x86/link.exe"
-		entries, err = os.ReadDir(libPath)
+		entries, err = os.ReadDir(cfg.LibPath)
 		for _, entry := range entries {
 			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".obj") {
-				args = append(args, path.Join(libPath, entry.Name()))
+				args = append(args, path.Join(cfg.LibPath, entry.Name()))
 			}
 		}
 		args = append(args, "/out:"+outputPath, "/entry:main")
@@ -176,13 +180,16 @@ func Link(workDir string, libPath string, outputName string) error {
 }
 
 // Run will start execution of the exe file made by the link step
+// It must be placed in the build directory
 func Run(outputName string) error {
-	out, err := exec.Command(outputName, *arg).CombinedOutput()
-	fmt.Printf("%s", string(out))
-	if err != nil {
-		fmt.Printf("The exit code from '%s' was %d\n", outputName, err.(*exec.ExitError).ExitCode())
+	if *run {
+		out, err := exec.Command(outputName, *arg).CombinedOutput()
+		fmt.Printf("%s", string(out))
+		if err != nil {
+			return fmt.Errorf("The exit code from '%s' was %d\n", outputName, err.Error())
+		}
 	}
-	return err
+	return nil
 }
 
 func main() {
@@ -201,45 +208,82 @@ func main() {
 		*sourceDir = wd
 	}
 
-	exePath, _ := os.Executable()
-	exePath = filepath.ToSlash(exePath)
+	cfg := &Config{}
+	cfg.ExePath, _ = os.Executable()
+	cfg.ExePath = filepath.ToSlash(cfg.ExePath)
+	cfg.ExePath = path.Dir(cfg.ExePath)
+	cfg.LibPath = path.Join(cfg.ExePath, "lib")
+	cfg.CachePath = *cacheDir
+	if cfg.CachePath == "" {
+		cfg.CachePath = cfg.ExePath + "/cache"
+	}
+	cfg.BuildPath = *buildDir
+	cfg.ImportPath = cfg.ExePath + "/imports"
 
-	libPath := path.Dir(exePath)
-	libPath = path.Join(libPath, "lib")
-
-	// Now compile the source files into asm files
-	if *oneFile != "" {
+	if *clean {
+		// Remove all cached obj files and re-build them from source
+		err = os.RemoveAll(cfg.CachePath)
+		if err != nil {
+			panic("Unable to remove cache directory")
+		}
+		err = os.Mkdir(cfg.CachePath, os.ModePerm)
+		if err != nil {
+			panic("Unable to create cache directory")
+		}
+		err = os.Mkdir(cfg.CachePath+"/sys", os.ModePerm)
+		// Now we have a clean cache directory. Remake sys.obj and other sys files
+		// The obj files are put into cache/sys/...
+		if err == nil {
+			err = AssembleFiles(cfg, cfg.LibPath, cfg.CachePath+"/sys")
+		}
+	}
+	if err == nil {
+		err = CreateBuildDir(cfg.BuildPath)
+	}
+	if err == nil {
+		err = CopyFile(cfg.CachePath+"/sys/sys.obj", cfg.BuildPath+"/sys.obj")
+	}
+	if err != nil {
+		// Do nothing upon errors in previous steps
+	} else if *oneFile != "" {
+		// Compile a single source file
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		err = CompileFile(*buildDir, libPath, *oneFile)
+		err = CompileFile(cfg, *oneFile)
 		if err == nil {
 			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv") + ".exe"
-			err = LinkRun(*buildDir, libPath, outputName, false)
+			Build(cfg, filepath.Dir(*oneFile))
+			err = Link(cfg, outputName)
+			if err == nil {
+				err = Run(cfg.BuildPath + "/" + outputName)
+			}
 		}
+
 	} else if *test {
+		// Compile and run all files int the test directory
 		n := 0
-		n, err = CompileTests(*buildDir, libPath, *sourceDir)
+		n, err = CompileTests(cfg, *sourceDir)
 		if err == nil {
 			fmt.Printf("------------------------------------------\n")
 			fmt.Printf("Run %d files. All tests passed\n", n)
 		}
-	} else {
-		if *clean {
-			// Remove all cached files
-			err := os.RemoveAll(*cacheDir)
-			if err != nil {
-				panic("Unable to remove cache directory")
-			}
-			err = os.Mkdir(*cacheDir, os.ModePerm)
-			if err != nil {
-				panic("Unable to create cache directory")
-			}
-		}
-		err = CompileDir("main", *buildDir, libPath, *sourceDir)
+
+	} else if *sourceDir != "" {
+		// Compile and run all files in the source directory
+		err = CompileDir(cfg, *sourceDir, "main")
 		if err == nil {
-			err = LinkRun(*buildDir, libPath, "main", true)
+			err = Build(cfg, *sourceDir)
 		}
+		if err == nil {
+			err = Link(cfg, "main")
+		}
+		if err == nil {
+			err = Run(cfg.BuildPath + "/" + "main.exe")
+		}
+	} else {
+		// Must have file, test or directory
+		err = fmt.Errorf("Must have file, test or directory")
 	}
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())

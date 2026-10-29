@@ -1,3 +1,5 @@
+import iter
+
 type RangeIterator = struct {
     start I32
     end I32
@@ -738,10 +740,10 @@ func unround(x F64) Unrounded {
 }
 
 func ufloor(u Unrounded) U64         { return U64((u + 0) >> 2) }
+func uceil(u Unrounded) U64          { return U64((u + 3) >> 2) }
 func roundHalfDown(u Unrounded) U64 { return U64((u + 1) >> 2) }
 func round(u Unrounded) U64         { return U64((u + 1 + (u>>2)&1) >> 2) }
 func roundHalfUp(u Unrounded) U64   { return U64((u + 2) >> 2) }
-func ceil(u Unrounded) U64          { return U64((u + 3) >> 2) }
 
 func div(u Unrounded, d U64) Unrounded {
 	x = U64(u)
@@ -841,7 +843,7 @@ func len64(x U64) I32 {
 // unpack64 returns m, e such that f = m * 2**e.
 // The caller is expected to have handled 0, NaN, and ±Inf already.
 // To unpack a F32 f, use unpack64(F64(f)).
-func unpack64(f F64) (U64, I32) {
+func unpack64(f F64) U64, I32 {
     b = U64(f)
     m = 0x8000000000000000 | (b&(1<<52-1))<<11
 	e = I32((b >> 52) & (1<<11 - 1))
@@ -950,16 +952,98 @@ func format(f F64, dp I32) String {
     return s
 }
 
-//========================  TESTS ====================================================================
+// trimZeros removes trailing zeros from x * 10**p.
+// If x ends in k zeros, trimZeros returns x/10**k, p+k.
+// It assumes that x ends in at most 16 zeros.
+func trimZeros(x U64, p I32) U64, I32 {
+	if x%10 != 0 {
+		return x, p
+	}
+	x /= 10
+	p += 1
 
-/* This is the original go code. We translate that below into four separate arrays.
-var pow10Tests = []struct {p  int, pm pmHiLo, pe int}{
-	{0, pmHiLo{1 << 63, 0}, 1},
-	{25, pmHiLo{0x84595161401484a0, 0}, -44 + 128},
-	{72, pmHiLo{0x90e40fbeea1d3a4a + 1, (1 << 64) - 0xbc8955e946fe31ce}, 112 + 128},
-	{-44, pmHiLo{0xe45c10c42a2b3b05 + 1, (1 << 64) - 0x8cb89a7db77c506b}, -274 + 128},
+	if x%100000000 == 0 {
+		x /= 100000000
+		p += 8
+	}
+	if x%10000 == 0 {
+		x /= 10000
+		p += 4
+	}
+	if x%100 == 0 {
+		x /= 100
+		p += 2
+	}
+	if x%10 == 0 {
+		x /= 10
+		p += 1
+	}
+	return x, p
 }
-*/
+
+// skewed computes the skewed footprint of m * 2**e,
+// which is ⌊log₁₀ 3/4 * 2**e⌋ = ⌊e*(log₁₀ 2)-(log₁₀ 4/3)⌋.
+func skewed(e I32) I32 {
+	return (e*631305 - 261663) >> 21
+}
+
+// shortest_fmt computes the shortest formatting of f,
+// using as few digits as possible that will still round trip
+// back to the original float64.
+func shortest_fmt(f F64) U64, I32 {
+    u = U64(0)
+    p = I32(0)
+	m, e = unpack64(f)
+	print("\nf=%e m=%llx, e=%d",f, m, e)
+
+	mn = U64(0)
+	z = 11 // extra zero bits at bottom of m; 11 for 53-bit m
+	if m == 1<<63 && e > -1085 {
+		p = -skewed(e + z)
+		mn = m - 1<<(z-2) // min = m - 1/4 * 2**(e+z)
+	} else {
+		if e < -1085 {
+			z = 11 + (-1085 - e)
+		}
+		p = -log10Pow2(e + z)
+		mn = m - 1<<(z-1) // min = m - 1/2 * 2**(e+z)
+	}
+	mx = m + 1<<(z-1) // max = m + 1/2 * 2**(e+z)
+	odd = I32(m>>z) & 1
+
+	pre = prescale(e, p, log2Pow10(p))
+	dmin = uscale(mn, pre)
+	dmin = nudge(dmin, odd)
+	dmin = uceil(dmin)
+	dmax = uscale(mx, pre)
+	dmax = nudge(dmax, -odd)
+	dmax = ufloor(dmax)
+    print("dmin=%lld, dmax=%lld, p=%d", dmin, dmax, p)
+
+    d = dmax / 10;
+	if  d*10 >= dmin {
+		d, p = trimZeros(d, -(p - 1))
+		p = -p
+		print("case1")
+	} else if dmin < dmax {
+        p = -p
+		d = uscale(m, pre)
+		d = round(d)
+		print("case2")
+	} else {
+	    p = -p
+		print("case3")
+	}
+	return d, p
+}
+
+// digits returns the number of decimal digits in d.
+func digits(d U64) I32 {
+	nd = log10Pow2(len64(d))
+	return nd + (d >= uint64pow10[nd])
+}
+
+//========================  TESTS ====================================================================
 
 const pow10TestsP I32arr = {0, 25, 72, -44}
 const pow10TestsHi U64arr = {0x8000000000000000, 0x84595161401484a0, 0x90e40fbeea1d3a4b, 0xe45c10c42a2b3b06}
@@ -971,9 +1055,9 @@ type StringArr = []String
 
 const test_floats F64arr = {6.0, 6.25, 6.5, 6.75, 7.0, 7.5, 8.5}
 const values F64arr = {1.234e1, 1.9999e-44, 2e123, 1e99, 1e-99, 1e100, 1e-100, 1.99e-99}
-const results StringArr = {"1.234000000000000e+001", "1.999900000000000e-044", "2.000000000000000e+123",
- "9.999999999999999e+098", "1.000000000000000e-099", "1.000000000000000e+100", "1.000000000000000e-100",
-  "1.989999999999999e-099"}
+const results StringArr =  {"1.234000000000000e+001", "1.999900000000000e-044",
+  "2.000000000000000e+123", "9.999999999999999e+098", "1.000000000000000e-099",
+  "1.000000000000000e+100", "1.000000000000000e-100", "1.989999999999999e-099"}
 
 func main() {
     //print("Unrounded floating point conversions")
@@ -983,7 +1067,7 @@ func main() {
         f = test_floats[j]
         uu = unround(test_floats[j])
         //print("%2d %6.3f %3d %4d %6d %5d %5d %7d",
-        //j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), ceil(uu))
+        //j, f, uu, ufloor(uu), roundHalfDown(uu), round(uu), roundHalfUp(uu), uceil(uu))
         j+=1
         if j>=7 {break}
     }
@@ -1013,18 +1097,18 @@ func main() {
     //print("    x        u  nudge(-1)↓  floor   ceil  nudge(+1)↑")
     u = unround(15.0)
     assert(ufloor(nudge(u,-1))==14)
-    //print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.0, u, ufloor(nudge(u,-1)), ufloor(u), uceil(u), uceil(nudge(u, 1)))
     u = unround(15.1)
     assert(ufloor(nudge(u,-1))==15)
-    assert(ceil(nudge(u, 1))==16)
-    //print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(uceil(nudge(u, 1))==16)
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.1, u, ufloor(nudge(u,-1)), ufloor(u), uceil(u), uceil(nudge(u, 1)))
     u = unround(15.9)
     assert(ufloor(nudge(u,-1))==15)
-    //print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    //print("%7.3f %7d %7d %7d %7d %7d", 15.9, u, ufloor(nudge(u,-1)), ufloor(u), uceil(u), uceil(nudge(u, 1)))
     u = unround(16.0)
     assert(ufloor(nudge(u,-1))==15)
-    assert(ceil(nudge(u, 1))==17)
-    //print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), ceil(u), ceil(nudge(u, 1)))
+    assert(uceil(nudge(u, 1))==17)
+    //print("%7.3f %7d %7d %7d %7d %7d", 16.0, u, ufloor(nudge(u,-1)), ufloor(u), uceil(u), uceil(nudge(u, 1)))
     // print("\nTest log2Pow10")
     l =log2Pow10(0)
     assert(l==0, "Expected 0 got %d",l)
@@ -1130,4 +1214,16 @@ func main() {
         assert(s==results[i], "Expected %s, got %s", results[i], s)
     }
 
+    print("digits(1)=%d", digits(U64(1)))
+    print("digits(10)=%d", digits(U64(10)))
+    print("digits(99)=%d", digits(U64(99)))
+    print("digits(100)=%d", digits(U64(100)))
+    print("digits(999)=%d", digits(U64(999)))
+    print("digits(999999999999)=%d", digits(U64(999999999999)))
+
+
+    d, p = shortest_fmt(1.234)
+    print("\nd=%lld p=%d", d, p)
+    s = fmt(d, p, digits(d))
+    print("shortest=%s", s)
 }

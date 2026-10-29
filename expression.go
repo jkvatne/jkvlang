@@ -63,7 +63,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 
 	// Check types to see if the value can be assigned to the lvalue
 	if !CanAssign(lvalue.Typ.Pt, value) {
-		return fmt.Errorf(" could not assign const %s to type %s", value.StringValue, lvalue.Typ.Pt.Name())
+		return fmt.Errorf(" could not assign type %s to type %s", value.Typ.Pt.Name(), lvalue.Typ.Pt.Name())
 	}
 
 	// Check type of left and right side and handle indirect, local, const, var

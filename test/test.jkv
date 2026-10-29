@@ -1,8 +1,10 @@
-
+import iter
 
 func main() {
     w = 6
     a = new(String, w, w)
-    print("a=%s", a)
+    print("len(a)=%d", len(a))
+    for i=iter.range(1,3) {
+        print("%d", i)
+    }
 }
-

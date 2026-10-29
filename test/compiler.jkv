@@ -327,7 +327,6 @@ func main() {
         print("arg %d is '%s'", i, args[i])
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }
-/*
     print("Command line argument is '%s'",filename)
     u=substring(filename, 6, len(filename)-1)
     print("Filename from command line argument is '%s'", u)
@@ -343,6 +342,5 @@ func main() {
         print("Token %d = '%s'", s.token, s.tokenString)
         if s.token == 0 ? break
     }
-    */
 }
 

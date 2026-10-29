@@ -61,12 +61,6 @@ var PrimaryTypeSizes = [...]int{
 	8, 8, 8, 8, 8,
 	0}
 
-type Value struct {
-	Bits        uint64
-	Pt          PrimaryType
-	StringValue string
-}
-
 var (
 	state       stackState
 	LabelNo     int

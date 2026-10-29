@@ -31,6 +31,7 @@ type State struct {
 	IsPackage          bool
 	IsPkgFile          bool
 	LoopStack          []int
+	Cfg                *Config
 }
 
 func (s *State) PushLoopBlock(n int) {
@@ -51,9 +52,10 @@ func (s *State) LoopBlock() int {
 	return s.LoopStack[len(s.LoopStack)-1]
 }
 
-func NewState(SourceFileName string, PackageName string, isPkgFile bool) (*State, error) {
+func NewState(cfg *Config, SourceFileName string, PackageName string, isPkgFile bool) (*State, error) {
 	s := new(State)
 	var err error
+	s.Cfg = cfg
 	s.PackageName = PackageName
 	s.IsPackage = PackageName != "main"
 	s.IsPkgFile = isPkgFile

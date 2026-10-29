@@ -100,10 +100,16 @@ func ParseImports(s *State) error {
 		err = ParseImport(s)
 	}
 
+	cwd, _ := os.Getwd()
+	fmt.Println(cwd)
+
 	// Check that we have cloned all the needed packages into the imports directory
 	MissingPackages = []string{}
 	for _, fullName := range ImportedPackages {
 		info, err2 := os.Stat("./imports/" + Mangle(fullName))
+		if err2 != nil {
+			info, err2 = os.Stat(s.Cfg.LibPath + "/imports/" + Mangle(fullName))
+		}
 		if err2 != nil || !info.IsDir() {
 			MissingPackages = append(MissingPackages, fullName)
 		}
@@ -117,10 +123,13 @@ func ParseImports(s *State) error {
 	MissingPackages = []string{}
 	for _, fullName := range ImportedPackages {
 		var info os.FileInfo
-		info, err = os.Stat(*cacheDir + "/" + Mangle(fullName))
+		info, err = os.Stat(s.Cfg.CachePath + "/" + Mangle(fullName))
+		if err != nil {
+			info, err = os.Stat(s.Cfg.LibPath + "/imports/" + Mangle(fullName))
+		}
 		if err == nil && info.IsDir() {
 			var entries []os.DirEntry
-			entries, err = os.ReadDir(*cacheDir + "/" + Mangle(fullName))
+			entries, err = os.ReadDir(s.Cfg.CachePath + "/" + Mangle(fullName))
 			if len(entries) == 0 {
 				MissingPackages = append(MissingPackages, Mangle(fullName))
 			}
@@ -138,20 +147,21 @@ func ParseImports(s *State) error {
 	// Now scan the pkg files for each import
 	for _, fullName := range ImportedPackages {
 		var info os.FileInfo
-		info, err = os.Stat(*cacheDir + "/" + Mangle(fullName))
+		info, err = os.Stat(s.Cfg.CachePath + "/" + Mangle(fullName))
 		if err == nil && info.IsDir() {
 			var entries []os.DirEntry
-			entries, err = os.ReadDir(*cacheDir + "/" + Mangle(fullName))
+			entries, err = os.ReadDir(s.Cfg.CachePath + "/" + Mangle(fullName))
 			for _, entry := range entries {
 				if !entry.IsDir() && strings.Contains(entry.Name(), ".pkg") {
-					fileName := *cacheDir + "/" + Mangle(fullName) + "/" + entry.Name()
+					fileName := s.Cfg.CachePath + "/" + Mangle(fullName) + "/" + entry.Name()
 					w := strings.Split(fullName, "/")
 					packageName := w[len(w)-1]
-					s, err2 := NewState(fileName, packageName, true)
+					//                   cfg  SourceFileName PackageName isPkgFile
+					ss, err2 := NewState(s.Cfg, fileName, packageName, true)
 					if err2 != nil {
 						return err2
 					}
-					err2 = ScanFile(s, fullName)
+					err2 = ScanFile(ss, fullName)
 					if err2 != nil {
 						return err2
 					}
@@ -208,22 +218,20 @@ func ScanFile(s *State, name string) (err error) {
 	return err
 }
 
-func CreateBuildDir(buildDir string) {
+func CreateBuildDir(buildDir string) error {
 	// Make sure output directory is empty
 	err := os.RemoveAll(buildDir)
 	if err != nil {
-		fmt.Printf("could not remove old working directory " + err.Error())
-		os.Exit(1)
+		return fmt.Errorf("could not remove old working directory " + err.Error())
 	}
 	err = os.Mkdir(buildDir, os.ModePerm)
 	if err != nil {
-		fmt.Printf("could not create working directory " + err.Error())
-		os.Exit(1)
+		return fmt.Errorf("could not create working directory " + err.Error())
 	}
+	return nil
 }
 
-func InitCompile(buildDir string, libPath string, AsmFileName string) error {
-	CreateBuildDir(buildDir)
+func InitCompile(buildDir string, AsmFileName string) error {
 	err := code.NewAsmFile(AsmFileName, buildDir)
 	if err != nil {
 		return err
@@ -231,7 +239,7 @@ func InitCompile(buildDir string, libPath string, AsmFileName string) error {
 	InitVardefs()
 	InitTypes()
 	LiteralInit()
-	EmitPrologue(libPath, false)
+	EmitPrologue()
 	InitTypes()
 	FuncInit()
 	ImportInit()
@@ -310,9 +318,9 @@ func OutputEpilogue(s *State) error {
 }
 
 // CompileDir will compile a package in the given directory.
-// The package can consst of several source code files.
+// The package can consist of several source code files.
 // The output is a single assembly file in the buildDir
-func CompileDir(packageName string, buildDir string, libPath string, inputPath string) error {
+func CompileDir(cfg *Config, inputPath string, packageName string) error {
 	var s *State
 	var f *os.File
 	inputFiles, err := os.ReadDir(inputPath)
@@ -322,7 +330,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 	count := 0
 	for count == 0 && err == nil {
 		fmt.Printf(">>> Compiling package %s\n", inputPath)
-		err = InitCompile(buildDir, libPath, packageName)
+		err = InitCompile(cfg.BuildPath, packageName)
 
 		if err != nil {
 			return err
@@ -334,7 +342,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				if err != nil {
 					return fmt.Errorf("could not open directory, %v", err.Error())
 				}
-				s, err = NewState(fileName, packageName, false)
+				s, err = NewState(cfg, fileName, packageName, false)
 				if err != nil {
 					_ = f.Close()
 					return err
@@ -356,7 +364,7 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 				return err
 			}
 			if packageName != "main" {
-				err = OutputPkgFile(buildDir, packageName)
+				err = OutputPkgFile(cfg.BuildPath, packageName)
 				if err != nil {
 					return err
 				}
@@ -365,7 +373,12 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 		} else if err.Error() == "missing packages" {
 			_ = code.CloseAsmFile()
 			for _, name := range MissingPackages {
-				err = CompileDir(GetPkgName(name), "cache/"+Mangle(name), libPath, "imports/"+Mangle(name))
+				inputPath = cfg.ImportPath + "/" + Mangle(name)
+				inputFiles, err = os.ReadDir(inputPath)
+				if err != nil || len(inputFiles) == 0 {
+					inputPath = cfg.LibPath + "/imports/" + Mangle(name)
+				}
+				err = CompileDir(cfg, inputPath, GetPkgName(name))
 				if err != nil {
 					return err
 				}
@@ -380,9 +393,9 @@ func CompileDir(packageName string, buildDir string, libPath string, inputPath s
 // CompileTests will compile all files in the test directory
 // Files starting with err_ should intentionally fail
 // Uses the build directory for outputs
-func CompileTests(buildDir string, libPath string, inputPath string) (int, error) {
+func CompileTests(cfg *Config, sourcePath string) (int, error) {
 	n := 0
-	entries, err := os.ReadDir(inputPath)
+	entries, err := os.ReadDir(sourcePath)
 	if err != nil {
 		return n, fmt.Errorf("could not open source directory '%s'", err.Error())
 	}
@@ -390,10 +403,10 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 		// For each jkv file in the test directory
 		if !entry.IsDir() {
 			n++
-			name := filepath.Join(inputPath, entry.Name())
+			name := filepath.Join(sourcePath, entry.Name())
 			if strings.HasSuffix(name, ".jkv") {
 				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
-				err = CompileFile(buildDir, libPath, name)
+				err = CompileFile(cfg, name)
 				if strings.Contains(name, "err_") {
 					if err == nil {
 						return n, fmt.Errorf("expected %s to return error when compiled, but it did not", name)
@@ -402,17 +415,18 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 					err = nil
 				} else {
 					if err == nil {
-						err = LinkRun(buildDir, libPath, outputName, false)
+						err = Link(cfg, outputName)
 					}
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
+					Run(outputName)
 				}
 			}
 		} else {
 			// Enter subdirectory
 			m := 0
-			m, err = CompileTests(buildDir, libPath, inputPath+"/"+entry.Name())
+			m, err = CompileTests(cfg, sourcePath+"/"+entry.Name())
 			n += m
 			if err != nil {
 				return n, err
@@ -423,13 +437,13 @@ func CompileTests(buildDir string, libPath string, inputPath string) (int, error
 }
 
 // CompileFile will compile and run a single file. It must have a main() function.
-func CompileFile(buildDir string, libPath string, fileName string) error {
+func CompileFile(cfg *Config, fileName string) error {
 	fmt.Printf(">>> Compiling %s\n", fileName)
-	err := InitCompile(buildDir, libPath, strings.TrimSuffix(fileName, ".jkv"))
+	err := InitCompile(cfg.BuildPath, strings.TrimSuffix(fileName, ".jkv"))
 	if err != nil {
 		return err
 	}
-	s, err := NewState(fileName, "main", false)
+	s, err := NewState(cfg, fileName, "main", false)
 	if err != nil {
 		return err
 	}
@@ -437,12 +451,38 @@ func CompileFile(buildDir string, libPath string, fileName string) error {
 		_ = code.CloseAsmFile()
 	}(s)
 	err = ScanFile(s, fileName)
+	if err.Error() == "missing packages" {
+		_ = code.CloseAsmFile()
+		for _, name := range MissingPackages {
+			err = CompileDir(cfg, "imports/"+Mangle(name), GetPkgName(name))
+			if err != nil {
+				return err
+			}
+		}
+	}
 	if err != nil {
 		return err
 	}
 	err = OutputEpilogue(s)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func CompileLib(cfg *Config) error {
+	entries, err := os.ReadDir(cfg.LibPath)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			name := entry.Name()
+			err = CompileDir(cfg, cfg.LibPath+"/"+name, name)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
