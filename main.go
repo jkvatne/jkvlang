@@ -28,7 +28,7 @@ var (
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
 	arg          = flag.String("arg", "dummyarg", "Arguments to the compiled program when it is run")
-	printLinkCmd = flag.Bool("printlinkcmd", true, "Print link command")
+	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
 )
 
 type Config struct {
@@ -246,7 +246,11 @@ func main() {
 		cfg.CachePath = cfg.ExePath + "/cache"
 	}
 	cfg.BuildPath = *buildDir
-	cfg.ImportPath = cfg.ExePath + "/imports"
+	if *importDir != "" {
+		cfg.ImportPath = *importDir
+	} else {
+		cfg.ImportPath = cfg.ExePath + "/imports"
+	}
 
 	if *clean {
 		// Remove all cached obj files and re-build them from source

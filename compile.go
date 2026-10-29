@@ -73,7 +73,7 @@ func ParseImport(s *State) error {
 	}
 	// path is now the imported path, like f.ex. "github.com/jkvatne/lib"
 	if s.token == TOK_AS {
-		// Get alternative shortname, if given afte AS
+		// Get alternative shortname, if given after "as"
 		s.next()
 		if s.token != TOK_ID {
 			return fmt.Errorf("expected package short name, but got %s", s.tokenString)
@@ -289,7 +289,7 @@ func OutputPkgFile(path string, packageName string) error {
 	return nil
 }
 
-func OutputEpilogue(s *State) error {
+func OutputEpilogue(PackageName string) error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
@@ -304,10 +304,10 @@ func OutputEpilogue(s *State) error {
 	for _, l := range SliceLiteralDefs {
 		EmitSliceLit(*l)
 	}
-	if s.IsPackage {
+	if PackageName != "" {
 		for _, f := range FuncDefs {
 			if !f.builtin {
-				EmitGlobal(s.PackageName + "@" + f.label)
+				EmitGlobal(PackageName + "@" + f.label)
 			}
 		}
 	}
@@ -366,7 +366,9 @@ func CompileDir(cfg *Config, ip string, op string, pn string) error {
 					return err
 				}
 			}
-			err = OutputEpilogue(s)
+			if s != nil {
+				err = OutputEpilogue(s.PackageName)
+			}
 			if err != nil {
 				return err
 			}
@@ -464,7 +466,7 @@ func CompileFile(cfg *Config, fileName string) error {
 	if err != nil {
 		return err
 	}
-	err = OutputEpilogue(s)
+	err = OutputEpilogue(s.PackageName)
 	if err != nil {
 		return err
 	}
