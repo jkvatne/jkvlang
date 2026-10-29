@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -179,15 +180,42 @@ func Link(cfg *Config, outputName string) error {
 	return nil
 }
 
+var cmd *exec.Cmd
+var stdin io.WriteCloser
+var stdout io.ReadCloser
+
+func monitor(reader *bufio.Reader) {
+	for cmd != nil {
+		line, err := reader.ReadString('\n')
+		fmt.Printf(line)
+		if err != nil {
+			return
+		}
+	}
+}
+
 // Run will start execution of the exe file made by the link step
 // It must be placed in the build directory
 func Run(outputName string) error {
 	if *run {
-		out, err := exec.Command(outputName, *arg).CombinedOutput()
-		fmt.Printf("%s", string(out))
+		var err error
+		cmd = exec.Command(outputName, *arg)
+		stdin, err = cmd.StdinPipe()
 		if err != nil {
-			return fmt.Errorf("The exit code from '%s' was %d\n", outputName, err.Error())
+			return fmt.Errorf("StdinPipe() failed : %v", err)
 		}
+		stdout, err = cmd.StdoutPipe()
+		if err != nil {
+			return fmt.Errorf("StdoutPipe() failed : %v", err)
+		}
+		reader := bufio.NewReader(stdout)
+		err = cmd.Start()
+		if err != nil {
+			return fmt.Errorf("Start() failed : %s", err.Error())
+		}
+		go monitor(reader)
+		_, err = cmd.Process.Wait()
+		cmd = nil
 	}
 	return nil
 }

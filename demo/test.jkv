@@ -11,12 +11,14 @@ func main() {
     print_freq()
     fflush()
     // Will sleep for the given number of milliseconds
-    ok = call(Sleep, 2000)
+    print("Please wate, this takes ca 2 seconds....")
+    ok = call(Sleep, 1000)
     d = date.Date(123)
     print("Date=%d", d)
     sum = 0
     for i=iter.range(1,10) {
         sum=sum+i
+        ok = call(Sleep, 100)
         print("i=%d", i)
     }
     print("Sum=%d", sum)
