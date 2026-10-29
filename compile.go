@@ -464,7 +464,7 @@ func CompileFile(cfg *Config, fileName string) error {
 		_ = code.CloseAsmFile()
 	}(s)
 	err = ScanFile(s, fileName)
-	if err.Error() == "missing packages" {
+	if err != nil && err.Error() == "missing packages" {
 		_ = code.CloseAsmFile()
 		for _, name := range MissingPackages {
 			err = CompileDir(cfg, cfg.ImportPath+"/"+Mangle(name), cfg.CachePath+"/"+Mangle(name), GetPkgName(name))
