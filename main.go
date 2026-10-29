@@ -27,7 +27,7 @@ var (
 	clean        = flag.Bool("clean", false, "Set true to recompile all imports")
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
-	arg          = flag.String("arg", "dummyarg", "Arguments to the compiled program when it is run")
+	arg          = flag.String("arg", "dummyArg", "Arguments to the compiled program when it is run")
 	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
 )
 
@@ -45,12 +45,16 @@ func CopyFile(src string, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer func(source *os.File) {
+		_ = source.Close()
+	}(source)
 	destination, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
+	defer func(destination *os.File) {
+		_ = destination.Close()
+	}(destination)
 	_, err = io.Copy(destination, source)
 	return err
 }
@@ -181,7 +185,6 @@ func Link(cfg *Config, outputName string) error {
 }
 
 var cmd *exec.Cmd
-var stdin io.WriteCloser
 var stdout io.ReadCloser
 
 func monitor(reader *bufio.Reader) {
@@ -200,18 +203,14 @@ func Run(outputName string) error {
 	if *run {
 		var err error
 		cmd = exec.Command(outputName, *arg)
-		stdin, err = cmd.StdinPipe()
-		if err != nil {
-			return fmt.Errorf("StdinPipe() failed : %v", err)
-		}
 		stdout, err = cmd.StdoutPipe()
 		if err != nil {
-			return fmt.Errorf("StdoutPipe() failed : %v", err)
+			return fmt.Errorf("stdoutPipe() failed : %v", err)
 		}
 		reader := bufio.NewReader(stdout)
 		err = cmd.Start()
 		if err != nil {
-			return fmt.Errorf("Start() failed : %s", err.Error())
+			return fmt.Errorf("start() failed : %s", err.Error())
 		}
 		go monitor(reader)
 		_, err = cmd.Process.Wait()
@@ -315,7 +314,7 @@ func main() {
 		}
 	} else {
 		// Must have file, test or directory
-		err = fmt.Errorf("Must have file, test or directory")
+		err = fmt.Errorf("must have file, test or directory")
 	}
 	if err != nil {
 		fmt.Printf("%s\n", err.Error())

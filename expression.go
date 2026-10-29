@@ -24,17 +24,14 @@ func TypeFromConstValue(value *ValueDef) (*TypeDef, error) {
 				return &U64Type, nil
 			} else if x > 0xFFFFFFFF {
 				return &I64Type, nil
-			} else {
-				return &I32Type, nil
 			}
-		} else {
-			return &StringType, nil
+			return &I32Type, nil
 		}
+		return &StringType, nil
 	} else if value.Typ.Pt == code.TYP_BOOL {
 		return &BoolType, nil
-	} else {
-		return nil, fmt.Errorf("no type for variable")
 	}
+	return nil, fmt.Errorf("no type for variable")
 }
 
 func UpdateType(value *ValueDef) error {
@@ -114,32 +111,32 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	} else if lvalue.Typ.Pt == code.TYP_U64 {
 		val, err := strconv.ParseUint(value.StringValue, 0, 64)
 		if err != nil {
-			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+			return fmt.Errorf("invalid integer: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), val, "")
 	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
 		// Handle appending a single character to a string
 		val, err := strconv.ParseInt(value.StringValue, 0, 64)
 		if err != nil {
-			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+			return fmt.Errorf("invalid integer: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstStrChar(op, lvalue.Offset, int(val))
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		val, err := strconv.ParseInt(value.StringValue, 0, 64)
 		if err != nil {
-			return fmt.Errorf("Invalid integer: %s", value.StringValue)
+			return fmt.Errorf("invalid integer: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), uint64(val), "")
 	} else if lvalue.Typ.Pt == code.TYP_F64 {
 		f, err := strconv.ParseFloat(value.StringValue, 64)
 		if err != nil {
-			return fmt.Errorf("Invalid float: %s", value.StringValue)
+			return fmt.Errorf("invalid float: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstF64(op, lvalue.Offset, f, "")
 	} else if lvalue.Typ.Pt == code.TYP_F32 {
 		f, err := strconv.ParseFloat(value.StringValue, 64)
 		if err != nil {
-			return fmt.Errorf("Invalid float: %s", value.StringValue)
+			return fmt.Errorf("invalid float: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstF32(op, lvalue.Offset, float32(f), "")
 	} else if lvalue.Typ.Pt == code.TYP_BOOL {
@@ -621,7 +618,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
 	if !returnSomething && len(f.returnTypes) > 0 {
-		return nil, fmt.Errorf("Funcion returns values that are not handled")
+		return nil, fmt.Errorf("funcion returns values that are not handled")
 	}
 	if !returnSomething && len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
@@ -913,7 +910,7 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 }
 
 // ParseUnary will parse a parenthesis term, a number, a string, a function call
-func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
+func ParseUnary(s *State) ([]*ValueDef, error) {
 	var err error
 	value := &ValueDef{}
 	if s.token == TOK_ID {
@@ -942,36 +939,6 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 			return nil, err
 		}
 		s.next()
-		/*
-					value.IntValue = int64(s.ConstValue.Bits)
-					value.UintValue = s.ConstValue.Bits
-					value.FloatValue = float64(s.ConstValue.Bits)
-					value.Typ = TypeDefs[s.ConstValue.Pt.Name()]
-					if hasUnaryMinus {
-						s.ConstValue.Bits = uint64(-int64(s.ConstValue.Bits))
-						value.IntValue = int64(s.ConstValue.Bits)
-						value.FloatValue = float64(s.ConstValue.Bits)
-						value.UintValue = s.ConstValue.Bits
-						if value.Typ.Pt == code.TYP_U8 {
-							value.Typ = TypeDefs["I16"]
-						} else if value.Typ.Pt == code.TYP_U16 {
-							value.Typ = TypeDefs["I32"]
-						} else if value.Typ.Pt == code.TYP_U32 {
-							value.Typ = TypeDefs["I64"]
-						}
-					}
-					if value.Typ == nil {
-						return nil, fmt.Errorf("missing integer type")
-					}
-			} else if s.token == TOK_FLOAT {
-				if hasUnaryMinus {
-					v := -math.Float64frombits(s.ConstValue.Bits)
-					s.ConstValue.Bits = math.Float64bits(v)
-				}
-				value.FloatValue = math.Float64frombits(s.ConstValue.Bits)
-				value.Typ = TypeDefs["F64"]
-				value.IsConst = true
-				s.next()*/
 	} else if s.token == TOK_CHAR {
 		value = &ValueDef{IsConst: true}
 		var num int64
@@ -1077,7 +1044,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 
 	} else if s.token == TOK_MINUS {
 		s.next()
-		v, err3 := ParseUnary(s, true)
+		v, err3 := ParseUnary(s)
 		if err3 != nil {
 			return nil, err3
 		}
@@ -1106,7 +1073,7 @@ func ParseUnary(s *State, hasUnaryMinus bool) ([]*ValueDef, error) {
 }
 
 func ParseProd(s *State) ([]*ValueDef, error) {
-	values1, err := ParseUnary(s, false)
+	values1, err := ParseUnary(s)
 	if err != nil {
 		return nil, err
 	}
@@ -1118,7 +1085,7 @@ func ParseProd(s *State) ([]*ValueDef, error) {
 		op := s.token
 		s.next()
 		code.NewArgCode()
-		values2, err = ParseUnary(s, false)
+		values2, err = ParseUnary(s)
 		if err != nil {
 			return nil, err
 		}
@@ -1429,9 +1396,6 @@ func ParseIfElse(s *State, value *ValueDef) error {
 				return err
 			}
 			code.OutputArgCode()
-			if err != nil {
-				return err
-			}
 			if len(values) != 1 {
 				return fmt.Errorf("expected one value")
 			}
@@ -1528,7 +1492,7 @@ func FreeStruct(t *TypeDef) error {
 			}
 		} else if f.Pt == code.TYP_SLICE {
 			if f.Element == nil {
-				return fmt.Errorf("Struct with zero element size for '%s'", f.Name())
+				return fmt.Errorf("struct with zero element size for '%s'", f.Name())
 			}
 			EmitFreeSlice(f)
 		} else if f.Pt == code.TYP_STRING {
@@ -1797,7 +1761,7 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 			} else {
 				num, err := strconv.ParseInt(s.tokenString, 0, 64)
 				if err != nil {
-					return fmt.Errorf("Invalid integer: %s", s.tokenString)
+					return fmt.Errorf("invalid integer: %s", s.tokenString)
 				}
 				if hasUnaryMinus {
 					num = -num
@@ -1868,9 +1832,6 @@ func ParseVar(s *State) error {
 			err = ParseSliceLitteral(s, id, v.Typ)
 		} else {
 			val = s.tokenString
-		}
-		if v == nil {
-			return fmt.Errorf("internal error in ParseVar")
 		}
 		v.constValue = val
 		s.next()

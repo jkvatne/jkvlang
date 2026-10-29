@@ -122,7 +122,7 @@ func AddType(name string, typ *TypeDef) {
 	TypeDefs[name] = typ
 }
 
-// CanAssignConst : Given a constant value, can we assign it to the dst variable?
+// CanAssign : Given a constant value, can we assign it to the dst variable?
 func CanAssign(dst code.PrimaryType, value *ValueDef) bool {
 	src := value.Typ.Pt
 	if src == dst {

@@ -115,11 +115,7 @@ func FreeBlockVarsNodelete(level int) (err error) {
 	n := 0
 	for _, v := range VarDefs {
 		if v.BlockLevel >= level {
-			// err = DeleteLocalVar(v.Name)
 			n++
-			if err != nil {
-				return err
-			}
 		}
 	}
 	if n > 0 {

@@ -151,12 +151,11 @@ func Encode(p []byte, i int, r int32) int {
 		p[i+2] = tx | byte(r>>6)&maskx
 		p[i+3] = tx | byte(r)&maskx
 		return i + 4
-	} else {
-		p[i+0] = runeErrorByte0
-		p[i+1] = runeErrorByte1
-		p[i+2] = runeErrorByte2
-		return i + 3
 	}
+	p[i+0] = runeErrorByte0
+	p[i+1] = runeErrorByte1
+	p[i+2] = runeErrorByte2
+	return i + 3
 }
 
 func TestDecode() {

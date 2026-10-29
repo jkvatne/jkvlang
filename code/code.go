@@ -190,23 +190,19 @@ func ConsArgCode(count int, reverse bool) {
 	if count == 0 {
 		return
 	}
-	txt := ""
-	startArgNo := len(ArgCode) - count
-	if startArgNo < 0 {
-		// panic("ArgCode error")
-		startArgNo = 0
-	}
+	var txt strings.Builder
+	startArgNo := max(len(ArgCode)-count, 0)
 	if reverse {
 		for i := len(ArgCode) - 1; i >= startArgNo; i-- {
-			txt += ArgCode[i]
+			txt.WriteString(ArgCode[i])
 		}
 	} else {
 		for i := startArgNo; i < len(ArgCode); i++ {
-			txt += ArgCode[i]
+			txt.WriteString(ArgCode[i])
 		}
 	}
 	if len(ArgCode) > startArgNo {
-		ArgCode[startArgNo] = txt
+		ArgCode[startArgNo] = txt.String()
 	}
 	if len(ArgCode) > startArgNo {
 		ArgCode = ArgCode[0 : startArgNo+1]

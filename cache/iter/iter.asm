@@ -111,6 +111,7 @@ iter@range_2:
    ; Line 17: r.start = 0
    mov rax, [rbp-8]                     ; -- 1->1 EmitLoadField: Load local variable r
    push rax                             ; ax 1->2 Assure pointer is on stack
+   ; 
    pop rdi                              ; -- 2->1 pop EmitAssignIndirectConstInt
    mov dword  [rdi], 0                  ; -- 1->1 
 

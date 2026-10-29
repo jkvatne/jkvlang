@@ -46,8 +46,6 @@ func TestUnrounded() {
 	u := unround(6.1)
 	fmt.Printf("u=%d\n", u)
 
-	os.Exit(0)
-
 	f := pack64(0x0010_0000_0000_0000, -52) // = 1.0
 	fmt.Printf("%g\n", f)
 	f = pack64(0x0018000000000000, -52) // = 1.5

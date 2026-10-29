@@ -4,8 +4,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 
@@ -34,14 +32,6 @@ import (
 
 var CommentIndent = 40
 var spaces = "                                                                                    "
-
-func includeFile(txt string, libPath string) {
-	str, err := os.ReadFile(path.Join(libPath, txt))
-	code.Write(string(str))
-	if err != nil {
-		panic("Could not read library " + txt)
-	}
-}
 
 func emit(op string, dst string, src string, comment string) {
 	startSp := code.LocalSp
@@ -1082,7 +1072,7 @@ func EmitGlobalIndexedByConstValue(id string, size int, index int) {
 	code.SetAx()
 }
 
-// EmitGlobalIndexedValue TOS is index. Pointer is in global variable <id>
+// EmitGlobalIndexedTosValue TOS is index. Pointer is in global variable <id>
 func EmitGlobalIndexedTosValue(id string, size int) {
 	EmitAssertTosInRax("Assure tos (index) is in rax")
 	if size > 1 {
@@ -1569,22 +1559,6 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	return nil
 }
 
-func EmitStoreIndirectAx(op Token, reg string, size int) error {
-	reg = DataType(size) + "[" + reg + "]"
-	if size == 8 {
-		emit(TokenOp[op], reg, "rax", "EmitStoreIndirect quad")
-	} else if size == 4 {
-		emit(TokenOp[op], reg, "eax", "EmitStoreIndirect dword")
-	} else if size == 2 {
-		emit(TokenOp[op], reg, "ax", "EmitStoreIndirect word")
-	} else if size == 1 {
-		emit(TokenOp[op], reg, "al", "EmitStoreIndirect byte")
-	} else {
-		return fmt.Errorf("store indirect with wrong size")
-	}
-	return nil
-}
-
 func EmitLoadIndirectAx(reg string, size int) error {
 	reg = DataType(size) + "[" + reg + "]"
 	if size == 1 {
@@ -1604,7 +1578,7 @@ func EmitLoadIndirectAx(reg string, size int) error {
 // EmitAssignIndirectConstInt assumes pointer in TOS and constant in parameter "value"
 func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string) error {
 	var err error
-	// EmitComment("EmitAssignIndirectConstInt")
+	EmitComment(comment)
 	EmitFlushRax("")
 	emit("pop", "rdi", "", "pop EmitAssignIndirectConstInt")
 	instr := TokenOp[op]
@@ -2086,7 +2060,7 @@ func EmitAssignIndirectExpressionStrStr() error {
 
 func EmitAssignVariableExpressionSlice(adr int, comment string) error {
 	EmitAssertTosInRax("")
-	emit("mov", BpRel(adr), "rax", "")
+	emit("mov", BpRel(adr), "rax", comment)
 	return nil
 }
 

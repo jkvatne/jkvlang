@@ -1,4 +1,4 @@
-type time@time@Time = U64
 type github~com$jkvatne$date@Date = U32
+type time@time@Time = U64
 func github~com$jkvatne$date@time@now() I32 {}
 func github~com$jkvatne$date@date(t time@time@Time) github~com$jkvatne$date@Date {}

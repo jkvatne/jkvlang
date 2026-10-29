@@ -1,15 +1,5 @@
 package main
 
-import (
-	"github.com/jkvatne/jkv/code"
-)
-
-type ConstValue struct {
-	Bits        uint64
-	Pt          code.PrimaryType
-	StringValue string
-}
-
 type ValueDef struct {
 	Typ         *TypeDef
 	Unsigned    bool
