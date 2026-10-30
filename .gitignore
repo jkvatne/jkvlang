@@ -5,6 +5,7 @@ temp/
 build/
 .idea/
 bin/
+cache/
 
 # intermediate files
 a.out
@@ -15,6 +16,7 @@ a.out
 *.exe
 *.tok
 *.var
+*.pkg
 
 #private files
 .private/
