@@ -163,9 +163,9 @@ func Link(cfg *Config, outputName string) error {
 
 	// Print link command line to console
 	if *printLinkCmd {
-		fmt.Printf("Linker command line:\n" + LinkerName + " ")
+		fmt.Printf("\nLinker command line:\n" + LinkerName + " ")
 		for _, s := range args {
-			fmt.Printf(" %s", s)
+			fmt.Printf("    %s\n", s)
 		}
 		fmt.Printf("\n")
 	}
@@ -201,6 +201,8 @@ func monitor(reader *bufio.Reader) {
 // It must be placed in the build directory
 func Run(outputName string) error {
 	if *run {
+		cwd, _ := os.Getwd()
+		fmt.Printf("Running in %s\n", cwd)
 		var err error
 		cmd = exec.Command(outputName, *arg)
 		stdout, err = cmd.StdoutPipe()

@@ -406,6 +406,14 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 		// For each jkv file in the test directory
 		if !entry.IsDir() {
 			n++
+			err = CreateBuildDir(cfg.BuildPath)
+			if err != nil {
+				return n, fmt.Errorf("could not create build directory '%s'", err.Error())
+			}
+			err = CopyFile(cfg.CachePath+"/sys/sys.obj", cfg.BuildPath+"/sys.obj")
+			if err != nil {
+				return n, fmt.Errorf("could not copy sys.obj to build directory '%s'", err.Error())
+			}
 			name := filepath.Join(sourcePath, entry.Name())
 			if strings.HasSuffix(name, ".jkv") {
 				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
@@ -417,13 +425,14 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 					fmt.Printf("File %s failed with error %v\n", name, err)
 					err = nil
 				} else {
+					Build(cfg, filepath.Dir(name))
 					if err == nil {
 						err = Link(cfg, outputName)
 					}
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
-					err = Run(outputName)
+					err = Run(cfg.BuildPath + "/" + outputName)
 				}
 			}
 		} else {
