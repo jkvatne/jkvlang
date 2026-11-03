@@ -264,12 +264,17 @@ func main() {
 			panic("Unable to create cache directory")
 		}
 		err = os.Mkdir(cfg.CachePath+"/sys", os.ModePerm)
-		// Now we have a clean cache directory. Remake sys.obj and other sys files
-		// The obj files are put into cache/sys/...
+	}
+
+	// TODO Check file date and compare with sys.asm
+	_, err = os.Stat(cfg.CachePath + "/sys/sys.obj")
+	if err != nil {
+		err = os.MkdirAll(cfg.CachePath+"/sys", os.ModePerm)
 		if err == nil {
 			err = AssembleFiles(cfg, cfg.LibPath, cfg.CachePath+"/sys")
 		}
 	}
+
 	if err == nil {
 		err = CreateBuildDir(cfg.BuildPath)
 	}
@@ -303,8 +308,13 @@ func main() {
 		}
 
 	} else if *sourceDir != "" {
+		srcPath, err2 := filepath.Abs(*sourceDir)
+		if err2 != nil {
+			fmt.Printf("Could not resolve path '%s'\n", *sourceDir)
+			os.Exit(1)
+		}
 		// Compile and run all files in the source directory
-		err = CompileDir(cfg, *sourceDir, cfg.BuildPath, "main")
+		err = CompileDir(cfg, srcPath)
 		if err == nil {
 			err = Build(cfg, *sourceDir)
 		}

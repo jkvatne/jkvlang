@@ -45,6 +45,14 @@ func InitTypes() {
 		TypeDefs[code.PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: code.PrimaryTypeNames[t], Basic: true}
 	}
 	TypeDefs["String"].DataOffset = 8
+	TypeDefs["U64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U64arr", Element: &U64Type, DataOffset: 8, Basic: true}
+	TypeDefs["I64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I64arr", Element: &I64Type, DataOffset: 8, Basic: true}
+	TypeDefs["I32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I32arr", Element: &I32Type, DataOffset: 8, Basic: true}
+	TypeDefs["U32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U32arr", Element: &U32Type, DataOffset: 8, Basic: true}
+	TypeDefs["U8arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U8arr", Element: &U8Type, DataOffset: 8, Basic: true}
+	TypeDefs["F64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F64arr", Element: &F64Type, DataOffset: 8, Basic: true}
+	TypeDefs["F32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F32arr", Element: &F32Type, DataOffset: 8, Basic: true}
+	TypeDefs["StringArr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "StringArr", Element: &StringType, DataOffset: 8, Basic: true}
 }
 
 func (t *TypeDef) Size() int {

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type State struct {
@@ -14,7 +15,6 @@ type State struct {
 	token              Token  // The current token as a number
 	tokenString        string // The current token as a string
 	ConstValue         float64
-	noCode             int      // Used to skip code generation in constant if/else statements.
 	HasReturned        bool     // Used to avoid jumps after return statement and checking for dead code
 	currentFuncDef     *FuncDef // The current function being compiled. Nested function definitions is not allowed.
 	currentFuncCall    string
@@ -23,15 +23,17 @@ type State struct {
 	CommentLevel       int
 	returnLbl          int
 	BlockLevel         int
-	FileName           string
+	SourceFilePath     string
 	ParsingReturnValue bool
 	Cleanup            string
 	LoopLevel          int
-	PackageName        string
+	MangledName        string
 	IsPackage          bool
-	IsPkgFile          bool
 	LoopStack          []int
 	Cfg                *Config
+	GeneratePkg        bool
+	Level              int
+	packages           map[string]string
 }
 
 func (s *State) PushLoopBlock(n int) {
@@ -52,18 +54,28 @@ func (s *State) LoopBlock() int {
 	return s.LoopStack[len(s.LoopStack)-1]
 }
 
-func NewState(cfg *Config, SourceFileName string, PackageName string, isPkgFile bool) (*State, error) {
+func NewState(cfg *Config, sourceFilePath string, mangledName string, level int) (*State, error) {
 	s := new(State)
 	var err error
 	s.Cfg = cfg
-	s.PackageName = PackageName
-	s.IsPackage = PackageName != "main"
-	s.IsPkgFile = isPkgFile
-	s.BlockLevel = 0
-	s.text, err = os.ReadFile(SourceFileName)
+	s.Level = level
+	s.MangledName = mangledName
+	s.IsPackage = mangledName != "main"
+	s.text, err = os.ReadFile(sourceFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("could not read source file '%s'", SourceFileName)
+		return nil, fmt.Errorf("could not read source file '%s'", sourceFilePath)
 	}
-	s.FileName = SourceFileName
+	s.SourceFilePath = sourceFilePath
+	s.packages = make(map[string]string)
 	return s, err
+}
+
+func (s *State) Mangle(id string) string {
+	if strings.Contains(id, "@") {
+		return id
+	}
+	if s.MangledName != "" && s.MangledName != "main" {
+		return s.MangledName + "@" + id
+	}
+	return id
 }

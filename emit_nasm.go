@@ -731,8 +731,16 @@ func EmitEpilogue(name string) {
 		emit("leave", "", "", "")
 		emit("ret", "", "", "return from "+name)
 	}
-	for _, name = range Externals {
-		EmitExtern(name)
+}
+
+func EmitExternals() {
+	for _, f := range FuncDefs {
+		if f.extern {
+			EmitExtern(f.name)
+		}
+	}
+	for _, s := range Externals {
+		EmitExtern(s)
 	}
 }
 

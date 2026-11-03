@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strconv"
 )
 
@@ -15,6 +14,7 @@ type FuncDef struct {
 	stackSize     int
 	builtin       bool
 	VarArg        bool
+	extern        bool
 }
 
 type ParDef struct {
@@ -25,63 +25,65 @@ type ParDef struct {
 var (
 	Externals []string
 	FuncDefs  []*FuncDef
-	FuncNames []string
 )
 
-func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool) (*FuncDef, error) {
+func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool, extern bool) (*FuncDef, error) {
 	n := FuncCount(id)
 	if n > 0 {
-		f := FindFuncDefFromParList(id, parList)
+		f := FindFuncDefFromParList(id, parList, true)
 		if f != nil {
-			return nil, fmt.Errorf("function %s already exists", id)
+			// return nil, fmt.Errorf("function %s already exists", id)
+			panic("function " + id + " already exists")
 		}
 	}
 	name := id
 	if !builtin {
 		name = id + "_" + strconv.Itoa(n+1)
 	}
+	// if len(FuncDefs) >= 28 {
+	// fmt.Printf("Func %s, %s\n", id, name)
+	// }
 	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)
+	f.extern = extern
 	FuncDefs = append(FuncDefs, f)
-	FuncNames = append(FuncNames, name)
 	return f, nil
 }
 
 func FuncInit() {
 	FuncDefs = make([]*FuncDef, 0, 30)
-	FuncNames = make([]string, 0, 30)
-	_, _ = AddFunc("println", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
-	_, _ = AddFunc("printf", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
-	_, _ = AddFunc("print", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true)
-	_, _ = AddFunc("fflush", []*ParDef{}, nil, true, false)
-	_, _ = AddFunc("flush", []*ParDef{}, nil, true, false)
-	_, _ = AddFunc("assert", []*ParDef{{name: "arg", typ: &BoolType}}, nil, true, true)
-	_, _ = AddFunc("exit", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, false)
-	_, _ = AddFunc("invert_err", []*ParDef{}, nil, true, false)
+	_, _ = AddFunc("println", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true, true)
+	_, _ = AddFunc("printf", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true, true)
+	_, _ = AddFunc("print", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, true, true)
+	_, _ = AddFunc("fflush", []*ParDef{}, nil, true, false, true)
+	_, _ = AddFunc("flush", []*ParDef{}, nil, true, false, true)
+	_, _ = AddFunc("assert", []*ParDef{{name: "arg", typ: &BoolType}}, nil, true, true, true)
+	_, _ = AddFunc("exit", []*ParDef{{name: "arg", typ: &StringType}}, nil, true, false, true)
+	_, _ = AddFunc("invert_err", []*ParDef{}, nil, true, false, true)
 	_, _ = AddFunc("create_file", []*ParDef{{name: "arg", typ: &PtrType}, {name: "arg", typ: &I32Type},
 		{name: "arg", typ: &I32Type}, {name: "arg", typ: &I32Type}, {name: "arg", typ: &I32Type},
 		{name: "arg", typ: &I32Type},
-		{name: "arg", typ: &I32Type}}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("cptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("lptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false)
-	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U32Type}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U8Type}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("len", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("cstrlen", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false)
-	_, _ = AddFunc("get_ticks", nil, nil, true, false)
-	_, _ = AddFunc("get_tick_freq", nil, nil, true, false)
-	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&U8Type}, true, false)
-	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&U16Type}, true, false)
-	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I16Type}, true, false)
-	_, _ = AddFunc("floor", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&F64Type}, true, false)
-	_, _ = AddFunc("int64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I64Type}, true, false)
-	_, _ = AddFunc("uint64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&U64Type}, true, false)
-	_, _ = AddFunc("int32", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I32Type}, true, false)
+		{name: "arg", typ: &I32Type}}, []*TypeDef{&PtrType}, true, false, true)
+	_, _ = AddFunc("cptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false, true)
+	_, _ = AddFunc("lptr", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&PtrType}, true, false, true)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U32Type}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("bitlen", []*ParDef{{name: "arg", typ: &U8Type}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("len", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("cstrlen", []*ParDef{{name: "arg", typ: &StringType}}, []*TypeDef{&I32Type}, true, false, true)
+	_, _ = AddFunc("get_ticks", nil, nil, true, false, true)
+	_, _ = AddFunc("get_tick_freq", nil, nil, true, false, true)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I32Type}}, []*TypeDef{&U8Type}, true, false, true)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &U16Type}}, []*TypeDef{&U16Type}, true, false, true)
+	_, _ = AddFunc("low_byte", []*ParDef{{name: "arg", typ: &I16Type}}, []*TypeDef{&I16Type}, true, false, true)
+	_, _ = AddFunc("floor", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&F64Type}, true, false, true)
+	_, _ = AddFunc("int64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I64Type}, true, false, true)
+	_, _ = AddFunc("uint64", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&U64Type}, true, false, true)
+	_, _ = AddFunc("int32", []*ParDef{{name: "arg", typ: &F64Type}}, []*TypeDef{&I32Type}, true, false, true)
 	_, _ = AddFunc("mul64", []*ParDef{{name: "arg1", typ: &U64Type}, {name: "arg21", typ: &U64Type}},
-		[]*TypeDef{&U64Type, &U64Type}, true, false)
+		[]*TypeDef{&U64Type, &U64Type}, true, false, true)
 }
 
 // &VarDef{Name: "err", Typ: &I64Type
@@ -123,14 +125,14 @@ func FindFuncDef(id string, values []*ValueDef) *FuncDef {
 	return nil
 }
 
-func FindFuncDefFromParList(id string, parameters []*ParDef) *FuncDef {
+func FindFuncDefFromParList(id string, parameters []*ParDef, exact bool) *FuncDef {
 	for _, f := range FuncDefs {
 		if f.name == id {
 			if f.VarArg && len(f.parameters) <= len(parameters) || len(f.parameters) == len(parameters) {
 				ok := true
 				for i, p := range f.parameters {
 					v := &ValueDef{Typ: parameters[i].typ}
-					if !CanAssign(p.typ.Pt, v) {
+					if exact && p.typ.Pt != v.Typ.Pt || !CanAssign(p.typ.Pt, v) {
 						ok = false
 						break
 					}

@@ -3,7 +3,6 @@ package code
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -67,10 +66,10 @@ var (
 	LocalSp     int
 	NextLineNum int
 	LineNum     int
-	UnitName    string
 	OutputFile  *os.File // File where the assembly is put
 	ArgCode     []string // Temporary storage of assembly code. needed because we evaluate arguments in reverse order
 	CleanupCode []string
+	NoCode      int
 )
 
 func (t PrimaryType) IsObject() bool {
@@ -130,16 +129,14 @@ func SpIsTos() bool {
 	return state == sp
 }
 
-func NewAsmFile(name string, workdir string) (err error) {
+func NewAsmFile(filePath string) (err error) {
 	ArgCode = make([]string, 0, 64)
 	CleanupCode = make([]string, 0, 64)
 	NextLineNum = 1
 	LineNum = 1
-	UnitName = strings.TrimSuffix(filepath.Base(name), ".jkv")
-	fn := filepath.Join(workdir, UnitName+".asm")
-	OutputFile, err = os.Create(fn)
+	OutputFile, err = os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("could not create assembly file '%s'", fn)
+		return fmt.Errorf("could not create assembly file '%s'", filePath)
 	}
 	return nil
 }
@@ -210,6 +207,9 @@ func ConsArgCode(count int, reverse bool) {
 }
 
 func OutputArgCode() {
+	if NoCode > 0 {
+		return
+	}
 	if len(ArgCode) > 1 {
 		panic("Line " + strconv.Itoa(LineNum) + ": OutputArgCode should have only one entry in ArgCode")
 	}
@@ -221,6 +221,9 @@ func OutputArgCode() {
 }
 
 func Write(txt string) int {
+	if NoCode > 0 {
+		return len(txt)
+	}
 	if len(ArgCode) == 0 {
 		// Write directly to file
 		n, err := OutputFile.WriteString(txt)

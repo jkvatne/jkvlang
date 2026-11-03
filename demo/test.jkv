@@ -6,6 +6,10 @@ import (
     github.com/jkvatne/date
 )
 
+func print_freq() {
+    print("Tick frequency=%d",tick_frequency)
+}
+
 func main() {
     printf("Hello\n")
     print_freq()
@@ -13,8 +17,9 @@ func main() {
     // Will sleep for the given number of milliseconds
     print("Please wate, this takes ca 2 seconds....")
     ok = call(Sleep, 1000)
-    d = date.Date(123)
-    print("Date=%d", d)
+
+    //d = date.Date(123)
+    //print("Date=%d", d)
     sum = 0
     for i=iter.range(1,10) {
         sum=sum+i

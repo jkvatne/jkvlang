@@ -161,7 +161,7 @@ func ParseFor(s *State) error {
 			fun = MangleFun(pkg, fun)
 		}
 	}
-	f := FindFuncDefFromParList(fun, []*ParDef{p})
+	f := FindFuncDefFromParList(fun, []*ParDef{p}, false)
 	if f == nil {
 		return fmt.Errorf("range must have a next function")
 	}

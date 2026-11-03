@@ -536,6 +536,7 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	HadAx := code.AxIsTos()
+	id = s.Mangle(id)
 	s.currentFuncCall = id
 	if FuncCount(id) == 0 {
 		s.currentFuncCall = ""
@@ -549,7 +550,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		s.currentFuncCall = ""
 		return nil, err
 	}
-	f := FindFuncDefFromParList(id, TypeListVal(values))
+	f := FindFuncDefFromParList(id, TypeListVal(values), false)
 	if f == nil {
 		return nil, fmt.Errorf("function %s with wrong parameters", id)
 	}
@@ -843,13 +844,14 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 func HandleImportedName(s *State) (string, error) {
 	id := s.tokenString
 	s.next()
-	path, ok := ImportedPackages[id]
+	p, ok := s.packages[id]
 	if ok {
 		if s.token != TOK_DOT {
 			return "", fmt.Errorf("expected dot after package")
 		}
 		s.next()
-		id = MangleFun(path, s.tokenString)
+		pkg := Packages[p]
+		id = MangleFun(pkg.mangledName, s.tokenString)
 		s.next()
 	}
 	return id, nil
@@ -869,7 +871,7 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 	}
 	if s.found(TOK_LPAR) {
 		// An ID followed by left parantesis can be a type conversion or a function call
-		typ, ok := TypeDefs[id]
+		typ, ok := TypeDefs[s.Mangle(id)]
 		if ok {
 			return ParseTypeConversion(s, typ)
 		}
@@ -1291,7 +1293,7 @@ func ParseExpressions(s *State) ([]*ValueDef, error) {
 // ParseBlock assumes that { has been consumed (by s.found())
 func ParseBlock(s *State, isTrue bool) error {
 	if isTrue {
-		s.noCode++
+		code.NoCode++
 	}
 	if len(code.ArgCode) > 0 {
 		panic("ParseBlock: ArgCode was not empty")
@@ -1308,8 +1310,8 @@ func ParseBlock(s *State, isTrue bool) error {
 	s.BlockLevel--
 	s.HasReturned = false
 	if isTrue {
-		s.noCode--
-		if s.noCode < 0 {
+		code.NoCode--
+		if code.NoCode < 0 {
 			panic("negative noCode")
 		}
 	}
@@ -1514,17 +1516,9 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
 	VarReset(s)
-	fun := s.tokenString
-	if !s.IsPkgFile {
-		n := FuncCount(fun)
-		if fun == "main" {
-			EmitFunction(fun)
-		} else if fun[0] != '-' && s.PackageName != "main" {
-			EmitFunction(s.PackageName + "@" + fun + "_" + strconv.Itoa(n+1))
-		} else {
-			EmitFunction(fun + "_" + strconv.Itoa(n+1))
-		}
-	}
+	fun := s.Mangle(s.tokenString)
+	n := FuncCount(fun)
+	EmitFunction(fun + "_" + strconv.Itoa(n+1))
 	s.next()
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
@@ -1557,7 +1551,7 @@ func ParseFuncDef(s *State) error {
 		}
 	}
 	var f *FuncDef
-	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false)
+	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false, code.NoCode == 0)
 	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
 	if err != nil {
@@ -1573,17 +1567,8 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
-	if s.PackageName == "" && !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
+	if s.MangledName == "" && !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
 		return fmt.Errorf("function definition does not return a value")
-	}
-	if s.IsPkgFile {
-		if s.token != TOK_RBRACE {
-			return fmt.Errorf("expected right brace but got %s", s.tokenString)
-		}
-		s.next()
-		EmitComment("Global function " + f.name)
-		EmitExtern(f.label)
-		return nil
 	}
 
 	if f.name == "main" {
@@ -1657,11 +1642,7 @@ func ParseTypeDef(s *State) error {
 		return err
 	}
 	t := TypeDef{}
-	if s.PackageName != "" && s.PackageName != "main" {
-		t.TypeName = Mangle(s.PackageName) + "@" + id
-	} else {
-		t.TypeName = id
-	}
+	t.TypeName = s.Mangle(id)
 	t.Element = typ.Element
 	t.Fields = make(map[string]*TypeDef)
 	for k, f := range typ.Fields {

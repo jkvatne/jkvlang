@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -10,12 +11,275 @@ import (
 	"github.com/jkvatne/jkv/code"
 )
 
-var MissingPackages []string
+type PackageInfo struct {
+	level         int
+	mangledName   string // Mangled path mangledName, unique for each package
+	sourcePath    string
+	cachePath     string
+	isCompiled    bool
+	isStdLib      bool
+	currentlyUsed bool
+	alias         string
+}
 
-var ImportedPackages map[string]string
+var Packages map[string]*PackageInfo
 
-func ImportInit() {
-	ImportedPackages = make(map[string]string)
+func init() {
+	// Packages is a global map of all packages in the project
+	// It is initialized only once, at start of compilation
+	// The key is the mangled path name, unique for each package
+	Packages = make(map[string]*PackageInfo)
+}
+
+func SetPackagesCurrentlyNotUsed() {
+	for _, p := range Packages {
+		p.currentlyUsed = false
+	}
+}
+
+// AddPackage adds a package to the global Packages map
+// It updates the Packages map and checks if it is already present in imports and cache
+func AddPackage(cfg *Config, mangledName string, level int, alias string) error {
+	p, ok := Packages[mangledName]
+	if ok && p.level < level {
+		return fmt.Errorf("circular package import: %s", DeMangle(mangledName))
+	}
+	if ok {
+		p.currentlyUsed = true
+		return nil
+	}
+	// Ok, create info.
+	p = &PackageInfo{
+		level:       level,
+		alias:       alias,
+		mangledName: mangledName,
+	}
+
+	// Check if the package exists either in the library or in the import directory
+	p.sourcePath = path.Join(cfg.LibPath, mangledName)
+	if strings.Contains(mangledName, "$") {
+		p.sourcePath = path.Join(cfg.ImportPath, mangledName)
+	}
+	_, err := os.Stat(p.sourcePath)
+	if err != nil {
+		return fmt.Errorf("package %s not found. Clone it into the imports directory", p.sourcePath)
+	}
+
+	// Check if it is compiled and exists in the cache
+	// TODO Check file dates
+	p.cachePath = path.Join(cfg.CachePath, mangledName)
+	_, err = os.Stat(p.cachePath)
+	p.isCompiled = err == nil
+	p.currentlyUsed = true
+	// Save info
+	Packages[mangledName] = p
+	return nil
+}
+
+func ParseImport(s *State) error {
+	if s.token != TOK_ID && s.token != TOK_STRING {
+		return fmt.Errorf("expected id but got %s", s.tokenString)
+	}
+	packageName := s.tokenString
+	// shortName defaults to the last part of the path.
+	shortName := packageName
+	s.next()
+	for s.token == TOK_DIV || s.token == TOK_DOT {
+		if s.token == TOK_DIV {
+			s.next()
+			packageName = packageName + "/" + s.tokenString
+		} else {
+			s.next()
+			packageName = packageName + "." + s.tokenString
+		}
+		// shortName defaults to the last part of the path.
+		shortName = s.tokenString
+		s.next()
+	}
+	// path is now the imported path, like f.ex. "github.com/jkvatne/lib"
+	if s.token == TOK_AS {
+		// Get alternative shortname, if given after "as"
+		s.next()
+		if s.token != TOK_ID {
+			return fmt.Errorf("expected package short name, but got %s", s.tokenString)
+		}
+		shortName = s.tokenString
+	}
+	packageName = Mangle(packageName)
+	s.packages[shortName] = packageName
+	err := AddPackage(s.Cfg, packageName, s.Level, shortName)
+	return err
+}
+
+// ParseImports parses import statements and add package to the global Packages map
+func ParseImports(s *State) error {
+	var err error
+	for s.token == TOK_IMPORT {
+		s.next()
+		if s.token == TOK_LPAR {
+			s.next()
+			for s.token != TOK_RPAR {
+				err = ParseImport(s)
+				if err != nil {
+					return err
+				}
+			}
+			s.next()
+		} else {
+			err = ParseImport(s)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CollectFileImports parses one file's import statements and add package to the global Packages map
+// It does not generate any code
+func CollectFileImports(cfg *Config, sourceFileName string, mangledName string, level int) error {
+	s, err := NewState(cfg, sourceFileName, mangledName, level)
+	if err != nil {
+		return err
+	}
+	s.nextChar()
+	s.next()
+	if s.token == TOK_PACKAGE {
+		s.next()
+		if s.token != TOK_ID {
+			return fmt.Errorf("%s:%d %v", sourceFileName, code.LineNum, "package name should be on top line")
+		}
+		if s.tokenString != mangledName {
+			return fmt.Errorf("%s:%d %v", sourceFileName, code.LineNum,
+				"got package name %s, should be %s on top line", s.tokenString, s.MangledName)
+		}
+		s.next()
+	}
+	err = ParseImports(s)
+	return err
+}
+
+func CollectPackageImports(cfg *Config, packagePath string, mangledName string, level int) error {
+	inputFiles, err := os.ReadDir(packagePath)
+	if err != nil {
+		return err
+	}
+	for _, file := range inputFiles {
+		// For each jkv file in the package directory
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".jkv") {
+			fileName := filepath.Join(packagePath, file.Name())
+			err = CollectFileImports(cfg, fileName, mangledName, level+1)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	// Recursively collect imported packages
+	newPackages := make([]*PackageInfo, 0, 12)
+
+	for _, p := range Packages {
+		if p.level > level {
+			newPackages = append(newPackages, p)
+		}
+	}
+
+	for _, p := range newPackages {
+		err = CollectPackageImports(cfg, p.sourcePath, p.mangledName, level+1)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ProcessPackage will scan each file in the package directory and collect imports
+// If any package is not compiled, it will be compiled now
+// If all packages are ok and the obj file exists, we can compile this package
+func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, outputPath string) error {
+	var s *State
+	inputFiles, err := os.ReadDir(packagePath)
+	if err != nil {
+		return err
+	}
+	level := 0
+	SetPackagesCurrentlyNotUsed()
+	for _, file := range inputFiles {
+		err = CollectFileImports(cfg, packagePath+"/"+file.Name(), mangledPackageName, level)
+		if err != nil {
+			return err
+		}
+	}
+	// Now we have collected all packages used by all source files.
+	// Compile/build those not ok
+	packages := make([]*PackageInfo, 0, 12)
+	for _, p := range Packages {
+		if !p.isCompiled && p.currentlyUsed {
+			packages = append(packages, p)
+		}
+	}
+	for _, p := range packages {
+		err = ProcessPackage(cfg, p.mangledName, p.sourcePath, p.cachePath)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Now we should have all packages compiled and can compile this one
+	if mangledPackageName == "main" {
+		err = InitCompile(cfg.BuildPath + "/" + "main.asm")
+	} else {
+		err = os.MkdirAll(cfg.CachePath+"/"+mangledPackageName, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("could not create package directory " + cfg.CachePath + "/" + mangledPackageName)
+		}
+		err = InitCompile(outputPath + "/" + ShortName(mangledPackageName) + ".asm")
+	}
+	if err != nil {
+		return err
+	}
+	for _, file := range inputFiles {
+		// For each jkv file in the package directory
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".jkv") {
+			sourceFilePath := path.Join(packagePath, file.Name())
+			s, err = NewState(cfg, sourceFilePath, mangledPackageName, level)
+			if err != nil {
+				return err
+			}
+			err = ScanFile(s, packagePath+"/"+file.Name())
+			if err != nil {
+				return err
+			}
+			// After scanning file, we can output the epilogue
+			err = OutputEpilogue(s.MangledName)
+			if err != nil {
+				return err
+			}
+			// And close the asm file
+			err = code.CloseAsmFile()
+		}
+	}
+
+	err = OutputPkgFile(outputPath, mangledPackageName)
+	// Make obj files
+	err = AssembleFiles(cfg, outputPath, outputPath)
+	return err
+}
+
+func ShortName(mangledName string) string {
+	w := strings.Split(mangledName, "$")
+	if len(w) < 2 {
+		return mangledName
+	}
+	return w[len(w)-1]
+}
+
+// CompileDir will compile a package in the given directory.
+// The package can consist of several source code files.
+// The output is a single assembly file in the buildDir
+func CompileDir(cfg *Config, inputPath string) (err error) {
+	err = CollectPackageImports(cfg, inputPath, "main", 0)
+	err = ProcessPackage(cfg, "main", inputPath, cfg.BuildPath)
+	return err
 }
 
 func DeMangleFun(mangledName string) (path string, fun string) {
@@ -51,122 +315,24 @@ func GetPkgName(name string) string {
 	return w[len(w)-1]
 }
 
-func ParseImport(s *State) error {
-	if s.token != TOK_ID && s.token != TOK_STRING {
-		return fmt.Errorf("expected id but got %s", s.tokenString)
-	}
-	path := s.tokenString
-	// shortName defaults to the last part of the path.
-	shortName := path
-	s.next()
-	for s.token == TOK_DIV || s.token == TOK_DOT {
-		if s.token == TOK_DIV {
-			s.next()
-			path = path + "/" + s.tokenString
-		} else {
-			s.next()
-			path = path + "." + s.tokenString
-		}
-		// shortName defaults to the last part of the path.
-		shortName = s.tokenString
-		s.next()
-	}
-	// path is now the imported path, like f.ex. "github.com/jkvatne/lib"
-	if s.token == TOK_AS {
-		// Get alternative shortname, if given after "as"
-		s.next()
-		if s.token != TOK_ID {
-			return fmt.Errorf("expected package short name, but got %s", s.tokenString)
-		}
-		shortName = s.tokenString
-	}
-	ImportedPackages[shortName] = path
-	return nil
-}
-
-// ParseImports parses import statements
-func ParseImports(s *State) error {
-	var err error
-	if s.token == TOK_LPAR {
-		s.next()
-		for s.token != TOK_RPAR {
-			err = ParseImport(s)
+func ScanPackages(cfg *Config, level int) error {
+	// Search for pkg files for each imported package
+	// Should never fail since we already have built all packages
+	for _, p := range Packages {
+		if p.currentlyUsed {
+			// Get the pkg file
+			s, err := NewState(cfg, p.cachePath+"/import.pkg", p.mangledName, level)
 			if err != nil {
 				return err
 			}
-		}
-		s.next()
-	} else {
-		err = ParseImport(s)
-	}
-
-	// Check that we have cloned all the needed packages into the imports directory
-	MissingPackages = []string{}
-	for _, fullName := range ImportedPackages {
-		info, err2 := os.Stat("./imports/" + Mangle(fullName))
-		if err2 != nil {
-			info, err2 = os.Stat(s.Cfg.LibPath + "/imports/" + Mangle(fullName))
-		}
-		if err2 != nil || !info.IsDir() {
-			MissingPackages = append(MissingPackages, fullName)
-		}
-	}
-	if len(MissingPackages) > 0 {
-		return fmt.Errorf(">> Missing one or more packages. Clone them in the imports directory")
-	}
-
-	// Check that we have pkg and obj files for the imported packages.
-	// If not, we have to compile the missing packages.
-	MissingPackages = []string{}
-	for _, fullName := range ImportedPackages {
-		var info os.FileInfo
-		info, err = os.Stat(s.Cfg.CachePath + "/" + Mangle(fullName))
-		if err != nil {
-			info, err = os.Stat(s.Cfg.LibPath + "/imports/" + Mangle(fullName))
-		}
-		if err == nil && info.IsDir() {
-			var entries []os.DirEntry
-			entries, err = os.ReadDir(s.Cfg.CachePath + "/" + Mangle(fullName))
-			if len(entries) == 0 {
-				MissingPackages = append(MissingPackages, Mangle(fullName))
+			code.NoCode++
+			err = ScanFile(s, p.sourcePath)
+			if err != nil {
+				return err
 			}
-			// for _, entry := range entries {
-			// TODO: Check that the source code is older than the obj files
-			// }
-		} else {
-			MissingPackages = append(MissingPackages, Mangle(fullName))
+			code.NoCode--
 		}
 	}
-	if len(MissingPackages) > 0 {
-		return fmt.Errorf("missing packages")
-	}
-
-	// Now scan the pkg files for each import
-	for _, fullName := range ImportedPackages {
-		var info os.FileInfo
-		info, err = os.Stat(s.Cfg.CachePath + "/" + Mangle(fullName))
-		if err == nil && info.IsDir() {
-			var entries []os.DirEntry
-			entries, err = os.ReadDir(s.Cfg.CachePath + "/" + Mangle(fullName))
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.Contains(entry.Name(), ".pkg") {
-					fileName := s.Cfg.CachePath + "/" + Mangle(fullName) + "/" + entry.Name()
-					w := strings.Split(fullName, "/")
-					packageName := w[len(w)-1]
-					//                   cfg  SourceFileName PackageName isPkgFile
-					ss, err2 := NewState(s.Cfg, fileName, packageName, true)
-					if err2 != nil {
-						return err2
-					}
-					err2 = ScanFile(ss, fullName)
-					if err2 != nil {
-						return err2
-					}
-				}
-			}
-		}
-	}
-
 	return nil
 }
 
@@ -180,14 +346,15 @@ func ScanFile(s *State, name string) (err error) {
 		}
 		s.next()
 	}
-
+	SetPackagesCurrentlyNotUsed()
 	// Imports must be at top of file
-	if s.token == TOK_IMPORT {
-		s.next()
-		err = ParseImports(s)
-		if err != nil {
-			return err
-		}
+	err = ParseImports(s)
+	if err != nil {
+		return err
+	}
+	err = ScanPackages(s.Cfg, s.Level)
+	if err != nil {
+		return err
 	}
 
 	for s.token != TOK_EOF {
@@ -228,8 +395,8 @@ func CreateBuildDir(buildDir string) error {
 	return nil
 }
 
-func InitCompile(buildDir string, AsmFileName string) error {
-	err := code.NewAsmFile(AsmFileName, buildDir)
+func InitCompile(asmFilePath string) error {
+	err := code.NewAsmFile(asmFilePath)
 	if err != nil {
 		return err
 	}
@@ -239,14 +406,14 @@ func InitCompile(buildDir string, AsmFileName string) error {
 	EmitPrologue()
 	InitTypes()
 	FuncInit()
-	ImportInit()
+	SetPackagesCurrentlyNotUsed()
 	return nil
 }
 
 func OutputPkgFile(path string, packageName string) error {
 	OutputFile, err := os.Create(path + "/import.pkg")
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create package file " + path + "/import.pkg")
 	}
 	defer func(OutputFile *os.File) {
 		_ = OutputFile.Close()
@@ -268,7 +435,7 @@ func OutputPkgFile(path string, packageName string) error {
 	}
 	for _, f := range FuncDefs {
 		if !f.builtin {
-			fn := MangleFun(packageName, f.name)
+			fn := f.name // MangleFun(packageName, f.name)
 			_, _ = OutputFile.WriteString("func " + fn + "(")
 			for i, a := range f.parameters {
 				_, _ = OutputFile.WriteString(a.name + " " + a.typ.Name())
@@ -289,7 +456,7 @@ func OutputPkgFile(path string, packageName string) error {
 	return nil
 }
 
-func OutputEpilogue(PackageName string) error {
+func OutputEpilogue(mangledName string) error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
@@ -304,92 +471,14 @@ func OutputEpilogue(PackageName string) error {
 	for _, l := range SliceLiteralDefs {
 		EmitSliceLit(*l)
 	}
-	if PackageName != "" {
+	if mangledName != "main" && mangledName != "" {
 		for _, f := range FuncDefs {
 			if !f.builtin {
-				EmitGlobal(PackageName + "@" + f.label)
+				EmitGlobal(mangledName)
 			}
 		}
 	}
-	return nil
-}
-
-func doCompileDir(cfg *Config, name string, inp string) error {
-	inputFiles, err := os.ReadDir(inp)
-	if err == nil && len(inputFiles) != 0 {
-		outp := cfg.CachePath + "/" + Mangle(name)
-		err = os.MkdirAll(outp, os.ModePerm)
-		if err != nil {
-			return err
-		}
-		err = CompileDir(cfg, inp, outp, GetPkgName(name))
-	}
-	return err
-}
-
-// CompileDir will compile a package in the given directory.
-// The package can consist of several source code files.
-// The output is a single assembly file in the buildDir
-func CompileDir(cfg *Config, ip string, op string, pn string) error {
-	var s *State
-	inputPath := ip
-	outputPath := op
-	packageName := pn
-	// Repeat if some imports were missing
-	for {
-		fmt.Printf(">>> Compiling package %s\n", inputPath)
-		inputFiles, err := os.ReadDir(inputPath)
-		if err != nil {
-			return fmt.Errorf("CompileDir() could not open source directory, %v", err.Error())
-		}
-		err = InitCompile(outputPath, packageName)
-		if err != nil {
-			return err
-		}
-		for _, inputFile := range inputFiles {
-			if !inputFile.IsDir() {
-				fileName := filepath.Join(inputPath, inputFile.Name())
-				s, err = NewState(cfg, fileName, packageName, false)
-				if err != nil {
-					return err
-				}
-				err = ScanFile(s, fileName)
-				if err != nil {
-					break
-				}
-			}
-		}
-		if err == nil {
-			if packageName != "main" {
-				err = OutputPkgFile(outputPath, packageName)
-				if err != nil {
-					return err
-				}
-			}
-			if s != nil {
-				err = OutputEpilogue(s.PackageName)
-			}
-			if err != nil {
-				return err
-			}
-			err = code.CloseAsmFile()
-			break
-		} else if err.Error() == "missing packages" {
-			_ = code.CloseAsmFile()
-			// First compile system packages
-			for _, name := range MissingPackages {
-				inp := cfg.LibPath + "/imports/" + Mangle(name)
-				err = doCompileDir(cfg, name, inp)
-			}
-			for _, name := range MissingPackages {
-				inp := cfg.ImportPath + "/" + Mangle(name)
-				err = doCompileDir(cfg, name, inp)
-			}
-			err = nil
-		} else {
-			return err
-		}
-	}
+	EmitExternals()
 	return nil
 }
 
@@ -451,11 +540,11 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 // CompileFile will compile and run a single file. It must have a main() function.
 func CompileFile(cfg *Config, fileName string) error {
 	fmt.Printf(">>> Compiling %s\n", fileName)
-	err := InitCompile(cfg.BuildPath, strings.TrimSuffix(fileName, ".jkv"))
+	err := InitCompile(cfg.BuildPath + "/" + strings.TrimSuffix(fileName, ".jkv") + ".asm")
 	if err != nil {
 		return err
 	}
-	s, err := NewState(cfg, fileName, "main", false)
+	s, err := NewState(cfg, fileName, "main", 0)
 	if err != nil {
 		return err
 	}
@@ -463,19 +552,10 @@ func CompileFile(cfg *Config, fileName string) error {
 		_ = code.CloseAsmFile()
 	}(s)
 	err = ScanFile(s, fileName)
-	if err != nil && err.Error() == "missing packages" {
-		_ = code.CloseAsmFile()
-		for _, name := range MissingPackages {
-			err = CompileDir(cfg, cfg.ImportPath+"/"+Mangle(name), cfg.CachePath+"/"+Mangle(name), GetPkgName(name))
-			if err != nil {
-				return err
-			}
-		}
-	}
 	if err != nil {
 		return err
 	}
-	err = OutputEpilogue(s.PackageName)
+	err = OutputEpilogue(s.MangledName)
 	if err != nil {
 		return err
 	}
