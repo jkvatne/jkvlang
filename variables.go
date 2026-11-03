@@ -234,9 +234,9 @@ func ParseType(s *State) (*TypeDef, error) {
 		if n[0] > 'Z' {
 			return nil, fmt.Errorf("imported types must start with a capital letter: '%s'", id)
 		}
-		id = id + "@" + n
+		id = id + SepChar + n
 		s.next()
-	} else if id[0] > 'Z' && !strings.Contains(id, "@") {
+	} else if id[0] > 'Z' && !strings.Contains(id, SepChar) {
 		return nil, fmt.Errorf("types must start with a capital letter A..Z: '%s'", id)
 	}
 	typ, ok := TypeDefs[id]

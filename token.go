@@ -143,7 +143,7 @@ var TokenNames = [...]string{
 	TOK_STRUCT:      "struct",
 	TOK_QMARK:       "?",
 	TOK_DOT:         ".",
-	TOK_AT:          "@",
+	TOK_AT:          "@", // Not used
 	TOK_MIN:         "min",
 	TOK_MAX:         "max",
 	TOK_ABS:         "abs",
@@ -185,7 +185,7 @@ func isHex(ch rune) bool {
 }
 
 func isAlfa(ch rune) bool {
-	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch == '@' || ch == '$' || ch == '~'
+	return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch == '@' || ch == '$' || ch == '~' || ch == '#'
 }
 
 func (t Token) Name() string {
@@ -557,9 +557,9 @@ func (s *State) next() {
 		case s.ch1 == '^':
 			s.token = TOK_XOR
 			s.tokenString = "^"
-		case s.ch1 == '#':
-			s.token = TOK_HASH
-			s.tokenString = "#"
+		// TODO case s.ch1 == '#':
+		// s.token = TOK_HASH
+		// s.tokenString = "#"
 		case s.ch1 == '}':
 			s.token = TOK_RBRACE
 			s.tokenString = "}"

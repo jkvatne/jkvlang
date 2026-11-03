@@ -283,7 +283,7 @@ func CompileDir(cfg *Config, inputPath string) (err error) {
 }
 
 func DeMangleFun(mangledName string) (path string, fun string) {
-	w := strings.Split(mangledName, "@")
+	w := strings.Split(mangledName, SepChar)
 	if len(w) != 2 {
 		return mangledName, mangledName
 	}
@@ -293,7 +293,7 @@ func DeMangleFun(mangledName string) (path string, fun string) {
 }
 
 func MangleFun(path string, fun string) string {
-	return Mangle(path) + "@" + fun
+	return Mangle(path) + SepChar + fun
 }
 
 func Mangle(path string) string {
@@ -322,6 +322,7 @@ func ScanPackages(cfg *Config, level int) error {
 		if p.currentlyUsed {
 			// Get the pkg file
 			s, err := NewState(cfg, p.cachePath+"/import.pkg", p.mangledName, level)
+			s.ScanPkg = true
 			if err != nil {
 				return err
 			}
@@ -474,7 +475,7 @@ func OutputEpilogue(mangledName string) error {
 	if mangledName != "main" && mangledName != "" {
 		for _, f := range FuncDefs {
 			if !f.builtin {
-				EmitGlobal(mangledName)
+				EmitGlobal(f.label)
 			}
 		}
 	}

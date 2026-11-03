@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const SepChar = "#"
+
 type State struct {
 	ch1                rune
 	ch2                rune
@@ -34,6 +36,7 @@ type State struct {
 	GeneratePkg        bool
 	Level              int
 	packages           map[string]string
+	ScanPkg            bool
 }
 
 func (s *State) PushLoopBlock(n int) {
@@ -71,11 +74,11 @@ func NewState(cfg *Config, sourceFilePath string, mangledName string, level int)
 }
 
 func (s *State) Mangle(id string) string {
-	if strings.Contains(id, "@") {
+	if strings.Contains(id, SepChar) {
 		return id
 	}
 	if s.MangledName != "" && s.MangledName != "main" {
-		return s.MangledName + "@" + id
+		return s.MangledName + SepChar + id
 	}
 	return id
 }

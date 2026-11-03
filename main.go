@@ -28,7 +28,7 @@ var (
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
 	arg          = flag.String("arg", "dummyArg", "Arguments to the compiled program when it is run")
-	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
+	printLinkCmd = flag.Bool("printlinkcmd", true, "Print link command")
 )
 
 type Config struct {

@@ -155,7 +155,7 @@ func ParseFor(s *State) error {
 	code.OutputArgCode()
 	p := &ParDef{name: "rec", typ: &StructType}
 	fun := "next"
-	if strings.Contains(id, "@") {
+	if strings.Contains(id, SepChar) {
 		pkg, _ := DeMangleFun(id)
 		if pkg != "" {
 			fun = MangleFun(pkg, fun)

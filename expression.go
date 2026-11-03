@@ -1518,7 +1518,11 @@ func ParseFuncDef(s *State) error {
 	VarReset(s)
 	fun := s.Mangle(s.tokenString)
 	n := FuncCount(fun)
-	EmitFunction(fun + "_" + strconv.Itoa(n+1))
+	if fun == "main" {
+		EmitFunction("main")
+	} else {
+		EmitFunction(fun + "_" + strconv.Itoa(n+1))
+	}
 	s.next()
 	if s.token != TOK_LPAR {
 		return fmt.Errorf("expected left parenthesis but got %s", s.tokenString)
@@ -1552,6 +1556,7 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false, code.NoCode == 0)
+	f.extern = s.ScanPkg
 	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
 	if err != nil {
@@ -1628,7 +1633,7 @@ func ParseTypeDef(s *State) error {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
 	id := s.tokenString
-	if strings.Contains(id, "@") {
+	if strings.Contains(id, SepChar) {
 		// Ok
 	} else if s.tokenString[0] > 'Z' {
 		return fmt.Errorf("all types must start with uppercase, got %s", s.tokenString)

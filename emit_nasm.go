@@ -448,47 +448,15 @@ func EmitAssertTosInRax(comment string) {
 }
 
 func EmitPrologue() {
-	EmitExtern("_sysinit")
-	EmitExtern("_syscall")
-	EmitExtern("_assert")
-	EmitExtern("allocation_count")
-	EmitExtern("_printf")
-	EmitExtern("_print")
-	EmitExtern("_fflush")
-	EmitExtern("_exit")
-	EmitExtern("_invert_err")
 	EmitExtern("_alloc")
+	EmitExtern("_syscall")
+	EmitExtern("_sysinit")
 	EmitExtern("_free_struct")
-	EmitExtern("_free_str")
-	EmitExtern("_free_slice")
-	EmitExtern("_len")
-	EmitExtern("_lptr")
-	EmitExtern("_cptr")
-	EmitExtern("_bitlen")
+	EmitExtern("_free_string")
+	EmitExtern("allocation_count")
 	EmitExtern("alloc_size_str")
-	EmitExtern("ExitProcess")
-	EmitExtern("processHeap")
-	EmitExtern("f32sign_mask")
-	EmitExtern("f64sign_mask")
-	EmitExtern("argv")
-	EmitExtern("argc")
-	EmitExtern("args")
-	EmitExtern("_cstrlen")
-	EmitExtern("envc")
-	EmitExtern("envs")
-	EmitSection("text")
-	EmitExtern("tick_frequency")
-	EmitExtern("_get_ticks")
 	EmitExtern("time_used_str")
-	EmitExtern("alloc_size_str")
-	EmitExtern("_low_byte")
-	EmitExtern("_floor")
-	EmitExtern("_int64")
-	EmitExtern("_uint64")
-	EmitExtern("_int32")
-	EmitExtern("_mul64")
-	code.EmitBlankLine()
-	code.EmitBlankLine()
+	EmitExtern("tick_frequency")
 }
 
 func Inverse(op Token) Token {
@@ -735,8 +703,10 @@ func EmitEpilogue(name string) {
 
 func EmitExternals() {
 	for _, f := range FuncDefs {
-		if f.extern {
-			EmitExtern(f.name)
+		if f.builtin {
+			EmitExtern("_" + f.name)
+		} else if f.extern {
+			EmitExtern(f.label)
 		}
 	}
 	for _, s := range Externals {
