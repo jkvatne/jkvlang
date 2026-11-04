@@ -2,8 +2,8 @@ package main
 
 // Test file
 import (
-    iter
     github.com/jkvatne/date
+    iter
 )
 
 func print_freq() {

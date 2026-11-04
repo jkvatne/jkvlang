@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -31,7 +34,7 @@ func init() {
 	Packages = make(map[string]*PackageInfo)
 }
 
-func SetPackagesCurrentlyNotUsed() {
+func SetCurrentlyUsedFalse() {
 	for _, p := range Packages {
 		p.currentlyUsed = false
 	}
@@ -39,9 +42,9 @@ func SetPackagesCurrentlyNotUsed() {
 
 // AddPackage adds a package to the global Packages map
 // It updates the Packages map and checks if it is already present in imports and cache
-func AddPackage(cfg *Config, mangledName string, level int, alias string) error {
+func AddPackage(s *State, mangledName string, alias string) error {
 	p, ok := Packages[mangledName]
-	if ok && p.level < level {
+	if ok && p.level < s.Level {
 		return fmt.Errorf("circular package import: %s", DeMangle(mangledName))
 	}
 	if ok {
@@ -50,15 +53,15 @@ func AddPackage(cfg *Config, mangledName string, level int, alias string) error 
 	}
 	// Ok, create info.
 	p = &PackageInfo{
-		level:       level,
+		level:       s.Level,
 		alias:       alias,
 		mangledName: mangledName,
 	}
 
 	// Check if the package exists either in the library or in the import directory
-	p.sourcePath = path.Join(cfg.LibPath, mangledName)
+	p.sourcePath = path.Join(s.Cfg.LibPath, mangledName)
 	if strings.Contains(mangledName, "$") {
-		p.sourcePath = path.Join(cfg.ImportPath, mangledName)
+		p.sourcePath = path.Join(s.Cfg.ImportPath, mangledName)
 	}
 	_, err := os.Stat(p.sourcePath)
 	if err != nil {
@@ -67,7 +70,7 @@ func AddPackage(cfg *Config, mangledName string, level int, alias string) error 
 
 	// Check if it is compiled and exists in the cache
 	// TODO Check file dates
-	p.cachePath = path.Join(cfg.CachePath, mangledName)
+	p.cachePath = path.Join(s.Cfg.CachePath, mangledName)
 	_, err = os.Stat(p.cachePath)
 	p.isCompiled = err == nil
 	p.currentlyUsed = true
@@ -107,13 +110,24 @@ func ParseImport(s *State) error {
 	}
 	packageName = Mangle(packageName)
 	s.packages[shortName] = packageName
-	err := AddPackage(s.Cfg, packageName, s.Level, shortName)
-	return err
+	if !s.buildLib {
+		return AddPackage(s, packageName, shortName)
+	}
+	return nil
 }
 
 // ParseImports parses import statements and add package to the global Packages map
 func ParseImports(s *State) error {
 	var err error
+	s.nextChar()
+	s.next()
+	if s.token == TOK_PACKAGE {
+		s.next()
+		if s.token != TOK_ID {
+			return fmt.Errorf("%s:%d %v", s.SourceFilePath, code.LineNum, "package name should be on top line")
+		}
+		s.next()
+	}
 	for s.token == TOK_IMPORT {
 		s.next()
 		if s.token == TOK_LPAR {
@@ -142,21 +156,31 @@ func CollectFileImports(cfg *Config, sourceFileName string, mangledName string, 
 	if err != nil {
 		return err
 	}
-	s.nextChar()
-	s.next()
-	if s.token == TOK_PACKAGE {
-		s.next()
-		if s.token != TOK_ID {
-			return fmt.Errorf("%s:%d %v", sourceFileName, code.LineNum, "package name should be on top line")
-		}
-		if s.tokenString != mangledName {
-			return fmt.Errorf("%s:%d %v", sourceFileName, code.LineNum,
-				"got package name %s, should be %s on top line", s.tokenString, s.MangledName)
-		}
-		s.next()
-	}
 	err = ParseImports(s)
 	return err
+}
+
+func StartFileImportCollect(cfg *Config, filePath string, mangledName string, level int) error {
+	err := CollectFileImports(cfg, filePath, mangledName, level+1)
+	if err != nil {
+		return err
+	}
+	// Recursively collect imported packages
+	newPackages := make([]*PackageInfo, 0, 12)
+
+	for _, p := range Packages {
+		if p.level > level {
+			newPackages = append(newPackages, p)
+		}
+	}
+
+	for _, p := range newPackages {
+		err = CollectPackageImports(cfg, p.sourcePath, p.mangledName, level+1)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func CollectPackageImports(cfg *Config, packagePath string, mangledName string, level int) error {
@@ -192,6 +216,26 @@ func CollectPackageImports(cfg *Config, packagePath string, mangledName string, 
 	return nil
 }
 
+func ProcessFile(s *State, cfg *Config, sourceFilePath string, pkgName string, level int) error {
+	SetCurrentlyUsedFalse()
+	s, err := NewState(cfg, sourceFilePath, pkgName, level)
+	if err != nil {
+		return err
+	}
+	err = ScanFile(s, sourceFilePath)
+	if err != nil {
+		return err
+	}
+	// After scanning file, we can output the epilogue
+	err = OutputEpilogue(s.MangledName)
+	if err != nil {
+		return err
+	}
+	// And close the asm file
+	err = code.CloseAsmFile()
+	return err
+}
+
 // ProcessPackage will scan each file in the package directory and collect imports
 // If any package is not compiled, it will be compiled now
 // If all packages are ok and the obj file exists, we can compile this package
@@ -202,8 +246,8 @@ func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, 
 		return err
 	}
 	level := 0
-	SetPackagesCurrentlyNotUsed()
 	for _, file := range inputFiles {
+		SetCurrentlyUsedFalse()
 		err = CollectFileImports(cfg, packagePath+"/"+file.Name(), mangledPackageName, level)
 		if err != nil {
 			return err
@@ -265,6 +309,21 @@ func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, 
 	return err
 }
 
+func BuildLib(cfg *Config) (err error) {
+	var entries []fs.DirEntry
+	entries, err = os.ReadDir(cfg.LibPath)
+	for _, entry := range entries {
+		if err != nil {
+			break
+		}
+		libPath := cfg.LibPath + "/" + entry.Name()
+		if entry.IsDir() {
+			err = ProcessPackage(cfg, entry.Name(), libPath, cfg.CachePath+"/"+entry.Name())
+		}
+	}
+	return fmt.Errorf("Faild to build library, %v", err)
+}
+
 func ShortName(mangledName string) string {
 	w := strings.Split(mangledName, "$")
 	if len(w) < 2 {
@@ -315,19 +374,58 @@ func GetPkgName(name string) string {
 	return w[len(w)-1]
 }
 
-func ScanPackages(cfg *Config, level int) error {
+// ScanPkgFile scans a package file (*.pkg)
+// It adds external functions and types to the FuncDefs and TypeDefs maps
+func ScanPkgFile(cfg *Config, sourceFilePath string, level int) error {
+	// Delete all external functions and types
+	n := 0
+	for _, f := range FuncDefs {
+		if f.Extern && !f.Builtin {
+			FuncDefs[n] = f
+		}
+		n++
+	}
+	FuncDefs = FuncDefs[:n]
+	n = 0
+	for k, t := range TypeDefs {
+		if t.Extern && !t.Builtin {
+			delete(TypeDefs, k)
+		}
+	}
+
+	ln := code.LineNum
+	nn := code.NextLineNum
+	s, err := NewState(cfg, sourceFilePath+"/import.pkg", "", level)
+	if err != nil {
+		return err
+	}
+	s.ScanPkg = true
+	code.NoCode++
+	err = ScanFile(s, sourceFilePath)
+	if err != nil {
+		return err
+	}
+	code.NoCode--
+	code.LineNum = ln
+	code.NextLineNum = nn
+	return nil
+}
+
+func ScanPkgFiles(cfg *Config, level int) error {
 	// Search for pkg files for each imported package
 	// Should never fail since we already have built all packages
 	ln := code.LineNum
 	nn := code.NextLineNum
-	for _, p := range Packages {
+	packages := slices.Collect(maps.Keys(Packages))
+	for _, pp := range packages {
+		p := Packages[pp]
 		if p.currentlyUsed {
 			// Get the pkg file
 			s, err := NewState(cfg, p.cachePath+"/import.pkg", p.mangledName, level)
-			s.ScanPkg = true
 			if err != nil {
 				return err
 			}
+			s.ScanPkg = true
 			code.NoCode++
 			err = ScanFile(s, p.sourcePath)
 			if err != nil {
@@ -341,26 +439,18 @@ func ScanPackages(cfg *Config, level int) error {
 	return nil
 }
 
+// Scan file will compile a given file.
 func ScanFile(s *State, name string) (err error) {
-	s.nextChar()
-	s.next()
-	if s.token == TOK_PACKAGE {
-		s.next()
-		if s.token != TOK_ID {
-			return fmt.Errorf("%s:%d %v", name, code.LineNum, "package name should be on top line")
-		}
-		s.next()
-	}
-	SetPackagesCurrentlyNotUsed()
 	// Imports must be at top of file
+	SetCurrentlyUsedFalse()
 	err = ParseImports(s)
 	if err != nil {
 		return err
 	}
-	err = ScanPackages(s.Cfg, s.Level)
-	if err != nil {
-		return err
-	}
+	// err = ScanPkgFiles(s.Cfg, 0)
+	// if err != nil {
+	//	return err
+	// }
 
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
@@ -411,7 +501,7 @@ func InitCompile(asmFilePath string) error {
 	EmitPrologue()
 	InitTypes()
 	FuncInit()
-	SetPackagesCurrentlyNotUsed()
+	SetCurrentlyUsedFalse()
 	return nil
 }
 
@@ -424,7 +514,7 @@ func OutputPkgFile(path string, packageName string) error {
 		_ = OutputFile.Close()
 	}(OutputFile)
 	for _, t := range TypeDefs {
-		if !t.Basic {
+		if !t.Builtin {
 			if t.Pt == code.TYP_STRUCT {
 				_, _ = OutputFile.WriteString("type " + t.TypeName + " = struct { ")
 				i := 0
@@ -439,7 +529,7 @@ func OutputPkgFile(path string, packageName string) error {
 		}
 	}
 	for _, f := range FuncDefs {
-		if !f.builtin {
+		if !f.Builtin {
 			fn := f.name // MangleFun(packageName, f.name)
 			_, _ = OutputFile.WriteString("func " + fn + "(")
 			for i, a := range f.parameters {
@@ -478,7 +568,7 @@ func OutputEpilogue(mangledName string) error {
 	}
 	if mangledName != "main" && mangledName != "" {
 		for _, f := range FuncDefs {
-			if !f.builtin {
+			if !f.Builtin {
 				EmitGlobal(f.label)
 			}
 		}
@@ -549,6 +639,17 @@ func CompileFile(cfg *Config, filePath string) error {
 		return err
 	}
 	s, err := NewState(cfg, filePath, "main", 0)
+	err = ParseImports(s)
+	if err != nil {
+		return err
+	}
+	for _, f := range s.packages {
+		err = ScanPkgFile(cfg, cfg.CachePath+"/"+f, 0)
+		if err != nil {
+			return err
+		}
+	}
+	s, err = NewState(cfg, filePath, "main", 0)
 	if err != nil {
 		return err
 	}

@@ -454,6 +454,10 @@ func EmitPrologue() {
 	EmitExtern("_sysinit")
 	EmitExtern("_free_struct")
 	EmitExtern("_free_string")
+	EmitExtern("_print")
+	EmitExtern("_fflush")
+	EmitExtern("_get_ticks")
+	EmitExtern("_exit")
 	EmitExtern("allocation_count")
 	EmitExtern("alloc_size_str")
 	EmitExtern("time_used_str")
@@ -704,9 +708,9 @@ func EmitEpilogue(name string) {
 
 func EmitExternals() {
 	for _, f := range FuncDefs {
-		if f.builtin {
+		if f.Builtin {
 			EmitExtern("_" + f.name)
-		} else if f.extern {
+		} else if f.Extern {
 			EmitExtern(f.label)
 		}
 	}

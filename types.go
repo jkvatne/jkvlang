@@ -9,7 +9,7 @@ import (
 type TypeDef struct {
 	Pt       code.PrimaryType
 	TypeName string
-	Basic    bool
+	Builtin  bool
 	// StructSize is the total size of a struct
 	StructSize int
 	// Data offset is the offset from the start of a string/slice/buffer to the actual data contents (i.e. first element)
@@ -18,41 +18,42 @@ type TypeDef struct {
 	Element *TypeDef
 	Fields  map[string]*TypeDef
 	Offsets map[string]int
+	Extern  bool
 }
 
 var TypeDefs map[string]*TypeDef
 
-var BoolType = TypeDef{Pt: code.TYP_BOOL, TypeName: "Bool", Basic: true}
-var NoneType = TypeDef{Pt: code.TYP_NONE, TypeName: "None", Basic: true}
-var PtrType = TypeDef{Pt: code.TYP_PTR, TypeName: "Ptr", Basic: true}
-var I32Type = TypeDef{Pt: code.TYP_I32, TypeName: "I32", Basic: true}
-var U32Type = TypeDef{Pt: code.TYP_U32, TypeName: "U32", Basic: true}
-var I16Type = TypeDef{Pt: code.TYP_I16, TypeName: "I16", Basic: true}
-var U16Type = TypeDef{Pt: code.TYP_U16, TypeName: "U16", Basic: true}
-var U8Type = TypeDef{Pt: code.TYP_U8, TypeName: "U8", Basic: true}
-var I64Type = TypeDef{Pt: code.TYP_I64, TypeName: "I64", Basic: true}
-var U64Type = TypeDef{Pt: code.TYP_U64, TypeName: "U64", Basic: true}
-var F64Type = TypeDef{Pt: code.TYP_F64, TypeName: "F64", Basic: true}
-var F32Type = TypeDef{Pt: code.TYP_F32, TypeName: "F32", Basic: true}
-var AnyType = TypeDef{Pt: code.TYP_NONE, TypeName: "Any", Basic: true}
-var StringType = TypeDef{Pt: code.TYP_STRING, TypeName: "String", Basic: true, DataOffset: 8, Element: &U8Type}
-var SliceType = TypeDef{Pt: code.TYP_SLICE, TypeName: "Slice", Basic: true, DataOffset: 8, Element: &StringType}
-var StructType = TypeDef{Pt: code.TYP_STRUCT, TypeName: "Struct", Basic: true, DataOffset: 0, Element: &AnyType}
+var BoolType = TypeDef{Pt: code.TYP_BOOL, TypeName: "Bool", Builtin: true}
+var NoneType = TypeDef{Pt: code.TYP_NONE, TypeName: "None", Builtin: true}
+var PtrType = TypeDef{Pt: code.TYP_PTR, TypeName: "Ptr", Builtin: true}
+var I32Type = TypeDef{Pt: code.TYP_I32, TypeName: "I32", Builtin: true}
+var U32Type = TypeDef{Pt: code.TYP_U32, TypeName: "U32", Builtin: true}
+var I16Type = TypeDef{Pt: code.TYP_I16, TypeName: "I16", Builtin: true}
+var U16Type = TypeDef{Pt: code.TYP_U16, TypeName: "U16", Builtin: true}
+var U8Type = TypeDef{Pt: code.TYP_U8, TypeName: "U8", Builtin: true}
+var I64Type = TypeDef{Pt: code.TYP_I64, TypeName: "I64", Builtin: true}
+var U64Type = TypeDef{Pt: code.TYP_U64, TypeName: "U64", Builtin: true}
+var F64Type = TypeDef{Pt: code.TYP_F64, TypeName: "F64", Builtin: true}
+var F32Type = TypeDef{Pt: code.TYP_F32, TypeName: "F32", Builtin: true}
+var AnyType = TypeDef{Pt: code.TYP_NONE, TypeName: "Any", Builtin: true}
+var StringType = TypeDef{Pt: code.TYP_STRING, TypeName: "String", Builtin: true, DataOffset: 8, Element: &U8Type}
+var SliceType = TypeDef{Pt: code.TYP_SLICE, TypeName: "Slice", Builtin: true, DataOffset: 8, Element: &StringType}
+var StructType = TypeDef{Pt: code.TYP_STRUCT, TypeName: "Struct", Builtin: true, DataOffset: 0, Element: &AnyType}
 
 func InitTypes() {
 	TypeDefs = make(map[string]*TypeDef)
 	for t := code.TYP_NONE; t < code.TYP_COUNT; t++ {
-		TypeDefs[code.PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: code.PrimaryTypeNames[t], Basic: true}
+		TypeDefs[code.PrimaryTypeNames[t]] = &TypeDef{Pt: t, TypeName: code.PrimaryTypeNames[t], Builtin: true}
 	}
 	TypeDefs["String"].DataOffset = 8
-	TypeDefs["U64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U64arr", Element: &U64Type, DataOffset: 8, Basic: true}
-	TypeDefs["I64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I64arr", Element: &I64Type, DataOffset: 8, Basic: true}
-	TypeDefs["I32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I32arr", Element: &I32Type, DataOffset: 8, Basic: true}
-	TypeDefs["U32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U32arr", Element: &U32Type, DataOffset: 8, Basic: true}
-	TypeDefs["U8arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U8arr", Element: &U8Type, DataOffset: 8, Basic: true}
-	TypeDefs["F64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F64arr", Element: &F64Type, DataOffset: 8, Basic: true}
-	TypeDefs["F32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F32arr", Element: &F32Type, DataOffset: 8, Basic: true}
-	TypeDefs["StringArr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "StringArr", Element: &StringType, DataOffset: 8, Basic: true}
+	TypeDefs["U64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U64arr", Element: &U64Type, DataOffset: 8, Builtin: true}
+	TypeDefs["I64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I64arr", Element: &I64Type, DataOffset: 8, Builtin: true}
+	TypeDefs["I32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "I32arr", Element: &I32Type, DataOffset: 8, Builtin: true}
+	TypeDefs["U32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U32arr", Element: &U32Type, DataOffset: 8, Builtin: true}
+	TypeDefs["U8arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "U8arr", Element: &U8Type, DataOffset: 8, Builtin: true}
+	TypeDefs["F64arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F64arr", Element: &F64Type, DataOffset: 8, Builtin: true}
+	TypeDefs["F32arr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "F32arr", Element: &F32Type, DataOffset: 8, Builtin: true}
+	TypeDefs["StringArr"] = &TypeDef{Pt: code.TYP_SLICE, TypeName: "StringArr", Element: &StringType, DataOffset: 8, Builtin: true}
 }
 
 func (t *TypeDef) Size() int {
@@ -72,52 +73,52 @@ func (t *TypeDef) Size() int {
 // Overflow is not handled or detected, so adding 32737+32737 will be -2, which is wrong.
 func CommonType(t1 code.PrimaryType, t2 code.PrimaryType) (*TypeDef, error) {
 	if t1 == t2 {
-		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Basic: true}, nil
+		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Builtin: true}, nil
 	}
 	if t1 == code.TYP_F64 || t2 == code.TYP_F64 {
 		// F64 can take all numeric types
-		return &TypeDef{Pt: code.TYP_F64, TypeName: code.PrimaryTypeNames[code.TYP_F64], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_F64, TypeName: code.PrimaryTypeNames[code.TYP_F64], Builtin: true}, nil
 	}
 	if t1 == code.TYP_F32 || t2 == code.TYP_F32 {
 		// F32 can take all numeric types (but with loss of precision).
-		return &TypeDef{Pt: code.TYP_F32, TypeName: code.PrimaryTypeNames[code.TYP_F32], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_F32, TypeName: code.PrimaryTypeNames[code.TYP_F32], Builtin: true}, nil
 	}
 	if t1 == code.TYP_I64 && t2 < code.TYP_I64 {
 		// I64 can take all integers
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
 	}
 	if t2 == code.TYP_I64 && t1 < code.TYP_I64 {
 		// I64 can take all integers
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
 	}
 	if t1 == code.TYP_U8 {
 		// U8 can be included in all other types
-		return &TypeDef{Pt: t2, TypeName: code.PrimaryTypeNames[t2], Basic: true}, nil
+		return &TypeDef{Pt: t2, TypeName: code.PrimaryTypeNames[t2], Builtin: true}, nil
 	}
 	if t2 == code.TYP_U8 {
 		// U8 can be included in all other types
-		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Basic: true}, nil
+		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Builtin: true}, nil
 	}
 	if t1 == code.TYP_U16 && t2 == code.TYP_U32 || t2 == code.TYP_U16 && t1 == code.TYP_U32 {
-		return &TypeDef{Pt: code.TYP_U32, TypeName: code.PrimaryTypeNames[code.TYP_U32], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_U32, TypeName: code.PrimaryTypeNames[code.TYP_U32], Builtin: true}, nil
 	}
 
 	if t1 == code.TYP_U16 || t2 == code.TYP_U16 && t1 != code.TYP_U32 {
-		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
 	}
 	if t1 == code.TYP_I16 {
 		if t2 == code.TYP_U16 || t2 == code.TYP_I32 {
-			return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Basic: true}, nil
+			return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
 		}
 	}
 	if t2 == code.TYP_I16 && t1 == code.TYP_I32 {
-		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
 	}
 	if t1 == code.TYP_U32 && (t2 <= code.TYP_U16 || t2 == code.TYP_I32) {
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
 	}
 	if t2 == code.TYP_U32 && (t1 <= code.TYP_U16 || t1 == code.TYP_I32) {
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Basic: true}, nil
+		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
 	}
 	return nil, fmt.Errorf("common type not found for %s and %s", t1.Name(), t2.Name())
 }

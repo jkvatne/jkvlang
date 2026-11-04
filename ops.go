@@ -31,7 +31,7 @@ func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
 		}
 	}
 	// For user defined types, both must be identical, or one operand must be a basic type.
-	if !val1.Typ.Basic && !val2.Typ.Basic && val1.Typ != val2.Typ {
+	if !val1.Typ.Builtin && !val2.Typ.Builtin && val1.Typ != val2.Typ {
 		return &NoValue, fmt.Errorf("operation on incompatible types %s and %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 	}
 	if val1.IsConst && val2.IsConst {

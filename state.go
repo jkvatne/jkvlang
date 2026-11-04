@@ -37,6 +37,7 @@ type State struct {
 	Level              int
 	packages           map[string]string
 	ScanPkg            bool
+	buildLib           bool
 }
 
 func (s *State) PushLoopBlock(n int) {

@@ -12,9 +12,9 @@ type FuncDef struct {
 	parName       []*string
 	floatParCount int
 	stackSize     int
-	builtin       bool
+	Builtin       bool
 	VarArg        bool
-	extern        bool
+	Extern        bool
 }
 
 type ParDef struct {
@@ -43,9 +43,9 @@ func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, 
 	// if len(FuncDefs) >= 28 {
 	// fmt.Printf("Func %s, %s\n", id, name)
 	// }
-	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, builtin: builtin, VarArg: vararg}
+	f := &FuncDef{name: id, label: name, returnTypes: returnList, parameters: parList, Builtin: builtin, VarArg: vararg}
 	f.stackSize = len(parList) + len(returnList)
-	f.extern = extern
+	f.Extern = extern
 	FuncDefs = append(FuncDefs, f)
 	return f, nil
 }

@@ -312,7 +312,10 @@ func main() {
 		n := 0
 		// Convert source directory to absolute path
 		dir, _ := filepath.Abs(*sourceDir)
-		n, err = CompileTests(cfg, dir)
+		err = BuildLib(cfg)
+		if err == nil {
+			n, err = CompileTests(cfg, dir)
+		}
 		if err == nil {
 			fmt.Printf("------------------------------------------\n")
 			fmt.Printf("All %d tests passed\n", n)

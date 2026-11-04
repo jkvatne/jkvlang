@@ -9,7 +9,7 @@ import (
 )
 
 // TypeFromConstValue generates a type from a constant value.
-// If the value is a integer constant and value is a new variable, we default
+// If the value is an integer constant and value is a new variable, we default
 // to I32 instead of U8 for small constants.
 func TypeFromConstValue(value *ValueDef) (*TypeDef, error) {
 	if value.StringValue != "" {
@@ -279,7 +279,7 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 func ParseLvalue(s *State, id string) (*VarDef, error) {
 	lvalue := VarDefs[id]
 	var ok bool
-	startsp := code.LocalSp
+	startSp := code.LocalSp
 	// Loop over field access or indexed access.
 	for {
 		if s.found(TOK_DOT) {
@@ -357,8 +357,8 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			break
 		}
 	}
-	if code.LocalSp > startsp+1 {
-		fmt.Printf("Start stack=%d, exit stack=%d\n", startsp, code.LocalSp)
+	if code.LocalSp > startSp+1 {
+		fmt.Printf("Start stack=%d, exit stack=%d\n", startSp, code.LocalSp)
 		panic("Stack error for lvalue")
 	}
 	return lvalue, nil
@@ -401,7 +401,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 		id = s.tokenString
 		s.next()
 	}
-	// Create new vardefs for new local variables with unknown type.
+	// Create new variable definitions for new local variables with unknown type.
 	for _, v := range lvalues {
 		if v.Typ == nil {
 			// VarDefs[v.Name].Offset = EmitAllocLocalVar("Allocate local variable " + v.Name)
@@ -415,7 +415,7 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 // Assumes the ( is consumed already
-func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err error) {
+func ParseActualArgList(s *State, funcName string) (valueList []*ValueDef, err error) {
 	parNo := 0
 	for { // each argument in the actual argument list
 		parNo++
@@ -427,7 +427,7 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 			code.NewArgCode()
 		}
 		code.SetUndef()
-		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcname + "'")
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcName + "'")
 		values, err1 := ParseExpression(s)
 		if err1 != nil {
 			return nil, err1
@@ -446,24 +446,24 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 			// Constants/literals are passed as pointers on the stack by EmitPushStringLit() or EmitPushConst() or PushFloat()
 			if value.Typ.Pt == code.TYP_STRING {
 				EmitPushStringLit(value.StringLitNo, "Actual argument nr "+strconv.Itoa(parNo)+" is string literal")
-				EmitPushTos(parNo, funcname)
-				if funcname == "printf" || funcname == "print" {
+				EmitPushTos(parNo, funcName)
+				if funcName == "printf" || funcName == "print" {
 					EmitSkipLenCapForPrint()
 				}
 			} else if value.Typ.Pt.IsInteger() {
 				EmitPushConst(int64(f), "")
-				EmitPushTos(parNo, funcname)
+				EmitPushTos(parNo, funcName)
 			} else if value.Typ.Pt == code.TYP_BOOL {
 				if value.StringValue == "0" {
 					EmitPushConst(0, "")
 				} else {
 					EmitPushConst(1, "")
 				}
-				EmitPushTos(parNo, funcname)
+				EmitPushTos(parNo, funcName)
 			} else if value.Typ.Pt == code.TYP_F64 {
 				EmitPushF64Lit(f)
 			} else if value.Typ.Pt == code.TYP_F32 {
-				if funcname == "printf" || funcname == "print" {
+				if funcName == "printf" || funcName == "print" {
 					// Must convert to F64 for print/fprint
 					EmitPushF64Lit(f)
 				} else {
@@ -474,12 +474,12 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 				return nil, fmt.Errorf("constant arguments of type %s is not yet handled", value.Typ.Pt.Name())
 			}
 		} else {
-			if parNo == 1 && funcname == "print" {
+			if parNo == 1 && funcName == "print" {
 				// Check that the first parameter is a constant string literal
 				return nil, fmt.Errorf("print's first parameter must be a constant string")
 			}
-			EmitPushTos(parNo, funcname)
-			if funcname == "printf" || funcname == "print" || funcname == "assert" && parNo > 1 {
+			EmitPushTos(parNo, funcName)
+			if funcName == "printf" || funcName == "print" || funcName == "assert" && parNo > 1 {
 				// We have a value on the stack (TOS). printf needs special handling.
 				if value.Typ.Pt == code.TYP_STRING {
 					EmitSkipLenCapForPrint()
@@ -536,11 +536,13 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
 	HadAx := code.AxIsTos()
-	id = s.Mangle(id)
+	name := s.Mangle(id)
 	s.currentFuncCall = id
 	if FuncCount(id) == 0 {
-		s.currentFuncCall = ""
-		return nil, fmt.Errorf("expected a function name, got: %s", id)
+		if FuncCount(name) == 0 {
+			s.currentFuncCall = ""
+			return nil, fmt.Errorf("expected a function name, got: %s", id)
+		}
 	}
 
 	// Parse the argument list and push each arg
@@ -552,6 +554,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 	f := FindFuncDefFromParList(id, TypeListVal(values), false)
 	if f == nil {
+		f = FindFuncDefFromParList(s.Mangle(id), TypeListVal(values), false)
+	}
+	if f == nil {
 		return nil, fmt.Errorf("function %s with wrong parameters", id)
 	}
 
@@ -560,7 +565,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		// and it is the result of a function call, then we have to free it after the call.
 		// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
 		// If it was a local variable or a constant, we should not free it.
-		// TODO: FInd a better way than checking for the names cptr and lptr
+		// TODO: Find a better way than checking for the names cptr and lptr
 		if value.Typ.Pt == code.TYP_STRING && value.IsTempObj && id != "cptr" && id != "lptr" {
 			lbl := code.NewLabel()
 			str := "   mov rax, rsp   ; Cleanup args\n"
@@ -613,13 +618,13 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 
 	// Do actual call
 	// ----------------------------------
-	EmitCall(f.label, len(values), f.builtin)
+	EmitCall(f.label, len(values), f.Builtin)
 
 	code.OutputCleanupCode(len(values))
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
 	if !returnSomething && len(f.returnTypes) > 0 {
-		return nil, fmt.Errorf("funcion returns values that are not handled")
+		return nil, fmt.Errorf("function returns values that are not handled")
 	}
 	if !returnSomething && len(f.returnTypes) == 0 {
 		// The function call should be alone, so just continue
@@ -870,8 +875,12 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 		return ParsePointer(s, id)
 	}
 	if s.found(TOK_LPAR) {
-		// An ID followed by left parantesis can be a type conversion or a function call
-		typ, ok := TypeDefs[s.Mangle(id)]
+		// An ID followed by left parenthesis can be a type conversion or a function call
+		name := s.Mangle(id)
+		typ, ok := TypeDefs[id]
+		if !ok {
+			typ, ok = TypeDefs[name]
+		}
 		if ok {
 			return ParseTypeConversion(s, typ)
 		}
@@ -1066,7 +1075,7 @@ func ParseUnary(s *State) ([]*ValueDef, error) {
 	} else if s.token == TOK_SYSCALL {
 		s.next()
 		err = ParseSyscall(s)
-		// Syscall allways retunes a single value
+		// Syscall always retunes a single value
 		value.Typ = &I32Type
 	} else {
 		return nil, fmt.Errorf("unexpected unary token %s", s.tokenString)
@@ -1111,7 +1120,10 @@ func ParseSumTerm(s *State) ([]*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	UpdateType(values1[0])
+	err = UpdateType(values1[0])
+	if err != nil {
+		return nil, err
+	}
 	var values2 []*ValueDef
 	if s.token == TOK_PLUS && values1[0].Typ.Pt == code.TYP_STRING {
 		if len(values1) != 1 {
@@ -1199,7 +1211,7 @@ func ParseLogAnd(s *State) ([]*ValueDef, error) {
 	endLabel := 0
 	for s.token == TOK_LOG_AND {
 		if len(results) != 1 {
-			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
+			return nil, fmt.Errorf("operator && can only operate on 1 value but got %d", len(results))
 		}
 		if results[0].IsConst {
 			EmitLoadBool(results[0].StringValue)
@@ -1235,7 +1247,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 	endLabel := 0
 	for s.token == TOK_LOG_OR {
 		if len(results) != 1 {
-			return nil, fmt.Errorf("+ and - can only operate on 1 value but got %d", len(results))
+			return nil, fmt.Errorf("operator || can only operate on 1 value but got %d", len(results))
 		}
 		if results[0].IsConst {
 			EmitLoadBool(results[0].StringValue)
@@ -1556,12 +1568,12 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false, code.NoCode == 0)
-	f.extern = s.ScanPkg
-	s.returnLbl = code.NewLabel()
-	s.currentFuncDef = f
 	if err != nil {
 		return err
 	}
+	f.Extern = s.ScanPkg
+	s.returnLbl = code.NewLabel()
+	s.currentFuncDef = f
 	// Now parse all the statements in the function
 	err = ParseStatements(s)
 	if err != nil {
@@ -1572,9 +1584,9 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_RBRACE {
 		return fmt.Errorf("function definition expected ending '}' but got %s", s.tokenString)
 	}
-	if s.MangledName == "" && !s.HasReturned && f != nil && len(f.returnTypes) > 0 {
-		return fmt.Errorf("function definition does not return a value")
-	}
+	// if s.MangledName == "" && !s.HasReturned && len(f.returnTypes) > 0 {
+	//	return fmt.Errorf("function definition does not return a value")
+	// }
 
 	if f.name == "main" {
 		EmitComment("--------------------------------------------")
@@ -1629,12 +1641,13 @@ func ParseFuncDef(s *State) error {
 }
 
 func ParseTypeDef(s *State) error {
+	t := TypeDef{}
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
 	id := s.tokenString
 	if strings.Contains(id, SepChar) {
-		// Ok
+		t.Extern = true // Ok
 	} else if s.tokenString[0] > 'Z' {
 		return fmt.Errorf("all types must start with uppercase, got %s", s.tokenString)
 	}
@@ -1646,7 +1659,6 @@ func ParseTypeDef(s *State) error {
 	if err != nil {
 		return err
 	}
-	t := TypeDef{}
 	t.TypeName = s.Mangle(id)
 	t.Element = typ.Element
 	t.Fields = make(map[string]*TypeDef)
@@ -1658,7 +1670,7 @@ func ParseTypeDef(s *State) error {
 		t.Offsets[k] = o
 	}
 	t.Pt = typ.Pt
-	t.Basic = false
+	t.Builtin = false
 	t.StructSize = typ.StructSize
 	AddType(id, &t)
 	return nil
@@ -1714,7 +1726,7 @@ func ParseConsts(s *State) error {
 	return err
 }
 
-func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
+func ParseSliceLiteral(s *State, id string, typ *TypeDef) error {
 	s.next()
 	lit := new(SliceLit)
 	lit.name = id
@@ -1728,7 +1740,7 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 			s.next()
 		}
 		if typ.Element == nil {
-			return fmt.Errorf("element type of slice litteral is nil")
+			return fmt.Errorf("element type of slice literal is nil")
 		}
 		if typ.Element.Pt.IsInteger() {
 			if typ.Element.Pt == code.TYP_U64 {
@@ -1769,7 +1781,7 @@ func ParseSliceLitteral(s *State, id string, typ *TypeDef) error {
 			n := AddLiteral(str)
 			lit.StringValues = append(lit.StringValues, n)
 		} else {
-			return fmt.Errorf("slice lteral with wrong element type")
+			return fmt.Errorf("slice literal with wrong element type")
 		}
 		s.next()
 		if !s.found(TOK_COMMA) {
@@ -1815,7 +1827,7 @@ func ParseVar(s *State) error {
 			}
 			val = "-" + s.tokenString
 		} else if s.token == TOK_LBRACE {
-			err = ParseSliceLitteral(s, id, v.Typ)
+			err = ParseSliceLiteral(s, id, v.Typ)
 		} else {
 			val = s.tokenString
 		}
@@ -1856,7 +1868,7 @@ func ParseConst(s *State) error {
 				}
 				val = "-" + s.tokenString
 			} else if s.token == TOK_LBRACE {
-				err := ParseSliceLitteral(s, id, typ)
+				err := ParseSliceLiteral(s, id, typ)
 				if err != nil {
 					return err
 				}
@@ -1871,7 +1883,7 @@ func ParseConst(s *State) error {
 			s.next()
 		}
 	} else if LastGlobalConstType != nil && LastGlobalConstType.Pt.IsInteger() {
-		// It was a const name without type. Treat it as a iota const if it was an integer
+		// It was a const name without type. Treat it as an iota const if it was an integer
 		v, err2 := AddGlobalConst(id, LastGlobalConstType)
 		if err2 != nil {
 			return err2
@@ -1930,7 +1942,7 @@ func ParseAppend(s *State) error {
 			break
 		}
 		if !s.found(TOK_COMMA) {
-			return fmt.Errorf("expected comma or right parantesis, got %s", s.tokenString)
+			return fmt.Errorf("expected comma or right parenthesis, got %s", s.tokenString)
 		}
 	}
 	// Add n to length
