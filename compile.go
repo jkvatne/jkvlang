@@ -318,6 +318,8 @@ func GetPkgName(name string) string {
 func ScanPackages(cfg *Config, level int) error {
 	// Search for pkg files for each imported package
 	// Should never fail since we already have built all packages
+	ln := code.LineNum
+	nn := code.NextLineNum
 	for _, p := range Packages {
 		if p.currentlyUsed {
 			// Get the pkg file
@@ -334,8 +336,8 @@ func ScanPackages(cfg *Config, level int) error {
 			code.NoCode--
 		}
 	}
-	code.LineNum = 0
-	code.NextLineNum = 0
+	code.LineNum = ln
+	code.NextLineNum = nn
 	return nil
 }
 
