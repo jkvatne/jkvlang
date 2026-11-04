@@ -289,6 +289,17 @@ func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, 
 			if err != nil {
 				return err
 			}
+			err = ParseImports(s)
+			if err != nil {
+				return err
+			}
+			for f := range s.packages {
+				err = ScanPkgFile(cfg, cfg.CachePath+"/"+s.packages[f], 0)
+				if err != nil {
+					return err
+				}
+			}
+			s, err = NewState(cfg, sourceFilePath, mangledPackageName, level)
 			err = ScanFile(s, packagePath+"/"+file.Name())
 			if err != nil {
 				return err
@@ -321,7 +332,10 @@ func BuildLib(cfg *Config) (err error) {
 			err = ProcessPackage(cfg, entry.Name(), libPath, cfg.CachePath+"/"+entry.Name())
 		}
 	}
-	return fmt.Errorf("Faild to build library, %v", err)
+	if err != nil {
+		return fmt.Errorf("Faild to build library, %v", err)
+	}
+	return nil
 }
 
 func ShortName(mangledName string) string {
@@ -337,6 +351,9 @@ func ShortName(mangledName string) string {
 // The output is a single assembly file in the buildDir
 func CompileDir(cfg *Config, inputPath string) (err error) {
 	err = CollectPackageImports(cfg, inputPath, "main", 0)
+	if err != nil {
+		return fmt.Errorf("CollectPackageImports failed, %v", err)
+	}
 	err = ProcessPackage(cfg, "main", inputPath, cfg.BuildPath)
 	return err
 }
