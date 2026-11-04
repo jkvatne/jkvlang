@@ -294,11 +294,12 @@ func main() {
 	}
 
 	if *oneFile != "" {
+		var filePath string
 		// Compile a single source file
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		filePath, err := filepath.Abs(*oneFile)
+		filePath, err = filepath.Abs(*oneFile)
 		if err == nil {
 			err = CompileFile(cfg, filePath)
 		}
