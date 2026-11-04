@@ -494,7 +494,7 @@ func ParseActualArgList(s *State, funcname string) (valueList []*ValueDef, err e
 						// v += "   and rcx, 0x[rax]\n"
 						v += "   mov rax, [rax]\n"
 						v += "   sub rax, 8\n" // The stack contains a C-string pointer, so adjust it back
-						v += "   call _free_str\n\n"
+						v += "   call _free_string\n\n"
 						code.SetCleanupCode(v)
 					}
 				} else if value.Typ.Pt == code.TYP_F64 {
@@ -570,7 +570,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 			str += "   shr rbx, 32\n"
 			str += "   or rbx, rbx\n"
 			str += "   jz .L" + strconv.Itoa(lbl) + "\n"
-			str += fmt.Sprintf("   call _free_str   ; Call free arg %d of %s\n", parNo+1, id)
+			str += fmt.Sprintf("   call _free_string   ; Call free arg %d of %s\n", parNo+1, id)
 			str += ".L" + strconv.Itoa(lbl) + ":\n"
 			code.SetCleanupCode(str)
 		} else if value.Typ.Pt == code.TYP_STRUCT && value.IsTempObj {

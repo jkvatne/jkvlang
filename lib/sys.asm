@@ -51,7 +51,7 @@ global _bitlen
 global _alloc
 global _free_struct
 global _free_slice
-global _free_str
+global _free_string
 global _print
 global _low_byte
 global _floor
@@ -243,10 +243,10 @@ _free_slice:
     leave
     ret
 
-; _free_str will free the string pointed to by rax, assuming it is a string with len/cap.
+; _free_string will free the string pointed to by rax, assuming it is a string with len/cap.
 ; It assumes it is from the default Process Heap returned from GetProcessHeap
 ; No return value. Will set r15 on error.
-_free_str:
+_free_string:
     push rbp
     mov rbp, rsp
     ; Check for nil

@@ -506,7 +506,7 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 			}
 			name := filepath.Join(sourcePath, entry.Name())
 			if strings.HasSuffix(name, ".jkv") {
-				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv") + ".exe"
+				outputName := strings.TrimSuffix(filepath.Base(name), ".jkv")
 				err = CompileFile(cfg, name)
 				if strings.Contains(name, "err_") {
 					if err == nil {
@@ -522,7 +522,7 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 					if err != nil {
 						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
 					}
-					err = Run(cfg.BuildPath + "/" + outputName)
+					err = Run(cfg.BuildPath + "/" + outputName + ".exe")
 				}
 			}
 		} else {

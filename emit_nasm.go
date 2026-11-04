@@ -515,7 +515,7 @@ func EmitCompareStrToLit(op Token, stringValue string, stringLitNo int, isTemp b
 			lb := code.NewLabel()
 			emit("jz", EmitNumericLabel(lb), "", "")
 			emit("mov", "rax", "r14", "")
-			emit("call", "_free_str", "", "EmitCompareStrToLit")
+			emit("call", "_free_string", "", "EmitCompareStrToLit")
 			EmitLabel(lb, "")
 		}
 		emit("mov", "rax", "r13", "Result to TOS (rax)")
@@ -555,11 +555,11 @@ func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	EmitLabel(lbl, "unequal")
 	if temp1 {
 		emit("mov", "rax", "rsi", "EmitCompareStringsEq 1")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 	}
 	if temp2 {
 		emit("mov", "rax", "rdi", "EmitCompareStringsEq 2")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 	}
 	emit("mov", "rax", "rbx", "Result to TOS (rax)")
 }
@@ -579,11 +579,11 @@ func EmitCompareStringsNe(temp1 bool, temp2 bool) {
 	EmitLabel(lbl, "unequal")
 	if temp1 {
 		emit("mov", "rax", "rsi", "EmitCompareStringsEq 1")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 	}
 	if temp2 {
 		emit("mov", "rax", "rdi", "EmitCompareStringsEq 2")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 	}
 	emit("mov", "rax", "rbx", "Result to TOS (rax)")
 }
@@ -601,8 +601,8 @@ func EmitFreeString(comment string) {
 	// Skip free if cap=0
 	emit("or", "rbx", "rbx", "")
 	emit("jz", EmitNumericLabel(lbl), "", "")
-	// Address is in rax. Just call _free_str
-	emit("call", "_free_str", "", comment)
+	// Address is in rax. Just call _free_string
+	emit("call", "_free_string", "", comment)
 	// Exit label
 	EmitLabel(lbl, "End of EmitFreeString")
 	code.SetUndef()
@@ -1794,7 +1794,7 @@ func EmitConcat(free1 bool, free2 bool) {
 		emit("or", "rax", "rax", "")
 		emit("jz", Label(lbl), "", "")
 		emit("mov", "rax", "rbx", "Free first argument to Concatenate")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 		EmitLabel(lbl, "")
 	}
 	if free2 {
@@ -1804,7 +1804,7 @@ func EmitConcat(free1 bool, free2 bool) {
 		emit("or", "rax", "rax", "")
 		emit("jz", Label(lbl), "", "")
 		emit("mov", "rax", "r13", "Free second argument to Concatenate")
-		emit("call", "_free_str", "", "")
+		emit("call", "_free_string", "", "")
 		EmitLabel(lbl, "")
 	}
 
@@ -1871,7 +1871,7 @@ func ExtendStringCapacity(bytesExtra int) {
 	// Free old string
 	emit("mov", "rax", "rbx", "rbx points to the old string")
 	emit("push", "rdx", "", "")
-	emit("call", "_free_str", "", "")
+	emit("call", "_free_string", "", "")
 	emit("pop", "rdx", "", "")
 	EmitLabel(lbl1, "End of ExtendStringCapacity")
 }
@@ -1994,7 +1994,7 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	emit("or", "rbx", "rbx", "")
 	emit("jz", Label(lbl), "", "")
 	emit("mov", "rax", "[rax]", "")
-	emit("call", "_free_str", "", "")
+	emit("call", "_free_string", "", "")
 	EmitLabel(lbl, "")
 
 	emit("mov", "rbx", "str"+strconv.Itoa(strLitNo), "")
@@ -2009,7 +2009,7 @@ func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
 	code.SetAx()
 	// Check if we must free old variable
 	emit("mov", "rax", BpRel(adr), "EmitAssignVariableConstStrStr")
-	emit("call", "_free_str", "", "")
+	emit("call", "_free_string", "", "")
 	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
 	emit("mov", BpRel(adr), "rax", "")
 	return nil
@@ -2030,7 +2030,7 @@ func EmitAssignIndirectExpressionStrStr() error {
 	emit("or", "rcx", "rcx", "")
 	emit("jz", Label(lbl), "", "")
 	emit("mov", "rax", "[rdi]", "")
-	emit("call", "_free_str", "", "")
+	emit("call", "_free_string", "", "")
 	EmitLabel(lbl, "")
 	emit("mov", "qword [rdi]", "r12", "Save new string")
 	return nil
@@ -2059,7 +2059,7 @@ func EmitAssignVariableExpressionStrStr(adr int) error {
 	emit("jz", Label(lbl), "", "")
 	emit("push", "rax", "", "")
 	emit("mov", "rax", "rdi", "")
-	emit("call", "_free_str", "", "")
+	emit("call", "_free_string", "", "")
 	emit("pop", "rax", "", "")
 	EmitLabel(lbl, "")
 

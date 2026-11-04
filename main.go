@@ -107,34 +107,34 @@ func AssembleFiles(cfg *Config, inputDir string, outputDir string) error {
 
 // Link will link all obj files in the build directory and generate an exe file
 func Link(cfg *Config, outputName string) error {
-	// Make sure the output name includes .exe
-	if !strings.HasSuffix(outputName, ".exe") {
-		outputName += ".exe"
-	}
-
 	// Add all object files to argument list
 	var args []string
 	entries, err := os.ReadDir(cfg.BuildPath)
 	if err != nil {
 		return fmt.Errorf("collecting obj files error %s", err.Error())
 	}
-	for _, entry := range entries {
+	/*for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
 			args = append(args, filepath.Join(cfg.BuildPath, entry.Name()))
 		}
-	}
-	outputPath := path.Join(cfg.BuildPath, outputName)
+	}*/
+	// args = append(args, "c:/doc/compiler/build/time.obj")
+	args = append(args, "c:/doc/compiler/build/iter.obj")
+	args = append(args, "c:/doc/compiler/build/sys.obj")
+	args = append(args, "c:/doc/compiler/build/"+outputName+".obj")
+
+	exePath := path.Join(cfg.BuildPath, outputName+".exe")
 	LinkerName := "c:/doc/compiler/tools/"
 	if *linker == "gcc" {
 		LinkerName += "MinGW64/bin/gcc.exe"
-		args = append(args, "-mconsole", "-m64", "-lkernel32", "-lmsvcrt", "-o", outputPath)
+		args = append(args, "-mconsole", "-m64", "-lkernel32", "-lmsvcrt", "-o", exePath)
 	} else if *linker == "ucrt" {
 		LinkerName = "MinGW64/bin/gcc.exe"
 		args = append(args, "-lkernel32", "-llegacy_stdio_definitions", "-lmsvcrt")
-		args = append(args, "-DUCRT", "-m64", "-o", outputPath)
+		args = append(args, "-DUCRT", "-m64", "-o", exePath)
 	} else if *linker == "golink" {
 		LinkerName = "./tools/golink.exe"
-		args = append(args, "/fo", outputPath, "/entry=main", "/console")
+		args = append(args, "/fo", exePath, "/entry=main", "/console")
 		if *debug {
 			args = append(args, "/debug=dbg")
 		}
@@ -148,7 +148,7 @@ func Link(cfg *Config, outputName string) error {
 				args = append(args, path.Join(cfg.LibPath, entry.Name()))
 			}
 		}
-		args = append(args, "/out:"+outputPath, "/entry:main")
+		args = append(args, "/out:"+exePath, "/entry:main")
 		args = append(args, "/SUBSYSTEM:CONSOLE")
 		args = append(args, "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64/kernel32.Lib")
 		args = append(args, "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.26100.0/um/x64/ucrt.Lib")
@@ -290,11 +290,11 @@ func main() {
 		}
 		err = CompileFile(cfg, *oneFile)
 		if err == nil {
-			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv") + ".exe"
+			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv")
 			Build(cfg, filepath.Dir(*oneFile))
 			err = Link(cfg, outputName)
 			if err == nil {
-				err = Run(cfg.BuildPath + "/" + outputName)
+				err = Run(cfg.BuildPath + "/" + outputName + ".exe")
 			}
 		}
 
