@@ -106,23 +106,18 @@ func main() {
         }
     }
     assert(sum==60, "Failed sum, got %d", sum)
-    print("here")
 
     ok = true
 
-    // This code was leaking 17 bytes
+    // This code leaks 34 bytes
     // because of id created inside loop
     ch = 'A'
-    if true {
-        id = ""
-        id += ch
-    }
     for i=range(0, 1) {
         for k=range(0, 3) {
-            print("i=%d, k=%d", i, k)
+            id = ""
+            id += ch
             break
         }
-        print("i=%d", i)
     }
 
     arg = "-file=asdfasdf"

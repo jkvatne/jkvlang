@@ -18,11 +18,13 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    print("Start")
+    // This code leaks 34 bytes
+    // because of id created inside loop
     for i=range(0, 1) {
         for k=range(0, 3) {
-            print("i=%d, k=%d", i, k)
+            id = ""
+            id += 'A'
+            break
         }
     }
-    print("Done")
 }
