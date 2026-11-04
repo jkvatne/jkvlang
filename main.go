@@ -28,7 +28,7 @@ var (
 	debug        = flag.Bool("debug", false, "Enable debug mode")
 	linker       = flag.String("linker", "gcc", "Name of linker. Default gcc, alternatives golink, ucrt, msvc")
 	arg          = flag.String("arg", "dummyArg", "Arguments to the compiled program when it is run")
-	printLinkCmd = flag.Bool("printlinkcmd", true, "Print link command")
+	printLinkCmd = flag.Bool("printlinkcmd", false, "Print link command")
 )
 
 type Config struct {
@@ -113,15 +113,11 @@ func Link(cfg *Config, outputName string) error {
 	if err != nil {
 		return fmt.Errorf("collecting obj files error %s", err.Error())
 	}
-	/*for _, entry := range entries {
+	for _, entry := range entries {
 		if !entry.IsDir() && strings.Contains(strings.ToUpper(entry.Name()), ".OBJ") {
 			args = append(args, filepath.Join(cfg.BuildPath, entry.Name()))
 		}
-	}*/
-	// args = append(args, "c:/doc/compiler/build/time.obj")
-	// args = append(args, "c:/doc/compiler/build/iter.obj")
-	args = append(args, "c:/doc/compiler/build/sys.obj")
-	args = append(args, "c:/doc/compiler/build/"+outputName+".obj")
+	}
 
 	exePath := path.Join(cfg.BuildPath, outputName+".exe")
 	LinkerName := "c:/doc/compiler/tools/"
