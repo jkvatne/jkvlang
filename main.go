@@ -119,7 +119,7 @@ func Link(cfg *Config, outputName string) error {
 		}
 	}*/
 	// args = append(args, "c:/doc/compiler/build/time.obj")
-	args = append(args, "c:/doc/compiler/build/iter.obj")
+	// args = append(args, "c:/doc/compiler/build/iter.obj")
 	args = append(args, "c:/doc/compiler/build/sys.obj")
 	args = append(args, "c:/doc/compiler/build/"+outputName+".obj")
 

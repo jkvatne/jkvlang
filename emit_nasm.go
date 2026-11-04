@@ -448,6 +448,7 @@ func EmitAssertTosInRax(comment string) {
 }
 
 func EmitPrologue() {
+	EmitSection("text")
 	EmitExtern("_alloc")
 	EmitExtern("_syscall")
 	EmitExtern("_sysinit")
