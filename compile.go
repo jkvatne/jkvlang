@@ -334,6 +334,8 @@ func ScanPackages(cfg *Config, level int) error {
 			code.NoCode--
 		}
 	}
+	code.LineNum = 0
+	code.NextLineNum = 0
 	return nil
 }
 

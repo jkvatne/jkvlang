@@ -1,21 +1,4 @@
-type RangeIterator = struct {
-    start I32
-    end I32
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
+import iter
 
 func main() {
     // This code leaks 34 bytes
