@@ -59,7 +59,7 @@ func CopyFile(src string, dst string) error {
 	return err
 }
 
-func Build(cfg *Config, inputDir string) error {
+func Build(cfg *Config) error {
 	// Assemble cached packages (if needed)
 	entries, err := os.ReadDir(cfg.CachePath)
 	if err != nil {
@@ -76,6 +76,17 @@ func Build(cfg *Config, inputDir string) error {
 	}
 	// Assemble program
 	err = AssembleFiles(cfg, cfg.BuildPath, cfg.BuildPath)
+	return err
+}
+
+func BuildLinkRun(cfg *Config, outputName string) error {
+	err := Build(cfg)
+	if err == nil {
+		err = Link(cfg, outputName)
+	}
+	if err == nil {
+		err = Run(cfg.BuildPath + "/" + outputName + ".exe")
+	}
 	return err
 }
 
@@ -278,29 +289,32 @@ func main() {
 		err = CopyFile(cfg.CachePath+"/sys/sys.obj", cfg.BuildPath+"/sys.obj")
 	}
 	if err != nil {
-		// Do nothing upon errors in previous steps
-	} else if *oneFile != "" {
+		fmt.Printf("%s\n", err.Error())
+		os.Exit(1)
+	}
+
+	if *oneFile != "" {
 		// Compile a single source file
 		if !strings.Contains(*oneFile, ".") {
 			*oneFile += ".jkv"
 		}
-		err = CompileFile(cfg, *oneFile)
+		filePath, err := filepath.Abs(*oneFile)
 		if err == nil {
-			outputName := strings.TrimSuffix(filepath.Base(*oneFile), ".jkv")
-			Build(cfg, filepath.Dir(*oneFile))
-			err = Link(cfg, outputName)
-			if err == nil {
-				err = Run(cfg.BuildPath + "/" + outputName + ".exe")
-			}
+			err = CompileFile(cfg, filePath)
+		}
+		if err == nil {
+			err = BuildLinkRun(cfg, "main")
 		}
 
 	} else if *test {
 		// Compile and run all files int the test directory
 		n := 0
-		n, err = CompileTests(cfg, *sourceDir)
+		// Convert source directory to absolute path
+		dir, _ := filepath.Abs(*sourceDir)
+		n, err = CompileTests(cfg, dir)
 		if err == nil {
 			fmt.Printf("------------------------------------------\n")
-			fmt.Printf("Run %d files. All tests passed\n", n)
+			fmt.Printf("All %d tests passed\n", n)
 		}
 
 	} else if *sourceDir != "" {
@@ -312,13 +326,7 @@ func main() {
 		// Compile and run all files in the source directory
 		err = CompileDir(cfg, srcPath)
 		if err == nil {
-			err = Build(cfg, *sourceDir)
-		}
-		if err == nil {
-			err = Link(cfg, "main")
-		}
-		if err == nil {
-			err = Run(cfg.BuildPath + "/" + "main.exe")
+			err = BuildLinkRun(cfg, "main")
 		}
 	} else {
 		// Must have file, test or directory

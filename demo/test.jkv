@@ -16,8 +16,7 @@ func main() {
     fflush()
     // Will sleep for the given number of milliseconds
     print("Please wate, this takes ca 2 seconds....")
-    ok = call(Sleep, 1000)
-
+    ok = call(Sleep, 100)
     //d = date.Date(123)
     //print("Date=%d", d)
     sum = 0

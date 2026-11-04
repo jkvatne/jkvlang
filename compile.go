@@ -515,18 +515,11 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 					fmt.Printf("File %s failed with error %v\n", name, err)
 					err = nil
 				} else {
-					Build(cfg, filepath.Dir(name))
-					if err == nil {
-						err = Link(cfg, outputName)
-					}
-					if err != nil {
-						return n, fmt.Errorf("error in  %s : %s", name, err.Error())
-					}
-					err = Run(cfg.BuildPath + "/" + outputName + ".exe")
+					err = BuildLinkRun(cfg, outputName)
 				}
 			}
 		} else {
-			// Enter subdirectory
+			// Enter subdirectory and recursively compile the contents
 			m := 0
 			m, err = CompileTests(cfg, sourcePath+"/"+entry.Name())
 			n += m
@@ -538,14 +531,20 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 	return n, err
 }
 
+func DropExt(filePath string) string {
+	name, _, _ := strings.CutLast(filePath, ".")
+	return name
+}
+
 // CompileFile will compile and run a single file. It must have a main() function.
-func CompileFile(cfg *Config, fileName string) error {
-	fmt.Printf(">>> Compiling %s\n", fileName)
-	err := InitCompile(cfg.BuildPath + "/" + strings.TrimSuffix(fileName, ".jkv") + ".asm")
+func CompileFile(cfg *Config, filePath string) error {
+	fmt.Printf(">>> Compiling %s\n", filePath)
+	fileName := filepath.Base(filePath)
+	err := InitCompile(cfg.BuildPath + "/" + DropExt(fileName) + ".asm")
 	if err != nil {
 		return err
 	}
-	s, err := NewState(cfg, fileName, "main", 0)
+	s, err := NewState(cfg, filePath, "main", 0)
 	if err != nil {
 		return err
 	}
