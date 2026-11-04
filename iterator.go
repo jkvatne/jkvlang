@@ -152,6 +152,7 @@ func ParseFor(s *State) error {
 	if len(results) != 1 {
 		return fmt.Errorf("expected a single state in for-loop")
 	}
+	code.ConsArgCode(len(code.ArgCode), false)
 	code.OutputArgCode()
 	p := &ParDef{name: "rec", typ: &StructType}
 	fun := "next"
