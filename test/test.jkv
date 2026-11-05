@@ -1,9 +1,6 @@
 import iter
-import time
 
 func main() {
-    print("start")
-    t = time.now()
     // This code leaks 34 bytes
     // because of id created inside loop
     for i=iter.range(0, 1) {
