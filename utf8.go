@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
-	"math/bits"
 )
 
 var invalidSequenceTests = []string{
@@ -73,7 +71,7 @@ var utf8d = [...]byte{
 	10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 11, 6, 6, 6, 5, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, // f0..ff
 }
 
-var next_state = [...]byte{
+var nextState = [...]byte{
 	0, 1, 2, 3, 5, 8, 7, 1, 1, 1, 4, 6, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1,
@@ -104,7 +102,7 @@ func decode(s string, i int) (int, int) {
 		} else {
 			codep = (0xff >> kind) & int(b)
 		}
-		state = next_state[state*16+kind]
+		state = nextState[state*16+kind]
 		if state == 0 {
 			return codep, i
 		}
@@ -190,7 +188,7 @@ func TestDecode() {
 	}
 	fmt.Printf("\n")
 
-	p := make([]byte, 10, 10)
+	p := make([]byte, 10)
 	i = 0
 	i = Encode(p, i, 197)
 	i = Encode(p, i, 26412)
@@ -198,22 +196,4 @@ func TestDecode() {
 	i = Encode(p, i, 128309)
 	fmt.Printf("%v", p)
 	fmt.Printf("\n---------------------------------------\n")
-}
-
-// unpack64 returns m, e such that f = m * 2**e.
-// The caller is expected to have handled 0, NaN, and ±Inf already.
-// To unpack a float32 f, use unpack64(float64(f)).
-func unpack64(f float64) (uint64, int) {
-	const shift = 64 - 53
-	const minExp = -(1074 + shift)
-	b := math.Float64bits(f)
-	m := 1<<63 | (b&(1<<52-1))<<shift
-	e := int((b >> 52) & (1<<shift - 1))
-	if e == 0 {
-		m &^= 1 << 63
-		e = minExp
-		s := 64 - bits.Len64(m)
-		return m << s, e - s
-	}
-	return m, (e - 1) + minExp
 }

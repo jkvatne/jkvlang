@@ -35,7 +35,7 @@ func GetTopEndLabel() int {
 
 func ParseBreak(s *State) error {
 	b := s.LoopBlock()
-	err := FreeBlockVarsNodelete(b)
+	err := FreeBlockVarsNoDelete(b)
 	if err != nil {
 		return err
 	}

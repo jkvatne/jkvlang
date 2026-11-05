@@ -196,7 +196,7 @@ func (t Token) IsCompare() bool {
 	return t == TOK_EQ || t == TOK_NE || t == TOK_GT || t == TOK_LE || t == TOK_LT || t == TOK_GE
 }
 
-func (t Token) IsAritmetic() bool {
+func (t Token) IsArithmetic() bool {
 	return t == TOK_PLUS || t == TOK_MINUS || t == TOK_DIV || t == TOK_MULT ||
 		t == TOK_INV_DIV || t == TOK_INV_MINUS || t == TOK_MOD || t == TOK_INV_MOD ||
 		t == TOK_AND || t == TOK_OR || t == TOK_XOR || t == TOK_SHL || t == TOK_SHR || t == TOK_AND_NOT ||

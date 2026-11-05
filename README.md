@@ -9,7 +9,7 @@ One of the goals are to learn why it is so difficult to
 avoid memory leaks and to research if the nice features
 of Rust can be emulated in a simpler way.
 
-Currently a lot of features are missing, but it is now
+Currently, a lot of features are missing, but it is now
 compiling and running all the test examples.
 
 # Implemented functionality 

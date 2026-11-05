@@ -1528,7 +1528,7 @@ func ParseFuncDef(s *State) error {
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected function name but got %s", s.tokenString)
 	}
-	VarReset(s)
+	VarReset()
 	fun := s.Mangle(s.tokenString)
 	n := FuncCount(fun)
 	if fun == "main" {

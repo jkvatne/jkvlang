@@ -130,19 +130,8 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 // generateTosOpNos will generate code for the operation op on the two top entries on the stack.
 func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 	EmitAssertTosInRax("Get TOS before TosOpNos")
-	if val1.Typ == nil {
-		var err error
-		val1.Typ, err = TypeFromConstValue(val1)
-		if err != nil {
-			return &NoValue, fmt.Errorf("first operand is nil")
-		}
-	}
-	if val2.Typ == nil {
-		var err error
-		val2.Typ, err = TypeFromConstValue(val2)
-		if err != nil {
-			return &NoValue, fmt.Errorf("first operand is nil")
-		}
+	if val1.Typ == nil || val2.Typ == nil {
+		return &NoValue, fmt.Errorf("missing type info")
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
@@ -165,7 +154,7 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		} else {
 			return nil, fmt.Errorf("compare with invalid operands: %s", TokenNames[op])
 		}
-	} else if op.IsAritmetic() {
+	} else if op.IsArithmetic() {
 		if val1.Typ.Pt.IsInteger() && (val2.Typ.Pt.IsInteger() || val2.Typ.Pt == code.TYP_BOOL) {
 			EmitIntegerOp(op)
 			return val1, nil
@@ -212,18 +201,13 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 	f1, _ = StrToConst(val1.StringValue)
 	f2, _ = StrToConst(val2.StringValue)
 	if val1.Typ == nil {
-		var err error
-		val1.Typ, err = TypeFromConstValue(val1)
-		if err != nil {
-			return &NoValue, fmt.Errorf("first operand is nil")
-		}
+		return &NoValue, fmt.Errorf("Missing type info")
 	}
 	if val2.Typ == nil {
-		var err error
 		val2.Typ, err = TypeFromConstValue(val2)
-		if err != nil {
-			return &NoValue, fmt.Errorf("first operand is nil")
-		}
+	}
+	if err != nil {
+		return &NoValue, fmt.Errorf("first operand is nil")
 	}
 	if op.IsCompare() {
 		if val1.Typ.Pt == code.TYP_U64 && val2.Typ.Pt == code.TYP_U64 || val2.Typ.Pt == code.TYP_I64 {
@@ -247,7 +231,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			err = fmt.Errorf("unknown type combination for compare %s with %s", val1.Typ.Pt.Name(), val2.Typ.Pt.Name())
 		}
 		return &ValueDef{Typ: &BoolType}, err
-	} else if op.IsAritmetic() {
+	} else if op.IsArithmetic() {
 		if val1.Typ.Pt.IsInteger() && val2.Typ.Pt.IsInteger() {
 			x := int64(f2) + int64(f1)
 			if x > 0x7FFFFFFF || x < -0x7FFFFFFF {
@@ -257,6 +241,7 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 				return &ValueDef{Typ: val2.Typ}, err2
 			}
 			err = EmitOpIntConst(op, x, "TosOpConst")
+			return &ValueDef{Typ: val1.Typ}, err
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
 			// FloatLitNo is in either val1 or val2. The other is always zero
 			if val1.Typ.Pt == code.TYP_F64 {
@@ -265,10 +250,8 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 				err = EmitOpF32Const(op, float32(f1+f2))
 			}
 			return &ValueDef{Typ: val1.Typ}, err
-		} else {
-			err = fmt.Errorf("unknown type combination for '%s'", op.Name())
 		}
-		return &ValueDef{Typ: val1.Typ}, err
+		return nil, fmt.Errorf("unknown type combination for '%s'", op.Name())
 	}
 	return &NoValue, fmt.Errorf("could not perform %s on types %s and %s", op.Name(), val1.Typ.Name(), val2.Typ.Name())
 }

@@ -26,7 +26,7 @@ var VarDefs map[string]*VarDef
 var LastGlobalConstValue string
 var LastGlobalConstType *TypeDef
 
-func InitVardefs() {
+func InitVarDefs() {
 	VarDefs = make(map[string]*VarDef)
 	VarDefs["err"] = &VarDef{Name: "err", Typ: &I64Type, IsGlobal: true}
 	VarDefs["argc"] = &VarDef{Name: "argc", Typ: &I64Type, IsGlobal: true}
@@ -41,10 +41,10 @@ func InitVardefs() {
 }
 
 func init() {
-	InitVardefs()
+	InitVarDefs()
 }
 
-func VarReset(s *State) {
+func VarReset() {
 	for _, v := range VarDefs {
 		if v.Typ.Pt != code.TYP_ERROR && !v.IsGlobal {
 			delete(VarDefs, v.Name)
@@ -110,8 +110,8 @@ func DeleteLocalVar(id string) (err error) {
 	return err
 }
 
-// FreeBlockVarsNodelete frees all local variables with level higher or equal to the given level
-func FreeBlockVarsNodelete(level int) (err error) {
+// FreeBlockVarsNoDelete frees all local variables with level higher or equal to the given level
+func FreeBlockVarsNoDelete(level int) (err error) {
 	n := 0
 	for _, v := range VarDefs {
 		if v.BlockLevel >= level {

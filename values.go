@@ -61,7 +61,7 @@ func (v *ValueDef) IsFalse() bool {
 
 func LiteralInit() {
 	StringLiteralDefs = make([]string, 0, 20)
-	// Str0 should allways be the empty string
+	// Str0 should always be the empty string
 	AddLiteral("")
 	F64LiteralDefs = make([]float64, 0, 20)
 	F32LiteralDefs = make([]float32, 0, 20)

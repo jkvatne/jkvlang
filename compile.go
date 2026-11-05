@@ -429,7 +429,7 @@ func InitCompile(asmFilePath string) error {
 	if err != nil {
 		return err
 	}
-	InitVardefs()
+	InitVarDefs()
 	InitTypes()
 	LiteralInit()
 	EmitPrologue()
