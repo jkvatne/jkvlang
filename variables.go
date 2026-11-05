@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -79,6 +80,7 @@ func AddGlobalConst(id string, typ *TypeDef) (*VarDef, error) {
 func AddLocalVar(s *State, id string, typ *TypeDef) *VarDef {
 	v := VarDefs[id]
 	if v == nil {
+		slog.Debug("AddLocalVar", "id", id)
 		v = &VarDef{Name: id, Typ: typ, BlockLevel: s.BlockLevel}
 		VarDefs[id] = v
 		v.Offset = -code.LocalSp*8 - 8
@@ -94,18 +96,22 @@ func DeleteLocalVar(id string) (err error) {
 	if v != nil && v.Typ.Pt >= code.TYP_STRING && !v.Destroyed {
 		// Free variable
 		if v.Typ.Pt == code.TYP_STRING {
+			slog.Debug("Free string", "id", v.Name)
 			EmitLoad(8, v.Offset, "DeleteLocalVar string '"+v.Name+"'")
 			EmitFreeString("")
 		} else if v.Typ.Pt == code.TYP_STRUCT {
 			// Load local var pointer into rax
+			slog.Debug("Free struct", "id", v.Name)
 			EmitLoad(8, v.Offset, "DeleteLocalVar struct "+v.Name)
 			err = FreeStruct(v.Typ)
 		} else if v.Typ.Pt == code.TYP_SLICE && !v.IsGlobal {
 			// Load local var pointer into rax
+			slog.Debug("Free slice", "id", v.Name)
 			EmitLoad(8, v.Offset, "DeleteLocalVar slice "+v.Name)
 			EmitFreeSlice(v.Typ)
 		}
 	}
+	slog.Debug("DeleteLocalVar", "id", v.Name)
 	delete(VarDefs, id)
 	return err
 }
@@ -126,7 +132,7 @@ func FreeBlockVarsNoDelete(level int) (err error) {
 }
 
 // FreeBlockVars frees all local variables with level higher or equal to the given level
-func FreeBlockVars(level int) (err error) {
+func FreeBlockVars(s *State, level int) (err error) {
 	n := 0
 	for _, v := range VarDefs {
 		if v.BlockLevel >= level {
@@ -138,9 +144,10 @@ func FreeBlockVars(level int) (err error) {
 		}
 	}
 	if n > 0 {
+		slog.Debug("Drop locals from stack", "Func", s.currentFuncDef.name, "Line", code.LineNum, "Level", level, "Count", n)
 		EmitAddToSp(-n, "Free block vars for level "+strconv.Itoa(level))
 	}
-	return err
+	return nil
 }
 
 func ParseStructType(s *State) (*TypeDef, error) {
@@ -166,7 +173,6 @@ func ParseStructType(s *State) (*TypeDef, error) {
 		}
 		count++
 		t.Fields[fieldName] = ft
-		// fmt.Printf("name %s, type %s\n", fieldName, fieldTypeName)
 		s.next()
 		if s.token == TOK_RBRACE {
 			break

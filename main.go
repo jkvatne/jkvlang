@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path"
@@ -229,7 +230,7 @@ func Run(outputName string) error {
 }
 
 func main() {
-
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 	// TestDecode()
 	// TestUnrounded()
 	// TestFormat()

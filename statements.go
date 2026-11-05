@@ -69,7 +69,7 @@ func ParseReturn(s *State) error {
 	s.HasReturned = true
 	s.ParsingReturnValue = false
 	if s.LoopLevel >= 1 {
-		err := FreeBlockVars(s.BlockLevel)
+		err := FreeBlockVars(s, s.BlockLevel)
 		if err != nil {
 			return err
 		}

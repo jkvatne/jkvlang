@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -1316,7 +1317,7 @@ func ParseBlock(s *State, isTrue bool) error {
 	if err != nil {
 		return err
 	}
-	err = FreeBlockVars(s.BlockLevel)
+	err = FreeBlockVars(s, s.BlockLevel)
 	if err != nil {
 		return err
 	}
@@ -1569,12 +1570,15 @@ func ParseFuncDef(s *State) error {
 	}
 	var f *FuncDef
 	f, err = AddFunc(fun, TypeListVar(parList), returnList, false, false, code.NoCode == 0)
+
 	if err != nil {
 		return err
 	}
 	f.Extern = s.ScanPkg
 	s.returnLbl = code.NewLabel()
 	s.currentFuncDef = f
+	slog.Debug(".")
+	slog.Debug("--- Start of function", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
 	// Now parse all the statements in the function
 	err = ParseStatements(s)
 	if err != nil {
@@ -1617,7 +1621,7 @@ func ParseFuncDef(s *State) error {
 		EmitPopAx("Restore rax after freeing local variables")
 	}
 	// Free local variables on the stack
-	err = FreeBlockVars(1)
+	err = FreeBlockVars(s, 1)
 	if err != nil {
 		return err
 	}
@@ -1629,7 +1633,7 @@ func ParseFuncDef(s *State) error {
 	}
 	code.OutputArgCode()
 	s.next()
-
+	slog.Debug("--- End of function", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
 	if s.CommentLevel > 0 {
 		return fmt.Errorf("missing end of comment")
 	}
