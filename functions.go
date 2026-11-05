@@ -135,9 +135,9 @@ func TypeListVal(valueList []*ValueDef) []*ParDef {
 	return l
 }
 
-func TypeListVar(valuelist []*VarDef) []*ParDef {
+func TypeListVar(valueList []*VarDef) []*ParDef {
 	l := make([]*ParDef, 0, 8)
-	for _, v := range valuelist {
+	for _, v := range valueList {
 		p := &ParDef{name: v.Name, typ: v.Typ}
 		l = append(l, p)
 	}

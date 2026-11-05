@@ -27,7 +27,7 @@ import (
  12 r12   Preserved
  13 r13   Preserved
  14 r14   Preserved
- 15 r15   Preserved              Error pointer. 0 (nil) means ok.
+ 15 r15   Preserved              Error pointer: 0 (nil) means ok
 */
 
 var CommentIndent = 40
@@ -70,13 +70,13 @@ func emit(op string, dst string, src string, comment string) {
 	code.Write(txt)
 }
 
-func EmitStringLitteral(litName string, litValue string) {
+func EmitStringLiteral(litName string, litValue string) {
 	code.Write("alignb 8\n")
 	code.Write(litName + " dq " + strconv.Itoa(len(litValue)) + "\n")
 	code.Write("     db `" + litValue + "`, 00h\n")
 }
 
-func EmitF64Litteral(litName string, litValue float64) {
+func EmitF64Literal(litName string, litValue float64) {
 	value := strconv.FormatFloat(litValue, 'g', 11, 64)
 	if !strings.Contains(value, ".") {
 		if strings.Contains(value, "e") || strings.Contains(value, "E") {
@@ -88,7 +88,7 @@ func EmitF64Litteral(litName string, litValue float64) {
 	code.Write(litName + " dq " + value + "\n")
 }
 
-func EmitF32Litteral(litName string, litValue float32) {
+func EmitF32Literal(litName string, litValue float32) {
 	value := strconv.FormatFloat(float64(litValue), 'g', 11, 32)
 	if !strings.Contains(value, ".") {
 		if strings.Contains(value, "e") || strings.Contains(value, "E") {
@@ -98,10 +98,6 @@ func EmitF32Litteral(litName string, litValue float32) {
 		}
 	}
 	code.Write(litName + " dd " + value + "\n")
-}
-
-func EmitBlank() {
-	code.Write("\n")
 }
 
 func EmitGlobal(name string) {
@@ -194,7 +190,7 @@ func EmitCall(id string, nPar int, builtin bool) {
 	if nPar > 0 && code.AxIsTos() {
 		emit("push", "rax", "", "Push TOS from rax to stack")
 	}
-	// The following is needed only for variadic functioncode.
+	// The following is needed only for variadic functions
 	if nPar > 0 {
 		emit("mov", "rbx", strconv.Itoa(nPar*8), "")
 	} else {
@@ -210,7 +206,7 @@ func EmitFunction(id string) {
 		panic("LocalSp is not 0")
 	}
 	if id == "main" {
-		// Main prologue to satisfy "sasm". Does not matter for normal programs.
+		// Main prologue to satisfy debugger. Does not matter for normal programs.
 		emit("mov", "rbp", "rsp", "")
 	}
 	// Function prologue. Set up new frame pointer.
@@ -226,24 +222,24 @@ func EmitFunction(id string) {
 }
 
 var TokenOp = map[Token]string{
-	TOK_AND:        "and",
-	TOK_OR:         "or",
-	TOK_XOR:        "xor",
-	TOK_PLUS:       "add",
-	TOK_MINUS:      "sub",
-	TOK_MULT:       "mul",
-	TOK_DIV:        "div",
-	TOK_PLUS_ASGN:  "add",
-	TOK_MINUS_ASGN: "sub",
-	TOK_OR_ASGN:    "or",
-	TOK_AND_ASGN:   "and",
-	TOK_ASSIGN:     "mov",
-	TOK_MULT_ASGN:  "imul",
-	TOK_DIV_ASGN:   "idiv",
-	TOK_SHL:        "shl",
-	TOK_SHR:        "shr",
-	TOK_AND_NOT:    "andnot",
-	TOK_MOD:        "mod",
+	TOK_AND:         "and",
+	TOK_OR:          "or",
+	TOK_XOR:         "xor",
+	TOK_PLUS:        "add",
+	TOK_MINUS:       "sub",
+	TOK_MULT:        "mul",
+	TOK_DIV:         "div",
+	TOK_PLUS_ASSIGN: "add",
+	TOK_MINUS_ASGN:  "sub",
+	TOK_OR_ASGN:     "or",
+	TOK_AND_ASGN:    "and",
+	TOK_ASSIGN:      "mov",
+	TOK_MULT_ASGN:   "imul",
+	TOK_DIV_ASGN:    "idiv",
+	TOK_SHL:         "shl",
+	TOK_SHR:         "shr",
+	TOK_AND_NOT:     "andnot",
+	TOK_MOD:         "mod",
 }
 
 func xmm(sp int) string {
@@ -333,7 +329,7 @@ func Abs[T Number](x T) T {
 }
 
 func BpRel(offset int) string {
-	// We need to use the abs value in order to allways have either + or - in the instruction.
+	// We need to use the abs value in order to always have either + or - in the instruction.
 	// Bp can never be zero.
 	ofs := strconv.Itoa(Abs(offset))
 	if offset < 0 {
@@ -630,7 +626,7 @@ func EmitPopAx(txt string) {
 	emit("pop", "rax", "", txt)
 }
 
-// EmitAddToSp adjusts stack pointer. Count is in qwordcode.
+// EmitAddToSp adjusts stack pointer.
 // Positive count to reserve space (push)
 // Negative count to remove entries (pop)
 func EmitAddToSp(count int, comment string) {
@@ -652,8 +648,8 @@ func EmitPushConstString(litNo int) {
 // EmitEpilogue - restores frame pointer and exit
 func EmitEpilogue(name string) {
 	if name == "main" {
-		oklbl := code.NewLabel()
-		errlbl := code.NewLabel()
+		okLabel := code.NewLabel()
+		errorLabel := code.NewLabel()
 
 		EmitComment("Printing time used")
 		emit("call", "_get_ticks", "", "")
@@ -675,11 +671,11 @@ func EmitEpilogue(name string) {
 		emit("add", "rsp", "24", "")
 
 		emit("or", "r15", "r15", "")
-		emit("jnz", Label(errlbl), "", "Jump if zero flag is set")
+		emit("jnz", Label(errorLabel), "", "Jump if zero flag is set")
 		emit("mov", "rax", "[allocation_count]", "")
 		emit("or", "rax", "rax", "")
-		emit("jz", Label(oklbl), "", "Jump if zero flag is set")
-		EmitLabel(errlbl, "We had either err!=0 or allocationcount!=0")
+		emit("jz", Label(okLabel), "", "Jump if zero flag is set")
+		EmitLabel(errorLabel, "We had either err!=0 or allocation_count!=0")
 
 		EmitComment("main() returning. Printing allocation count end err.")
 		emit("push", "r15", "", "")
@@ -692,7 +688,7 @@ func EmitEpilogue(name string) {
 		emit("call", "_fflush", "", "")
 		emit("add", "rsp", "24", "")
 
-		EmitLabel(oklbl, "End of printing errors, returning error code via _exit()")
+		EmitLabel(okLabel, "End of printing errors, returning error code via _exit()")
 		emit("mov", "rax", "[allocation_count]", "Check that allocation count is zero")
 		emit("or", "rax", "rax", "")
 		emit("jz", ".L9999", "", "")
@@ -757,7 +753,7 @@ func EmitSetStringLen() {
 	emit("shl", "rax", "32", "")
 	emit("mov", "[rsi]", "rax", "")
 	// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32
-	// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
+	// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+old cap)*2)
 	ExtendStringCapacity(8)
 	// * At exit, rdi points to the first empty character of the new string (ready for move)
 	// * At exit, rdx points to the extended string's len/cap or the old string's len/cap
@@ -777,7 +773,7 @@ func EmitNewString() {
 	emit("mov", "rdi", "rax", "Then clear the new string")
 	emit("xor", "rax", "rax", "")
 	emit("mov", "rcx", "r12", "")
-	emit("add", "rcx", "8", "Add space for cap/len befor clearing")
+	emit("add", "rcx", "8", "Add space for cap/len before clearing")
 	emit("cld", "", "", "")
 	emit("rep", "stosb", "", "")
 	emit("shl", "r12", "32", "")
@@ -1067,7 +1063,7 @@ func EmitGlobalIndexedTosValue(id string, size int) {
 		// Special handling because args is dynamically allocated on the heap
 		emit("add", "rax", "["+id+"]", "EmitLoadGlobal str?")
 	} else {
-		// This is ok for utf8. id=utf8d
+		// This is ok for utf8.
 		emit("add", "rax", id, "EmitLoadGlobal str?")
 	}
 	_ = EmitLoadIndirectAx("rax", size)
@@ -1119,10 +1115,6 @@ func LoadIndexedValue(isIndirect bool, isConst bool, offset int, index int64, si
 	_ = EmitLoadIndirectAx("rax", size)
 }
 
-func EmitClearErr() {
-	emit("xor", "r15", "r15", "Clear error")
-}
-
 func EmitSkipLenCapForPrint() {
 	emit("mov", "rax", "[rsp]", "Check for nil string")
 	emit("or", "rax", "rax", "")
@@ -1148,19 +1140,18 @@ func EmitCompareIntConst64(op Token, value string, unsigned bool) error {
 
 // EmitCompareIntConst will compare top of stack with a constant
 func EmitCompareIntConst(op Token, value int64, unsigned bool) error {
-	sval := strconv.FormatInt(value, 10)
+	valueString := strconv.FormatInt(value, 10)
 	if value > 0x7fffffff || value < -0x7fffffff {
-		// value = -0xffffffff + value
-		emit("mov", "rbx", sval, "")
+		emit("mov", "rbx", valueString, "")
 		emit("cmp", "rax", "rbx", "Compare int with 64bit const")
 	} else {
-		emit("cmp", "rax", sval, "Compare int with const")
+		emit("cmp", "rax", valueString, "Compare int with const")
 	}
 	return EmitJumpCond(op, unsigned)
 }
 
 // EmitIntegerOp will generate a stack operation on the top two stack entries, like add or sub
-// The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX)
+// The stack pointer will be incremented (pop), and the result will now be on top of the stack (AX).
 // We assume TOS is in rax. Then NOS will be popped to rcx.
 // For subtraction, we should calculate NOS-TOS or rcx-rax
 func EmitIntegerOp(op Token) {
@@ -1212,29 +1203,29 @@ func EmitOpIntConst(op Token, value int64, comment string) error {
 	if value < -0x7FFFFFFF || value > 0x7FFFFFFFF {
 		return fmt.Errorf("value out of range: %d", value)
 	}
-	sval := strconv.FormatInt(value, 10)
+	valueString := strconv.FormatInt(value, 10)
 	if op == TOK_DIV {
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
-		emit("mov", "rbx", sval, "Get constant divisor into RBX")
+		emit("mov", "rbx", valueString, "Get constant divisor into RBX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_INV_DIV {
-		emit("mov", "rbx", sval, "Get constant divisor into RBX")
+		emit("mov", "rbx", valueString, "Get constant divisor into RBX")
 		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 	} else if op == TOK_MOD {
-		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("mov", "rbx", valueString, "RBX=constant divisor")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_INV_MOD {
-		emit("mov", "rbx", sval, "RBX=constant divisor")
+		emit("mov", "rbx", valueString, "RBX=constant divisor")
 		emit("xchg", "rax", "rbx", "")
 		emit("cqo", "", "", "Sign-extend dividend in RAX into RDX:RAX")
 		emit("idiv", "rbx", "", "RAX = RDX:RAX/RBX; RDX=Reminder")
 		emit("mov", "rax", "rdx", "Move reminder to AX (top of stack)")
 	} else if op == TOK_MULT {
-		emit("imul", "rax", "rax, "+sval, "")
+		emit("imul", "rax", "rax, "+valueString, "")
 	} else if op == TOK_INV_MINUS {
 		emit("sub", "rax", strconv.FormatInt(value, 10), comment)
 		emit("neg", "rax", "", "")
@@ -1263,27 +1254,27 @@ func EmitOpIntConst(op Token, value int64, comment string) error {
 // emitFloatOp assumes the operands are already in xmm1 and xmm2
 // The result will be in xmm1
 func emitFloatOp(op Token, size int) error {
-	sufix := "d"
+	suffix := "d"
 	if size == 32 {
-		sufix = "s"
+		suffix = "s"
 	}
-	if op == TOK_PLUS || op == TOK_PLUS_ASGN {
-		emit("adds"+sufix, xmm(1), xmm(2), "Add tos to nos")
+	if op == TOK_PLUS || op == TOK_PLUS_ASSIGN {
+		emit("adds"+suffix, xmm(1), xmm(2), "Add tos to nos")
 	} else if op == TOK_MINUS || op == TOK_MINUS_ASGN {
-		emit("subs"+sufix, xmm(1), xmm(2), "Subtract nos from tos")
+		emit("subs"+suffix, xmm(1), xmm(2), "Subtract nos from tos")
 	} else if op == TOK_INV_MINUS {
-		emit("subs"+sufix, xmm(2), xmm(1), "Subtract nos from tos")
+		emit("subs"+suffix, xmm(2), xmm(1), "Subtract nos from tos")
 		if size == 64 {
 			emit("movq", xmm(1), xmm(2), "")
 		} else {
 			emit("movq", xmm(1), xmm(2), "")
 		}
 	} else if op == TOK_MULT || op == TOK_MULT_ASGN {
-		emit("muls"+sufix, xmm(1), xmm(2), "Multiply nos by tos")
+		emit("muls"+suffix, xmm(1), xmm(2), "Multiply nos by tos")
 	} else if op == TOK_DIV || op == TOK_DIV_ASGN {
-		emit("divs"+sufix, xmm(1), xmm(2), "Divide tos by nos")
+		emit("divs"+suffix, xmm(1), xmm(2), "Divide tos by nos")
 	} else if op == TOK_INV_DIV {
-		emit("divs"+sufix, xmm(2), xmm(1), "Divide nos by tos")
+		emit("divs"+suffix, xmm(2), xmm(1), "Divide nos by tos")
 		if size == 64 {
 			emit("movq", xmm(1), xmm(2), "")
 		} else {
@@ -1341,7 +1332,7 @@ func EmitF64Op(op Token, typ1 code.PrimaryType, typ2 code.PrimaryType) error {
 	} else {
 		return fmt.Errorf("EmitF64Op not implemented for " + op.Name())
 	}
-	// Do F64 opertion
+	// Do F64 operation
 	err := emitFloatOp(op, 64)
 	emit("movq", "rax", xmm(1), "EmitF64Op: Move float result into rax")
 	return err
@@ -1423,7 +1414,13 @@ func EmitLoadBool(value string) {
 
 func EmitLoadGlobalVar(name string, pt code.PrimaryType) {
 	// TODO : Use type to determine size to move
-	emit("mov", "rax", "["+name+"]", "Load global variable "+name)
+	if pt.Size() == 8 {
+		emit("mov", "rax", "["+name+"]", "Load global variable "+name)
+	} else if pt.Size() == 4 {
+		emit("mov", "eax", "dword ["+name+"]", "Load global variable "+name)
+	} else {
+		panic("unsupported type for global variable")
+	}
 	code.SetAx()
 }
 
@@ -1481,27 +1478,6 @@ func EmitAssignVariableExpressionF32(op Token, adr int, comment string) error {
 	return err
 }
 
-func EmitOpAssignIndirectConstF64(op Token, value float64) error {
-	litNo := AddF64Lit(value)
-	code.SetAx()
-	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const")
-	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
-	if op == TOK_ASSIGN {
-		code.SetUndef()
-		emit("mov", "[rdi]", "rax", "")
-		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
-		emit("movq", xmm(2), "rax", "move tos in rax to xmm1")
-		emit("mov", "rax", "[rdi]", "")
-		emit("movq", xmm(1), "rax", "")
-		err := emitFloatOp(op, 64)
-		emit("movq", "rax", xmm(1), "EmitAssignF64ConstToLocal: Move float result into rax")
-		emit("mov", "[rdi]", "rax", "")
-		return err
-	}
-	return fmt.Errorf("float operation not implemented")
-}
-
 func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 	litNo := AddF32Lit(value)
 	emit("pop", "rdi", "", "EmitOpAssignIndirectF32Const ")
@@ -1510,7 +1486,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 		code.SetUndef()
 		emit("mov", "dword [rdi]", "eax", "")
 		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+	} else if op == TOK_PLUS_ASSIGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
 		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
 		emit("mov", "eax", "dword [rdi]", "")
 		emit("movd", xmm(1), "eax", "")
@@ -1522,7 +1498,7 @@ func EmitOpAssignIndirectConstF32(op Token, value float32) error {
 	return fmt.Errorf("float operation not implemented")
 }
 
-// EmitAssignIndirectExpressionInt has Pointer on stack, value in rax
+// EmitAssignIndirectExpressionInt has Pointer on stack, value in rax where
 // rax=second part  rdi =first part
 func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	// EmitFlushRax("EmitAssignIndirectExpressionInt assert rax")
@@ -1588,14 +1564,22 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 	return err
 }
 
-// EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax
+func EmitOpAssignIndirectConstF64(op Token, value float64) error {
+	litNo := AddF64Lit(value)
+	code.SetAx()
+	emit("pop", "rdi", "", "EmitOpAssignIndirectF64Const")
+	emit("mov", "rax", "[f64_"+strconv.Itoa(litNo)+"]", "")
+	return EmitAssignIndirectExpressionF64(op)
+}
+
+// EmitAssignIndirectExpressionF64 assumes pointer to F64 on stack and operand in rax where
 // rax=second part  rdi =first part
 func EmitAssignIndirectExpressionF64(op Token) error {
 	if op == TOK_ASSIGN {
 		code.SetUndef()
 		emit("mov", "[rdi]", "rax", "")
 		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+	} else if op == TOK_PLUS_ASSIGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
 		emit("movq", xmm(2), "rax", "move tos in rax to xmm1")
 		emit("mov", "rax", "[rdi]", "")
 		emit("movq", xmm(1), "rax", "")
@@ -1615,7 +1599,7 @@ func EmitAssignIndirectExpressionF32(op Token) error {
 		code.SetUndef()
 		emit("mov", "dword [rdi]", "eax", "")
 		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+	} else if op == TOK_PLUS_ASSIGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
 		emit("movd", xmm(2), "eax", "move tos in rax to xmm1")
 		emit("mov", "eax", "dword [rdi]", "")
 		emit("movd", xmm(1), "eax", "")
@@ -1636,7 +1620,7 @@ func EmitAssignVariableConstF64(op Token, adr int, x float64, comment string) er
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+	} else if op == TOK_PLUS_ASSIGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
 		litNo := AddF64Lit(x)
 		code.SetAx()
 		emit("mov", "rax", BpRel(adr), comment)
@@ -1660,7 +1644,7 @@ func EmitAssignVariableConstF32(op Token, adr int, x float32, comment string) er
 		code.SetUndef()
 		emit("mov", BpRel(adr), "rax", "")
 		return nil
-	} else if op == TOK_PLUS_ASGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
+	} else if op == TOK_PLUS_ASSIGN || op == TOK_MINUS_ASGN || op == TOK_DIV_ASGN || op == TOK_MULT_ASGN {
 		litNo := AddF32Lit(x)
 		code.SetAx()
 		emit("mov", "eax", "dword "+BpRel(adr), comment)
@@ -1822,8 +1806,8 @@ func EmitConcat(free1 bool, free2 bool) {
 // ExtendStringCapacity of a string by copying it into new memory (uses r12)
 // * ebx should contain the required extra length, f.ex. the length of the appended string
 // * rsi should point to the old string, so [rsi] is the old len/cap
-// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32
-// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+oldcap)*2)
+// Extend if old length + required extra > old capacity  (low([rsi])+rbx > [rsi]>>32).
+// The new capacity will be <ebx> + <old len> + <bytesExtra> (or possibly (ebx+old capacity) * 2).
 // * At exit, rdi points to the first empty character of the new string (ready for move)
 // * At exit, rdx points to the extended string's len/cap or the old string's len/cap
 // * At exit, rsi points to the new string's len/cap
@@ -1914,7 +1898,7 @@ func EmitAppendVariableExpressionStrStr(adr int) error {
 	return nil
 }
 
-// EmitAppendIndirectExpressionStrStr appends string in rax
+// EmitAppendIndirectExpressionStrStr appends string in rax where
 // rax=second part  rdi =first part
 func EmitAppendIndirectExpressionStrStr() error {
 	EmitComment(">> EmitAppendIndirectExpressionStrStr  rax=second, rdi=first")
@@ -2007,7 +1991,7 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 	return nil
 }
 
-// EmitAssignVariableConstStrStr will assign a litteral string to the string in
+// EmitAssignVariableConstStrStr will assign a literal string to the string in
 // the local variable at adr. If the variable did contain another string, it
 // must be freed
 func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
@@ -2076,7 +2060,7 @@ func EmitAssignVariableExpressionStrStr(adr int) error {
 
 func EmitAppendIndirectConstStrChar(value int) error {
 	if value > 128 {
-		return fmt.Errorf("only ascii values <128 is supported for now")
+		return fmt.Errorf("only ASCII values <128 is supported for now")
 	}
 	emit("mov", "rsi", "[rsp]", "Load indirect pointer (EmitAppendIndirectConstStrChar)")
 	emit("mov", "rsi", "[rsi]", "Load string pointer")
@@ -2116,12 +2100,12 @@ func EmitAppendIndirectExpressionStrChar() error {
 	return nil
 }
 
-// EmitAssignVariableConstStrChar will append a litteral character to a string in a variable.
+// EmitAssignVariableConstStrChar will append a literal character to a string in a variable.
 func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
 	if value > 128 {
-		return fmt.Errorf("only ascii values <128 is supported for now")
+		return fmt.Errorf("only ASCII values <128 is supported for now")
 	}
-	if op != TOK_PLUS_ASGN {
+	if op != TOK_PLUS_ASSIGN {
 		return fmt.Errorf("only += supported for string += int")
 	}
 	emit("mov", "rdi", BpRel(adr), "Load pointer to string from local variable")
@@ -2159,13 +2143,13 @@ func EmitAppendVariableExpressionStrChar(adr int) error {
 	return nil
 }
 
-func EmitReturnIfErr2(eixtLbl int) {
+func EmitReturnIfErr2(exitLbl int) {
 	lbl := code.NewLabel()
 	emit("mov", "rax", "r15", "")
 	emit("sub", "rax", "2", "")
 	emit("jnz", Label(lbl), "", "Return from function if r15==2")
 	// It r15 was 2, that means to exit now with r15=0
 	emit("xor", "r15", "r15", "")
-	emit("jmp", Label(eixtLbl), "", "Return from function")
+	emit("jmp", Label(exitLbl), "", "Return from function")
 	EmitLabel(lbl, "")
 }

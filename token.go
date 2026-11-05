@@ -15,7 +15,7 @@ const (
 	TOK_UNDEF Token = iota
 	TOK_PLUS
 	TOK_PLUS_PLUS
-	TOK_PLUS_ASGN
+	TOK_PLUS_ASSIGN
 	TOK_MINUS
 	TOK_MINUS_MINUS
 	TOK_MINUS_ASGN
@@ -98,7 +98,7 @@ var TokenNames = [...]string{
 	TOK_UNDEF:       "UNDEF",
 	TOK_PLUS:        "+",
 	TOK_PLUS_PLUS:   "++",
-	TOK_PLUS_ASGN:   "+=",
+	TOK_PLUS_ASSIGN: "+=",
 	TOK_MINUS:       "-",
 	TOK_MINUS_MINUS: "--",
 	TOK_MINUS_ASGN:  "-=",
@@ -350,7 +350,7 @@ func (s *State) next() {
 		case s.ch1 == '+' && s.ch2 == '=':
 			s.nextChar()
 			s.tokenString = "+="
-			s.token = TOK_PLUS_ASGN
+			s.token = TOK_PLUS_ASSIGN
 		case s.ch1 == '+':
 			s.token = TOK_PLUS
 			s.tokenString = "+"

@@ -9,7 +9,7 @@ import (
 )
 
 // GenerateOp will handle the infix operations +,-,*,/,%,|,&,^,<,>,<=,>=,==,!=
-// Integer operands are promoted to the smallest size that can accomondate both.
+// Integer operands are promoted to the smallest size that can accommodate both.
 // F.ex. I16 op U16 results in an I32
 // There are 4 different cases: const op const, tos op const, const op tos, tos op nos
 func GenerateOp(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, error) {
@@ -129,7 +129,7 @@ func generateConstOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (result *Val
 
 // generateTosOpNos will generate code for the operation op on the two top entries on the stack.
 func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
-	EmitAssertTosInRax("Get TOS befor TosOpNos")
+	EmitAssertTosInRax("Get TOS before TosOpNos")
 	if val1.Typ == nil {
 		var err error
 		val1.Typ, err = TypeFromConstValue(val1)
@@ -198,7 +198,7 @@ func generateTosOpNos(op Token, val1, val2 *ValueDef) (*ValueDef, error) {
 		}
 		return val1, err
 	}
-	return nil, fmt.Errorf("tosnos operation %s not implemented", TokenNames[op])
+	return nil, fmt.Errorf("generateTosOpNos operation %s not implemented", TokenNames[op])
 
 }
 
@@ -258,13 +258,13 @@ func generateTosOpConst(op Token, val1 *ValueDef, val2 *ValueDef) (*ValueDef, er
 			}
 			err = EmitOpIntConst(op, x, "TosOpConst")
 		} else if val1.Typ.Pt.IsNumber() && val2.Typ.Pt.IsNumber() {
-			// FloatLitNo is in either val1 or val2. The other is allways zero
+			// FloatLitNo is in either val1 or val2. The other is always zero
 			if val1.Typ.Pt == code.TYP_F64 {
-				EmitOpF64Const(op, f1+f2)
+				err = EmitOpF64Const(op, f1+f2)
 			} else if val1.Typ.Pt == code.TYP_F32 {
-				EmitOpF32Const(op, float32(f1+f2))
+				err = EmitOpF32Const(op, float32(f1+f2))
 			}
-			return &ValueDef{Typ: val1.Typ}, nil
+			return &ValueDef{Typ: val1.Typ}, err
 		} else {
 			err = fmt.Errorf("unknown type combination for '%s'", op.Name())
 		}

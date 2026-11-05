@@ -255,6 +255,9 @@ func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, 
 				}
 			}
 			s, err = NewState(cfg, sourceFilePath, mangledPackageName, level)
+			if err != nil {
+				return err
+			}
 			err = ScanFile(s, packagePath+"/"+file.Name())
 			if err != nil {
 				return err
@@ -269,7 +272,7 @@ func ProcessPackage(cfg *Config, mangledPackageName string, packagePath string, 
 		}
 	}
 
-	err = OutputPkgFile(outputPath, mangledPackageName)
+	err = OutputPkgFile(outputPath)
 	// Make obj files
 	err = AssembleFiles(cfg, outputPath, outputPath)
 	return err
@@ -288,7 +291,7 @@ func BuildLib(cfg *Config) (err error) {
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("Faild to build library, %v", err)
+		return fmt.Errorf("failed to build library, %v", err)
 	}
 	return nil
 }
@@ -375,7 +378,7 @@ func ScanPkgFile(cfg *Config, sourceFilePath string, level int) error {
 	return nil
 }
 
-// Scan file will compile a given file.
+// ScanFile will compile a given file.
 func ScanFile(s *State, name string) (err error) {
 	// Imports must be at top of file
 	SetCurrentlyUsedFalse()
@@ -436,7 +439,7 @@ func InitCompile(asmFilePath string) error {
 	return nil
 }
 
-func OutputPkgFile(path string, packageName string) error {
+func OutputPkgFile(path string) error {
 	OutputFile, err := os.Create(path + "/import.pkg")
 	if err != nil {
 		return fmt.Errorf("could not create package file " + path + "/import.pkg")
@@ -486,13 +489,13 @@ func OutputEpilogue(mangledName string) error {
 	EmitSection("rodata")
 	for i, l := range StringLiteralDefs {
 		// ALl strings must be aligned to qword
-		EmitStringLitteral("str"+strconv.Itoa(i), l)
+		EmitStringLiteral("str"+strconv.Itoa(i), l)
 	}
 	for i, l := range F64LiteralDefs {
-		EmitF64Litteral("f64_"+strconv.Itoa(i+1), l)
+		EmitF64Literal("f64_"+strconv.Itoa(i+1), l)
 	}
 	for i, l := range F32LiteralDefs {
-		EmitF32Litteral("f32_"+strconv.Itoa(i+1), l)
+		EmitF32Literal("f32_"+strconv.Itoa(i+1), l)
 	}
 	for _, l := range SliceLiteralDefs {
 		EmitSliceLit(*l)
@@ -570,6 +573,9 @@ func CompileFile(cfg *Config, filePath string) error {
 		return err
 	}
 	s, err := NewState(cfg, filePath, "main", 0)
+	if err != nil {
+		return err
+	}
 	err = ParseImports(s)
 	if err != nil {
 		return err

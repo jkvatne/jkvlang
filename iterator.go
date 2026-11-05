@@ -82,8 +82,8 @@ func ParseHash(s *State) error {
 	return err
 }
 
-// ParseLoopVars will parse the variables receiveng values from next(r).
-// Theese variables are f.ex. "i" in " i=range(1,2)"
+// ParseLoopVars will parse the variables receiving values from next(r).
+// These variables are f.ex. "i" in " i=range(1,2)"
 // They are returned in the lvalues[] array.
 func ParseLoopVars(s *State) (lvalues []*VarDef, err error) {
 	for {

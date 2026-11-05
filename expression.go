@@ -104,7 +104,7 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 		if op == TOK_ASSIGN {
 			// Handle assigning a const string to a string variable
 			return EmitAssignVariableConstStrStr(lvalue.Offset, value.StringLitNo)
-		} else if op == TOK_PLUS_ASGN {
+		} else if op == TOK_PLUS_ASSIGN {
 			// Handle appending a const string to a string variable
 			return EmitAppendVariableConstStrStr(lvalue.Offset, value.StringLitNo)
 		}
@@ -114,7 +114,7 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 			return fmt.Errorf("invalid integer: %s", value.StringValue)
 		}
 		return EmitAssignVariableConstInt(op, lvalue.Offset, lvalue.Typ.Pt.Size(), val, "")
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASSIGN {
 		// Handle appending a single character to a string
 		val, err := strconv.ParseInt(value.StringValue, 0, 64)
 		if err != nil {
@@ -165,11 +165,11 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef, isNew b
 		if op == TOK_ASSIGN {
 			// Handle assigning a string expression to a string variable
 			return EmitAssignVariableExpressionStrStr(lvalue.Offset)
-		} else if op == TOK_PLUS_ASGN {
+		} else if op == TOK_PLUS_ASSIGN {
 			// Handle appending a string expression to a string variable
 			return EmitAppendVariableExpressionStrStr(lvalue.Offset)
 		}
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASSIGN {
 		return EmitAppendVariableExpressionStrChar(lvalue.Offset)
 	} else if lvalue.Typ.Pt.IsInteger() {
 		return EmitAssignVariableExpressionInt(op, lvalue.Typ.Pt.Size(), lvalue.Offset, "Assign int to "+lvalue.Name)
@@ -191,7 +191,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
 			return EmitAssignIndirectConstStrStr(value.StringLitNo)
-		} else if op == TOK_PLUS_ASGN {
+		} else if op == TOK_PLUS_ASSIGN {
 			return EmitAppendIndirectConstStrStr(value.StringLitNo)
 		}
 	} else {
@@ -199,7 +199,7 @@ func AssignIndirectConst(op Token, lvalue *VarDef, value *ValueDef) error {
 		if err != nil {
 			return fmt.Errorf("AssignIndirectConst: invalid constant %s", value.StringValue)
 		}
-		if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+		if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASSIGN {
 			return EmitAppendIndirectConstStrChar(int(f))
 		} else if lvalue.Typ.Pt.IsInteger() {
 			return EmitAssignIndirectConstInt(op, lvalue.Typ.Pt.Size(), int64(f), "")
@@ -217,9 +217,9 @@ func AssignIndirectExpression(op Token, lvalue *VarDef, value *ValueDef) (err er
 	emit("pop", "rdi", "", "rdi is now indirect pointer, rax=result of expression")
 	if value.Typ.Pt == code.TYP_STRING && op == TOK_ASSIGN {
 		return EmitAssignIndirectExpressionStrStr()
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING && op == TOK_PLUS_ASGN {
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING && op == TOK_PLUS_ASSIGN {
 		return EmitAppendIndirectExpressionStrStr()
-	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASGN {
+	} else if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt.IsInteger() && op == TOK_PLUS_ASSIGN {
 		return EmitAppendIndirectExpressionStrChar()
 	} else if lvalue.Typ.Pt.IsInteger() && value.Typ.Pt.IsInteger() {
 		return EmitAssignIndirectExpressionInt(op, lvalue.Typ.Pt.Size())
@@ -565,7 +565,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		// and it is the result of a function call, then we have to free it after the call.
 		// if !f.parameters[min(i, len(f.parameters))-1].IsInputType {
 		// If it was a local variable or a constant, we should not free it.
-		// TODO: Find a better way than checking for the names cptr and lptr
+		// TODO: Find a better way than checking for the names "cptr" and "lptr"
 		if value.Typ.Pt == code.TYP_STRING && value.IsTempObj && id != "cptr" && id != "lptr" {
 			lbl := code.NewLabel()
 			str := "   mov rax, rsp   ; Cleanup args\n"
@@ -651,7 +651,7 @@ func ParseAssign(s *State, id string) error {
 		return err
 	}
 	op := s.token
-	if s.found(TOK_ASSIGN, TOK_PLUS_ASGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+	if s.found(TOK_ASSIGN, TOK_PLUS_ASSIGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
@@ -1203,6 +1203,21 @@ func ParseCompareTerm(s *State) ([]*ValueDef, error) {
 	return values1, err
 }
 
+func LogTerm(s *State, results []*ValueDef) error {
+	if len(results) != 1 {
+		return fmt.Errorf("operator || can only operate on 1 value but got %d", len(results))
+	}
+	if results[0].IsConst {
+		EmitLoadBool(results[0].StringValue)
+	}
+	results[0].IsReturned = false
+	if results[0].Typ.Pt != code.TYP_BOOL {
+		return fmt.Errorf("%s requires boolean operands", s.tokenString)
+	}
+	s.next()
+	return nil
+}
+
 func ParseLogAnd(s *State) ([]*ValueDef, error) {
 	results, err := ParseCompareTerm(s)
 	if err != nil {
@@ -1210,20 +1225,13 @@ func ParseLogAnd(s *State) ([]*ValueDef, error) {
 	}
 	endLabel := 0
 	for s.token == TOK_LOG_AND {
-		if len(results) != 1 {
-			return nil, fmt.Errorf("operator && can only operate on 1 value but got %d", len(results))
-		}
-		if results[0].IsConst {
-			EmitLoadBool(results[0].StringValue)
-		}
-		results[0].IsReturned = false
 		if endLabel == 0 {
 			endLabel = code.NewLabel()
 		}
-		if results[0].Typ.Pt != code.TYP_BOOL {
-			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		err = LogTerm(s, results)
+		if err != nil {
+			return nil, err
 		}
-		s.next()
 		EmitJumpFalse("al", endLabel, "")
 		values2, err2 := ParseCompareTerm(s)
 		if err2 != nil {
@@ -1246,20 +1254,13 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 	}
 	endLabel := 0
 	for s.token == TOK_LOG_OR {
-		if len(results) != 1 {
-			return nil, fmt.Errorf("operator || can only operate on 1 value but got %d", len(results))
-		}
-		if results[0].IsConst {
-			EmitLoadBool(results[0].StringValue)
-		}
-		results[0].IsReturned = false
 		if endLabel == 0 {
 			endLabel = code.NewLabel()
 		}
-		if results[0].Typ.Pt != code.TYP_BOOL {
-			return nil, fmt.Errorf("%s requires boolean operands", s.tokenString)
+		err = LogTerm(s, results)
+		if err != nil {
+			return nil, err
 		}
-		s.next()
 		EmitJumpTrue("al", endLabel, "")
 		values2, err2 := ParseLogAnd(s)
 		if err2 != nil {
