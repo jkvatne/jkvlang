@@ -3,11 +3,9 @@ package main
 import (
 	"fmt"
 	"io/fs"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -160,29 +158,6 @@ func CollectFileImports(cfg *Config, sourceFileName string, mangledName string, 
 	return err
 }
 
-func StartFileImportCollect(cfg *Config, filePath string, mangledName string, level int) error {
-	err := CollectFileImports(cfg, filePath, mangledName, level+1)
-	if err != nil {
-		return err
-	}
-	// Recursively collect imported packages
-	newPackages := make([]*PackageInfo, 0, 12)
-
-	for _, p := range Packages {
-		if p.level > level {
-			newPackages = append(newPackages, p)
-		}
-	}
-
-	for _, p := range newPackages {
-		err = CollectPackageImports(cfg, p.sourcePath, p.mangledName, level+1)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func CollectPackageImports(cfg *Config, packagePath string, mangledName string, level int) error {
 	inputFiles, err := os.ReadDir(packagePath)
 	if err != nil {
@@ -214,26 +189,6 @@ func CollectPackageImports(cfg *Config, packagePath string, mangledName string, 
 		}
 	}
 	return nil
-}
-
-func ProcessFile(s *State, cfg *Config, sourceFilePath string, pkgName string, level int) error {
-	SetCurrentlyUsedFalse()
-	s, err := NewState(cfg, sourceFilePath, pkgName, level)
-	if err != nil {
-		return err
-	}
-	err = ScanFile(s, sourceFilePath)
-	if err != nil {
-		return err
-	}
-	// After scanning file, we can output the epilogue
-	err = OutputEpilogue(s.MangledName)
-	if err != nil {
-		return err
-	}
-	// And close the asm file
-	err = code.CloseAsmFile()
-	return err
 }
 
 // ProcessPackage will scan each file in the package directory and collect imports
@@ -383,14 +338,6 @@ func DeMangle(path string) string {
 	return strings.Replace(path, "$", "/", -1)
 }
 
-func GetPkgName(name string) string {
-	w := strings.Split(name, "^")
-	if len(w) == 1 {
-		return name
-	}
-	return w[len(w)-1]
-}
-
 // ScanPkgFile scans a package file (*.pkg)
 // It adds external functions and types to the FuncDefs and TypeDefs maps
 func ScanPkgFile(cfg *Config, sourceFilePath string, level int) error {
@@ -428,34 +375,6 @@ func ScanPkgFile(cfg *Config, sourceFilePath string, level int) error {
 	return nil
 }
 
-func ScanPkgFiles(cfg *Config, level int) error {
-	// Search for pkg files for each imported package
-	// Should never fail since we already have built all packages
-	ln := code.LineNum
-	nn := code.NextLineNum
-	packages := slices.Collect(maps.Keys(Packages))
-	for _, pp := range packages {
-		p := Packages[pp]
-		if p.currentlyUsed {
-			// Get the pkg file
-			s, err := NewState(cfg, p.cachePath+"/import.pkg", p.mangledName, level)
-			if err != nil {
-				return err
-			}
-			s.ScanPkg = true
-			code.NoCode++
-			err = ScanFile(s, p.sourcePath)
-			if err != nil {
-				return err
-			}
-			code.NoCode--
-		}
-	}
-	code.LineNum = ln
-	code.NextLineNum = nn
-	return nil
-}
-
 // Scan file will compile a given file.
 func ScanFile(s *State, name string) (err error) {
 	// Imports must be at top of file
@@ -464,11 +383,6 @@ func ScanFile(s *State, name string) (err error) {
 	if err != nil {
 		return err
 	}
-	// err = ScanPkgFiles(s.Cfg, 0)
-	// if err != nil {
-	//	return err
-	// }
-
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			s.CollectNextLine()

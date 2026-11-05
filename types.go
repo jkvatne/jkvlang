@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/jkvatne/jkv/code"
 )
 
@@ -64,63 +62,6 @@ func (t *TypeDef) Size() int {
 		return t.StructSize
 	}
 	return t.Pt.Size()
-}
-
-// CommonType is the smallest type that is greater or equal to each of the two types.
-// The common operations like add, mult etc. needs identical types on both operands,
-// so we promote each to the CommonType.
-// F.ex. to add U16 and I16, both must be promoted to I32 to get correct results.
-// Overflow is not handled or detected, so adding 32737+32737 will be -2, which is wrong.
-func CommonType(t1 code.PrimaryType, t2 code.PrimaryType) (*TypeDef, error) {
-	if t1 == t2 {
-		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Builtin: true}, nil
-	}
-	if t1 == code.TYP_F64 || t2 == code.TYP_F64 {
-		// F64 can take all numeric types
-		return &TypeDef{Pt: code.TYP_F64, TypeName: code.PrimaryTypeNames[code.TYP_F64], Builtin: true}, nil
-	}
-	if t1 == code.TYP_F32 || t2 == code.TYP_F32 {
-		// F32 can take all numeric types (but with loss of precision).
-		return &TypeDef{Pt: code.TYP_F32, TypeName: code.PrimaryTypeNames[code.TYP_F32], Builtin: true}, nil
-	}
-	if t1 == code.TYP_I64 && t2 < code.TYP_I64 {
-		// I64 can take all integers
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
-	}
-	if t2 == code.TYP_I64 && t1 < code.TYP_I64 {
-		// I64 can take all integers
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
-	}
-	if t1 == code.TYP_U8 {
-		// U8 can be included in all other types
-		return &TypeDef{Pt: t2, TypeName: code.PrimaryTypeNames[t2], Builtin: true}, nil
-	}
-	if t2 == code.TYP_U8 {
-		// U8 can be included in all other types
-		return &TypeDef{Pt: t1, TypeName: code.PrimaryTypeNames[t1], Builtin: true}, nil
-	}
-	if t1 == code.TYP_U16 && t2 == code.TYP_U32 || t2 == code.TYP_U16 && t1 == code.TYP_U32 {
-		return &TypeDef{Pt: code.TYP_U32, TypeName: code.PrimaryTypeNames[code.TYP_U32], Builtin: true}, nil
-	}
-
-	if t1 == code.TYP_U16 || t2 == code.TYP_U16 && t1 != code.TYP_U32 {
-		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
-	}
-	if t1 == code.TYP_I16 {
-		if t2 == code.TYP_U16 || t2 == code.TYP_I32 {
-			return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
-		}
-	}
-	if t2 == code.TYP_I16 && t1 == code.TYP_I32 {
-		return &TypeDef{Pt: code.TYP_I32, TypeName: code.PrimaryTypeNames[code.TYP_I32], Builtin: true}, nil
-	}
-	if t1 == code.TYP_U32 && (t2 <= code.TYP_U16 || t2 == code.TYP_I32) {
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
-	}
-	if t2 == code.TYP_U32 && (t1 <= code.TYP_U16 || t1 == code.TYP_I32) {
-		return &TypeDef{Pt: code.TYP_I64, TypeName: code.PrimaryTypeNames[code.TYP_I64], Builtin: true}, nil
-	}
-	return nil, fmt.Errorf("common type not found for %s and %s", t1.Name(), t2.Name())
 }
 
 func (t *TypeDef) Name() string {

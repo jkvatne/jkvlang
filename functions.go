@@ -105,26 +105,6 @@ func FuncCount(name string) int {
 	return cnt
 }
 
-func FindFuncDef(id string, values []*ValueDef) *FuncDef {
-	for _, f := range FuncDefs {
-		if f.name == id {
-			if f.VarArg && len(f.parameters) <= len(values) || len(f.parameters) == len(values) {
-				ok := true
-				for i, p := range f.parameters {
-					if !CanAssign(p.typ.Pt, values[i]) {
-						ok = false
-						break
-					}
-				}
-				if ok {
-					return f
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func FindFuncDefFromParList(id string, parameters []*ParDef, exact bool) *FuncDef {
 	for _, f := range FuncDefs {
 		if f.name == id {
