@@ -19,19 +19,12 @@ func next(r RangeIterator) I32 {
 }
 
 func main() {
-    x = 0
-    print("\nStart")
-    for i=range(0, 10) {
-        print("Loop %d", i)
-        id = ""
-        // This will allocate 17 bytes, 8 size/cap, 1 content, 8 spare.
-        id += 'A'
-        if x>=4 {
-            print("Break")
-            break
-        }
-        x+=1
-        print("x=%d", x)
+    //print("\nStart")
+    ra = range(10, 15)
+    sum = 0
+    loop {
+        i = next(ra) else break
+        sum+=i
     }
-    print("Done")
+    //print("Done, sum=%d", i)
 }

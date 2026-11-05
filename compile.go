@@ -542,8 +542,11 @@ func CompileTests(cfg *Config, sourcePath string) (int, error) {
 					}
 					fmt.Printf("File %s failed with error %v\n", name, err)
 					err = nil
-				} else {
+				} else if err == nil {
 					err = BuildLinkRun(cfg, outputName)
+				}
+				if err != nil {
+					break
 				}
 			}
 		} else {

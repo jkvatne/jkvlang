@@ -450,6 +450,7 @@ func EmitPrologue() {
 	EmitExtern("_sysinit")
 	EmitExtern("_free_struct")
 	EmitExtern("_free_string")
+	EmitExtern("_free_slice")
 	EmitExtern("_print")
 	EmitExtern("_fflush")
 	EmitExtern("_get_ticks")
@@ -458,6 +459,13 @@ func EmitPrologue() {
 	EmitExtern("alloc_size_str")
 	EmitExtern("time_used_str")
 	EmitExtern("tick_frequency")
+	EmitExtern("f32sign_mask")
+	EmitExtern("f64sign_mask")
+	EmitExtern("argc")
+	EmitExtern("args")
+	EmitExtern("envc")
+	EmitExtern("envs")
+
 }
 
 func Inverse(op Token) Token {
