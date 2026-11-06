@@ -1644,6 +1644,9 @@ func ParseFuncDef(s *State) error {
 		return fmt.Errorf("Block level wrong on exit from " + fun)
 	}
 	s.BlockLevel--
+	if !s.HasReturned && s.currentFuncDef.name != "main" && !s.ScanPkg && len(s.currentFuncDef.returnTypes) > 0 {
+		return fmt.Errorf("missing return statement")
+	}
 	s.currentFuncDef = nil
 	return nil
 }

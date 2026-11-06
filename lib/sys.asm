@@ -55,6 +55,7 @@ global _free_string
 global _print
 global _low_byte
 global _floor
+global _ceil
 global _mul64
 global _int32
 global _int64
@@ -315,6 +316,14 @@ _floor:
     mov rax, [rsp+8]
     movq xmm0, rax
     roundsd xmm0, xmm0, 1
+    movq rax, xmm0
+    mov [rsp+16], rax
+    ret
+
+_ceil:
+    mov rax, [rsp+8]
+    movq xmm0, rax
+    roundsd xmm0, xmm0, 2
     movq rax, xmm0
     mov [rsp+16], rax
     ret

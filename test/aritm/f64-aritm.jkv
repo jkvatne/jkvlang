@@ -55,4 +55,11 @@ func main() {
     assert(floats[4]==7.0, "floats[4] expected 7.0, got %f", floats[4])
     assert(floats[5]==7.5, "floats[5] expected 7.5, got %f", floats[5])
     assert(floats[6]==8.5, "floats[6] expected 8.5, got %f", floats[6])
+
+    // Test floor/ceil
+    x = 1.234
+    y = floor(x)
+    assert(y==1.0, "Expected floor=1.0, got %f", y)
+    y = ceil(x)
+    assert(y==1.0, "Expected ceil=1.0, got %f", y)
 }

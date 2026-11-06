@@ -1,10 +1,13 @@
-// print without format
+// Should fail because of missing return
 
-func Wrong() Bool{
- return true
+func fi(a Bool, c I32) I32 {
+    if a ? c+=1 : c+=2
+    return c
 }
 
 func main() {
-    print("Start")
-
+    y = fi(false, 1)
+    print("fi=%d", y)
 }
+
+// TODO: This error is not caught yet

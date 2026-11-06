@@ -455,6 +455,8 @@ func EmitPrologue() {
 	EmitExtern("_fflush")
 	EmitExtern("_get_ticks")
 	EmitExtern("_exit")
+	EmitExtern("_floor")
+	EmitExtern("_ceil")
 	EmitExtern("allocation_count")
 	EmitExtern("alloc_size_str")
 	EmitExtern("time_used_str")
