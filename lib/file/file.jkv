@@ -1,0 +1,62 @@
+
+const (
+    CREATE_NEW     I32 = 1    // Fails if file already exists
+    FILE_ATTRIBUTE_NORMAL    I32 = 0x0080
+    FILE_ATTRIBUTE_TEMPORARY I32 = 0x0100
+    FILE_ATTRIBUTE_READONLY  I32 = 0x0001
+    CREATE_ALLWAYS I32 = 2    // Truncates file if it exists.
+    OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
+    OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
+)
+
+//  open_file calls the Windows CreateFileA function
+//  lpFileName              File name as a C string. must be Ansi
+//  dwDesiredAccess         For normal read/write, use GENERIC_READ|GENERIC_WRITE=0xC0000000
+//  dwShareMode             Should be 0 to open exclusively.
+//  lpSecurityAttributes    Typically null.
+//  dwCreationDisposition   OpenAllways=4. Will create file if it does not exist. Use OPEN_EXISTING=3 if needed.
+//  dwFlagsAndAttributes    Usually FILE_ATTRIBUTE_NORMAL=0x80. Can be Hidden,System..
+//  hTemplateFile           should be 0. Never used
+
+func open(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func create(name String) I32 {
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, CREATE_ALLWAYS, FILE_ATTRIBUTE_NORMAL, 0)
+    return f
+}
+
+func close(f I32) {
+    e = call(CloseHandle, f)
+    e = e+1
+    return
+}
+
+func read(f I32, cnt I32) String {
+    buf=new(String,cnt)
+    ok = call(ReadFile, f, cptr(buf), cnt, lptr(buf), 0)
+    return buf
+}
+
+func write(f I32, txt String) I32 {
+    n = 0
+    ok = call(WriteFile, f, cptr(txt), len(txt), ptr(n), 0)
+    return n
+}
+
+func read_all(name String) String {
+    buf ="  "
+    f = call(CreateFileA, cptr(name), 0xc0000000, 0,0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0)
+    if f<=0 {
+        print("Could not open file %s", name)
+    } else {
+        n = call(GetFileSize, f, 0)
+        // if n<0 ? fail(123)
+        buf = new(String, n)
+        ok = call(ReadFile, f, cptr(buf), n, lptr(buf), 0)
+        e = call(CloseHandle, f)
+    }
+    return buf
+}
