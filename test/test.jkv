@@ -7,6 +7,7 @@ func fi(a Bool, c I32) I32 {
 
 func main() {
     y = fi(false, 1)
+    assert(y==222)
     print("fi=%d", y)
 }
 

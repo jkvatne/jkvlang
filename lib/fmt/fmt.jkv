@@ -1002,15 +1002,12 @@ func shortest_fmt(f F64) U64, I32 {
 	if  d*10 >= dmin {
 		d, p = trimZeros(d, -(p - 1))
 		p = -p
-		print("case1")
 	} else if dmin < dmax {
         p = -p
 		d = uscale(m, pre)
 		d = round(d)
-		print("case2")
 	} else {
 	    p = -p
-		print("case3")
 	}
 	return d, p
 }

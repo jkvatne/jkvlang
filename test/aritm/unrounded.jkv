@@ -195,26 +195,25 @@ func main() {
     assert(m == 123400 && e == -104, "Error formating 1.234E-99, m=%llu, e=%d", m, e)
 
     s = fmt.format_base10(U64(12345), 5)
-    print("fmt.format_base10(12345, 5)=%s", s)
+    assert(s=="12345", "fmt.format_base10(U64(12345), 5)")
 
-    print("----------")
     // In general, 17 fmt.digits are always enough to uniquely identify a float64
     for i=range(0, 7) {
         s = fmt.format(values[i], 16)  // 17 digts -> 16 decimals
-        print("i=%d, fmt.format=%s", i, s)
+        // print("i=%d, fmt.format=%s", i, s)
         assert(s==results[i], "Expected %s, got %s", results[i], s)
     }
 
-    print("fmt.digits(1)=%d", fmt.digits(U64(1)))
-    print("fmt.digits(10)=%d", fmt.digits(U64(10)))
-    print("fmt.digits(99)=%d", fmt.digits(U64(99)))
-    print("fmt.digits(100)=%d", fmt.digits(U64(100)))
-    print("fmt.digits(999)=%d", fmt.digits(U64(999)))
-    print("fmt.digits(999999999999)=%d", fmt.digits(U64(999999999999)))
-
+    assert(fmt.digits(U64(1))==1, "Failed fmt.digits(U64(1))==1, got %d", (fmt.digits(U64(1))))
+    assert(fmt.digits(U64(10))==21, "Failed fmt.digits(U64(10))==2")
+    assert(fmt.digits(U64(99))==2, "Failed fmt.digits(U64(99))==2")
+    assert(fmt.digits(U64(999999999999))==12, "Failed fmt.digits(999999999999)==12")
+    assert(fmt.digits(U64(999999999999999))==15, "Failed fmt.digits(999999999999)==15")
+    assert(fmt.digits(U64(999999999999999999))==18, "Failed fmt.digits(999999999999)==18")
 
     d, p = fmt.shortest_fmt(1.234)
     print("\nd=%lld p=%d", d, p)
     s = fmt.fmt(d, p, fmt.digits(d))
     print("shortest=%s", s)
+
 }

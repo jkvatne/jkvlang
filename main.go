@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -222,7 +223,19 @@ func Run(outputName string) error {
 			return fmt.Errorf("start() failed : %s", err.Error())
 		}
 		go monitor(reader)
-		_, err = cmd.Process.Wait()
+		err = cmd.Wait()
+		if err != nil {
+			// Exit code is non-zero, check if it's an ExitError
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				// Extract the numeric exit code
+				exitCode := exitErr.ExitCode()
+				fmt.Printf(outputName+" exited with non-zero status code: %d\n", exitCode)
+			} else {
+				// The error was related to something else (e.g., I/O issues)
+				fmt.Printf("An error occurred while waiting: %v\n", err)
+			}
+		}
 		cmd = nil
 	}
 	return nil
