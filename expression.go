@@ -652,7 +652,11 @@ func ParseAssign(s *State, id string) error {
 		return err
 	}
 	op := s.token
-	if s.found(TOK_ASSIGN, TOK_PLUS_ASSIGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
+	if s.found(TOK_PLUS_PLUS) {
+		err = GenerateAssignment(TOK_PLUS_ASSIGN, lvalues[0], &ValueDef{Typ: &U8Type, IsConst: true, StringValue: "1"})
+	} else if s.found(TOK_MINUS_MINUS) {
+		err = GenerateAssignment(TOK_MINUS_ASGN, lvalues[0], &ValueDef{Typ: &U8Type, IsConst: true, StringValue: "1"})
+	} else if s.found(TOK_ASSIGN, TOK_PLUS_ASSIGN, TOK_MINUS_ASGN, TOK_MULT_ASGN, TOK_DIV_ASGN) {
 		if len(lvalues) > 1 && op != TOK_ASSIGN {
 			return fmt.Errorf("Can not have many lvalues for " + op.Name())
 		}
@@ -692,7 +696,7 @@ func ParseAssign(s *State, id string) error {
 	} else {
 		return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
 	}
-	return nil
+	return err
 }
 
 func ParseTypeConversion(s *State, typ1 *TypeDef) (values []*ValueDef, err error) {
