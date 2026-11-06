@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
+	"unicode"
+	"unicode/utf8"
 )
 
 type FuncDef struct {
@@ -27,7 +30,18 @@ var (
 	FuncDefs  []*FuncDef
 )
 
+func StartsWithUppercase(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	r, _ := utf8.DecodeRuneInString(s)
+	return unicode.IsUpper(r)
+}
+
 func AddFunc(id string, parList []*ParDef, returnList []*TypeDef, builtin bool, vararg bool, extern bool) (*FuncDef, error) {
+	if StartsWithUppercase(id) {
+		return nil, fmt.Errorf("function '%s' cannot start with uppercase", id)
+	}
 	n := FuncCount(id)
 	if n > 0 {
 		f := FindFuncDefFromParList(id, parList, true)

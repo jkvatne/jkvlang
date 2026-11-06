@@ -1,10 +1,10 @@
 // print without format
 
+func Wrong() Bool{
+ return true
+}
+
 func main() {
     print("Start")
-    var a I32
-    a++
-    print("a=%d",a)
-    a++
-    print("a=%d",a)
+
 }

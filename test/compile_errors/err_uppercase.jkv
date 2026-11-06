@@ -1,0 +1,9 @@
+// Should fail because function name start with uppercase
+
+func Wrong() Bool {
+ return true
+}
+
+func main() {
+    print("Start")
+}
