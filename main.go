@@ -230,10 +230,10 @@ func Run(outputName string) error {
 			if errors.As(err, &exitErr) {
 				// Extract the numeric exit code
 				exitCode := exitErr.ExitCode()
-				fmt.Printf(outputName+" exited with non-zero status code: %d\n", exitCode)
+				return fmt.Errorf(outputName+" exited with non-zero status code: %d\n", exitCode)
 			} else {
 				// The error was related to something else (e.g., I/O issues)
-				fmt.Printf("An error occurred while waiting: %v\n", err)
+				return fmt.Errorf("An error occurred while running %s: %v\n", outputName, err)
 			}
 		}
 		cmd = nil
@@ -284,6 +284,7 @@ func main() {
 			panic("Unable to create cache directory")
 		}
 		err = os.Mkdir(cfg.CachePath+"/sys", os.ModePerm)
+		err = BuildLib(cfg)
 	}
 
 	// TODO Check file date and compare with sys.asm

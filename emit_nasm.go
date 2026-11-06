@@ -1447,8 +1447,8 @@ func EmitAssignVariableExpressionInt(op Token, size int, adr int, comment string
 		return nil
 	} else if op == TOK_DIV_ASGN {
 		emit("mov", "rcx", BpRel(adr), "")
-		emit("cdq", "", "", "")
-		emit("idiv", "ecx", "", "")
+		emit("cqo", "", "", "")
+		emit("idiv", "rcx", "", "")
 		emit("mov", BpRel(adr), "rax", "")
 		return nil
 	}
@@ -1519,8 +1519,8 @@ func EmitAssignIndirectExpressionInt(op Token, size int) error {
 	} else if op == TOK_DIV_ASGN {
 		emit("mov", "rcx", "rax", "")
 		emit("mov", "rax", "[rdi]", "")
-		emit("cdq", "", "", "")
-		emit("idiv", "ecx", "", "")
+		emit("cqo", "", "", "")
+		emit("idiv", "rcx", "", "")
 		emit("mov", "[rdi]", "rax", "")
 		return nil
 	}
@@ -1564,8 +1564,8 @@ func EmitAssignIndirectConstInt(op Token, size int, value int64, comment string)
 			if size != 4 {
 				return fmt.Errorf("only 32 bit integer divide currently supported")
 			}
-			emit("cdq", "", "", "")
-			emit("idiv", "ecx", "", "")
+			emit("cqo", "", "", "")
+			emit("idiv", "rcx", "", "")
 		} else {
 			emit(TokenOp[op], "rax", strconv.Itoa(int(value)), "Integer op other")
 		}
@@ -1681,8 +1681,8 @@ func EmitAssignVariableConstInt(op Token, adr int, size int, value uint64, comme
 			emit("xor", "rax", "rax", "Clear rax before moving short int")
 		}
 		emit("mov", AxName(size), DataType(size)+BpRel(adr), comment)
-		emit("cdq", "", "", "")
-		emit("idiv", "ecx", "", "")
+		emit("cqo", "", "", "")
+		emit("idiv", "rcx", "", "")
 		// Move result to local variable at BpRel(adr)
 		emit("mov", DataType(size)+BpRel(adr), AxName(size), "move result of /= to local variable")
 	} else if instr == "imul" {

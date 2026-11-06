@@ -61,5 +61,5 @@ func main() {
     y = floor(x)
     assert(y==1.0, "Expected floor=1.0, got %f", y)
     y = ceil(x)
-    assert(y==1.0, "Expected ceil=1.0, got %f", y)
+    assert(y==2.0, "Expected ceil=1.0, got %f", y)
 }

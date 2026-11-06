@@ -934,28 +934,36 @@ func format(f F64, dp I32) String {
 // If x ends in k zeros, trimZeros returns x/10**k, p+k.
 // It assumes that x ends in at most 16 zeros.
 func trimZeros(x U64, p I32) U64, I32 {
+	//print("trimZeros: startup x=%lld, p=%d", x,p)
 	if x%10 != 0 {
+	    //print("trimZeros: x/10!=0")
 		return x, p
 	}
 	x /= 10
 	p += 1
+	//print("trimZeros: before if x=%lld, p=%d", x,p)
 
 	if x%100000000 == 0 {
+	    //print("trimZeros: x%100000000 == 0")
 		x /= 100000000
 		p += 8
 	}
 	if x%10000 == 0 {
+	    //print("trimZeros: x%10000 == 0")
 		x /= 10000
 		p += 4
 	}
 	if x%100 == 0 {
+	    //print("trimZeros: x%100 == 0")
 		x /= 100
 		p += 2
 	}
 	if x%10 == 0 {
+	    //print("trimZeros: x%10 == 0")
 		x /= 10
 		p += 1
 	}
+	//print("trimZeros: returns x=%lld, p=%d", x,p)
 	return x, p
 }
 
@@ -965,14 +973,14 @@ func skewed(e I32) I32 {
 	return (e*631305 - 261663) >> 21
 }
 
-// shortest_fmt computes the shortest formatting of f,
+// shortest computes the shortest formatting of f,
 // using as few digits as possible that will still round trip
 // back to the original float64.
-func shortest_fmt(f F64) U64, I32 {
+func shortest(f F64) U64, I32 {
     u = U64(0)
     p = I32(0)
 	m, e = unpack64(f)
-	print("\nf=%e m=%llx, e=%d",f, m, e)
+	//print("\nshortest: f=%e m=%llx, e=%d",f, m, e)
 
 	mn = U64(0)
 	z = 11 // extra zero bits at bottom of m; 11 for 53-bit m
@@ -996,19 +1004,23 @@ func shortest_fmt(f F64) U64, I32 {
 	dmax = uscale(mx, pre)
 	dmax = nudge(dmax, -odd)
 	dmax = ufloor(dmax)
-    print("dmin=%lld, dmax=%lld, p=%d", dmin, dmax, p)
-
+    //print("shortest: dmin=%lld, dmax=%lld, p=%d", dmin, dmax, p)
+    d = U64(0)
     d = dmax / 10;
+    // print("shortest: dmax/10=%lld", d)
 	if  d*10 >= dmin {
+        //print("shortest: trim zeros")
 		d, p = trimZeros(d, -(p - 1))
 		p = -p
 	} else if dmin < dmax {
+	    //print("shortest: dmin<dmax")
         p = -p
 		d = uscale(m, pre)
 		d = round(d)
 	} else {
-	    p = -p
+	    //print("shortest: p=-p")
 	}
+	//print("shortest: returns d=%lld, p=%d", d,p)
 	return d, p
 }
 
