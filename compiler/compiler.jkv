@@ -1,0 +1,302 @@
+import (
+    iter
+    file
+)
+
+const (
+    TOK_EOF I32 = 0
+    TOK_ID
+	TOK_PLUS
+	TOK_PLUS_PLUS
+	TOK_PLUS_ASGN
+	TOK_MINUS
+	TOK_MINUS_MINUS
+	TOK_MINUS_ASGN
+	TOK_MULT
+	TOK_DIV
+	TOK_MOD
+	TOK_FLOAT
+	TOK_INT
+	TOK_STRING
+	TOK_LBRACE
+	TOK_RBRACE
+	TOK_LPAR
+	TOK_RPAR
+	TOK_LBRACK
+	TOK_RBRACK
+	TOK_COMMA
+	TOK_ASSIGN
+	TOK_GE
+	TOK_GT
+	TOK_LE
+	TOK_LT
+	TOK_EQ
+	TOK_NE
+	TOK_OR
+	TOK_OR_ASGN
+	TOK_LOG_OR
+	TOK_AND
+	TOK_AND_ASGN
+	TOK_LOG_AND
+	TOK_VAR
+	TOK_FUNC
+	TOK_CONST
+	TOK_IF
+	TOK_ELSE
+	TOK_FOR
+	TOK_RETURN
+	TOK_DIV_ASGN
+	TOK_MULT_ASGN
+	TOK_SEMICOLON
+	TOK_COLON
+	TOK_STRUCT
+	TOK_QMARK
+	TOK_DOT
+	TOK_AT
+	TOK_MAX
+	TOK_MIN
+	TOK_ABS
+	TOK_TYPE
+	TOK_TRUE
+	TOK_FALSE
+	TOK_INVALID
+	TOK_INV_MINUS
+	TOK_INV_DIV
+	TOK_INV_MOD
+	TOK_NEW
+	TOK_NOT
+	TOK_LOOP
+	TOK_BREAK
+	TOK_CONTINUE
+	TOK_FAIL
+	TOK_XOR
+	TOK_SHL
+	TOK_SHR
+	TOK_AND_NOT
+	TOK_CHAR
+	TOK_APPEND
+	TOK_INV_SHL
+	TOK_INV_SHR
+	TOK_SYSCALL
+	TOK_HASH
+	TOK_IMPORT
+	TOK_PACKAGE
+	TOK_AS
+)
+
+type State = struct {
+    token I32
+    ch1   I32
+    ch2   I32
+    tokenString String
+    text String
+    textSize I32
+    p I32
+    NextLineNum I32
+}
+
+func has_prefix(s String, sub String) Bool {
+    ok = true
+    for j=iter.range(0, len(sub)-1) {
+        if s[j]!=sub[j] {
+            ok = false
+            break
+        }
+    }
+    return ok
+}
+
+func substring(s String, start I32, end I32) String {
+    t=new(String, end-start+1)
+    for i=iter.range(start, end) {
+        t[i-start] = s[i]
+    }
+    return t
+}
+
+func next_char(s State) I32 {
+	n = 0
+	s.ch1 = s.ch2
+	if s.ch1 == '\n' {
+		s.NextLineNum+=1
+	}
+	if s.p >= len(s.text) {
+	    print("End of test")
+		s.ch2 = 0
+		s.token = 9999
+	} else {
+		// TODO s.ch2, n = DecodeRune(s.text[s.p:])
+		s.ch2 = s.text[s.p]
+		n = 1
+		s.p += n
+	}
+	return s.ch1
+}
+
+func is_alfa(ch I32) Bool {
+    return ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' || ch>='0' && ch<='9' || ch == '@' || ch == '$' || ch == '~' || ch=='_'
+}
+
+func is_whitespace(ch I32) Bool {
+    return ch == '\r' || ch == '\n' || ch == ' ' || ch == '\t'
+}
+
+func nextToken(s State) {
+    s.token=0
+    loop {
+        if s.p>=s.textSize {
+            s.token = TOK_EOF
+            break
+        }
+        ch = next_char(s)
+        s.tokenString = ""
+        s.tokenString +=ch
+        if is_whitespace(ch) {
+            // continue
+        } else if is_alfa(ch) {
+            id = ""
+            id += ch
+            loop {
+                ok = is_alfa(s.ch2)
+                if !ok {
+                    break
+                }
+                ch = next_char(s)
+                id += ch
+            }
+            s.tokenString = id
+            s.token = TOK_ID
+        } else if ch == 0x22 {  // Double quote
+            s.tokenString = ""
+            loop {
+                ch = next_char(s)
+                if ch == '"' || ch == 0 {
+                    break
+                }
+                s.tokenString+=ch
+            }
+            s.token=TOK_STRING
+        } else if ch == 0x27 {  // Single quote
+            s.token = TOK_CHAR
+            ch = next_char(s)
+            s.tokenString = ""
+            s.tokenString += ch
+            ch = next_char(s)
+            if ch!=0x27 {
+                fail(201)
+            }
+        } else if ch == '>' && s.ch2=='=' {
+            ch = next_char(s)
+            s.tokenString = ">="
+            s.token = TOK_GE
+        } else if ch == '>' {
+            s.token = TOK_GT
+        } else if ch == '<' && s.ch2=='=' {
+            ch = next_char(s)
+            s.tokenString = "<="
+            s.token = TOK_LE
+        } else if ch == '&' && s.ch2=='&' {
+            s.tokenString = "&&"
+            ch = next_char(s)
+            s.token = TOK_LOG_AND
+        } else if ch == '|' && s.ch2=='|' {
+            s.tokenString = "||"
+            ch = next_char(s)
+            s.token = TOK_LOG_OR
+        } else if ch == '=' && s.ch2=='=' {
+            s.tokenString = "=="
+            ch = next_char(s)
+            s.token = TOK_EQ
+        } else if ch == '(' {
+            s.token = TOK_LPAR
+        } else if ch == ')' {
+            s.token = TOK_RPAR
+        } else if ch == '=' {
+            s.token = TOK_ASSIGN
+        } else if ch == '{' {
+            s.token = TOK_LBRACE
+        } else if ch == '}' {
+            s.token = TOK_RBRACE
+        } else if ch == ']' {
+            s.token = TOK_LBRACK
+        } else if ch == '[' {
+            s.token = TOK_RBRACK
+        } else if ch == '/' && s.ch2=='/' {
+            loop {
+                ch = next_char(s)
+                if ch=='\n' || ch==0 ? break
+            }
+        } else {
+            s.tokenString = "skip"
+            s.token=0
+            ch =next_char(s)
+        }
+        if s.token!=0 {
+            break
+        }
+    }
+}
+
+func parse_func_def(s State) {
+
+}
+
+func parse_constants(s State) {
+
+}
+
+func parse_types(s State) {
+
+}
+
+// scan_file will compile a given file.
+func scan_file(s State) {
+	//parse_imports(s)
+	loop {
+	    if s.token == 0 ? break
+		if s.token == TOK_FUNC {
+			parse_func_def(s)
+		} else if s.token == TOK_CONST {
+			nextToken(s)
+			parse_constants(s)
+		} else if s.token == TOK_TYPE {
+			nextToken(s)
+			parse_types(s)
+		} else {
+			fail(201)
+		}
+	}
+}
+
+
+func main() {
+    print("Compiler")
+
+    s = new(State)
+    filename="-file=default.jkv"
+    print("argc=%d", argc)
+    for i=iter.range(0, argc-1) {
+        print("arg %d is '%s'", i, args[i])
+        if has_prefix(args[i],"-file=") ?  filename=args[i]
+    }
+    print("Command line argument is '%s'",filename)
+    u=substring(filename, 6, len(filename)-1)
+    print("Filename from command line argument is '%s'", u)
+    // Must use explicit filename during tests.
+    filename = "C:/doc/compiler/test/test.jkv"
+
+    s.text = file.read_all(filename)
+    s.textSize = len(s.text)
+
+    scan_file(s)
+    /*
+    print("File size is %d bytes", s.textSize)
+    ch = next_char(s)
+    loop{
+        nextToken(s)
+        print("Token %d = '%s'", s.token, s.tokenString)
+        if s.token == 0 ? break
+    }
+    */
+}
+
