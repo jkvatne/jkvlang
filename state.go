@@ -106,6 +106,8 @@ func NewState(cfg *Config, sourceFilePath string, mangledName string, level int)
 	s.MangledName = mangledName
 	s.IsPackage = mangledName != "main"
 	s.text, err = os.ReadFile(sourceFilePath)
+	code.NextLineNum = 1
+	code.LineNum = 1
 	if err != nil {
 		return nil, fmt.Errorf("could not read source file '%s'", sourceFilePath)
 	}

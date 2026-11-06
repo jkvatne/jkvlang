@@ -380,8 +380,8 @@ func ScanPkgFile(cfg *Config, sourceFilePath string, level int) error {
 
 // ScanFile will compile a given file.
 func ScanFile(s *State, name string) (err error) {
-	// Imports must be at top of file
 	SetCurrentlyUsedFalse()
+	// Imports must be at top of file
 	err = ParseImports(s)
 	if err != nil {
 		return err
@@ -389,16 +389,13 @@ func ScanFile(s *State, name string) (err error) {
 	for s.token != TOK_EOF {
 		if s.token == TOK_FUNC {
 			s.CollectNextLine()
-			code.LineNum = code.NextLineNum
 			err = ParseFuncDef(s)
 		} else if s.token == TOK_CONST {
 			s.CollectNextLine()
-			code.LineNum = code.NextLineNum
 			s.next()
 			err = ParseConsts(s)
 		} else if s.token == TOK_TYPE {
 			s.CollectNextLine()
-			code.LineNum = code.NextLineNum
 			s.next()
 			err = ParseTypeDefs(s)
 		} else {

@@ -1,3 +1,4 @@
+import iter
 
 const (
     TOK_EOF I32 = 0
@@ -89,7 +90,6 @@ const (
     OPEN_ALLWAYS   I32 = 4    // Create file if it does not exist, else open old file but do not truncate.
     OPEN_EXISTING  I32 = 3    // Fails if it does not exist.
 )
-
 type State = struct {
     token I32
     ch1   I32
@@ -100,27 +100,6 @@ type State = struct {
     p I32
     NextLineNum I32
 }
-
-
-type RangeIterator = struct {
-    start I32
-    end I32
-}
-
-func next(r RangeIterator) I32 {
-    if r.start>r.end ? fail(1)
-    x = r.start
-    r.start = x+1
-    return x
-}
-
-func range(start I32, end I32) RangeIterator {
-    r = new(RangeIterator)
-    r.start = start
-    r.end = end
-    return r
-}
-
 
 //  open_file calls the Windows CreateFileA function
 //  lpFileName              File name as a C string. must be Ansi
@@ -161,7 +140,7 @@ func write_file(f I32, txt String) I32 {
 
 func has_prefix(s String, sub String) Bool {
     ok = true
-    for j=range(0, len(sub)-1) {
+    for j=iter.range(0, len(sub)-1) {
         if s[j]!=sub[j] {
             ok = false
             break
@@ -172,7 +151,7 @@ func has_prefix(s String, sub String) Bool {
 
 func substring(s String, start I32, end I32) String {
     t=new(String, end-start+1)
-    for i=range(start, end) {
+    for i=iter.range(start, end) {
         t[i-start] = s[i]
     }
     return t
@@ -323,7 +302,7 @@ func main() {
     s = new(State)
     filename="-file=default.jkv"
     print("argc=%d", argc)
-    for i=range(0, argc-1) {
+    for i=iter.range(0, argc-1) {
         print("arg %d is '%s'", i, args[i])
         if has_prefix(args[i],"-file=") ?  filename=args[i]
     }

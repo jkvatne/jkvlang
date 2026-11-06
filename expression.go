@@ -1392,7 +1392,6 @@ func ParseIfElse(s *State, value *ValueDef) error {
 	for s.found(TOK_ELSE) {
 		s.tokenString = "else " + s.tokenString
 		s.CollectNextLine()
-		code.LineNum = code.NextLineNum
 		code.EmitLineNo(s.currentLine)
 
 		if !s.HasReturned && !value.HasValue() {

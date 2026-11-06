@@ -225,20 +225,27 @@ func (s *State) nextChar() {
 	} else {
 		s.ch2, n = utf8.DecodeRune(s.text[s.p:])
 		s.p += n
+		for s.ch2 == 13 {
+			s.ch2, n = utf8.DecodeRune(s.text[s.p:])
+			s.p += n
+		}
 	}
 }
 
 func (s *State) CollectNextLine() {
 	s.currentLine = s.tokenString + string(s.ch2)
+	if s.ch2 == '\n' {
+		return
+	}
 	i := s.p
 	for {
 		ch, n := utf8.DecodeRune(s.text[i:])
 		i += n
-		if ch != '\n' && ch != '\r' {
-			s.currentLine += string(ch)
-		}
 		if ch == '\n' || i >= len(s.text) {
 			break
+		}
+		if ch >= ' ' {
+			s.currentLine += string(ch)
 		}
 	}
 }
@@ -297,11 +304,13 @@ func (s *State) next() {
 		if eof(s) {
 			break
 		}
+		code.LineNum = code.NextLineNum
 		s.nextChar()
+		for s.ch1 == '\n' || s.ch1 == ' ' || s.ch1 == '\t' {
+			s.nextChar()
+		}
 		s.tokenString = string(s.ch1)
 		switch {
-		case s.ch1 == '\r' || s.ch1 == '\n' || s.ch1 == ' ' || s.ch1 == '\t':
-			continue
 		case s.ch1 == '!' && s.ch2 == '=':
 			s.tokenString = "!="
 			s.nextChar()

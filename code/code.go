@@ -239,6 +239,9 @@ func Write(txt string) int {
 }
 
 func EmitLineNo(currentLine string) {
+	if LineNum == 125 {
+		fmt.Println("LineNum is 125")
+	}
 	Write("\n   ; Line " + strconv.Itoa(LineNum) + ": " + strings.Trim(currentLine, "\r\n") + "\n")
 }
 

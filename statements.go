@@ -164,7 +164,6 @@ func ParseStatements(s *State) error {
 	s.HasReturned = false
 	for s.token != TOK_RBRACE && s.token != TOK_COLON {
 		s.CollectNextLine()
-		code.LineNum = code.NextLineNum
 		code.EmitLineNo(s.currentLine)
 		err := ParseStatement(s)
 		if err != nil {
