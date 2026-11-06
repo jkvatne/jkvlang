@@ -70,13 +70,13 @@ global alloc_size_str
 section .rodata
 ;-------------
 alignb 8
-crlf                   db 0Ch, 0Ah, 00h
-crlf_str               db 0Ah, 00h
+crlf_str               db 0Dh, 0Ah, 00h
 default_assert_mess    db "Assert failed", 00h
 
 alignb 8
 alloc_size_str  dq 76
                 db `--------------------------------------\nLeaked memory: %d   Error code: %d\n`, 00h
+alignb 8
 time_used_str   dq 14
                 db `Time used: %d.%03d mS`,0Ah,  00h
 
@@ -141,7 +141,7 @@ _low_byte:
 _print:
     mov rdi, printf
     call _syscall
-    mov rax, crlf
+    mov rax, crlf_str
     mov [rsp+8], rax
     mov rbx, 16
     call _syscall

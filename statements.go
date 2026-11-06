@@ -68,13 +68,13 @@ func ParseReturn(s *State) error {
 	code.OutputArgCode()
 	s.HasReturned = true
 	s.ParsingReturnValue = false
-	if s.LoopLevel >= 1 {
+	if s.LoopLevel() >= 1 {
 		err := FreeBlockVars(s, s.BlockLevel)
 		if err != nil {
 			return err
 		}
 		emit("mov", "r15", "2", "ParseReturn signal exit from function")
-		EmitJump(GetTopEndLabel(), "Return: Jump to end of loop")
+		EmitJump(s.GetLoopExitLabel(), "Return: Jump to end of loop")
 	}
 	EmitJump(s.returnLbl, "Return")
 	return nil
@@ -113,7 +113,9 @@ func ParseStatement(s *State) (err error) {
 			s.next()
 			lbl := code.NewLabel()
 			EmitJumpOnError(lbl)
+			s.BlockLevel++
 			err = ParseStatement(s)
+			s.BlockLevel--
 			EmitLabel(lbl, "")
 		}
 	case TOK_RETURN:
@@ -138,7 +140,7 @@ func ParseStatement(s *State) (err error) {
 		err = ParseFail(s)
 	case TOK_CONTINUE:
 		s.next()
-		err = ParseContinue()
+		err = ParseContinue(s)
 	case TOK_FOR:
 		s.next()
 		err = ParseFor(s)

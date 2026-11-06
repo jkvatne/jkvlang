@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/jkvatne/jkv/code"
 )
 
 const SepChar = "#"
@@ -28,10 +30,9 @@ type State struct {
 	SourceFilePath     string
 	ParsingReturnValue bool
 	Cleanup            string
-	LoopLevel          int
 	MangledName        string
 	IsPackage          bool
-	LoopStack          []int
+	LoopStack          []LoopInfo
 	Cfg                *Config
 	GeneratePkg        bool
 	Level              int
@@ -40,8 +41,26 @@ type State struct {
 	buildLib           bool
 }
 
-func (s *State) PushLoopBlock(n int) {
-	s.LoopStack = append(s.LoopStack, n)
+type LoopInfo struct {
+	StartLabel int
+	ExitLabel  int
+	BreakLabel int
+}
+
+func (s *State) LoopLevel() int {
+	return len(s.LoopStack)
+}
+
+func (s *State) PushLoopBlock() {
+	startLabel := code.NewLabel()
+	exitLabel := code.NewLabel()
+	s.LoopStack = append(s.LoopStack, LoopInfo{StartLabel: startLabel, ExitLabel: exitLabel, BreakLabel: exitLabel})
+}
+
+func (s *State) PushForBlock() {
+	startLabel := code.NewLabel()
+	endLabel := code.NewLabel()
+	s.LoopStack = append(s.LoopStack, LoopInfo{StartLabel: startLabel, ExitLabel: endLabel, BreakLabel: startLabel})
 }
 
 func (s *State) PopLoopBlock() {
@@ -51,11 +70,32 @@ func (s *State) PopLoopBlock() {
 	s.LoopStack = s.LoopStack[:len(s.LoopStack)-1]
 }
 
-func (s *State) LoopBlock() int {
+func (s *State) GetLoopLevel() int {
 	if len(s.LoopStack) == 0 {
 		return 0
 	}
-	return s.LoopStack[len(s.LoopStack)-1]
+	return len(s.LoopStack)
+}
+
+func (s *State) GetLoopStartLabel() int {
+	if len(s.LoopStack) == 0 {
+		return 0
+	}
+	return s.LoopStack[len(s.LoopStack)-1].StartLabel
+}
+
+func (s *State) GetLoopExitLabel() int {
+	if len(s.LoopStack) == 0 {
+		return 0
+	}
+	return s.LoopStack[len(s.LoopStack)-1].ExitLabel
+}
+
+func (s *State) GetLoopBreakLabel() int {
+	if len(s.LoopStack) == 0 {
+		return 0
+	}
+	return s.LoopStack[len(s.LoopStack)-1].BreakLabel
 }
 
 func NewState(cfg *Config, sourceFilePath string, mangledName string, level int) (*State, error) {
