@@ -60,5 +60,8 @@ func main () {
     assert(p.name!="Jan Kåre Vatne..", "Name test failed on length")
     assert(p.name!="", "Name test failed on length")
 
-
+    str = "Hello"+"World"
+    assert(str=="HelloWorld")
+    str +="!"
+    assert(str=="HelloWorld!")
 }

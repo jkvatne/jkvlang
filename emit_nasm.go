@@ -552,7 +552,6 @@ func emitCompareString() int {
 
 func EmitCompareStringsEq(temp1 bool, temp2 bool) {
 	// Compare two strings, one in rax, and one on top of stack, and drop top of stack
-
 	EmitAssertTosInRax("Get TOS before compare strings eq")
 	emit("mov", "rdi", "rax", "Save tos")
 	emit("mov", "rsi", "[rsp]", "Get nos")
@@ -2004,11 +2003,13 @@ func EmitAssignIndirectConstStrStr(strLitNo int) error {
 // EmitAssignVariableConstStrStr will assign a literal string to the string in
 // the local variable at adr. If the variable did contain another string, it
 // must be freed
-func EmitAssignVariableConstStrStr(adr int, strLitNo int) error {
+func EmitAssignVariableConstStrStr(adr int, strLitNo int, isNew bool) error {
 	code.SetAx()
 	// Check if we must free old variable
-	emit("mov", "rax", BpRel(adr), "EmitAssignVariableConstStrStr")
-	emit("call", "_free_string", "", "")
+	if !isNew {
+		emit("mov", "rax", BpRel(adr), "EmitAssignVariableConstStrStr")
+		emit("call", "_free_string", "", "")
+	}
 	emit("mov", "rax", "str"+strconv.Itoa(strLitNo), "")
 	emit("mov", BpRel(adr), "rax", "")
 	return nil
@@ -2043,25 +2044,25 @@ func EmitAssignVariableExpressionSlice(adr int, comment string) error {
 
 // EmitAssignVariableExpressionStrStr assigns string at rax to variable at adr
 // Free old string if it is on heap.
-func EmitAssignVariableExpressionStrStr(adr int) error {
-
+func EmitAssignVariableExpressionStrStr(adr int, isNew bool) error {
 	lbl := code.NewLabel()
 	EmitComment("EmitAssignVariableExpressionStrStr")
 	EmitAssertTosInRax("EmitAssignVariableExpressionStrStr")
 	emit("mov", "rbx", BpRel(adr), "Free existing string pointed to by variable if needed.")
 	emit("mov", "rdi", "rbx", "Save string pointer")
-	emit("or", "rbx", "rbx", "Check for nil in variable")
-	emit("jz", Label(lbl), "", "")
-	emit("mov", "rbx", "[rbx]", "Load old len/cap")
-	emit("shr", "rbx", "32", "Extract capacity")
-	emit("or", "rbx", "rbx", "Check for zero capacity")
-	emit("jz", Label(lbl), "", "")
-	emit("push", "rax", "", "")
-	emit("mov", "rax", "rdi", "")
-	emit("call", "_free_string", "", "")
-	emit("pop", "rax", "", "")
-	EmitLabel(lbl, "")
-
+	if !isNew {
+		emit("or", "rbx", "rbx", "Check for nil in variable")
+		emit("jz", Label(lbl), "", "")
+		emit("mov", "rbx", "[rbx]", "Load old len/cap")
+		emit("shr", "rbx", "32", "Extract capacity")
+		emit("or", "rbx", "rbx", "Check for zero capacity")
+		emit("jz", Label(lbl), "", "")
+		emit("push", "rax", "", "")
+		emit("mov", "rax", "rdi", "")
+		emit("call", "_free_string", "", "")
+		emit("pop", "rax", "", "")
+		EmitLabel(lbl, "")
+	}
 	emit("mov", BpRel(adr), "rax", "Update the variable to point to the new string")
 	return nil
 }

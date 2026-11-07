@@ -21,6 +21,7 @@ type VarDef struct {
 	constValue  string
 	IsReturned  bool
 	IsArg       bool
+	IsNew       bool
 }
 
 var VarDefs map[string]*VarDef

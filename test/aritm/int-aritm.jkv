@@ -66,4 +66,11 @@ func main() {
     assert(x^3==14, "Failed x^3")
     assert(13^3==14, "Failed 13^3")
     assert(x^y==14, "Failed x^y")
+
+    // 10. ++ and --
+    k=0
+    k++
+    assert(k==1, "Failed ++")
+    k--
+    assert(k==0, "Failed --")
 }

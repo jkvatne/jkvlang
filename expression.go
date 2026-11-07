@@ -58,7 +58,7 @@ func GenerateAssignment(op Token, lvalue *VarDef, value *ValueDef) (err error) {
 	if lvalue.Typ == nil {
 		lvalue.Typ = value.Typ
 	}
-
+	lvalue.IsNew = isNew
 	// Check types to see if the value can be assigned to the lvalue
 	if !CanAssign(lvalue.Typ.Pt, value) {
 		return fmt.Errorf(" could not assign type %s to type %s", value.Typ.Pt.Name(), lvalue.Typ.Pt.Name())
@@ -104,7 +104,7 @@ func AssignVariableConst(op Token, lvalue *VarDef, value *ValueDef) error {
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
 			// Handle assigning a const string to a string variable
-			return EmitAssignVariableConstStrStr(lvalue.Offset, value.StringLitNo)
+			return EmitAssignVariableConstStrStr(lvalue.Offset, value.StringLitNo, lvalue.IsNew)
 		} else if op == TOK_PLUS_ASSIGN {
 			// Handle appending a const string to a string variable
 			return EmitAppendVariableConstStrStr(lvalue.Offset, value.StringLitNo)
@@ -165,7 +165,7 @@ func AssignVariableExpression(op Token, lvalue *VarDef, value *ValueDef, isNew b
 	if lvalue.Typ.Pt == code.TYP_STRING && value.Typ.Pt == code.TYP_STRING {
 		if op == TOK_ASSIGN {
 			// Handle assigning a string expression to a string variable
-			return EmitAssignVariableExpressionStrStr(lvalue.Offset)
+			return EmitAssignVariableExpressionStrStr(lvalue.Offset, lvalue.IsNew)
 		} else if op == TOK_PLUS_ASSIGN {
 			// Handle appending a string expression to a string variable
 			return EmitAppendVariableExpressionStrStr(lvalue.Offset)
