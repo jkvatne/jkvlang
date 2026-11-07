@@ -1317,6 +1317,7 @@ func ParseBlock(s *State, isTrue bool) error {
 		panic("ParseBlock: ArgCode was not empty")
 	}
 	s.BlockLevel++
+	slog.Debug("ParseBlock: Increase BlockLevel", "BlockLevel", s.BlockLevel)
 	err := ParseStatements(s)
 	if err != nil {
 		return err
@@ -1326,6 +1327,7 @@ func ParseBlock(s *State, isTrue bool) error {
 		return err
 	}
 	s.BlockLevel--
+	slog.Debug("ParseBlock: Decrease BlockLevel", "BlockLevel", s.BlockLevel)
 	s.HasReturned = false
 	if isTrue {
 		code.NoCode--
@@ -1525,6 +1527,7 @@ func FreeStruct(t *TypeDef) error {
 }
 
 func ParseFuncDef(s *State) error {
+	slog.Debug("ParseFuncDef: Increase BlockLevel", "BlockLevel", s.BlockLevel)
 	s.BlockLevel++
 	startLevel := s.BlockLevel
 	s.next()
@@ -1643,7 +1646,10 @@ func ParseFuncDef(s *State) error {
 	if startLevel != s.BlockLevel {
 		return fmt.Errorf("Block level wrong on exit from " + fun)
 	}
+
 	s.BlockLevel--
+	slog.Debug("ParseFuncDef: Increase BlockLevel", "BlockLevel", s.BlockLevel)
+
 	if !s.HasReturned && s.currentFuncDef.name != "main" && !s.ScanPkg && len(s.currentFuncDef.returnTypes) > 0 {
 		return fmt.Errorf("missing return statement")
 	}

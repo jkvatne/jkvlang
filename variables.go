@@ -117,7 +117,7 @@ func DeleteLocalVar(id string) (err error) {
 }
 
 // FreeBlockVarsNoDelete frees all local variables with level higher or equal to the given level
-func FreeBlockVarsNoDelete(level int) (err error) {
+func FreeBlockVarsNoDelete(s *State, level int) (err error) {
 	n := 0
 	for _, v := range VarDefs {
 		if v.BlockLevel >= level {
@@ -125,6 +125,7 @@ func FreeBlockVarsNoDelete(level int) (err error) {
 		}
 	}
 	if n > 0 {
+		slog.Debug("FreeBlockVarsNoDelete:", "Func", s.currentFuncDef.name, "Line", code.LineNum, "Level", level, "Count", n)
 		EmitAddToSp(-n, "Free block vars for level "+strconv.Itoa(level))
 		code.LocalSp += n
 	}
@@ -144,8 +145,8 @@ func FreeBlockVars(s *State, level int) (err error) {
 		}
 	}
 	if n > 0 {
-		slog.Debug("Drop locals from stack", "Func", s.currentFuncDef.name, "Line", code.LineNum, "Level", level, "Count", n)
-		EmitAddToSp(-n, "Free block vars for level "+strconv.Itoa(level))
+		slog.Debug("FreeBlockVars:", "Func", s.currentFuncDef.name, "Line", code.LineNum, "Level", level, "Count", n)
+		EmitAddToSp(-n, "FreeBlockVars: level="+strconv.Itoa(level))
 	}
 	return nil
 }

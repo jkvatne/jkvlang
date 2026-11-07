@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/jkvatne/jkv/code"
@@ -114,8 +115,10 @@ func ParseStatement(s *State) (err error) {
 			lbl := code.NewLabel()
 			EmitJumpOnError(lbl)
 			s.BlockLevel++
+			slog.Debug("Block: increase BlockLevel", "BlockLevel", s.BlockLevel)
 			err = ParseStatement(s)
 			s.BlockLevel--
+			slog.Debug("Block: decrease BlockLevel", "BlockLevel", s.BlockLevel)
 			EmitLabel(lbl, "")
 		}
 	case TOK_RETURN:

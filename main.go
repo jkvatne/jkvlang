@@ -230,7 +230,7 @@ func Run(outputName string) error {
 			if errors.As(err, &exitErr) {
 				// Extract the numeric exit code
 				exitCode := exitErr.ExitCode()
-				return fmt.Errorf(outputName+" exited with non-zero status code: %d\n", exitCode)
+				return fmt.Errorf(outputName+" exited with non-zero status code: 0x%x\n", exitCode)
 			} else {
 				// The error was related to something else (e.g., I/O issues)
 				return fmt.Errorf("An error occurred while running %s: %v\n", outputName, err)

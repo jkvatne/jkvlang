@@ -12,11 +12,11 @@ import (
 func ParseBreak(s *State) error {
 	slog.Debug("Break", "level", s.BlockLevel)
 	EmitStoreErr(1)
-	err := FreeBlockVars(s, s.BlockLevel)
+	err := FreeBlockVarsNoDelete(s, s.BlockLevel)
 	if err != nil {
 		return err
 	}
-	EmitJump(s.GetLoopBreakLabel(), "Jump to start of loop from break")
+	EmitJump(s.GetLoopBreakLabel(), "Jump to break label")
 	return nil
 }
 
@@ -92,7 +92,7 @@ func ParseFor(s *State) error {
 	rangeName := "___range" + strconv.Itoa(rangeCount)
 	rangeCount++
 	s.BlockLevel++
-	slog.Debug("-- Setup for-loop", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
+	slog.Debug("-- Setup for-loop, increasing block level", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
 	lvalues, err = ParseLoopVars(s)
 	if err != nil {
 		return err
@@ -146,6 +146,7 @@ func ParseFor(s *State) error {
 
 	slog.Debug("-- Start of for-loop", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
 	EmitLabel(s.GetLoopStartLabel(), "Start of loop")
+	EmitLabel(s.GetLoopBreakLabel(), "Start of loop")
 
 	// Call the next function
 	EmitCall(f.label, 1, false)
@@ -156,6 +157,7 @@ func ParseFor(s *State) error {
 	EmitJumpTrue("r15", s.GetLoopExitLabel(), "Exit loop if err==1 after call to next")
 
 	s.BlockLevel++
+	slog.Debug("ParseFor: Increase BlockLevel", "BlockLevel", s.BlockLevel)
 
 	err = ParseStatements(s)
 	if err != nil {
@@ -166,6 +168,7 @@ func ParseFor(s *State) error {
 		return err
 	}
 	s.BlockLevel--
+	slog.Debug("ParseFor: Decrease BlockLevel 1", "BlockLevel", s.BlockLevel)
 
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
@@ -181,6 +184,7 @@ func ParseFor(s *State) error {
 		return err
 	}
 	s.BlockLevel--
+	slog.Debug("ParseFor: Decrease BlockLevel 2", "BlockLevel", s.BlockLevel)
 	EmitReturnIfErr2(s.returnLbl)
 	// Clear err if it is 1 as this is used to signal break using pull iterators
 	EmitClearBreakErr()
@@ -191,7 +195,7 @@ func ParseFor(s *State) error {
 func ParseLoop(s *State) error {
 	s.BlockLevel++
 	s.PushLoopBlock()
-	slog.Debug("-- Start of loop", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
+	slog.Debug("-- Start of loop, increasing block level", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
 	EmitLabel(s.GetLoopStartLabel(), "Start of loop")
 	if !s.found(TOK_LBRACE) {
 		return fmt.Errorf("expected { but got %s", s.tokenString)
@@ -203,7 +207,7 @@ func ParseLoop(s *State) error {
 	if !s.found(TOK_RBRACE) {
 		return fmt.Errorf("expected } after loop block, but got %s", s.tokenString)
 	}
-	err = FreeBlockVars(s, s.BlockLevel)
+	err = FreeBlockVarsNoDelete(s, s.BlockLevel)
 	if err != nil {
 		return err
 	}
@@ -211,7 +215,12 @@ func ParseLoop(s *State) error {
 
 	// Note that we come here only from a break.
 	EmitComment("End of loop")
-	slog.Debug("-- End of loop", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
+	slog.Debug("-- End of loop 1", "Func", s.currentFuncDef.name, "Line", code.LineNum, "BlockLevel", s.BlockLevel)
+	EmitLabel(s.GetLoopBreakLabel(), "")
+	err = FreeBlockVars(s, s.BlockLevel)
+	if err != nil {
+		return err
+	}
 	EmitLabel(s.GetLoopExitLabel(), "")
 
 	// Clear err if it is 1 as this is used to signal break using pull iterators
@@ -222,5 +231,6 @@ func ParseLoop(s *State) error {
 		return err
 	}
 	s.BlockLevel--
+	slog.Debug("-- End of loop 2: done, decrease BlockLevel", "BlockLevel", s.BlockLevel)
 	return err
 }

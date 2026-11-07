@@ -52,9 +52,7 @@ func (s *State) LoopLevel() int {
 }
 
 func (s *State) PushLoopBlock() {
-	startLabel := code.NewLabel()
-	exitLabel := code.NewLabel()
-	s.LoopStack = append(s.LoopStack, LoopInfo{StartLabel: startLabel, ExitLabel: exitLabel, BreakLabel: exitLabel})
+	s.LoopStack = append(s.LoopStack, LoopInfo{StartLabel: code.NewLabel(), ExitLabel: code.NewLabel(), BreakLabel: code.NewLabel()})
 }
 
 func (s *State) PushForBlock() {
