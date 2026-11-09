@@ -1,11 +1,18 @@
 
-type Person = struct{
-    id I64
-    name String
-    Age U8
+const (
+    c I32 =1
+    d
+I    e
+)
+
+
+func foo() {
+    print("xx")
 }
 
+const a I32 = 1
+const b = 2
+
 func main () {
-    t = "Goodby"
-    t[1] = 'G'
+    print("a=%d, b=%d, c=%d, d=%d, e=%d", a, b, c, d, e)
 }

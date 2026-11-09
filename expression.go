@@ -253,9 +253,6 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 		if err != nil {
 			return parList, err
 		}
-		if typ == nil {
-			return parList, fmt.Errorf("expected argument type but got nil")
-		}
 		// Add argument with its implied type, storing it as a local variable
 		v := AddLocalPar(s, id, typ)
 		parList = append(parList, v)
@@ -1854,67 +1851,99 @@ func ParseVar(s *State) error {
 	return nil
 }
 
+func ParseConstValue(s *State) (*ValueDef, error) {
+	s.next()
+	isNeg := false
+	if s.token == TOK_MINUS {
+		s.next()
+		isNeg = true
+	}
+	if s.token != TOK_NUM {
+		return nil, fmt.Errorf("expected int or float, got %s", s.tokenString)
+	}
+	val := s.tokenString
+	if isNeg {
+		val = "-" + s.tokenString
+	}
+	v := &ValueDef{StringValue: val, IsConst: true}
+	return v, nil
+}
+
+// ParseConst parses a const definition. It can either be
+// a const name with type, a const name without type (iota sequence)
 func ParseConst(s *State) error {
 	if s.token != TOK_ID {
 		return fmt.Errorf("expected id but got %s", s.tokenString)
 	}
 	id := s.tokenString
 	s.next()
-	// Now we should either have a type name or the next constant name
-	if s.token != TOK_ID && s.token != TOK_RPAR {
-		return fmt.Errorf("expected type name or constant name, but got %s", s.tokenString)
-	}
-	_, ok := TypeDefs[s.tokenString]
-	if ok {
-		typ, err1 := ParseType(s)
-		LastGlobalConstType = typ
-		if err1 != nil {
-			return err1
+	// Now we should either have a type name, an equal sign or the next constant name
+	if s.token == TOK_ASSIGN {
+		// Const without type, like "const x=1"
+		val, err := ParseConstValue(s)
+		if err != nil {
+			return err
 		}
-		v, err2 := AddGlobalConst(id, typ)
-		if err2 != nil {
-			return err2
+		t, err := TypeFromConstValue(val)
+		if err != nil {
+			return err
 		}
-		if s.token == TOK_ASSIGN {
+		val.Typ = t
+		v, err := AddGlobalConst(id, t)
+		if err != nil {
+			return err
+		}
+		v.constValue = val.StringValue
+		LastGlobalConstValue = val.StringValue
+		s.next()
+	} else {
+		typ, ok := TypeDefs[s.tokenString]
+		if ok {
+			// Valid type found. We have const with type. Should have equal sign now
 			s.next()
-			val := ""
-			if s.token == TOK_MINUS {
-				s.next()
-				if s.token != TOK_NUM {
-					return fmt.Errorf("expected int or float, got %s", s.tokenString)
-				}
-				val = "-" + s.tokenString
-			} else if s.token == TOK_LBRACE {
+			if s.token != TOK_ASSIGN {
+				return fmt.Errorf("expected equal sign but got %s", s.tokenString)
+			}
+			if s.token == TOK_LBRACE {
 				err := ParseSliceLiteral(s, id, typ)
 				if err != nil {
 					return err
 				}
 			} else {
-				val = s.tokenString
+				val, err := ParseConstValue(s)
+				if err != nil {
+					return err
+				}
+				val.Typ = typ
+				v, err := AddGlobalConst(id, typ)
+				if err != nil {
+					return err
+				}
+				v.constValue = val.StringValue
+				LastGlobalConstValue = val.StringValue
+				LastGlobalConstType = typ
 			}
-			if v == nil {
-				return fmt.Errorf("internal error in ParseVar")
-			}
-			v.constValue = val
-			LastGlobalConstValue = val
 			s.next()
+		} else if LastGlobalConstType != nil && LastGlobalConstType.Pt.IsInteger() {
+			// It was a const name without type. Treat it as an iota const if it was an integer
+			v, err := AddGlobalConst(id, LastGlobalConstType)
+			if err != nil {
+				return err
+			}
+			x, err3 := strconv.Atoi(LastGlobalConstValue)
+			if err3 != nil {
+				return err3
+			}
+			x = x + 1
+			LastGlobalConstValue = strconv.Itoa(x)
+			v.constValue = LastGlobalConstValue
+		} else {
+			return fmt.Errorf("wrong type definition")
 		}
-	} else if LastGlobalConstType != nil && LastGlobalConstType.Pt.IsInteger() {
-		// It was a const name without type. Treat it as an iota const if it was an integer
-		v, err2 := AddGlobalConst(id, LastGlobalConstType)
-		if err2 != nil {
-			return err2
-		}
-		x, err3 := strconv.Atoi(LastGlobalConstValue)
-		if err3 != nil {
-			return err3
-		}
-		x = x + 1
-		LastGlobalConstValue = strconv.Itoa(x)
-		v.constValue = LastGlobalConstValue
 	}
 	return nil
 }
+
 func ParseAppend(s *State) error {
 	if !s.found(TOK_LPAR) {
 		return fmt.Errorf("expected left parenthesis")
