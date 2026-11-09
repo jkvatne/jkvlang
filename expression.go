@@ -904,7 +904,10 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 	} else if localVar.Typ.Pt.IsFloat() {
 		EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name)
 	} else if localVar.IsGlobal && localVar.constValue != "" {
-		EmitLoadGlobalConst(localVar.constValue)
+		// EmitLoadGlobalConst(localVar.constValue)
+		value.StringValue = localVar.constValue
+		value.IsConst = true
+		// fmt.Printf("EmitLoadGlobalConst %v\n", localVar.constValue)
 	} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
 		EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
 	} else if localVar.Typ.Pt.IsInteger() {
@@ -1855,6 +1858,10 @@ func ParseConstValue(s *State) (*ValueDef, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !v[0].IsConst {
+		return nil, fmt.Errorf("exppression was not constant")
+	}
+	code.ArgCode = nil
 	/*
 		isNeg := false
 		if s.token == TOK_MINUS {

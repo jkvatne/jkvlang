@@ -2113,8 +2113,8 @@ func EmitAppendIndirectExpressionStrChar() error {
 
 // EmitAssignVariableConstStrChar will append a literal character to a string in a variable.
 func EmitAssignVariableConstStrChar(op Token, adr int, value int) error {
-	if value > 128 {
-		return fmt.Errorf("only ASCII values <128 is supported for now")
+	if value > 255 {
+		return fmt.Errorf("only ASCII values <256 is supported for now")
 	}
 	if op != TOK_PLUS_ASSIGN {
 		return fmt.Errorf("only += supported for string += int")
