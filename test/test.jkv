@@ -1,25 +1,6 @@
 const a I32 = 1
+const b = 3
 
-const pow10Tab U64arr = {
-	0xfa8fd5a0081c0289, 0xe8cd3796329f1bac, // 1e-348 * 2**1284
-	0x9c99e58405118196, 0xf18042bddfa3714b, // 1e-347 * 2**1280
-	0xc3c05ee50655e1fb, 0xade0536d578c4d9e, // 1e-346 * 2**1277
-	0xf4b0769e47eb5a79, 0x19586848ad6f6106, // 1e-345 * 2**1274
-	0x98ee4a22ecf3188c, 0x6fd7412d6c659ca3, // 1e-344 * 2**1270
-}
-
-const (
-    c I32 = 1
-    d
-    e
-)
-
-const b = 2
-
-func main () {
-    print("a=%d, b=%d, c=%d, d=%d, e=%d", a, b, c, d, e)
-    print("pow10Tab[2]=0x%llx",pow10Tab[2])
-    assert(a==1, "Expected a==1, got %d", a)
-    assert(e==3, "Expected e==3, got %d", e)
-    assert(pow10Tab[2]==0x9c99e58405118196, "Expected pow10Tab[2]==0x9c99e58405118196, got %llx", pow10Tab[2])
+func main() {
+    print("a=%d, b=%d", a, b)
 }

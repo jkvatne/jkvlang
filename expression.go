@@ -587,13 +587,13 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 
 	// Check for correct argument types
-	/* TODO
 	for i, v := range values {
 		par := f.parameters[min(i, len(f.parameters)-1)]
-		if !CanAssign(par.Typ.Pt, v.Typ.Pt) && !strings.HasPrefix(id, "print") && par.Typ.Pt != code.TYP_NONE {
+		if !CanAssign(par.typ.Pt, v) && !strings.HasPrefix(id, "print") && par.typ.Pt != code.TYP_NONE &&
+			!strings.HasPrefix(id, "assert") {
 			return nil, fmt.Errorf("wrong type for parameter %d in %s", i+1, id)
 		}
-	}*/
+	}
 
 	s.currentFuncCall = id
 	nac := len(code.ArgCode)
@@ -615,7 +615,6 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 	}
 
 	// Do actual call
-	// ----------------------------------
 	EmitCall(f.label, len(values), f.Builtin)
 
 	code.OutputCleanupCode(len(values))
@@ -1276,7 +1275,7 @@ func ParseExpression(s *State) ([]*ValueDef, error) {
 		EmitLabel(endLabel, "")
 	}
 	if results[0].Typ == nil {
-		// TODO return nil, fmt.Errorf("value.type is nil - internal error 2")
+		return nil, fmt.Errorf("value.type is nil - internal error 2")
 	}
 	return results, nil
 }
@@ -1852,20 +1851,26 @@ func ParseVar(s *State) error {
 }
 
 func ParseConstValue(s *State) (*ValueDef, error) {
-	isNeg := false
-	if s.token == TOK_MINUS {
-		s.next()
-		isNeg = true
+	v, err := ParseExpression(s)
+	if err != nil {
+		return nil, err
 	}
-	if s.token != TOK_NUM {
-		return nil, fmt.Errorf("expected int or float, got %s", s.tokenString)
-	}
-	val := s.tokenString
-	if isNeg {
-		val = "-" + s.tokenString
-	}
-	v := &ValueDef{StringValue: val, IsConst: true}
-	return v, nil
+	/*
+		isNeg := false
+		if s.token == TOK_MINUS {
+			s.next()
+			isNeg = true
+		}
+		if s.token != TOK_NUM {
+			return nil, fmt.Errorf("expected numeric constant, got %s", s.tokenString)
+		}
+		val := s.tokenString
+		if isNeg {
+			val = "-" + s.tokenString
+		}
+		v := &ValueDef{StringValue: val, IsConst: true}
+	*/
+	return v[0], nil
 }
 
 // ParseConst parses a const definition. It can either be
@@ -1895,7 +1900,6 @@ func ParseConst(s *State) error {
 		}
 		v.constValue = val.StringValue
 		LastGlobalConstValue = val.StringValue
-		s.next()
 	} else {
 		typ, ok := TypeDefs[s.tokenString]
 		if ok {
@@ -1911,6 +1915,7 @@ func ParseConst(s *State) error {
 				if err != nil {
 					return err
 				}
+				s.next()
 			} else {
 				val, err := ParseConstValue(s)
 				if err != nil {
@@ -1925,7 +1930,6 @@ func ParseConst(s *State) error {
 				LastGlobalConstValue = val.StringValue
 				LastGlobalConstType = typ
 			}
-			s.next()
 		} else if LastGlobalConstType != nil && LastGlobalConstType.Pt.IsInteger() {
 			// It was a const name without type. Treat it as an iota const if it was an integer
 			v, err := AddGlobalConst(id, LastGlobalConstType)
