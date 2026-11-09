@@ -795,8 +795,7 @@ func EmitNewString() {
 // The pointer will be in the TOS (i.e. rax)
 func EmitNewStruct(t *TypeDef) {
 	EmitFlushRax("Before NewStruct")
-	code.SetAx()
-	emit("mov", "rax", strconv.Itoa(t.Size()), "")
+	emit("mov", "rax", strconv.Itoa(t.Size()), "EmitNewStruct start")
 	emit("call", "_alloc", "", "Allocate new struct")
 	// Zero struct
 	emit("mov", "rdx", "rax", "Zero new struct")
@@ -805,8 +804,9 @@ func EmitNewStruct(t *TypeDef) {
 	emit("mov", "rcx", strconv.Itoa(t.Size()), "")
 	emit("cld", "", "", "")
 	emit("xor", "rax", "rax", "")
-	emit("rep", "stosb", "", "")
-	emit("mov", "rax", "rdx", "")
+	emit("rep", "stosb", "", "EmitNewStruct end")
+	// emit("mov", "rax", "rdx", "EmitNewStruct end")
+	code.SetSp()
 }
 
 // EmitNewSlice assumes TOS is new capacity (number of elements)

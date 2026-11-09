@@ -275,34 +275,38 @@ func ParseFormalArgList(s *State) ([]*VarDef, error) {
 // simple variable, a struct variable followed by a dot and field, or an indexed variable
 // followed by a bracket expression. We can have a row of indexes/fields
 func ParseLvalue(s *State, id string) (*VarDef, error) {
-	lvalue := VarDefs[id]
 	var ok bool
+	lvalue := VarDefs[id]
+	if lvalue == nil {
+		// New local variable,we don't yet know the type, so just use nil
+		lvalue = AddLocalVar(s, id, nil)
+		// NB: Actual size is not known. Allocation must be delayed to the time we set the type
+		EmitAllocLocalVar("Assign stack space for " + id + " level=" + strconv.Itoa(s.BlockLevel))
+		return lvalue, nil
+	}
 	startSp := code.LocalSp
 	// Loop over field access or indexed access.
 	for {
 		if s.found(TOK_DOT) {
-			if lvalue == nil {
-				return nil, fmt.Errorf("new identifier '%s' before dot. Struct must exist", id)
-			} else if lvalue.Typ.Pt == code.TYP_STRUCT && s.token == TOK_ID {
-				if lvalue.IsIndirect {
-					EmitLoadTosIndirect(8, lvalue.Name)
-				}
-				// The id was followed by a dot and a field id, indicated field access.
-				fieldName := s.tokenString
-				s.next()
-				v := &VarDef{}
-				v.Typ, ok = lvalue.Typ.Fields[fieldName]
-				if !ok {
-					return nil, fmt.Errorf("expected field name '%s' of the struct '%s' but it was not found", fieldName, id)
-				}
-				v.Name = fieldName
-				fieldOfs := lvalue.Typ.Offsets[fieldName]
-				EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
-				v.IsIndirect = true
-				lvalue = v
-			} else {
+			if lvalue.Typ.Pt != code.TYP_STRUCT || s.token != TOK_ID {
 				return nil, fmt.Errorf("dot found after something that is not a struct")
 			}
+			if lvalue.IsIndirect {
+				EmitLoadTosIndirect(8, lvalue.Name)
+			}
+			// The id was followed by a dot and a field id, indicated field access.
+			fieldName := s.tokenString
+			s.next()
+			v := &VarDef{}
+			v.Typ, ok = lvalue.Typ.Fields[fieldName]
+			if !ok {
+				return nil, fmt.Errorf("expected field name '%s' of the struct '%s' but it was not found", fieldName, id)
+			}
+			v.Name = fieldName
+			fieldOfs := lvalue.Typ.Offsets[fieldName]
+			EmitLoadField(lvalue.Offset, lvalue.IsIndirect, fieldOfs, lvalue.Name, fieldName)
+			v.IsIndirect = true
+			lvalue = v
 		} else if s.found(TOK_LBRACK) {
 			// Parse the expression inside brackets. It will result in an index in TOS, or a constant valued index
 			index, err := ParseIndex(s, lvalue)
@@ -346,11 +350,7 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 			} else if lvalue.Typ.Pt == code.TYP_SLICE {
 				lvalue = &VarDef{Typ: lvalue.Typ.Element, IsIndirect: true}
 			}
-		} else if lvalue == nil {
-			// New local variable,we don't yet know the type, so just use nil
-			lvalue = AddLocalVar(s, id, nil)
-			// NB: Actual size is not known. Allocation must be delayed to the time we set the type
-			EmitAllocLocalVar("Assign stack space for " + id + " level=" + strconv.Itoa(s.BlockLevel))
+
 		} else {
 			break
 		}
@@ -769,10 +769,10 @@ func ParseIndex(s *State, v *VarDef) (value *ValueDef, err error) {
 	return values[0], nil
 }
 
-// ParseArrayOrStruct handles a string of array or field references.
+// ParsePostfix handles a string of array or field references or postfix function call
 // F.ex. a[14].f.r[i]. It emits code to load the resulting value.
 // Current token is either TOK_DOT or TOK_LBRACK when this function is called
-func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
+func ParsePostfix(s *State, id string) ([]*ValueDef, error) {
 	var isIndirect bool
 	var f float64
 	vp, ok := VarDefs[id]
@@ -785,7 +785,8 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 	}
 	for {
 		if s.found(TOK_DOT) {
-			// The previous item must have been a struct, and the current id a field name in that struct.
+			// The previous item must have been a struct, and the current id a field name in that struct
+			// or a function name for postfix notation
 			if v.Typ.Pt != code.TYP_STRUCT || s.token != TOK_ID {
 				return nil, fmt.Errorf("expected struct field, got %s", v.Typ.Pt.Name())
 			}
@@ -793,7 +794,10 @@ func ParseArrayOrStruct(s *State, id string) ([]*ValueDef, error) {
 			s.next()
 			fieldType := v.Typ.Fields[fieldName]
 			if fieldType == nil {
-				return nil, fmt.Errorf("field '%s' not found in struct '%s'", fieldName, v.Name)
+				_, err := ParseFuncCall(s, id, true)
+				if err != nil {
+					return nil, fmt.Errorf("'%s'is not a field or function for struct '%s'", fieldName, v.Name)
+				}
 			}
 			// A struct field
 			fieldOffset, isOk := v.Typ.Offsets[fieldName]
@@ -888,7 +892,7 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 		return ParseFuncCall(s, id, true)
 	} else if s.token == TOK_LBRACK || s.token == TOK_DOT {
 		// It is an array or a struct field. Handle them in a loop in the ParseArrayOrStruct function
-		return ParseArrayOrStruct(s, id)
+		return ParsePostfix(s, id)
 	}
 	// If none above, it is a simple variable
 	localVar, ok := VarDefs[id]
@@ -904,10 +908,8 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 	} else if localVar.Typ.Pt.IsFloat() {
 		EmitLoadFloat(localVar.Typ.Size(), localVar.Offset, localVar.Name)
 	} else if localVar.IsGlobal && localVar.constValue != "" {
-		// EmitLoadGlobalConst(localVar.constValue)
 		value.StringValue = localVar.constValue
 		value.IsConst = true
-		// fmt.Printf("EmitLoadGlobalConst %v\n", localVar.constValue)
 	} else if localVar.IsGlobal && localVar.Typ.Pt.IsInteger() {
 		EmitLoadGlobalVar(localVar.Name, localVar.Typ.Pt)
 	} else if localVar.Typ.Pt.IsInteger() {

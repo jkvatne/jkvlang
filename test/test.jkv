@@ -1,27 +1,24 @@
-
-const pow10Tab U64arr = {
-	0xfa8fd5a0081c0289, 0xe8cd3796329f1bac, // 1e-348 * 2**1284
-	0x9c99e58405118196, 0xf18042bddfa3714b, // 1e-347 * 2**1280
-	0xc3c05ee50655e1fb, 0xade0536d578c4d9e, // 1e-346 * 2**1277
-	0xf4b0769e47eb5a79, 0x19586848ad6f6106, // 1e-345 * 2**1274
-	0x98ee4a22ecf3188c, 0x6fd7412d6c659ca3, // 1e-344 * 2**1270
+type Name = struct {
+    dummy String
+    fname String
+    ename String
 }
 
-const (
-    c I32 = 1
-    d
-    e
-)
+type Person = struct {
+    dummy String
+    name Name
+    age U8
+}
 
-const (
-  a I32 = 1
-  b = 2
-  f = 3*(a+b)
-)
+func print_name(p Person, size I32) {
+    print("Name: %s %s", p.name.fname, p.name.ename)
+}
 
 func main () {
-    assert(pow10Tab[2]==0x9c99e58405118196, "Expected pow10Tab[2]==0x9c99e58405118196, got %llx", pow10Tab[2])
-    assert(a==1, "Expected a==1, got %d", a)
-    assert(e==3, "Expected e==3, got %d", e)
-    assert(f==9, "Expected f==9, got %d", f)
+    p=new(Person)
+    a=1
+    p.name=new(Name)
+    p.name.ename="Vatne"
+    p.name.fname="Jan"
+    print("Name: %s %s", p.name.fname, p.name.ename)
 }
