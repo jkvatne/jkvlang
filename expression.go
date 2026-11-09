@@ -1802,7 +1802,7 @@ func ParseSliceLiteral(s *State, id string, typ *TypeDef) error {
 			break
 		}
 	}
-	lit.count = len(lit.IntValues) + len(lit.FloatValues)
+	lit.count = len(lit.IntValues) + len(lit.FloatValues) + len(lit.UintValues)
 	lit.size = typ.Element.Pt.Size()
 	SliceLiteralDefs = append(SliceLiteralDefs, lit)
 	return nil
@@ -1852,7 +1852,6 @@ func ParseVar(s *State) error {
 }
 
 func ParseConstValue(s *State) (*ValueDef, error) {
-	s.next()
 	isNeg := false
 	if s.token == TOK_MINUS {
 		s.next()
@@ -1880,6 +1879,7 @@ func ParseConst(s *State) error {
 	// Now we should either have a type name, an equal sign or the next constant name
 	if s.token == TOK_ASSIGN {
 		// Const without type, like "const x=1"
+		s.next()
 		val, err := ParseConstValue(s)
 		if err != nil {
 			return err
@@ -1904,8 +1904,10 @@ func ParseConst(s *State) error {
 			if s.token != TOK_ASSIGN {
 				return fmt.Errorf("expected equal sign but got %s", s.tokenString)
 			}
+			s.next()
 			if s.token == TOK_LBRACE {
-				err := ParseSliceLiteral(s, id, typ)
+				_, err := AddGlobalConst(id, typ)
+				err = ParseSliceLiteral(s, id, typ)
 				if err != nil {
 					return err
 				}
