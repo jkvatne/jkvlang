@@ -279,9 +279,6 @@ func ParseLvalue(s *State, id string) (*VarDef, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lvalue == nil {
-		return nil, fmt.Errorf("Must have lvalue")
-	}
 	return lvalue, nil
 }
 
@@ -304,6 +301,9 @@ func ParseLvalueList(s *State, id string) (lvalues []*VarDef, err error) {
 	// For each lvalue, separated by comma. The identifier is already in the id variable
 	for {
 		lvalue, err2 := ParseLvalue(s, id)
+		if lvalue == nil {
+			return nil, nil
+		}
 		if err2 != nil {
 			return nil, err2
 		}
@@ -444,7 +444,7 @@ func ParseActualArgList(s *State, funcName string) (valueList []*ValueDef, err e
 // ParseFuncCall parses a function call and its arguments
 // This is the only location where arguments are evaluated
 // Assumes id and ( is already consumed
-func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, error) {
+func ParseFuncCall(s *State, id string, returnSomething bool, postfixValue *ValueDef) ([]*ValueDef, error) {
 	HadAx := code.AxIsTos()
 	name := s.Mangle(id)
 	s.currentFuncCall = id
@@ -462,6 +462,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool) ([]*ValueDef, erro
 		s.currentFuncCall = ""
 		return nil, err
 	}
+
 	f := FindFuncDefFromParList(id, TypeListVal(values), false)
 	if f == nil {
 		f = FindFuncDefFromParList(s.Mangle(id), TypeListVal(values), false)
@@ -558,6 +559,9 @@ func ParseAssign(s *State, id string) error {
 	lvalues, err := ParseLvalueList(s, id)
 	if err != nil {
 		return err
+	}
+	if len(lvalues) == 0 {
+		return nil
 	}
 	op := s.token
 	if s.found(TOK_PLUS_PLUS) {
@@ -710,20 +714,27 @@ func ParsePostfix(s *State, id string) (*VarDef, *ValueDef, error) {
 			fieldType, ok := value.Typ.Fields[fName]
 			fcnt := FuncCount(fName)
 			if ok {
+				if lValue.IsIndirect {
+					EmitLoadTosIndirect(fieldType.Size(), fName)
+				}
 				// A struct field of "value"
 				fieldOffset := value.Typ.Offsets[fName]
-				EmitLoadField(value.Offset, value.IsIndirect, fieldOffset, lValue.Name, fName)
-				// EmitLoadTosIndirect(fieldType.Size(), fName)
+				EmitLoadField(value.Offset, lValue.IsIndirect, fieldOffset, lValue.Name, fName)
 				value.Typ = fieldType
 				lValue = new(*lValue)
 				lValue.Typ = fieldType
 				lValue.IsIndirect = true
 				value.IsIndirect = true
 			} else if fcnt > 0 {
-				_, err := ParseFuncCall(s, "???", true)
+				if !s.found(TOK_LPAR) {
+					return nil, nil, fmt.Errorf("expected '(' after function name '%s'", fName)
+				}
+				value.IsIndirect = true
+				_, err := ParseFuncCall(s, fName, false, &value)
 				if err != nil {
 					return nil, nil, fmt.Errorf("'%s' is not a field or function for struct '%s'", fName, value.localVar.Name)
 				}
+				return nil, nil, nil
 			} else {
 				return nil, nil, fmt.Errorf("%s is neither field name nor function", fName)
 			}
@@ -808,10 +819,13 @@ func ParseVarOrFunc(s *State) ([]*ValueDef, error) {
 		if ok {
 			return ParseTypeConversion(s, typ)
 		}
-		return ParseFuncCall(s, id, true)
+		return ParseFuncCall(s, id, true, nil)
 	} else if s.token == TOK_LBRACK || s.token == TOK_DOT {
 		// It is an array or a struct field. Handle them in a loop in the ParseArrayOrStruct function
 		_, value, err := ParsePostfix(s, id)
+		if value.IsIndirect {
+			emit("mov", "rax", "[rax]", "Dereference pointer")
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -1562,6 +1576,7 @@ func ParseFuncDef(s *State) error {
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
 		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
+		code.OutputArgCode()
 		return fmt.Errorf("Stack error at end of function '%s',  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()

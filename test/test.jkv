@@ -10,19 +10,19 @@ type Person = struct {
     age U8
 }
 
-func print_name(p Person, size I32) {
-    //print("Name: %s %s", p.name.fname, p.name.ename)
+func print_name(p Person) {
+    print("Name: %s %s", p.name.fname, p.name.ename)
 }
 
 func main () {
-    // a = 1
-    // b = a
-    // print("a=%d, b=%d", a, b)
-
+    a = 1
+    b = a
+    assert(a==1&&b==1)
     p=new(Person)
     p.name=new(Name)
-    // p.name.ename="Vatne"
-    // p.name.fname="Jan"
-    // print("Name: %s %s", p.name.fname, p.name.ename)
-    // p.print_name()
+    p.name.ename="Vatne"
+    p.name.fname="Jan"
+    assert(p.name.fname=="Jan")
+    assert(p.name.ename=="Vatne")
+    //p.print_name()
 }
