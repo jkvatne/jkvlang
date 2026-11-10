@@ -11,8 +11,7 @@ type Person = struct {
 }
 
 func print_name(p Person, size I32) {
-    //print("Name: %s %s", p.name.fname, p.name.ename)
-    print("xxx")
+    print("Name: %s %s", p.name.fname, p.name.ename)
 }
 
 func main () {
@@ -23,6 +22,7 @@ func main () {
     p.name=new(Name)
     p.name.ename="Vatne"
     p.name.fname="Jan"
+    print("Name: %s %s", p.name.fname, p.name.ename)
     //assert(p.name.fname=="Jan")
     //assert(p.name.ename=="Vatne")
     p.print_name(10)

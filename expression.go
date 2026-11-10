@@ -326,8 +326,13 @@ func ParseLvalueList(s *State, id string) (lvalues []*ValueDef, err error) {
 // ParseActualArgList
 // For each actual argument in the argument list, generate code in ArgCode and Value in valueList
 // Assumes the ( is consumed already
-func ParseActualArgList(s *State, funcName string) (valueList []*ValueDef, err error) {
+func ParseActualArgList(s *State, funcName string, arg1code string) (valueList []*ValueDef, err error) {
 	parNo := 0
+	if len(arg1code) > 0 {
+		parNo++
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcName + "'")
+		code.ArgCode = append(code.ArgCode, arg1code)
+	}
 	for { // each argument in the actual argument list
 		parNo++
 		if s.token == TOK_RPAR {
@@ -458,13 +463,12 @@ func ParseFuncCall(s *State, id string, returnSomething bool, arg1Value *ValueDe
 
 	// Parse the argument list and push each arg
 	// -------------------------------------------------------
-	values, err := ParseActualArgList(s, id)
+	values, err := ParseActualArgList(s, id, arg1code)
 	if err != nil {
 		s.currentFuncCall = ""
 		return nil, err
 	}
 	if len(arg1code) > 0 {
-		code.ArgCode = append(code.ArgCode, arg1code)
 		values = slices.Insert(values, 0, arg1Value)
 	}
 	f := FindFuncDefFromParList(id, TypeListVal(values), false)
@@ -522,7 +526,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool, arg1Value *ValueDe
 		code.SetAx()
 	}
 	code.NewArgCode()
-	EmitFlushRax("Flush rax before function call")
+	// EmitFlushRax("Flush rax before function call")
 	EmitAddToSp(len(f.returnTypes), "Make space for return values from "+f.name)
 
 	if len(values) == 0 {
@@ -723,7 +727,11 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 				}
 				// A struct field of "value"
 				fieldOffset := value.Typ.Offsets[fName]
-				EmitLoadField(value.Offset, value.IsIndirect, fieldOffset, "", fName)
+				name := "indirect"
+				if value.localVar != nil {
+					name = value.localVar.Name
+				}
+				EmitLoadField(value.Offset, value.IsIndirect, fieldOffset, name, fName)
 				value.Typ = fieldType
 				value.IsIndirect = true
 			} else if fcnt > 0 {
@@ -1973,7 +1981,7 @@ func ParseSyscall(s *State) error {
 		return fmt.Errorf("expected comma, got %s", s.tokenString)
 	}
 	code.NewArgCode()
-	values, err := ParseActualArgList(s, "syscall")
+	values, err := ParseActualArgList(s, "syscall", "")
 	if err != nil {
 		return err
 	}
