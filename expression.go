@@ -749,6 +749,7 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 				// Load arg 1
 				if value.localVar != nil {
 					EmitLoad(value.localVar.Size(), value.localVar.Offset, "")
+					EmitFlushRax("")
 				}
 				arg1code := code.ArgCode[len(code.ArgCode)-1]
 				// Remove last
