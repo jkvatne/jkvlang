@@ -302,11 +302,11 @@ func ParseLvalueList(s *State, id string) (lvalues []*ValueDef, err error) {
 	// For each lvalue, separated by comma. The identifier is already in the id variable
 	for {
 		lvalue, err2 := ParseLvalue(s, id)
-		if lvalue == nil {
-			return nil, nil
-		}
 		if err2 != nil {
 			return nil, err2
+		}
+		if lvalue == nil {
+			return nil, nil
 		}
 		EmitFlushRax("Assure pointer is on stack")
 		lvalues = append(lvalues, lvalue)
@@ -330,8 +330,10 @@ func ParseActualArgList(s *State, funcName string, arg1code string) (valueList [
 	parNo := 0
 	if len(arg1code) > 0 {
 		parNo++
-		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcName + "'")
+		code.ArgCode = append(code.ArgCode, "")
+		EmitComment("Argument " + strconv.Itoa(parNo) + " of argument list for '" + funcName + "' n=" + strconv.Itoa(len(arg1code)))
 		code.ArgCode = append(code.ArgCode, arg1code)
+		code.ConsArgCode(2, false)
 	}
 	for { // each argument in the actual argument list
 		parNo++
@@ -451,7 +453,7 @@ func ParseActualArgList(s *State, funcName string, arg1code string) (valueList [
 // This is the only location where arguments are evaluated
 // Assumes id and ( is already consumed
 func ParseFuncCall(s *State, id string, returnSomething bool, arg1Value *ValueDef, arg1code string) ([]*ValueDef, error) {
-	HadAx := code.AxIsTos()
+	HadAx := false // code.AxIsTos()
 	name := s.Mangle(id)
 	s.currentFuncCall = id
 	if FuncCount(id) == 0 {
@@ -614,7 +616,7 @@ func ParseAssign(s *State, id string) error {
 		code.ConsArgCode(len(code.ArgCode), false)
 		code.OutputArgCode()
 	} else {
-		return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
+		// return fmt.Errorf("expected assignment, got \"%s\"", s.tokenString)
 	}
 	return err
 }
@@ -709,6 +711,7 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 	value := ValueDef{Typ: lValue.Typ, IsIndirect: false, Offset: lValue.Offset, localVar: lValue}
 	for {
 		if s.found(TOK_DOT) {
+			code.NewArgCode()
 			// The previous item must have been a struct
 			if value.Typ.Pt != code.TYP_STRUCT {
 				return nil, fmt.Errorf("expected struct, got %s", value.Typ.Pt.Name())
@@ -734,13 +737,15 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 				EmitLoadField(value.Offset, value.IsIndirect, fieldOffset, name, fName)
 				value.Typ = fieldType
 				value.IsIndirect = true
+				code.ConsArgCode(2, false)
+				if len(code.ArgCode) == 1 {
+					// code.OutputArgCode()
+				}
 			} else if fcnt > 0 {
 				if !s.found(TOK_LPAR) {
 					return nil, fmt.Errorf("expected '(' after function name '%s'", fName)
 				}
 				value.IsIndirect = true
-				// Apend empty string
-				code.NewArgCode()
 				// Load arg 1
 				if value.localVar != nil {
 					EmitLoad(value.localVar.Size(), value.localVar.Offset, "")
@@ -752,7 +757,6 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 				if err != nil {
 					return nil, fmt.Errorf("'%s' is not a field or function for struct '%s'", fName, value.localVar.Name)
 				}
-				return nil, nil
 			} else {
 				return nil, fmt.Errorf("%s is neither field name nor function", fName)
 			}
@@ -1593,8 +1597,9 @@ func ParseFuncDef(s *State) error {
 	EmitEpilogue(f.name)
 	if code.LocalSp != 0 {
 		fmt.Printf("Stack error - localstack=%d\n", code.LocalSp)
-		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
+		code.ConsArgCode(len(code.ArgCode), true)
 		code.OutputArgCode()
+		EmitComment("Stack error - localstack=" + strconv.Itoa(code.LocalSp))
 		return fmt.Errorf("Stack error at end of function '%s',  localstack=%d", fun, code.LocalSp)
 	}
 	code.OutputArgCode()
