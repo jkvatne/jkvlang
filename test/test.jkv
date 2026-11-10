@@ -11,14 +11,18 @@ type Person = struct {
 }
 
 func print_name(p Person, size I32) {
-    print("Name: %s %s", p.name.fname, p.name.ename)
+    //print("Name: %s %s", p.name.fname, p.name.ename)
 }
 
 func main () {
+    // a = 1
+    // b = a
+    // print("a=%d, b=%d", a, b)
+
     p=new(Person)
-    a=1
     p.name=new(Name)
-    p.name.ename="Vatne"
-    p.name.fname="Jan"
-    print("Name: %s %s", p.name.fname, p.name.ename)
+    // p.name.ename="Vatne"
+    // p.name.fname="Jan"
+    // print("Name: %s %s", p.name.fname, p.name.ename)
+    // p.print_name()
 }

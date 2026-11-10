@@ -981,6 +981,8 @@ func EmitModifyIndexedSlice(size int) {
 	emit("add", "rax", "rbx", "Index into lvalue slice not const")
 }
 
+// EmitLoadField loads a field. If indirect is true, it is from a indirect object,
+// else it is from a local variable.
 func EmitLoadField(lvalueOffset int, indirect bool, fieldOffset int, varName string, fieldName string) {
 	if !indirect {
 		EmitFlushRax("Flush rax before EmitLoadField of " + fieldName)
@@ -1040,10 +1042,8 @@ func EmitConvertF32toF64() {
 }
 
 func EmitLoadTosIndirect(size int, fieldName string) {
-	EmitComment("EmitLoadTosIndirect")
 	code.SetAx()
-	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "Load value in field '"+fieldName+"'")
-	EmitComment("")
+	emit(MovOpcode(size), "rax", DataType(size)+" [rax]", "EmitLoadTosIndirect in field '"+fieldName+"'")
 }
 
 func EmitGlobalIndexedByConstValue(id string, size int, index int) {
