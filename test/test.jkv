@@ -4,9 +4,14 @@ type Name = struct {
     ename String
 }
 
+type Info = struct {
+    dummy String
+    name  Name
+}
+
 type Person = struct {
     dummy String
-    name Name
+    info Info
     age U8
 }
 
@@ -15,23 +20,23 @@ func print_str(n Name,size I32) {
 }
 
 func print_name(p Person, size I32) {
-    print("print_name Name: %s %s, size=%d", p.name.fname, p.name.ename, size)
+    print("print_name Name: %s %s, size=%d", p.info.name.fname, p.info.name.ename, size)
 }
 
 func main () {
-    //a = 1
-    //b = a
-    //assert(a==1&&b==1)
-    p=new(Person)
-    p.name=new(Name)
-    p.name.ename="Vatne"
-    p.name.fname="Jan"
-    print("Name: %s %s", p.name.fname, p.name.ename)
-    p.print_name(10)
-    p.name.print_str(11)
+    a = 1
+    b = a
+    assert(a==1&&b==1)
 
-/*
-    assert(p.name.fname=="Jan")
-    assert(p.name.ename=="Vatne")
-*/
+    p=new(Person)
+    p.info=new(Info)
+    p.info.name=new(Name)
+    p.info.name.ename="Vatne"
+    p.info.name.fname="Jan"
+    print("Name: %s %s", p.info.name.fname, p.info.name.ename)
+    p.print_name(10)
+    p.info.name.print_str(11)
+
+    assert(p.info.name.fname=="Jan")
+    assert(p.info.name.ename=="Vatne")
 }
