@@ -9,14 +9,13 @@ type Person = struct {
     name Name
     age U8
 }
-/*
+
 func print_str(n Name,size I32) {
-    print("ename=%s  n=%d", n.ename, size)
+    print("print_str ename=%s  size=%d", n.ename, size)
 }
-*/
 
 func print_name(p Person, size I32) {
-    print("Name: %s %s, size=%d", p.name.fname, p.name.ename, size)
+    print("print_name Name: %s %s, size=%d", p.name.fname, p.name.ename, size)
 }
 
 func main () {
@@ -29,11 +28,10 @@ func main () {
     p.name.fname="Jan"
     print("Name: %s %s", p.name.fname, p.name.ename)
     p.print_name(10)
+    p.name.print_str(11)
 
 /*
     assert(p.name.fname=="Jan")
     assert(p.name.ename=="Vatne")
-    p.print_name(10)
-    p.name.print_str(11)
 */
 }

@@ -472,6 +472,7 @@ func ParseFuncCall(s *State, id string, returnSomething bool, arg1Value *ValueDe
 	}
 	if len(arg1code) > 0 {
 		values = slices.Insert(values, 0, arg1Value)
+		code.PushCleanupCode()
 	}
 	f := FindFuncDefFromParList(id, TypeListVal(values), false)
 	if f == nil {
@@ -539,8 +540,9 @@ func ParseFuncCall(s *State, id string, returnSomething bool, arg1Value *ValueDe
 
 	// Do actual call
 	EmitCall(f.label, len(values), f.Builtin)
-
+	code.OutputArgCode()
 	code.OutputCleanupCode(len(values))
+
 	EmitAddToSp(-len(values), "Drop "+strconv.Itoa(len(values))+" arguments after call. ")
 
 	if !returnSomething && len(f.returnTypes) > 0 {
@@ -711,7 +713,10 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 	value := ValueDef{Typ: lValue.Typ, IsIndirect: false, Offset: lValue.Offset, localVar: lValue}
 	for {
 		if s.found(TOK_DOT) {
-			code.NewArgCode()
+			if len(code.ArgCode) == 0 {
+				code.NewArgCode()
+				EmitComment("Argument on left side of dot")
+			}
 			// The previous item must have been a struct
 			if value.Typ.Pt != code.TYP_STRUCT {
 				return nil, fmt.Errorf("expected struct, got %s", value.Typ.Pt.Name())
@@ -737,17 +742,15 @@ func ParsePostfix(s *State, id string) (*ValueDef, error) {
 				EmitLoadField(value.Offset, value.IsIndirect, fieldOffset, name, fName)
 				value.Typ = fieldType
 				value.IsIndirect = true
-				code.ConsArgCode(2, false)
-				if len(code.ArgCode) == 1 {
-					// code.OutputArgCode()
-				}
 			} else if fcnt > 0 {
 				if !s.found(TOK_LPAR) {
 					return nil, fmt.Errorf("expected '(' after function name '%s'", fName)
 				}
-				value.IsIndirect = true
 				// Load arg 1
-				if value.localVar != nil {
+				if value.IsIndirect {
+					_ = EmitLoadIndirectAx("rax", 8)
+					EmitPushAx("")
+				} else if value.localVar != nil {
 					EmitLoad(value.localVar.Size(), value.localVar.Offset, "")
 					EmitFlushRax("")
 				}
